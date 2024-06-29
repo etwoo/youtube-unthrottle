@@ -1,0 +1,15 @@
+---
+BasedOnStyle: LLVM
+AllowAllArgumentsOnNextLine: false
+AllowAllParametersOfDeclarationOnNextLine: false
+AlwaysBreakAfterReturnType: TopLevelDefinitions
+BinPackArguments: false
+BinPackParameters: false
+BreakBeforeBraces: Linux
+ColumnLimit: 80
+ContinuationIndentWidth: 8
+IncludeBlocks: Regroup
+IndentPPDirectives: AfterHash
+IndentWidth: 8
+PPIndentWidth: 2
+UseTab:	AlignWithSpaces
