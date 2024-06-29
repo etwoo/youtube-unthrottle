@@ -1,0 +1,26 @@
+image: archlinux/archlinux:base-devel
+
+default:
+  before_script:
+    - echo 'Install compile-time and runtime dependencies'
+    - pacman --noconfirm -Sy curl duktape pcre2
+
+build:
+  stage: build
+  script:
+    - make
+  artifacts:
+    paths:
+      - build/youtube-unthrottle
+
+format:
+  stage: build
+  before_script:
+    - pacman --noconfirm -Sy clang
+  script:
+    - make fmt
+
+test:
+  stage: test
+  script:
+    - make test
