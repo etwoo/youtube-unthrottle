@@ -60,6 +60,7 @@ SRCS := $(wildcard $(SRC_DIR)/*.c main.c)
 OBJS := $(SRCS:%=$(BUILD_DIR)/%.o)
 DEPS := $(OBJS:.o=.d)
 INCLUDES := $(SRC_DIR) ./include
+HDRS := $(wildcard $(addsuffix /*.h,$(INCLUDES)))
 CFLAGS += $(addprefix -I,$(INCLUDES)) -MMD -MP
 CFLAGS := $(strip $(CFLAGS))
 
@@ -76,7 +77,7 @@ clean:
 
 .PHONY: fmt
 fmt:
-	clang-format -Werror --dry-run $(SRCS)
+	clang-format -Werror --dry-run $(HDRS) $(SRCS)
 
 .PHONY: test
 test:
