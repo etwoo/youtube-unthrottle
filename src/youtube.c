@@ -70,6 +70,7 @@ youtube_stream_cleanup(struct youtube_stream *p)
 		curl_url_cleanup(p->url[i]); /* handles NULL gracefully */
 		p->url[i] = NULL;
 	}
+	free(p);
 }
 
 static bool
