@@ -13,8 +13,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
-
 struct youtube_stream {
 	char *basejs;
 	size_t pos;
