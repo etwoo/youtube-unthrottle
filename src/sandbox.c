@@ -30,4 +30,4 @@ require_only_io(void)
 	landlock_apply(ALLOWED_PATHS, 1, NULL);
 	landlock_check(ALLOWED_PATHS, 1, ARRAY_SIZE(ALLOWED_PATHS), false);
 }
-/* TODO on OpenBSD: pledge("stdio") */
+/* TODO on openbsd: pledge("stdio") */
