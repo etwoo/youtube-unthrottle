@@ -28,6 +28,8 @@
 
 #include "debug.h"
 
+#include <assert.h>
+
 #ifndef landlock_create_ruleset
 static inline int
 landlock_create_ruleset(const struct landlock_ruleset_attr *const attr,
@@ -163,6 +165,35 @@ cleanup:
 	}
 }
 
+static const char NEVER_ALLOWED_CANARY[] = "/boot/vmlinuz-linux";
+
+static void
+ruleset_check(const char **paths, size_t sz_allowed, size_t sz_total)
+{
+	size_t i;
+
+	/* sanity-check sandbox: explicit path allowlist */
+	for (i = 0; i < sz_allowed; ++i) {
+		int allowed = open(paths[i], 0);
+		assert(allowed >= 0);
+		close(allowed);
+		debug("sandbox check: allowed %s", paths[i]);
+	}
+
+	/* sanity-check sandbox: implicit path blocklist */
+	for (i = sz_allowed; i < sz_total; ++i) {
+		assert(open(paths[i], 0) < 0);
+		assert(errno == EACCES);
+		debug("sandbox check: blocked %s", paths[i]);
+	}
+
+	assert(open(NEVER_ALLOWED_CANARY, 0) < 0);
+	assert(errno == EACCES);
+	debug("sandbox check: blocked %s", NEVER_ALLOWED_CANARY);
+
+	/* TODO: sanity-check sandbox: outbound network */
+}
+
 static const char *ALLOWED[] = {
 	/* for temporary files */
 	P_tmpdir,
@@ -177,12 +208,14 @@ require_only_io_inet(void)
 {
 	int dns_port = 443;
 	ruleset_apply(ALLOWED, ARRAY_SIZE(ALLOWED), &dns_port);
+	ruleset_check(ALLOWED, ARRAY_SIZE(ALLOWED), ARRAY_SIZE(ALLOWED));
 }
 /* TODO on openbsd: pledge("inet rpath stdio tmppath") */
 
 void
 require_only_io(void)
 {
-	ruleset_apply(NULL, 0, NULL);
+	ruleset_apply(ALLOWED, 1, NULL);
+	ruleset_check(ALLOWED, 1, ARRAY_SIZE(ALLOWED));
 }
 /* TODO on OpenBSD: pledge("stdio") */
