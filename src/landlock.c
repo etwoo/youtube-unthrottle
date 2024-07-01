@@ -157,7 +157,7 @@ cleanup:
 	}
 }
 
-static const char NEVER_ALLOWED_CANARY[] = "/boot/vmlinuz-linux";
+static const char NEVER_ALLOWED_CANARY[] = "/etc/passwd";
 
 void
 landlock_check(const char **paths,
