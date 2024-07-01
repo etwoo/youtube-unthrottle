@@ -231,7 +231,6 @@ static const char *ALLOWED_PATHS[] = {
 };
 static const int ALLOWED_HTTPS_PORT = 443;
 
-/* TODO: consider failing closed instead of open, abort() on failure? */
 void
 require_only_io_inet(void)
 {
