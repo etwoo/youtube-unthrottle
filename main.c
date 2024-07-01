@@ -8,6 +8,7 @@
  * of an embedded JavaScript engine (in this case, Duktape).
  */
 
+#include "sandbox.h"
 #include "youtube.h"
 
 #include <stdio.h>
@@ -21,6 +22,24 @@ usage(const char *cmd, int rc)
 {
 	fprintf(stderr, "Usage: %s [URL]\n", cmd);
 	return rc;
+}
+
+static void
+before(youtube_handle_t /* unused */)
+{
+	enter_chroot();
+}
+
+static void
+before_inet(youtube_handle_t /* unused */)
+{
+	require_only_io_inet();
+}
+
+static void
+after_inet(youtube_handle_t /* unused */)
+{
+	require_only_io();
 }
 
 int
@@ -37,7 +56,16 @@ main(int argc, const char *argv[])
 	youtube_global_init();
 	youtube_handle_t stream = youtube_stream_init();
 
-	bool should_print = youtube_stream_setup(stream, argv[1]);
+	struct youtube_setup_ops sops = {
+		.before = before,
+		.before_inet = before_inet,
+		.after_inet = after_inet,
+		.before_eval = NULL,
+		.after_eval = NULL,
+		.after = NULL,
+	};
+
+	bool should_print = youtube_stream_setup(stream, &sops, argv[1]);
 	if (should_print) {
 		youtube_stream_print(stream);
 	}
