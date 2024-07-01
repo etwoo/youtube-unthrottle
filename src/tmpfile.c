@@ -9,15 +9,14 @@
 #include "debug.h"
 
 #include <assert.h>
+#include <stdio.h> /* for P_tmpdir */
 #include <sys/mman.h>
 #include <sys/stat.h>
-
-static const char TMPDIR[] = "/tmp";
 
 int
 tmpfd(void)
 {
-	int fd = open(TMPDIR, O_TMPFILE | O_EXCL | O_RDWR, 0);
+	int fd = open(P_tmpdir, O_TMPFILE | O_EXCL | O_RDWR, 0);
 	if (fd < 0) {
 		pwarn("Error creating tmpfile via open() with O_TMPFILE");
 	}

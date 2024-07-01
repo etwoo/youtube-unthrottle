@@ -15,13 +15,18 @@
  *
  *   samples/landlock/sandboxer.c
  */
+#include <fcntl.h>
 #include <linux/landlock.h>
 #include <linux/prctl.h>
 #include <stddef.h>
+#include <stdio.h>
+#include <sys/prctl.h>
 #include <sys/syscall.h>
 #include <unistd.h>
 
 #undef _GNU_SOURCE /* revert for any other includes */
+
+#include "debug.h"
 
 #ifndef landlock_create_ruleset
 static inline int
@@ -66,6 +71,61 @@ enter_chroot(void)
 void
 require_only_io_inet(void)
 {
+	int fd = -1; /* guarantee fd is invalid by default */
+	struct landlock_ruleset_attr ruleset_attr = {
+		.handled_access_fs = LANDLOCK_ACCESS_FS_READ_FILE,
+		.handled_access_net = LANDLOCK_ACCESS_NET_CONNECT_TCP,
+	};
+	struct landlock_path_beneath_attr paths = {
+		.allowed_access = ruleset_attr.handled_access_fs,
+		.parent_fd = -1, /* guarantee fd is invalid by default */
+	};
+	struct landlock_net_port_attr ports = {
+		.allowed_access = ruleset_attr.handled_access_net,
+		.port = 0,
+	};
+
+	fd = landlock_create_ruleset(&ruleset_attr, sizeof(ruleset_attr), 0);
+	if (fd < 0) {
+		pwarn("Error in landlock_create_ruleset()");
+		goto cleanup;
+	}
+
+	paths.parent_fd = open(P_tmpdir, O_PATH);
+	if (paths.parent_fd < 0) {
+		pwarn("Error opening %s for landlock restriction", P_tmpdir);
+		goto cleanup;
+	}
+
+	if (landlock_add_rule(fd, LANDLOCK_RULE_PATH_BENEATH, &paths, 0)) {
+		pwarn("Error in LANDLOCK_RULE_PATH_BENEATH");
+		goto cleanup;
+	}
+
+	if (landlock_add_rule(fd, LANDLOCK_RULE_NET_PORT, &ports, 0)) {
+		pwarn("Error in LANDLOCK_RULE_NET_PORT");
+		goto cleanup;
+	}
+
+	if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)) {
+		pwarn("Error in prctl(PR_SET_NO_NEW_PRIVS, ...)");
+		goto cleanup;
+	}
+
+	if (landlock_restrict_self(fd, 0)) {
+		pwarn("Error in landlock_restrict_self()");
+		goto cleanup;
+	}
+
+	debug("require_only_io_inet() succeeded");
+
+cleanup:
+	if (paths.parent_fd >= 0 && close(paths.parent_fd) < 0) {
+		pwarn("Ignoring error while close()-ing Landlock paths fd");
+	}
+	if (fd >= 0 && close(fd) < 0) {
+		pwarn("Ignoring error while close()-ing Landlock ruleset fd");
+	}
 }
 /* TODO on openbsd: pledge("inet rpath stdio tmppath") */
 
