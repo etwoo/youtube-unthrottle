@@ -16,6 +16,7 @@
 #include <sysexits.h>
 
 static const char ARG_HELP[] = "--help";
+static const char ARG_SANDBOX[] = "--try-sandbox";
 
 static int
 usage(const char *cmd, int rc)
@@ -45,6 +46,10 @@ main(int argc, const char *argv[])
 
 	if (0 == strncmp(ARG_HELP, argv[1], strlen(ARG_HELP))) {
 		return usage(argv[0], EX_OK);
+	} else if (0 == strncmp(ARG_SANDBOX, argv[1], strlen(ARG_SANDBOX))) {
+		require_only_io_inet();
+		require_only_io();
+		return EX_OK;
 	}
 
 	youtube_global_init();

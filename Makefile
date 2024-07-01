@@ -81,7 +81,7 @@ fmt:
 
 .PHONY: test
 test:
-	$(BUILD_DIR)/$(TARGET) --help
+	$(BUILD_DIR)/$(TARGET) --try-sandbox
 # stub for `make test`; doesn't really do anything right now
 
 -include $(DEPS)
