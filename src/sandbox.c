@@ -16,7 +16,7 @@ static const char *ALLOWED_PATHS[] = {
 static const int ALLOWED_HTTPS_PORT = 443;
 
 void
-require_only_io_inet(void)
+sandbox_only_io_inet(void)
 {
 	const size_t sz = ARRAY_SIZE(ALLOWED_PATHS);
 	landlock_apply(ALLOWED_PATHS, sz, &ALLOWED_HTTPS_PORT);
@@ -26,7 +26,7 @@ require_only_io_inet(void)
 /* TODO on openbsd: pledge("inet rpath stdio tmppath") */
 
 void
-require_only_io(void)
+sandbox_only_io(void)
 {
 	landlock_apply(ALLOWED_PATHS, 1, NULL);
 	landlock_check(ALLOWED_PATHS, 1, ARRAY_SIZE(ALLOWED_PATHS), false);

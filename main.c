@@ -28,13 +28,13 @@ usage(const char *cmd, int rc)
 static void
 before_inet(youtube_handle_t /* unused */)
 {
-	require_only_io_inet();
+	sandbox_only_io_inet();
 }
 
 static void
 after_inet(youtube_handle_t /* unused */)
 {
-	require_only_io();
+	sandbox_only_io();
 }
 
 int
@@ -47,8 +47,8 @@ main(int argc, const char *argv[])
 	if (0 == strncmp(ARG_HELP, argv[1], strlen(ARG_HELP))) {
 		return usage(argv[0], EX_OK);
 	} else if (0 == strncmp(ARG_SANDBOX, argv[1], strlen(ARG_SANDBOX))) {
-		require_only_io_inet();
-		require_only_io();
+		sandbox_only_io_inet();
+		sandbox_only_io();
 		return EX_OK;
 	}
 
