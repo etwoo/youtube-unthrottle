@@ -168,7 +168,7 @@ cleanup:
 static const char NEVER_ALLOWED_CANARY[] = "/boot/vmlinuz-linux";
 
 static void
-ruleset_check(const char **paths, size_t sz_allowed, size_t sz_total)
+ruleset_check(const char **paths, size_t sz_allowed, size_t sz_total, int *port)
 {
 	size_t i;
 
@@ -192,9 +192,14 @@ ruleset_check(const char **paths, size_t sz_allowed, size_t sz_total)
 	debug("sandbox check: blocked %s", NEVER_ALLOWED_CANARY);
 
 	/* TODO: sanity-check sandbox: outbound network */
+	if (port && *port > 0) {
+		debug("hi");
+	} else {
+		debug("hello");
+	}
 }
 
-static const char *ALLOWED[] = {
+static const char *ALLOWED_PATHS[] = {
 	/* for temporary files */
 	P_tmpdir,
 	/* for DNS and SSL/TLS */
@@ -206,16 +211,17 @@ static const char *ALLOWED[] = {
 void
 require_only_io_inet(void)
 {
+	const size_t sz = ARRAY_SIZE(ALLOWED_PATHS);
 	int dns_port = 443;
-	ruleset_apply(ALLOWED, ARRAY_SIZE(ALLOWED), &dns_port);
-	ruleset_check(ALLOWED, ARRAY_SIZE(ALLOWED), ARRAY_SIZE(ALLOWED));
+	ruleset_apply(ALLOWED_PATHS, sz, &dns_port);
+	ruleset_check(ALLOWED_PATHS, sz, sz, &dns_port);
 }
 /* TODO on openbsd: pledge("inet rpath stdio tmppath") */
 
 void
 require_only_io(void)
 {
-	ruleset_apply(ALLOWED, 1, NULL);
-	ruleset_check(ALLOWED, 1, ARRAY_SIZE(ALLOWED));
+	ruleset_apply(ALLOWED_PATHS, 1, NULL);
+	ruleset_check(ALLOWED_PATHS, 1, ARRAY_SIZE(ALLOWED_PATHS), NULL);
 }
 /* TODO on OpenBSD: pledge("stdio") */
