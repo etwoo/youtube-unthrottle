@@ -181,14 +181,18 @@ ruleset_check(const char **paths,
 
 	/* sanity-check sandbox: implicit path blocklist */
 	for (i = sz_allowed; i < sz_total; ++i) {
-		assert(open(paths[i], 0) < 0);
+		int fd = open(paths[i], 0);
+		assert(fd < 0);
 		assert(errno == EACCES);
 		debug("sandbox check: blocked %s", paths[i]);
 	}
 
-	assert(open(NEVER_ALLOWED_CANARY, 0) < 0);
-	assert(errno == EACCES);
-	debug("sandbox check: blocked %s", NEVER_ALLOWED_CANARY);
+	{
+		int fd = open(NEVER_ALLOWED_CANARY, 0);
+		assert(fd < 0);
+		assert(errno == EACCES);
+		debug("sandbox check: blocked %s", NEVER_ALLOWED_CANARY);
+	}
 
 	/* sanity-check sandbox: network connect() */
 
@@ -198,7 +202,8 @@ ruleset_check(const char **paths,
 	hints.ai_socktype = SOCK_STREAM;
 
 	struct addrinfo *ai = NULL;
-	assert(0 == getaddrinfo("example.com", "443", &hints, &ai));
+	int rc = getaddrinfo("example.com", "443", &hints, &ai);
+	assert(rc == 0);
 
 	int sfd = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
 	assert(sfd >= 0);
