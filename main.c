@@ -25,12 +25,6 @@ usage(const char *cmd, int rc)
 }
 
 static void
-before(youtube_handle_t /* unused */)
-{
-	enter_chroot();
-}
-
-static void
 before_inet(youtube_handle_t /* unused */)
 {
 	require_only_io_inet();
@@ -57,7 +51,7 @@ main(int argc, const char *argv[])
 	youtube_handle_t stream = youtube_stream_init();
 
 	struct youtube_setup_ops sops = {
-		.before = before,
+		.before = NULL,
 		.before_inet = before_inet,
 		.after_inet = after_inet,
 		.before_eval = NULL,

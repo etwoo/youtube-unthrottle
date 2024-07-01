@@ -66,12 +66,6 @@ landlock_restrict_self(const int ruleset_fd, const __u32 flags)
 }
 #endif
 
-void
-enter_chroot(void)
-{
-}
-/* TODO on OpenBSD: unveil("/tmp", "rw"); unveil(NULL, NULL); */
-
 static void
 ruleset_add_rule_paths(int fd, const char **paths, size_t sz)
 {
@@ -237,6 +231,7 @@ require_only_io_inet(void)
 	ruleset_apply(ALLOWED_PATHS, sz, &ALLOWED_HTTPS_PORT);
 	ruleset_check(ALLOWED_PATHS, sz, sz, true);
 }
+/* TODO on openbsd: unveil("/tmp", "rw"); unveil(NULL, NULL); */
 /* TODO on openbsd: pledge("inet rpath stdio tmppath") */
 
 void
