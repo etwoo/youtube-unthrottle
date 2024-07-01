@@ -29,6 +29,9 @@
 #include "debug.h"
 
 #include <assert.h>
+#include <netdb.h>
+#include <stdbool.h>
+#include <sys/socket.h>
 
 #ifndef landlock_create_ruleset
 static inline int
@@ -125,7 +128,7 @@ cleanup:
 }
 
 static void
-ruleset_apply(const char **paths, int sz, int *port)
+ruleset_apply(const char **paths, int sz, const int *port)
 {
 	int fd = -1;
 	struct landlock_ruleset_attr ruleset_attr = {
@@ -168,7 +171,10 @@ cleanup:
 static const char NEVER_ALLOWED_CANARY[] = "/boot/vmlinuz-linux";
 
 static void
-ruleset_check(const char **paths, size_t sz_allowed, size_t sz_total, int *port)
+ruleset_check(const char **paths,
+              size_t sz_allowed,
+              size_t sz_total,
+              bool should_connect)
 {
 	size_t i;
 
@@ -191,30 +197,47 @@ ruleset_check(const char **paths, size_t sz_allowed, size_t sz_total, int *port)
 	assert(errno == EACCES);
 	debug("sandbox check: blocked %s", NEVER_ALLOWED_CANARY);
 
-	/* TODO: sanity-check sandbox: outbound network */
-	if (port && *port > 0) {
-		debug("hi");
-	} else {
-		debug("hello");
+	/* sanity-check sandbox: network connect() */
+
+	struct addrinfo hints;
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_STREAM;
+
+	struct addrinfo *ai = NULL;
+	assert(0 == getaddrinfo("example.com", "443", &hints, &ai));
+
+	int sfd = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
+	assert(sfd >= 0);
+
+	const bool connected = !connect(sfd, ai->ai_addr, ai->ai_addrlen);
+	assert(connected == should_connect);
+	if (!should_connect) {
+		assert(errno == EACCES);
 	}
+	debug("sandbox check: %s connect()",
+	      should_connect ? "allowed" : "blocked");
+
+	freeaddrinfo(ai);
+	close(sfd);
 }
 
 static const char *ALLOWED_PATHS[] = {
 	/* for temporary files */
 	P_tmpdir,
-	/* for DNS and SSL/TLS */
+	/* for outbound HTTPS */
 	"/etc/resolv.conf",
 	"/etc/ssl/certs/ca-certificates.crt",
 };
+static const int ALLOWED_HTTPS_PORT = 443;
 
 /* TODO: consider failing closed instead of open, abort() on failure? */
 void
 require_only_io_inet(void)
 {
 	const size_t sz = ARRAY_SIZE(ALLOWED_PATHS);
-	int dns_port = 443;
-	ruleset_apply(ALLOWED_PATHS, sz, &dns_port);
-	ruleset_check(ALLOWED_PATHS, sz, sz, &dns_port);
+	ruleset_apply(ALLOWED_PATHS, sz, &ALLOWED_HTTPS_PORT);
+	ruleset_check(ALLOWED_PATHS, sz, sz, true);
 }
 /* TODO on openbsd: pledge("inet rpath stdio tmppath") */
 
@@ -222,6 +245,6 @@ void
 require_only_io(void)
 {
 	ruleset_apply(ALLOWED_PATHS, 1, NULL);
-	ruleset_check(ALLOWED_PATHS, 1, ARRAY_SIZE(ALLOWED_PATHS), NULL);
+	ruleset_check(ALLOWED_PATHS, 1, ARRAY_SIZE(ALLOWED_PATHS), false);
 }
 /* TODO on OpenBSD: pledge("stdio") */
