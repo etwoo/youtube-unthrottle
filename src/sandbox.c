@@ -68,40 +68,16 @@ enter_chroot(void)
 }
 /* TODO on OpenBSD: unveil("/tmp", "rw"); unveil(NULL, NULL); */
 
-static const char *ALLOWED[] = {
-	/* for temporary files */
-	P_tmpdir,
-	/* for DNS and SSL/TLS */
-	"/etc/resolv.conf",
-	"/etc/ssl/certs/ca-certificates.crt",
-};
-
-/* TODO: consider failing closed instead of open, abort() on failure? */
-void
-require_only_io_inet(void)
+static void
+ruleset_add_rule_paths(int fd, const char **paths, size_t sz)
 {
-	int fd = -1; /* guarantee fd is invalid by default */
-	struct landlock_ruleset_attr ruleset_attr = {
-		.handled_access_fs = LANDLOCK_ACCESS_FS_READ_FILE,
-		.handled_access_net = LANDLOCK_ACCESS_NET_CONNECT_TCP,
-	};
 	struct landlock_path_beneath_attr pb = {
-		.allowed_access = ruleset_attr.handled_access_fs,
+		.allowed_access = LANDLOCK_ACCESS_FS_READ_FILE,
 		.parent_fd = -1, /* guarantee fd is invalid by default */
 	};
-	struct landlock_net_port_attr np = {
-		.allowed_access = ruleset_attr.handled_access_net,
-		.port = 443, /* for DNS */
-	};
 
-	fd = landlock_create_ruleset(&ruleset_attr, sizeof(ruleset_attr), 0);
-	if (fd < 0) {
-		pwarn("Error in landlock_create_ruleset()");
-		goto cleanup;
-	}
-
-	for (size_t i = 0; i < ARRAY_SIZE(ALLOWED); ++i) {
-		const char *p = ALLOWED[i];
+	for (size_t i = 0; i < sz; ++i) {
+		const char *p = paths[i];
 
 		pb.parent_fd = open(p, O_PATH);
 		if (pb.parent_fd < 0) {
@@ -123,9 +99,50 @@ require_only_io_inet(void)
 		pb.parent_fd = -1;
 	}
 
+cleanup:
+	if (pb.parent_fd >= 0 && close(pb.parent_fd) < 0) {
+		pwarn("Ignoring error while close()-ing Landlock paths fd");
+	}
+}
+
+static void
+ruleset_add_rule_port(int fd, int port)
+{
+	struct landlock_net_port_attr np = {
+		.allowed_access = LANDLOCK_ACCESS_NET_CONNECT_TCP,
+		.port = port,
+	};
+
 	if (landlock_add_rule(fd, LANDLOCK_RULE_NET_PORT, &np, 0)) {
 		pwarn("Error in LANDLOCK_RULE_NET_PORT");
 		goto cleanup;
+	}
+
+cleanup:
+	/* no particular cleanup to do (yet) */
+}
+
+static void
+ruleset_apply(const char **paths, int sz, int *port)
+{
+	int fd = -1;
+	struct landlock_ruleset_attr ruleset_attr = {
+		.handled_access_fs = LANDLOCK_ACCESS_FS_READ_FILE,
+		.handled_access_net = LANDLOCK_ACCESS_NET_CONNECT_TCP,
+	};
+
+	fd = landlock_create_ruleset(&ruleset_attr, sizeof(ruleset_attr), 0);
+	if (fd < 0) {
+		pwarn("Error in landlock_create_ruleset()");
+		goto cleanup;
+	}
+
+	if (paths) {
+		ruleset_add_rule_paths(fd, paths, sz);
+	}
+
+	if (port) {
+		ruleset_add_rule_port(fd, *port);
 	}
 
 	if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)) {
@@ -138,21 +155,34 @@ require_only_io_inet(void)
 		goto cleanup;
 	}
 
-	debug("require_only_io_inet() succeeded");
+	debug("ruleset_apply() succeeded");
 
 cleanup:
-	if (pb.parent_fd >= 0 && close(pb.parent_fd) < 0) {
-		pwarn("Ignoring error while close()-ing Landlock paths fd");
-	}
 	if (fd >= 0 && close(fd) < 0) {
 		pwarn("Ignoring error while close()-ing Landlock ruleset fd");
 	}
+}
+
+static const char *ALLOWED[] = {
+	/* for temporary files */
+	P_tmpdir,
+	/* for DNS and SSL/TLS */
+	"/etc/resolv.conf",
+	"/etc/ssl/certs/ca-certificates.crt",
+};
+
+/* TODO: consider failing closed instead of open, abort() on failure? */
+void
+require_only_io_inet(void)
+{
+	int dns_port = 443;
+	ruleset_apply(ALLOWED, ARRAY_SIZE(ALLOWED), &dns_port);
 }
 /* TODO on openbsd: pledge("inet rpath stdio tmppath") */
 
 void
 require_only_io(void)
 {
-	/* TODO: try empty ruleset, see if read/write fails as expected */
+	ruleset_apply(NULL, 0, NULL);
 }
 /* TODO on OpenBSD: pledge("stdio") */
