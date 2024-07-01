@@ -74,5 +74,3 @@ main(int argc, const char *argv[])
 	youtube_global_cleanup();
 	return should_print ? EX_OK : EX_DATAERR;
 }
-
-/* TODO: drop privileges via pledge(), chroot, namespaces, or equivalent */
