@@ -66,7 +66,6 @@ landlock_restrict_self(const int ruleset_fd, const __u32 flags)
 }
 #endif
 
-// TODO: update README.md with sandboxing as one of the learning topics
 void
 enter_chroot(void)
 {

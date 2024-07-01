@@ -44,6 +44,10 @@ are mainly personal for the author:
   behave in the context of a greenfield codebase, especially one where
   error-handling codepaths are exercised by evolving external inputs on
   an ongoing basis
+- experiment with sandboxing APIs like
+  [Landlock](https://docs.kernel.org/userspace-api/landlock.html),
+  [pledge()](https://man.openbsd.org/pledge.2),
+  and [unveil()](https://man.openbsd.org/unveil.2)
 
 Additional day-to-day reasons:
 
