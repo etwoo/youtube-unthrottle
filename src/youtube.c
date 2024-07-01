@@ -1,5 +1,6 @@
 #include "youtube.h"
 
+#include "array.h"
 #include "debug.h"
 #include "js.h"
 #include "re.h"

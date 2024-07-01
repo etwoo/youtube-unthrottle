@@ -1,9 +1,6 @@
 #ifndef DEBUG_H
 #define DEBUG_H
 
-/* TODO: maybe move this to a dedicated header like array.h */
-#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
-
 #include <errno.h>
 #include <string.h> /* for strerror() */
 

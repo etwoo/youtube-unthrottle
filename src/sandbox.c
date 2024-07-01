@@ -1,5 +1,6 @@
 #include "sandbox.h"
 
+#include "array.h"
 #include "debug.h"
 #include "landlock.h"
 
