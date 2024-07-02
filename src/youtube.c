@@ -1,5 +1,6 @@
 #include "youtube.h"
 
+#include "array.h"
 #include "debug.h"
 #include "js.h"
 #include "re.h"
@@ -12,8 +13,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-
-#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
 struct youtube_stream {
 	char *basejs;
@@ -300,7 +299,9 @@ error:
 }
 
 bool
-youtube_stream_setup(struct youtube_stream *p, const char *target)
+youtube_stream_setup(struct youtube_stream *p,
+                     struct youtube_setup_ops *ops,
+                     const char *target)
 {
 	bool result = false;
 
@@ -314,6 +315,14 @@ youtube_stream_setup(struct youtube_stream *p, const char *target)
 
 	const size_t ciphertexts_count = ARRAY_SIZE(p->url);
 	char *ciphertexts[ciphertexts_count];
+
+	if (ops && ops->before) {
+		ops->before(p);
+	}
+
+	if (ops && ops->before_inet) {
+		ops->before_inet(p);
+	}
 
 	if (!download_and_mmap_tmpfd(target,
 	                             NULL,
@@ -343,6 +352,14 @@ youtube_stream_setup(struct youtube_stream *p, const char *target)
 		goto cleanup;
 	}
 
+	if (ops && ops->after_inet) {
+		ops->after_inet(p);
+	}
+
+	if (ops && ops->before_eval) {
+		ops->before_eval(p);
+	}
+
 	char *deobfuscator = NULL;
 	size_t deobfuscator_sz = 0;
 	find_js_deobfuscator(js, js_sz, &deobfuscator, &deobfuscator_sz);
@@ -367,6 +384,10 @@ youtube_stream_setup(struct youtube_stream *p, const char *target)
 	                &cops,
 	                p);
 
+	if (ops && ops->after_eval) {
+		ops->after_eval(p);
+	}
+
 	result = true;
 
 cleanup:
@@ -381,6 +402,9 @@ cleanup:
 	}
 	if (js_fd >= 0 && close(js_fd) < 0) {
 		pwarn("Ignoring error while close()-ing tmpfile");
+	}
+	if (ops && ops->after) {
+		ops->after(p);
 	}
 	return result;
 }
