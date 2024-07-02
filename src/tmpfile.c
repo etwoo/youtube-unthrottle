@@ -23,11 +23,11 @@ tmpfd(void)
 		pwarn("Error creating tmpfile via open() with O_TMPFILE");
 	}
 #else
-	FILE *f = tmpfile();
-	if (f == NULL) {
+	FILE *fs = tmpfile();
+	if (fs == NULL) {
 		pwarn("Error in tmpfile()");
 	} else {
-		fd = fileno(f);
+		fd = fileno(fs);
 		if (fd < 0) {
 			pwarn("Error in fileno()");
 		}
