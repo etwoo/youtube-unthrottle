@@ -34,14 +34,14 @@ sandbox_verify(const char **paths,
 	for (i = paths_allowed; i < paths_total; ++i) {
 		int fd = open(paths[i], 0);
 		assert(fd < 0);
-		assert(errno == EACCES);
+		assert(errno == EACCES || errno == ENOENT);
 		debug("sandbox verify: blocked %s", paths[i]);
 	}
 
 	{
 		int fd = open(NEVER_ALLOWED_CANARY, 0);
 		assert(fd < 0);
-		assert(errno == EACCES);
+		assert(errno == EACCES || errno == ENOENT);
 		debug("sandbox verify: blocked %s", NEVER_ALLOWED_CANARY);
 	}
 
@@ -74,9 +74,14 @@ sandbox_verify(const char **paths,
 static const char *ALLOWED_PATHS[] = {
 	/* for temporary files */
 	P_tmpdir,
+#if defined(__linux__)
 	/* for outbound HTTPS */
 	"/etc/resolv.conf",
 	"/etc/ssl/certs/ca-certificates.crt",
+#elif defined(__OpenBSD__)
+	/* for outbound HTTPS */
+	"/etc/ssl/cert.pem",
+#endif
 };
 #if defined (__linux__)
 static const int ALLOWED_HTTPS_PORT = 443;
@@ -89,15 +94,15 @@ sandbox_only_io_inet(void)
 #if defined(__linux__)
 	landlock_apply(ALLOWED_PATHS, sz, &ALLOWED_HTTPS_PORT);
 #elif defined(__OpenBSD__)
-	if (pledge("inet rpath stdio tmppath", NULL) < 0) {
-		pwarn("Error in pledge()");
-	}
 	for (size_t i = 0; i < sz; ++i) {
 		if (unveil(ALLOWED_PATHS[i], "r") < 0) {
 			pwarn("Error in unveil()");
 		}
 	}
 	unveil(NULL, NULL);
+	if (pledge("dns inet rpath stdio tmppath", NULL) < 0) {
+		pwarn("Error in pledge()");
+	}
 #endif
 	sandbox_verify(ALLOWED_PATHS, sz, sz, true);
 }
@@ -107,8 +112,9 @@ sandbox_only_io(void)
 {
 #if defined(__linux__)
 	landlock_apply(ALLOWED_PATHS, 1, NULL);
+	sandbox_verify(ALLOWED_PATHS, 1, ARRAY_SIZE(ALLOWED_PATHS), false);
 #elif defined(__OpenBSD__)
 	pledge("stdio", NULL);
+	/* sandbox_verify() would abort() at this point */
 #endif
-	sandbox_verify(ALLOWED_PATHS, 1, ARRAY_SIZE(ALLOWED_PATHS), false);
 }
