@@ -16,10 +16,23 @@
 int
 tmpfd(void)
 {
-	int fd = open(P_tmpdir, O_TMPFILE | O_EXCL | O_RDWR, 0);
+	int fd = -1;
+#if defined(__linux__)
+	fd = open(P_tmpdir, O_TMPFILE | O_EXCL | O_RDWR, 0);
 	if (fd < 0) {
 		pwarn("Error creating tmpfile via open() with O_TMPFILE");
 	}
+#else
+	FILE *f = tmpfile();
+	if (f == NULL) {
+		pwarn("Error in tmpfile()");
+	} else {
+		fd = fileno(f);
+		if (fd < 0) {
+			pwarn("Error in fileno()");
+		}
+	}
+#endif
 	return fd;
 }
 

@@ -78,22 +78,37 @@ static const char *ALLOWED_PATHS[] = {
 	"/etc/resolv.conf",
 	"/etc/ssl/certs/ca-certificates.crt",
 };
+#if defined (__linux__)
 static const int ALLOWED_HTTPS_PORT = 443;
+#endif
 
 void
 sandbox_only_io_inet(void)
 {
 	const size_t sz = ARRAY_SIZE(ALLOWED_PATHS);
+#if defined(__linux__)
 	landlock_apply(ALLOWED_PATHS, sz, &ALLOWED_HTTPS_PORT);
+#elif defined(__OpenBSD__)
+	if (pledge("inet rpath stdio tmppath", NULL) < 0) {
+		pwarn("Error in pledge()");
+	}
+	for (size_t i = 0; i < sz; ++i) {
+		if (unveil(ALLOWED_PATHS[i], "r") < 0) {
+			pwarn("Error in unveil()");
+		}
+	}
+	unveil(NULL, NULL);
+#endif
 	sandbox_verify(ALLOWED_PATHS, sz, sz, true);
 }
-/* TODO on openbsd: unveil("/tmp", "rw"); unveil(NULL, NULL); */
-/* TODO on openbsd: pledge("inet rpath stdio tmppath") */
 
 void
 sandbox_only_io(void)
 {
+#if defined(__linux__)
 	landlock_apply(ALLOWED_PATHS, 1, NULL);
+#elif defined(__OpenBSD__)
+	pledge("stdio", NULL);
+#endif
 	sandbox_verify(ALLOWED_PATHS, 1, ARRAY_SIZE(ALLOWED_PATHS), false);
 }
-/* TODO on openbsd: pledge("stdio") */
