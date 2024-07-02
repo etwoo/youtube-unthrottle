@@ -1,7 +1,7 @@
 #if defined(__linux__)
 
 #ifndef _GNU_SOURCE
-#  define _GNU_SOURCE
+#define _GNU_SOURCE
 #endif
 #define __SANE_USERSPACE_TYPES__
 
