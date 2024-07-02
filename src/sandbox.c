@@ -7,9 +7,9 @@
 #include <assert.h>
 #include <fcntl.h>
 #include <netdb.h>
-#include <sys/socket.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <sys/socket.h>
 #include <unistd.h>
 
 static const char NEVER_ALLOWED_CANARY[] = "/etc/passwd";
