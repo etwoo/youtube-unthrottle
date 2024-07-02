@@ -1,3 +1,5 @@
+#include "tmpfile.h"
+
 #ifndef _GNU_SOURCE
 #  define _GNU_SOURCE /* for O_TMPFILE in open() */
 #endif
@@ -5,18 +7,16 @@
 #undef _GNU_SOURCE /* revert for any other includes */
 
 #include "debug.h"
-#include "tmpfile.h"
 
 #include <assert.h>
+#include <stdio.h> /* for P_tmpdir */
 #include <sys/mman.h>
 #include <sys/stat.h>
-
-static const char TMPDIR[] = "/tmp";
 
 int
 tmpfd(void)
 {
-	int fd = open(TMPDIR, O_TMPFILE | O_EXCL | O_RDWR, 0);
+	int fd = open(P_tmpdir, O_TMPFILE | O_EXCL | O_RDWR, 0);
 	if (fd < 0) {
 		pwarn("Error creating tmpfile via open() with O_TMPFILE");
 	}

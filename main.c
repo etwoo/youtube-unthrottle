@@ -8,6 +8,7 @@
  * of an embedded JavaScript engine (in this case, Duktape).
  */
 
+#include "sandbox.h"
 #include "youtube.h"
 
 #include <stdio.h>
@@ -15,12 +16,19 @@
 #include <sysexits.h>
 
 static const char ARG_HELP[] = "--help";
+static const char ARG_SANDBOX[] = "--try-sandbox";
 
 static int
 usage(const char *cmd, int rc)
 {
 	fprintf(stderr, "Usage: %s [URL]\n", cmd);
 	return rc;
+}
+
+static void
+after_inet(youtube_handle_t /* unused */)
+{
+	sandbox_only_io();
 }
 
 int
@@ -32,12 +40,27 @@ main(int argc, const char *argv[])
 
 	if (0 == strncmp(ARG_HELP, argv[1], strlen(ARG_HELP))) {
 		return usage(argv[0], EX_OK);
+	} else if (0 == strncmp(ARG_SANDBOX, argv[1], strlen(ARG_SANDBOX))) {
+		sandbox_only_io_inet();
+		sandbox_only_io();
+		return EX_OK;
 	}
+
+	sandbox_only_io_inet();
 
 	youtube_global_init();
 	youtube_handle_t stream = youtube_stream_init();
 
-	bool should_print = youtube_stream_setup(stream, argv[1]);
+	struct youtube_setup_ops sops = {
+		.before = NULL,
+		.before_inet = NULL,
+		.after_inet = after_inet,
+		.before_eval = NULL,
+		.after_eval = NULL,
+		.after = NULL,
+	};
+
+	bool should_print = youtube_stream_setup(stream, &sops, argv[1]);
 	if (should_print) {
 		youtube_stream_print(stream);
 	}
@@ -46,5 +69,3 @@ main(int argc, const char *argv[])
 	youtube_global_cleanup();
 	return should_print ? EX_OK : EX_DATAERR;
 }
-
-/* TODO: drop privileges via pledge(), chroot, namespaces, or equivalent */
