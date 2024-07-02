@@ -26,12 +26,6 @@ usage(const char *cmd, int rc)
 }
 
 static void
-before_inet(youtube_handle_t /* unused */)
-{
-	sandbox_only_io_inet();
-}
-
-static void
 after_inet(youtube_handle_t /* unused */)
 {
 	sandbox_only_io();
@@ -52,12 +46,14 @@ main(int argc, const char *argv[])
 		return EX_OK;
 	}
 
+	sandbox_only_io_inet();
+
 	youtube_global_init();
 	youtube_handle_t stream = youtube_stream_init();
 
 	struct youtube_setup_ops sops = {
 		.before = NULL,
-		.before_inet = before_inet,
+		.before_inet = NULL,
 		.after_inet = after_inet,
 		.before_eval = NULL,
 		.after_eval = NULL,
