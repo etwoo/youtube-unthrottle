@@ -55,12 +55,9 @@ landlock_restrict_self(const int ruleset_fd, const __u32 flags)
 #include "debug.h"
 #include "landlock.h"
 
-#include <assert.h>
 #include <fcntl.h>
 #include <linux/prctl.h>
-#include <netdb.h>
 #include <sys/prctl.h>
-#include <sys/socket.h>
 
 static void
 ruleset_add_rule_paths(int fd, const char **paths, size_t sz)
@@ -155,63 +152,4 @@ cleanup:
 	if (fd >= 0 && close(fd) < 0) {
 		pwarn("Ignoring error while close()-ing Landlock ruleset fd");
 	}
-}
-
-static const char NEVER_ALLOWED_CANARY[] = "/etc/passwd";
-
-void
-landlock_check(const char **paths,
-               size_t paths_allowed,
-               size_t paths_total,
-               bool connect_allowed)
-{
-	size_t i;
-
-	/* sanity-check sandbox: explicit path allowlist */
-	for (i = 0; i < paths_allowed; ++i) {
-		int allowed = open(paths[i], 0);
-		assert(allowed >= 0);
-		close(allowed);
-		debug("sandbox check: allowed %s", paths[i]);
-	}
-
-	/* sanity-check sandbox: implicit path blocklist */
-	for (i = paths_allowed; i < paths_total; ++i) {
-		int fd = open(paths[i], 0);
-		assert(fd < 0);
-		assert(errno == EACCES);
-		debug("sandbox check: blocked %s", paths[i]);
-	}
-
-	{
-		int fd = open(NEVER_ALLOWED_CANARY, 0);
-		assert(fd < 0);
-		assert(errno == EACCES);
-		debug("sandbox check: blocked %s", NEVER_ALLOWED_CANARY);
-	}
-
-	/* sanity-check sandbox: network connect() */
-
-	struct addrinfo hints;
-	memset(&hints, 0, sizeof(hints));
-	hints.ai_family = AF_INET;
-	hints.ai_socktype = SOCK_STREAM;
-
-	struct addrinfo *ai = NULL;
-	int rc = getaddrinfo("example.com", "443", &hints, &ai);
-	assert(rc == 0);
-
-	int sfd = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
-	assert(sfd >= 0);
-
-	const bool connected = !connect(sfd, ai->ai_addr, ai->ai_addrlen);
-	assert(connected == connect_allowed);
-	if (!connect_allowed) {
-		assert(errno == EACCES);
-	}
-	debug("sandbox check: %s connect()",
-	      connect_allowed ? "allowed" : "blocked");
-
-	freeaddrinfo(ai);
-	close(sfd);
 }
