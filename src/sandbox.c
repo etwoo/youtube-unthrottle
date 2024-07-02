@@ -83,16 +83,13 @@ static const char *ALLOWED_PATHS[] = {
 	"/etc/ssl/cert.pem",
 #endif
 };
-#if defined (__linux__)
-static const int ALLOWED_HTTPS_PORT = 443;
-#endif
 
 void
 sandbox_only_io_inet(void)
 {
 	const size_t sz = ARRAY_SIZE(ALLOWED_PATHS);
 #if defined(__linux__)
-	landlock_apply(ALLOWED_PATHS, sz, &ALLOWED_HTTPS_PORT);
+	landlock_apply(ALLOWED_PATHS, sz, 443);
 #elif defined(__OpenBSD__)
 	for (size_t i = 0; i < sz; ++i) {
 		if (unveil(ALLOWED_PATHS[i], "r") < 0) {
@@ -111,7 +108,7 @@ void
 sandbox_only_io(void)
 {
 #if defined(__linux__)
-	landlock_apply(ALLOWED_PATHS, 1, NULL);
+	landlock_apply(ALLOWED_PATHS, 1, 0);
 	sandbox_verify(ALLOWED_PATHS, 1, ARRAY_SIZE(ALLOWED_PATHS), false);
 #elif defined(__OpenBSD__)
 	pledge("stdio", NULL);
