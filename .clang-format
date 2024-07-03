@@ -9,7 +9,5 @@ BreakBeforeBraces: Linux
 ColumnLimit: 80
 ContinuationIndentWidth: 8
 IncludeBlocks: Regroup
-IndentPPDirectives: AfterHash
 IndentWidth: 8
-PPIndentWidth: 2
 UseTab:	AlignWithSpaces
