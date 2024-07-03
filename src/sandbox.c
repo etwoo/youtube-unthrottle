@@ -96,7 +96,9 @@ sandbox_only_io_inet(void)
 			pwarn("Error in unveil()");
 		}
 	}
-	unveil(NULL, NULL);
+	if (unveil(NULL, NULL) < 0) {
+		pwarn("Error in final unveil()");
+	}
 	if (pledge("dns inet rpath stdio tmppath", NULL) < 0) {
 		pwarn("Error in pledge()");
 	}
