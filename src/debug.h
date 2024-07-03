@@ -14,7 +14,7 @@ debug_at_line(const char *fname, unsigned int lineno, const char *pattern, ...)
 #define warn(pattern, ...)                                                     \
 	warn_at_line(__FILE__, __LINE__, pattern, ##__VA_ARGS__)
 
-#define pwarn(msg, ...) warn("%s: %s", msg, strerror(errno))
+#define pwarn(msg) warn("%s: %s", msg, strerror(errno))
 
 void
 warn_at_line(const char *fname, unsigned int lineno, const char *pattern, ...)
