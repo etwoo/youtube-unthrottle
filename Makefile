@@ -2,7 +2,8 @@ OS := $(shell uname)
 TARGET := youtube-unthrottle
 LDLIBS := -lcurl -lduktape -lpcre2-8
 
-# TODO: conditional logic for gcc vs clang is yucky; would be cleaner to use CMake and then test for whether these options in an idiomatic way, rather than having this kind of conditional logic implemented in this Makefile :(
+# TODO: conditional logic for gcc vs clang is yucky; would probably be cleaner to use CMake and then test for whether these options are supported in an idiomatic way (testing options by invoking compiler, rather than checking for compiler name/version strings, OS strings, etc), rather than having this kind of conditional logic implemented in this Makefile :(
+
 CC_TYPE := unknown
 CC_VERSION := $(shell $(CC) --version)
 ifneq (,$(findstring GCC,$(CC_VERSION)))
