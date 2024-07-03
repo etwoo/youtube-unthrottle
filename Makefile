@@ -18,7 +18,7 @@ ifneq (,$(findstring -fhardened,$(CC_OPTIONS)))
 	#  -fstack-clash-protection
 	#  -fcf-protection=full
 else
-	# -fhardened is not supported; set constituent options explicitly
+	# -fhardened is not supported; set constituent options individually
 	CFLAGS += -D_FORTIFY_SOURCE=3 $\
 		  -D_GLIBCXX_ASSERTIONS $\
 		  -Wl,-z,now $\
