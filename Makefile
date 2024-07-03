@@ -50,7 +50,7 @@ CFLAGS += -Wimplicit-fallthrough
 CFLAGS += -Werror=implicit
 CFLAGS += -Werror=incompatible-pointer-types
 CFLAGS += -Werror=int-conversion
-CFLAGS += -Wl,-z,nodlopen
+# causes ld.so error on OpenBSD libc: -Wl,-z,nodlopen
 CFLAGS += -Wl,-z,noexecstack
 
 # Enable some options copied from the Linux kernel Makefile:
