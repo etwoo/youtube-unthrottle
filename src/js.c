@@ -55,14 +55,18 @@ parse_json(const char *json,
 		goto cleanup;
 	}
 
-	assert(duk_get_type(ctx, -1) == DUK_TYPE_OBJECT);
-
-	const duk_idx_t GET_FORMATS_EXPECTED = 2;
-	const duk_idx_t get_formats =
-		duk_get_prop_literal(ctx, -1, "streamingData") +
-		duk_get_prop_literal(ctx, -1, "adaptiveFormats");
-	if (get_formats != GET_FORMATS_EXPECTED) {
+	if (DUK_TYPE_OBJECT != duk_get_type(ctx, -1) ||
+	    0 == duk_get_prop_literal(ctx, -1, "streamingData")) {
+		warn("Cannot get .streamingData");
+		goto cleanup;
+	}
+	if (DUK_TYPE_OBJECT != duk_get_type(ctx, -1) ||
+	    0 == duk_get_prop_literal(ctx, -1, "adaptiveFormats")) {
 		warn("Cannot get .streamingData.adaptiveFormats");
+		goto cleanup;
+	}
+	if (DUK_TYPE_OBJECT != duk_get_type(ctx, -1)) {
+		warn("Cannot iterate over .streamingData.adaptiveFormats");
 		goto cleanup;
 	}
 
@@ -71,29 +75,39 @@ parse_json(const char *json,
 	bool warned_about_signature_cipher = false;
 	const duk_size_t sz = duk_get_length(ctx, -1);
 	for (duk_size_t i = 0; i < sz; ++i) {
-		const duk_idx_t GET_MIMETYPE_AND_URL_EXPECTED = 3;
-		const duk_idx_t get_mimetype_and_url =
-			/* get i-th element of adaptiveFormats array */
-			duk_get_prop_index(ctx, -1, i) +
-			/* get mimeType attribute of i-th element */
-			duk_get_prop_literal(ctx, -1, "mimeType") +
-			/* get url attribute of i-th element */
-			duk_get_prop_literal(ctx, -2, "url");
-		if (get_mimetype_and_url == GET_MIMETYPE_AND_URL_EXPECTED) {
-			assert(duk_get_type(ctx, -1) == DUK_TYPE_STRING);
-			const char *url = duk_get_string(ctx, -1);
-			assert(duk_get_type(ctx, -2) == DUK_TYPE_STRING);
-			const char *mimetype = duk_get_string(ctx, -2);
-			if (0 == strncmp(mimetype, MTVIDEO, strlen(MTVIDEO)) &&
-			    false == got_video) {
-				ops->got_video(url, strlen(url), userdata);
-				got_video = true;
-			}
-			if (0 == strncmp(mimetype, MTAUDIO, strlen(MTAUDIO)) &&
-			    false == got_audio) {
-				ops->got_audio(url, strlen(url), userdata);
-				got_audio = true;
-			}
+		/* get i-th element of adaptiveFormats array */
+		duk_get_prop_index(ctx, -1, i);
+
+		if (DUK_TYPE_OBJECT != duk_get_type(ctx, -1)) {
+			warn("%zd-th element is not object-coercible", i);
+			goto cleanup;
+		}
+
+		if (0 == duk_get_prop_literal(ctx, -1, "mimeType") ||
+		    DUK_TYPE_STRING != duk_get_type(ctx, -1)) {
+			warn("Cannot get .mimeType of %zd-th element", i);
+			goto cleanup;
+		}
+
+		if (0 == duk_get_prop_literal(ctx, -2, "url") ||
+		    DUK_TYPE_STRING != duk_get_type(ctx, -1)) {
+			warn("Cannot get .url of %zd-th element", i);
+			goto cleanup;
+		}
+
+		const char *url = duk_get_string(ctx, -1);
+		const char *mimetype = duk_get_string(ctx, -2);
+		assert(url != NULL && mimetype != NULL);
+
+		if (0 == strncmp(mimetype, MTVIDEO, strlen(MTVIDEO)) &&
+		    false == got_video) {
+			ops->got_video(url, strlen(url), userdata);
+			got_video = true;
+		}
+		if (0 == strncmp(mimetype, MTAUDIO, strlen(MTAUDIO)) &&
+		    false == got_audio) {
+			ops->got_audio(url, strlen(url), userdata);
+			got_audio = true;
 		}
 
 		/*
@@ -109,13 +123,13 @@ parse_json(const char *json,
 			warn("signatureCipher is unsupported!");
 			warned_about_signature_cipher = true;
 		}
-		duk_pop(ctx);
+		duk_pop(ctx); /* for .signatureCipher */
 
 		/* restore stack, to prepare for (i+1)-th element */
-		duk_pop_n(ctx, GET_MIMETYPE_AND_URL_EXPECTED);
+		duk_pop_3(ctx);
 	}
 
-	duk_pop_n(ctx, GET_FORMATS_EXPECTED);
+	duk_pop_2(ctx); /* for .streamingData.adaptiveFormats */
 
 cleanup:
 	duk_destroy_heap(ctx); /* handles NULL gracefully */
