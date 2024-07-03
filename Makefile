@@ -2,9 +2,34 @@ OS := $(shell uname)
 TARGET := youtube-unthrottle
 LDLIBS := -lcurl -lduktape -lpcre2-8
 
+# TODO: conditional logic for gcc vs clang is yucky; would be cleaner to use CMake and then test for whether these options in an idiomatic way, rather than having this kind of conditional logic implemented in this Makefile :(
+CC_TYPE := unknown
+CC_VERSION := $(shell $(CC) --version)
+ifneq (,$(findstring GCC,$(CC_VERSION)))
+	CC_TYPE := gcc
+else ifneq (,$(findstring clang,$(CC_VERSION)))
+	CC_TYPE := clang
+endif
+
+ifeq ($(CC_TYPE),clang)
+	# Quiet warnings about -Wl,_ options intended for the linker, which we
+	# pass even to CC invocations that only compile a *.c into a *.o
+	# (i.e. without acutally linking anything). We could avoid these
+	# warnings entirely by moving these options from CFLAGS TO LDFLAGS, as
+	# the latter is only passed to CC when linking the final TARGET binary.
+	# However, -Wl,_ seems to be the most common idiom for providing linker
+	# flags (at least going by blog posts online), so I would rather stick
+	# with -Wl,_ in CFLAGS for ease of future googling.
+	CFLAGS += -Qunused-arguments
+endif
+
 CFLAGS += -g -Wall -Wextra
 
-CC_OPTIONS := $(shell $(CC) --help=common)
+CC_OPTIONS :=
+ifeq ($(CC_TYPE),gcc)
+	CC_OPTIONS := $(shell $(CC) --help=common)
+endif
+
 ifneq (,$(findstring -fhardened,$(CC_OPTIONS)))
 	CFLAGS += -fhardened
 	# Note: pre-determined hardening options currently include:
@@ -21,6 +46,7 @@ else
 	# -fhardened is not supported; set constituent options individually
 	CFLAGS += -D_FORTIFY_SOURCE=3 $\
 		  -D_GLIBCXX_ASSERTIONS $\
+		  -fPIE -pie $\
 		  -Wl,-z,now $\
 		  -Wl,-z,relro $\
 		  -fstack-protector-strong $\
@@ -30,21 +56,32 @@ endif
 CFLAGS += -O2            # required for _FORTIFY_SOURCE to be enabled
 
 # Enable some of the warnings recommended by https://kristerw.blogspot.com
-CFLAGS += -Wduplicated-cond -Wduplicated-branches -Wlogical-op -Wrestrict $\
-          -Wnull-dereference -Wshadow -Wformat -Wformat=2
+ifeq ($(CC_TYPE),gcc)
+	CFLAGS += -Wduplicated-cond $\
+		  -Wduplicated-branches $\
+		  -Wlogical-op $\
+		  -Wrestrict
+endif
+CFLAGS += -Wnull-dereference -Wshadow -Wformat
+ifeq ($(CC_TYPE),gcc)
+	CFLAGS += -Wformat=2
+endif
 # too noisy: -Wjump-misses-init
 
 # https://developers.redhat.com/blog/2018/03/21/compiler-and-linker-flags-gcc
 CFLAGS += -Werror=format-security -Werror=implicit-function-declaration
-CFLAGS += -fpie -Wl,-pie # note: -pie, not -pic -> executable, not library
 CFLAGS += -pipe          # avoid temporary files, speeding up builds
 CFLAGS += -Wl,-z,defs    # detect and reject underlinking
 
 # https://developers.redhat.com/blog/2020/03/26/static-analysis-in-gcc-10
-CFLAGS += -fanalyzer
+ifeq ($(CC_TYPE),gcc)
+	CFLAGS += -fanalyzer
+endif
 
 # https://best.openssf.org/Compiler-Hardening-Guides/Compiler-Options-Hardening-Guide-for-C-and-C++.html
-CFLAGS += -Wtrampolines
+ifeq ($(CC_TYPE),gcc)
+	CFLAGS += -Wtrampolines
+endif
 CFLAGS += -Wimplicit-fallthrough
 # too noisy: -Wconversion -Wsign-conversion
 CFLAGS += -Werror=implicit

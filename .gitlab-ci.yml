@@ -5,6 +5,8 @@ default:
     - echo 'Install compile-time and runtime dependencies'
     - pacman --noconfirm -Sy curl duktape pcre2
 
+# TODO: add gcc-12 variant, to somewhat cover openbsd 7.5 compat
+# TODO: add clang variant (after making sure it works on linux and openbsd)
 build:
   stage: build
   script:
