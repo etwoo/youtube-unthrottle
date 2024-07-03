@@ -1,54 +1,65 @@
+OS := $(shell uname)
 TARGET := youtube-unthrottle
 LDLIBS := -lcurl -lduktape -lpcre2-8
 
-CFLAGS += -g -Wall -Wextra -I/usr/local/include
+CFLAGS += -g -Wall -Wextra
 
-# Enable pre-determined hardening options, which currently include:
-#  -D_FORTIFY_SOURCE=3
-#  -D_GLIBCXX_ASSERTIONS
-#  -ftrivial-auto-var-init=zero
-#  -fPIE -pie
-#  -Wl,-z,now
-#  -Wl,-z,relro
-#  -fstack-protector-strong
-#  -fstack-clash-protection
-#  -fcf-protection=full
-# CFLAGS += -fhardened
-CFLAGS += -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS $\
-          -fPIE $\
-	  -fstack-protector-strong -fcf-protection=full
+CHECK_F_HARDENED = $(shell $(CC) --help=common)
+ifneq (,$(findstring "-fhardened",$(CHECK_F_HARDENED)))
+	CFLAGS += -fhardened
+	# Note: pre-determined hardening options currently include:
+	#  -D_FORTIFY_SOURCE=3
+	#  -D_GLIBCXX_ASSERTIONS
+	#  -ftrivial-auto-var-init=zero
+	#  -fPIE -pie
+	#  -Wl,-z,now
+	#  -Wl,-z,relro
+	#  -fstack-protector-strong
+	#  -fstack-clash-protection
+	#  -fcf-protection=full
+else
+	# -fhardened is not supported; set constituent options explicitly
+	CFLAGS += -D_FORTIFY_SOURCE=3 $\
+		  -D_GLIBCXX_ASSERTIONS $\
+		  -Wl,-z,now $\
+		  -Wl,-z,relro $\
+		  -fstack-protector-strong $\
+		  -fstack-clash-protection $\
+		  -fcf-protection=full
+endif
 CFLAGS += -O2            # required for _FORTIFY_SOURCE to be enabled
 
 # Enable some of the warnings recommended by https://kristerw.blogspot.com
-#CFLAGS += -Wduplicated-cond -Wduplicated-branches -Wlogical-op -Wrestrict $\
-#          -Wnull-dereference -Wshadow -Wformat -Wformat=2
+CFLAGS += -Wduplicated-cond -Wduplicated-branches -Wlogical-op -Wrestrict $\
+          -Wnull-dereference -Wshadow -Wformat -Wformat=2
 # too noisy: -Wjump-misses-init
 
 # https://developers.redhat.com/blog/2018/03/21/compiler-and-linker-flags-gcc
 CFLAGS += -Werror=format-security -Werror=implicit-function-declaration
-#CFLAGS += -fpie -Wl,-pie # note: -pie, not -pic -> executable, not library
+CFLAGS += -fpie -Wl,-pie # note: -pie, not -pic -> executable, not library
 CFLAGS += -pipe          # avoid temporary files, speeding up builds
-#CFLAGS += -Wl,-z,defs    # detect and reject underlinking
+CFLAGS += -Wl,-z,defs    # detect and reject underlinking
 
 # https://developers.redhat.com/blog/2020/03/26/static-analysis-in-gcc-10
-# CFLAGS += -fanalyzer
+CFLAGS += -fanalyzer
 
 # https://best.openssf.org/Compiler-Hardening-Guides/Compiler-Options-Hardening-Guide-for-C-and-C++.html
-# CFLAGS += -fstrict-flex-arrays
-#CFLAGS += -Wtrampolines
+CFLAGS += -Wtrampolines
 CFLAGS += -Wimplicit-fallthrough
 # too noisy: -Wconversion -Wsign-conversion
 CFLAGS += -Werror=implicit
 CFLAGS += -Werror=incompatible-pointer-types
 CFLAGS += -Werror=int-conversion
-#CFLAGS += -Wl,-z,nodlopen
-#CFLAGS += -Wl,-z,noexecstack
+CFLAGS += -Wl,-z,nodlopen
+CFLAGS += -Wl,-z,noexecstack
 
 # Enable some options copied from the Linux kernel Makefile:
 CFLAGS += -Wmissing-prototypes -Wstrict-prototypes
 
-# Enable ASan, LSan, and UBsan:
-#CFLAGS += -fsanitize=address -fsanitize=leak -fsanitize=undefined
+# Enable ASan, LSan, and UBsan (except on OpenBSD):
+ifneq ($(OS),OpenBSD)
+	CFLAGS += -fsanitize=address -fsanitize=leak -fsanitize=undefined
+endif
 # unnecessary for now, since we're single-threaded: -fsanitize=thread
 
 #
@@ -62,13 +73,19 @@ SRC_DIR := ./src
 SRCS := $(wildcard $(SRC_DIR)/*.c main.c)
 OBJS := $(SRCS:%=$(BUILD_DIR)/%.o)
 DEPS := $(OBJS:.o=.d)
+
 INCLUDES := $(SRC_DIR) ./include
+ifeq ($(OS),OpenBSD)
+	INCLUDES += /usr/local/include
+	LDFLAGS += -L/usr/local/lib
+endif
 HDRS := $(wildcard $(addsuffix /*.h,$(INCLUDES)))
 CFLAGS += $(addprefix -I,$(INCLUDES)) -MMD -MP
+
 CFLAGS := $(strip $(CFLAGS))
 
 $(BUILD_DIR)/$(TARGET): $(OBJS)
-	$(CC) $(CFLAGS) $(LDLIBS) $(OBJS) -o $(BUILD_DIR)/$(TARGET)
+	$(CC) $(CFLAGS) $(LDFLAGS) $(LDLIBS) $(OBJS) -o $(BUILD_DIR)/$(TARGET)
 
 $(BUILD_DIR)/%.c.o: %.c
 	mkdir -p $(dir $@)
@@ -76,7 +93,7 @@ $(BUILD_DIR)/%.c.o: %.c
 
 .PHONY:	clean
 clean:
-	rm -r -- $(BUILD_DIR)
+	rm -rf -- $(BUILD_DIR)
 
 .PHONY: fmt
 fmt:
