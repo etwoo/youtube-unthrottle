@@ -1,7 +1,7 @@
 #include "tmpfile.h"
 
 #ifndef _GNU_SOURCE
-#  define _GNU_SOURCE /* for O_TMPFILE in open() */
+#define _GNU_SOURCE /* for O_TMPFILE in open() */
 #endif
 #include <fcntl.h>
 #undef _GNU_SOURCE /* revert for any other includes */
@@ -16,10 +16,23 @@
 int
 tmpfd(void)
 {
-	int fd = open(P_tmpdir, O_TMPFILE | O_EXCL | O_RDWR, 0);
+	int fd = -1;
+#if defined(__linux__)
+	fd = open(P_tmpdir, O_TMPFILE | O_EXCL | O_RDWR, 0);
 	if (fd < 0) {
 		pwarn("Error creating tmpfile via open() with O_TMPFILE");
 	}
+#else
+	FILE *fs = tmpfile();
+	if (fs == NULL) {
+		pwarn("Error in tmpfile()");
+	} else {
+		fd = fileno(fs);
+		if (fd < 0) {
+			pwarn("Error in fileno()");
+		}
+	}
+#endif
 	return fd;
 }
 

@@ -1,5 +1,7 @@
+#if defined(__linux__)
+
 #ifndef _GNU_SOURCE
-#  define _GNU_SOURCE
+#define _GNU_SOURCE
 #endif
 #define __SANE_USERSPACE_TYPES__
 
@@ -114,7 +116,7 @@ cleanup:
 }
 
 void
-landlock_apply(const char **paths, int sz, const int *port)
+landlock_apply(const char **paths, int sz, int port)
 {
 	int fd = -1;
 	struct landlock_ruleset_attr ruleset_attr = {
@@ -132,8 +134,8 @@ landlock_apply(const char **paths, int sz, const int *port)
 		ruleset_add_rule_paths(fd, paths, sz);
 	}
 
-	if (port) {
-		ruleset_add_rule_port(fd, *port);
+	if (port > 0) {
+		ruleset_add_rule_port(fd, port);
 	}
 
 	if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)) {
@@ -153,3 +155,5 @@ cleanup:
 		pwarn("Ignoring error while close()-ing Landlock ruleset fd");
 	}
 }
+
+#endif /* defined(__linux__) */
