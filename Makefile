@@ -4,8 +4,8 @@ LDLIBS := -lcurl -lduktape -lpcre2-8
 
 CFLAGS += -g -Wall -Wextra
 
-CHECK_F_HARDENED := $(shell $(CC) --help=common)
-ifneq (,$(findstring -fhardened,$(CHECK_F_HARDENED)))
+GCC_OPTIONS := $(shell $(CC) --help=common)
+ifneq (,$(findstring -fhardened,$(GCC_OPTIONS)))
 	CFLAGS += -fhardened
 	# Note: pre-determined hardening options currently include:
 	#  -D_FORTIFY_SOURCE=3
