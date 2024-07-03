@@ -111,7 +111,9 @@ sandbox_only_io(void)
 	landlock_apply(ALLOWED_PATHS, 1, 0);
 	sandbox_verify(ALLOWED_PATHS, 1, ARRAY_SIZE(ALLOWED_PATHS), false);
 #elif defined(__OpenBSD__)
-	pledge("stdio", NULL);
+	if (pledge("stdio", NULL) < 0) {
+		pwarn("Error in pledge()");
+	}
 	/* sandbox_verify() would abort() at this point */
 #endif
 }
