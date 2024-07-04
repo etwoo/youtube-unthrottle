@@ -9,14 +9,14 @@ target_sources(youtube PRIVATE
 	url.c
 	youtube.c
 )
+target_include_directories(youtube PUBLIC ${PROJECT_SOURCE_DIR}/include)
+target_link_libraries(youtube PUBLIC project_cflags)
 
+# choose between libyoutube.a (release build) and libyoutubed.a (debug build)
+set_target_properties(youtube PROPERTIES DEBUG_POSTFIX ${CMAKE_DEBUG_POSTFIX})
 set_target_properties(youtube PROPERTIES
 	POSITION_INDEPENDENT_CODE ${BUILD_SHARED_LIBS}
 )
-target_include_directories(youtube PUBLIC
-	${PROJECT_SOURCE_DIR}/include
-)
-target_link_libraries(youtube PUBLIC project_cflags)
 
 if (CMAKE_BUILD_TYPE STREQUAL Debug)
 	message(STATUS "Enabling runtime debug output")
