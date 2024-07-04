@@ -26,3 +26,11 @@ build_with_clang:
     - export CC=clang
     - export CXX=clang++
     - *build_steps
+
+format:
+  stage: build
+  before_script:
+    - *build_dependencies
+  script:
+    - cmake -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Debug . -B ./build
+    - cmake --build ./build --target fmt
