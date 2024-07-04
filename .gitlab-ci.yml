@@ -1,7 +1,7 @@
 image: archlinux/archlinux:base-devel
 
 .build_dependencies: &build_dependencies
-    - pacman --noconfirm -Sy cmake curl duktape pcre2 # TODO: clang?
+    - pacman --noconfirm -Sy cmake clang curl duktape pcre2
 
 # Note: these build steps include clang-format implicitly via CMAKE_C_CPPLINT
 .build_steps: &build_steps
