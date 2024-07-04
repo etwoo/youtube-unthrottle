@@ -32,10 +32,6 @@ if (BUILD_TESTING)
 endif (BUILD_TESTING)
 
 #
-# TODO: add clang-format target to CMakeLists.txt, like `make fmt`
-#
-
-#
 # Figure out which compiler options are supported, and enable them.
 #
 
