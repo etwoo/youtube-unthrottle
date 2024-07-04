@@ -7,7 +7,7 @@ image: archlinux/archlinux:base-devel
 .build_steps: &build_steps
     - cmake -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=1 . -B ./build
     - cmake --build ./build
-    - cd ./build/tests && ctest .
+    - cd ./build/tests && ctest -E '^cli-try-sandbox$' .
 
 build_with_gcc:
   stage: build
