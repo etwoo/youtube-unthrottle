@@ -3,8 +3,7 @@ project(youtube-unthrottle)
 
 option(BUILD_SHARED_LIBS "Build using shared libraries" OFF)
 set(CMAKE_DEBUG_POSTFIX d)
-set(gcc_like_cc "$<COMPILE_LANG_AND_ID:C,GNU>")
-set(clang_like_cc "$<COMPILE_LANG_AND_ID:C,AppleClang,Clang>")
+set(CMAKE_C_CPPLINT clang-format -Werror --dry-run)
 
 # TODO: ifeq ($(OS),OpenBSD)
 # 	INCLUDES += /usr/local/include
@@ -28,11 +27,8 @@ target_link_libraries(youtube-unthrottle PRIVATE
 )
 
 add_subdirectory(src)
-
-include(CTest)
 if (BUILD_TESTING)
-	add_test(NAME cli-help COMMAND youtube-unthrottle --help)
-	add_test(NAME cli-try-sandbox COMMAND youtube-unthrottle --try-sandbox)
+	add_subdirectory(tests)
 endif (BUILD_TESTING)
 
 #
@@ -46,7 +42,6 @@ endif (BUILD_TESTING)
 include(CheckCCompilerFlag)
 
 target_compile_options(my_cflags INTERFACE -Wall -Wextra)
-# TODO: -Qunused-arguments for spurious clang linker warnings
 
 check_c_compiler_flag(-fhardened CFLAG_HARDENED)
 if (CFLAG_HARDENED)
@@ -73,12 +68,12 @@ target_compile_options(my_cflags INTERFACE -O2) # req'ed by _FORTIFY_SOURCE
 #
 
 target_compile_options(my_cflags INTERFACE -Wnull-dereference -Wshadow -Wformat)
-if (NOT clang_like_cc)
+if (NOT CMAKE_C_COMPILER_ID STREQUAL "Clang")
 	# Avoid -Wformat=2 under clang, which doesn't seem to recognize when a
 	# function passes a format string plus va_list to vprintf, resulting in
 	# a spurious warning about the former not being a format string.
 	target_compile_options(my_cflags INTERFACE -Wformat=2)
-endif (NOT clang_like_cc)
+endif (NOT CMAKE_C_COMPILER_ID STREQUAL "Clang")
 
 check_c_compiler_flag(-Wduplicated-cond CFLAG_DUPLICATED_COND)
 if (CFLAG_DUPLICATED_COND)
@@ -171,3 +166,19 @@ if (CFLAG_UBSAN)
 	add_library(libubsan SHARED IMPORTED)
 	target_link_libraries(my_cflags INTERFACE ubsan)
 endif (CFLAG_UBSAN)
+
+#
+# Quiet warnings under clang like:
+#
+# warning: -Wl,-z,relro: 'linker' input unused [-Wunused-command-line-argument]
+#
+# We could avoid these warnings entirely by moving these options from CFLAGS TO
+# LDFLAGS, as the latter is only passed to CC when linking the final target
+# executable. However, -Wl,_ seems to be the most common idiom for providing
+# linker flags (at least going by blog posts online), so I would rather stick
+# with -Wl,_ in CFLAGS for ease of future googling.
+#
+
+if (CMAKE_C_COMPILER_ID STREQUAL "Clang")
+	target_compile_options(my_cflags INTERFACE -Qunused-arguments)
+endif (CMAKE_C_COMPILER_ID STREQUAL "Clang")

@@ -234,8 +234,7 @@ find_js_deobfuscator(char *js,
 	// debug("Got function body: %.*s", *deobfuscator_sz, *deobfuscator);
 	debug("Got function body of size %zd", *deobfuscator_sz);
 
-cleanup:
-	; /* no particular cleanup to do (yet) */
+cleanup:; /* no particular cleanup to do (yet) */
 }
 
 static void

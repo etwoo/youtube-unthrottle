@@ -26,8 +26,8 @@ debug_at_line(const char *fname, unsigned int lineno, const char *pattern, ...)
 	vlog(fname, lineno, pattern, ap);
 	va_end(ap);
 #else
-	(void)fname; /* unused */
-	(void)lineno; /* unused */
+	(void)fname;   /* unused */
+	(void)lineno;  /* unused */
 	(void)pattern; /* unused */
 #endif
 }

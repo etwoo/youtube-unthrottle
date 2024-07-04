@@ -82,8 +82,33 @@ pcre2 10.44-1
 
 ## Build
 
+To perform an initial build:
+
 ```sh
-cmake -DCMAKE_BUILD_TYPE=Debug . -B build
+cmake -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Debug . -B build
 cmake --build ./build
 ./build/youtube-unthrottle --help
+```
+
+To rebuild from scratch, discarding any existing on-disk state:
+
+```sh
+cmake --fresh -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Debug . -B ./build
+cmake --build ./build --clean-first
+```
+
+To build and run unit tests:
+
+```sh
+cmake --fresh -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=1 . -B ./build
+cmake --build ./build --clean-first
+cd ./build/tests
+ctest .
+```
+
+To reconfigure and build with clang instead of gcc:
+
+```sh
+CC=clang CXX=clang++ cmake --fresh -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Debug . -B ./build
+cmake --build ./build --clean-first
 ```
