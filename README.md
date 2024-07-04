@@ -65,6 +65,7 @@ I've only tested this on 64-bit Arch Linux so far.
 ## Dependencies
 
 ```
+cmake
 curl
 duktape
 pcre2
@@ -74,7 +75,8 @@ I developed with the following versions of these libaries (though I am
 currently assuming that many other versions would work equally well):
 
 ```sh
-$ pacman -Q curl duktape pcre2
+$ pacman -Q cmake curl duktape pcre2
+cmake 3.30.0-1
 curl 8.8.0-1
 duktape 2.7.0-6
 pcre2 10.44-1
