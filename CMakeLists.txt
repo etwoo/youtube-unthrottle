@@ -4,11 +4,6 @@ project(youtube-unthrottle)
 option(BUILD_SHARED_LIBS "Build using shared libraries" OFF)
 set(CMAKE_DEBUG_POSTFIX d)
 
-# TODO: ifeq ($(OS),OpenBSD)
-# 	INCLUDES += /usr/local/include
-# 	LDFLAGS += -L/usr/local/lib
-# endif
-
 add_library(my_cflags INTERFACE)
 target_compile_features(my_cflags INTERFACE c_std_99)
 
@@ -185,9 +180,15 @@ endif (CFLAG_LSAN)
 
 check_c_compiler_flag(-fsanitize=undefined CFLAG_UBSAN)
 if (CFLAG_UBSAN)
-	target_compile_options(my_cflags INTERFACE -fsanitize=undefined)
-	add_library(libubsan SHARED IMPORTED)
-	target_link_libraries(my_cflags INTERFACE ubsan)
+	if (CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
+		message(STATUS "Ignoring UBSan integration on OpenBSD")
+		# Even though clang supports -fsanitize=undefined on OpenBSD,
+		# libubsan.so is not present, leading to link-time failures.
+	else (CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
+		target_compile_options(my_cflags INTERFACE -fsanitize=undefined)
+		add_library(libubsan SHARED IMPORTED)
+		target_link_libraries(my_cflags INTERFACE ubsan)
+	endif (CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
 endif (CFLAG_UBSAN)
 
 #
@@ -205,3 +206,15 @@ endif (CFLAG_UBSAN)
 if (CMAKE_C_COMPILER_ID STREQUAL "Clang")
 	target_compile_options(my_cflags INTERFACE -Qunused-arguments)
 endif (CMAKE_C_COMPILER_ID STREQUAL "Clang")
+
+#
+# Workaround PATH, include, and library issues on OpenBSD. I must be doing
+# something wrong, as it seems unlikely that all cmake-based projects fail
+# to find headers and libraries installed through pkg_add.
+#
+
+if (CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
+	message(STATUS "Making sure to use /usr/local/{include,lib} on OpenBSD")
+	target_include_directories(youtube PUBLIC /usr/local/include)
+	target_link_directories(youtube PUBLIC /usr/local/lib)
+endif (CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
