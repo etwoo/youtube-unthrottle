@@ -65,6 +65,7 @@ I've only tested this on 64-bit Arch Linux so far.
 ## Dependencies
 
 ```
+cmake
 curl
 duktape
 pcre2
@@ -74,7 +75,8 @@ I developed with the following versions of these libaries (though I am
 currently assuming that many other versions would work equally well):
 
 ```sh
-$ pacman -Q curl duktape pcre2
+$ pacman -Q cmake curl duktape pcre2
+cmake 3.30.0-1
 curl 8.8.0-1
 duktape 2.7.0-6
 pcre2 10.44-1
@@ -82,7 +84,33 @@ pcre2 10.44-1
 
 ## Build
 
+To perform an initial build:
+
 ```sh
-make
+cmake -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Debug . -B build
+cmake --build ./build
 ./build/youtube-unthrottle --help
+```
+
+To rebuild from scratch, discarding any existing on-disk state:
+
+```sh
+cmake --fresh -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Debug . -B ./build
+cmake --build ./build --clean-first
+```
+
+To build and run unit tests:
+
+```sh
+cmake --fresh -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=1 . -B ./build
+cmake --build ./build --clean-first
+cd ./build/tests
+ctest .
+```
+
+To reconfigure and build with clang instead of gcc:
+
+```sh
+CC=clang CXX=clang++ cmake --fresh -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Debug . -B ./build
+cmake --build ./build --clean-first
 ```

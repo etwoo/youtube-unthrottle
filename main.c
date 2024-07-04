@@ -26,7 +26,7 @@ usage(const char *cmd, int rc)
 }
 
 static void
-after_inet(youtube_handle_t /* unused */)
+after_inet(youtube_handle_t h __attribute__((unused)))
 {
 	sandbox_only_io();
 }
