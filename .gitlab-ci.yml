@@ -26,5 +26,3 @@ build_with_clang:
     - export CC=clang
     - export CXX=clang++
     - *build_steps
-
-# TODO: add gcc-12 variant, to somewhat cover openbsd 7.5 compat
