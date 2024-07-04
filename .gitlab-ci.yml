@@ -1,26 +1,35 @@
 image: archlinux/archlinux:base-devel
 
-default:
-  before_script:
-    - echo 'Install compile-time and runtime dependencies'
-    - pacman --noconfirm -Sy curl duktape pcre2
+.build_dependencies: &build_dependencies
+    - pacman --noconfirm -Sy cmake clang curl duktape pcre2
 
-build:
+.build_steps: &build_steps
+    - cmake -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=1 . -B ./build
+    - cmake --build ./build
+    - cd ./build/tests && ctest -E '^cli-try-sandbox$' .
+
+build_with_gcc:
   stage: build
+  before_script:
+    - *build_dependencies
   script:
-    - make
-  artifacts:
-    paths:
-      - build/youtube-unthrottle
+    - export CC=gcc
+    - export CXX=g++
+    - *build_steps
+
+build_with_clang:
+  stage: build
+  before_script:
+    - *build_dependencies
+  script:
+    - export CC=clang
+    - export CXX=clang++
+    - *build_steps
 
 format:
   stage: build
   before_script:
-    - pacman --noconfirm -Sy clang
+    - *build_dependencies
   script:
-    - make fmt
-
-test:
-  stage: test
-  script:
-    - make test
+    - cmake -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Debug . -B ./build
+    - cmake --build ./build --target fmt

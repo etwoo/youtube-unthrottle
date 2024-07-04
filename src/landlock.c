@@ -111,8 +111,7 @@ ruleset_add_rule_port(int fd, int port)
 		goto cleanup;
 	}
 
-cleanup:
-	/* no particular cleanup to do (yet) */
+cleanup:; /* no particular cleanup to do (yet) */
 }
 
 void

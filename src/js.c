@@ -25,7 +25,7 @@ peek(duk_context *ctx)
  *   https://github.com/svaarala/duktape/issues/386#issuecomment-417087800
  */
 static duk_ret_t
-try_decode(duk_context *ctx, void * /* udata */)
+try_decode(duk_context *ctx, void *udata __attribute__((unused)))
 {
 	duk_json_decode(ctx, -1);
 	return 1;
@@ -234,8 +234,7 @@ find_js_deobfuscator(char *js,
 	// debug("Got function body: %.*s", *deobfuscator_sz, *deobfuscator);
 	debug("Got function body of size %zd", *deobfuscator_sz);
 
-cleanup:
-	/* no particular cleanup to do (yet) */
+cleanup:; /* no particular cleanup to do (yet) */
 }
 
 static void

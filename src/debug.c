@@ -17,19 +17,19 @@ vlog(const char *fname, unsigned int lineno, const char *pattern, va_list ap)
 	/* magic number 3: longest source file has 3-digit line count */
 }
 
-static bool DEBUG_ENABLED = true;
-
 void
 debug_at_line(const char *fname, unsigned int lineno, const char *pattern, ...)
 {
-	if (!DEBUG_ENABLED) {
-		return;
-	}
-
+#ifdef WITH_DEBUG_OUTPUT
 	va_list ap;
 	va_start(ap, pattern);
 	vlog(fname, lineno, pattern, ap);
 	va_end(ap);
+#else
+	(void)fname;   /* unused */
+	(void)lineno;  /* unused */
+	(void)pattern; /* unused */
+#endif
 }
 
 void
