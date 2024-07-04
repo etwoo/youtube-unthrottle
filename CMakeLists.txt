@@ -12,11 +12,11 @@ target_sources(youtube-unthrottle PUBLIC main.c)
 target_link_libraries(youtube-unthrottle PRIVATE youtube my_cflags)
 
 add_library(libcurl SHARED IMPORTED)
-add_library(libduktape${CMAKE_DEBUG_POSTFIX} SHARED IMPORTED)
+add_library(libduktape SHARED IMPORTED)
 add_library(libpcre2-8 SHARED IMPORTED)
 target_link_libraries(youtube-unthrottle PRIVATE
 	curl
-	duktape${CMAKE_DEBUG_POSTFIX} # libduktape.so vs libduktaped.so
+	duktape
 	pcre2-8
 )
 
