@@ -83,6 +83,7 @@ pcre2 10.44-1
 ## Build
 
 ```sh
-make
+cmake -DCMAKE_BUILD_TYPE=Debug . -B build
+cmake --build ./build
 ./build/youtube-unthrottle --help
 ```
