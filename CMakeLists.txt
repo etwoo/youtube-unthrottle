@@ -43,12 +43,12 @@ endif (BUILD_TESTING)
 # part of the --build step.
 #
 
-find_program(FORMATTER
-	# typical name of our formatting tool
-	clang-format
-	# OpenBSD 7.5 lacks a clang-format link; use clang-format-16 explicitly
-	clang-format-16
-)
+find_program(FORMATTER clang-format)
+if (NOT FORMATTER)
+	# try harder on OpenBSD
+	find_program(FORMATTER clang-format-16 HINTS /usr/local/bin)
+endif (NOT FORMATTER)
+
 add_custom_target(fmt COMMAND find
 	${CMAKE_SOURCE_DIR}/main.c
 	${CMAKE_SOURCE_DIR}/include
