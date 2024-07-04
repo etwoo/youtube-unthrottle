@@ -3,7 +3,6 @@ project(youtube-unthrottle)
 
 option(BUILD_SHARED_LIBS "Build using shared libraries" OFF)
 set(CMAKE_DEBUG_POSTFIX d)
-set(CMAKE_C_CPPLINT clang-format -Werror --dry-run)
 
 # TODO: ifeq ($(OS),OpenBSD)
 # 	INCLUDES += /usr/local/include
@@ -30,6 +29,34 @@ add_subdirectory(src)
 if (BUILD_TESTING)
 	add_subdirectory(tests)
 endif (BUILD_TESTING)
+
+#
+# Set up a custom `fmt` target that runs clang-format.
+#
+# It would be nice to use the builtin cmake integration instead:
+#
+#     set(CMAKE_C_CPPLINT clang-format -Werror --dry-run)
+#
+# ... but unfortunately, this only runs clang-format on *.c files, while
+# ignoring *.h files! If this cmake behavior ever changes, we could probably
+# remove the following custom code and allow clang-format to run implicitly as
+# part of the --build step.
+#
+
+find_program(FORMATTER
+	# typical name of our formatting tool
+	clang-format
+	# OpenBSD 7.5 lacks a clang-format link; use clang-format-16 explicitly
+	clang-format-16
+)
+add_custom_target(fmt COMMAND find
+	${CMAKE_SOURCE_DIR}/main.c
+	${CMAKE_SOURCE_DIR}/include
+	${CMAKE_SOURCE_DIR}/src
+	( -name *.h -or -name *.c )
+	-exec ${FORMATTER} -Werror --dry-run {} \;
+	VERBATIM USES_TERMINAL
+)
 
 #
 # Figure out which compiler options are supported, and enable them.
