@@ -1,0 +1,8 @@
+foreach(target parse_json find_js_deobfuscator)
+	add_executable(${target})
+	target_sources(${target} PRIVATE ${target}.c)
+	target_include_directories(${target} PRIVATE ${PROJECT_SOURCE_DIR}/src)
+	target_link_libraries(${target} PRIVATE youtube)
+	target_compile_options(${target} PRIVATE -g -O1 -fsanitize=fuzzer)
+	target_link_options(${target} PRIVATE -fsanitize=fuzzer)
+endforeach()

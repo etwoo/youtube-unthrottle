@@ -11,15 +11,6 @@ add_executable(youtube-unthrottle)
 target_sources(youtube-unthrottle PUBLIC main.c)
 target_link_libraries(youtube-unthrottle PRIVATE youtube my_cflags)
 
-add_library(libcurl SHARED IMPORTED)
-add_library(libduktape SHARED IMPORTED)
-add_library(libpcre2-8 SHARED IMPORTED)
-target_link_libraries(youtube-unthrottle PRIVATE
-	curl
-	duktape
-	pcre2-8
-)
-
 add_subdirectory(src)
 if (BUILD_TESTING)
 	add_subdirectory(tests)

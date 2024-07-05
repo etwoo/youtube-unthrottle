@@ -34,7 +34,7 @@ try_decode(duk_context *ctx, void *udata __attribute__((unused)))
 static const char MTVIDEO[] = "video/";
 static const char MTAUDIO[] = "audio/";
 
-static void
+void
 parse_json(const char *json,
            size_t json_sz,
            struct parse_ops *ops,

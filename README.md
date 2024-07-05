@@ -87,7 +87,7 @@ pcre2 10.44-1
 To perform an initial build:
 
 ```sh
-cmake -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Debug . -B build
+cmake -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Debug . -B ./build
 cmake --build ./build
 ./build/youtube-unthrottle --help
 ```
@@ -113,4 +113,14 @@ To reconfigure and build with clang instead of gcc:
 ```sh
 CC=clang CXX=clang++ cmake --fresh -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Debug . -B ./build
 cmake --build ./build --clean-first
+```
+
+To build and fuzz:
+
+```sh
+CC=clang CXX=clang++ cmake --fresh -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=1 . -B ./build
+cmake --build ./build --clean-first
+cd ./build/tests/fuzzer/
+cp -pr ../../../tests/fuzzer/samples/find_js_deobfuscator corpus
+./find_js_deobfuscator -max_len=3000000 corpus > fuzz.log 2>&1 &
 ```
