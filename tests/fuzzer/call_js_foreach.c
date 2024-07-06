@@ -1,3 +1,4 @@
+#include "array.h"
 #include "js.h"
 
 static void
@@ -22,6 +23,6 @@ LLVMFuzzerTestOneInput(const char *data, size_t sz)
 	args[5] = "Kbpbx5yukKR-Px0dhLj";
 	args[6] = "t2yEuJMA6mZh68xBzwE";
 	args[7] = "6a4RySpPL8dKGrGFAqo";
-	call_js_foreach(data, sz, args, sizeof(args), &cops, NULL);
+	call_js_foreach(data, sz, args, ARRAY_SIZE(args), &cops, NULL);
 	return 0;
 }
