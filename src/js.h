@@ -18,7 +18,6 @@ void parse_json(const char *json,
                 struct parse_ops *ops,
                 void *userdata);
 
-
 void find_js_deobfuscator(char *js,
                           size_t sz,
                           char **deobfuscator,
