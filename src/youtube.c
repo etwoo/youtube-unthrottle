@@ -161,7 +161,7 @@ pop_n_param_one(CURLU *url, char **result)
 
 	const size_t getargs_sz = strlen(getargs);
 	assert(*(getargs + getargs_sz) == '\0');
-	char *ciphertext_within_getargs = NULL;
+	const char *ciphertext_within_getargs = NULL;
 	size_t ciphertext_sz = 0;
 
 	/* Note use of non-capturing group: (?:...) */
@@ -197,10 +197,23 @@ pop_n_param_one(CURLU *url, char **result)
 	 * Remove ciphertext n-parameter (key and value) from query string.
 	 *
 	 * Note: memmove() supports overlapping <src> and <dst> pointers.
+	 *
+	 * Note: it is safe (I think ...) to cast away const below because we
+	 * know that <ciphertext_within_getargs> ultimately points at a
+	 * subsection of <getargs>, and the latter is non-const.
+	 *
+	 * Casting away const is required here because the re.h functions
+	 * accept and return (const char *) instead of (char *), and I don't
+	 * currently know a way to handle this kind of const/non-const
+	 * variation cleanly in C (without ugly macro usage, code duplication,
+	 * etc); if this were C++, we'd probably use a template with an auto
+	 * return type to have a single function definition body expand to both
+	 * const and non-const variants.
 	 */
-	char *dst = ciphertext_within_getargs - 3;
+	char *dst = (char *)ciphertext_within_getargs - 3;
 	/* magic number 3: two chars for preceding "n=", one char for '&' */
-	char *after_ciphertext = ciphertext_within_getargs + ciphertext_sz;
+	char *after_ciphertext =
+		(char *)ciphertext_within_getargs + ciphertext_sz;
 	const size_t remaining = (getargs + getargs_sz) - after_ciphertext;
 	memmove(dst, after_ciphertext, remaining);
 	dst[remaining] = '\0';
@@ -360,7 +373,7 @@ youtube_stream_setup(struct youtube_stream *p,
 		ops->before_eval(p);
 	}
 
-	char *deobfuscator = NULL;
+	const char *deobfuscator = NULL;
 	size_t deobfuscator_sz = 0;
 	find_js_deobfuscator(js, js_sz, &deobfuscator, &deobfuscator_sz);
 	if (deobfuscator == NULL || deobfuscator_sz == 0) {

@@ -12,9 +12,9 @@
 
 bool
 re_capture(const char *pattern_in,
-           char *subject_in,
+           const char *subject_in,
            size_t sz,
-           char **capture_p,
+           const char **capture_p,
            size_t *capture_sz)
 {
 	bool matched = false;
@@ -84,9 +84,9 @@ cleanup:
 }
 
 bool
-re_capturef(char *subject_in,
+re_capturef(const char *subject_in,
             size_t sz,
-            char **capture_p,
+            const char **capture_p,
             size_t *capture_sz,
             const char *my_format,
             ...)
@@ -109,7 +109,7 @@ re_capturef(char *subject_in,
 }
 
 bool
-re_pattern_escape(char *in, size_t in_sz, char *out, size_t out_capacity)
+re_pattern_escape(const char *in, size_t in_sz, char *out, size_t out_capacity)
 {
 	size_t in_pos = 0;
 	size_t out_pos = 0;
