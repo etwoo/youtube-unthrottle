@@ -13,6 +13,7 @@ include(CheckSanitizer)
 # link and thereby make check_c_compiler_flag() work as expected. Use libasan.
 check_sanitizer(CFLAG_FUZZER -fsanitize=fuzzer asan)
 if (CFLAG_FUZZER)
+	target_compile_options(my_cflags INTERFACE -fsanitize=fuzzer)
 	add_fuzzer(parse_json)
 	add_fuzzer(find_js_deobfuscator)
 	add_fuzzer(call_js_foreach)

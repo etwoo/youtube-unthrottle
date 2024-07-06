@@ -163,9 +163,26 @@ target_compile_options(my_cflags INTERFACE
 include(CheckSanitizer)
 
 check_sanitizer(CFLAG_ASAN -fsanitize=address asan)
+if (CFLAG_ASAN)
+	target_compile_options(my_cflags INTERFACE -fsanitize=address)
+	add_library(libasan SHARED IMPORTED)
+	target_link_libraries(my_cflags INTERFACE asan)
+endif (CFLAG_ASAN)
+
 check_sanitizer(CFLAG_LSAN -fsanitize=leak lsan)
+if (CFLAG_LSAN)
+	target_compile_options(my_cflags INTERFACE -fsanitize=leak)
+	add_library(liblsan SHARED IMPORTED)
+	target_link_libraries(my_cflags INTERFACE lsan)
+endif (CFLAG_LSAN)
+
 if (NOT CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
 	check_sanitizer(CFLAG_UBSAN -fsanitize=undefined ubsan)
+	if (CFLAG_UBSAN)
+		target_compile_options(my_cflags INTERFACE -fsanitize=undefined)
+		add_library(libubsan SHARED IMPORTED)
+		target_link_libraries(my_cflags INTERFACE ubsan)
+	endif (CFLAG_UBSAN)
 else (NOT CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
 	message(STATUS "Ignoring UBSan integration on OpenBSD")
 	# Even though clang supports -fsanitize=undefined on OpenBSD,
