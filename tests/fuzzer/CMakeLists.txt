@@ -1,8 +1,19 @@
-foreach(target parse_json find_js_deobfuscator call_js_foreach)
+macro(add_fuzzer target)
 	add_executable(${target})
 	target_sources(${target} PRIVATE ${target}.c)
 	target_include_directories(${target} PRIVATE ${PROJECT_SOURCE_DIR}/src)
 	target_link_libraries(${target} PRIVATE youtube)
 	target_compile_options(${target} PRIVATE -g -O1 -fsanitize=fuzzer)
 	target_link_options(${target} PRIVATE -fsanitize=fuzzer)
-endforeach()
+endmacro()
+
+include(CheckSanitizer)
+
+# Any one of the sanitizers seem to bring in the fuzzer symbols required to
+# link and thereby make check_c_compiler_flag() work as expected. Use libasan.
+check_sanitizer(CFLAG_FUZZER -fsanitize=fuzzer asan)
+if (CFLAG_FUZZER)
+	add_fuzzer(parse_json)
+	add_fuzzer(find_js_deobfuscator)
+	add_fuzzer(call_js_foreach)
+endif (CFLAG_FUZZER)

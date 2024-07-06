@@ -1,0 +1,16 @@
+include_guard(GLOBAL)
+
+include(CMakePushCheckState)
+include(CheckCCompilerFlag)
+
+macro(check_sanitizer check_var compiler_option link_library)
+	cmake_push_check_state()
+	set(CMAKE_REQUIRED_LIBRARIES ${link_library})
+	check_c_compiler_flag(${compiler_option} ${check_var})
+	if (${check_var})
+		target_compile_options(my_cflags INTERFACE ${compiler_option})
+		add_library(lib${link_library} SHARED IMPORTED)
+		target_link_libraries(my_cflags INTERFACE ${link_library})
+	endif (${check_var})
+	cmake_pop_check_state()
+endmacro()

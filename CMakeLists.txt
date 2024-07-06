@@ -3,6 +3,7 @@ project(youtube-unthrottle)
 
 option(BUILD_SHARED_LIBS "Build using shared libraries" OFF)
 set(CMAKE_DEBUG_POSTFIX d)
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 
 add_library(my_cflags INTERFACE)
 target_compile_features(my_cflags INTERFACE c_std_99)
@@ -159,28 +160,17 @@ target_compile_options(my_cflags INTERFACE
 # ... except -fsanitize=thread, since we're single-threaded (for now)
 #
 
-check_c_compiler_flag(-fsanitize=address CFLAG_ASAN)
-if (CFLAG_ASAN)
-	target_compile_options(my_cflags INTERFACE -fsanitize=address)
-endif (CFLAG_ASAN)
+include(CheckSanitizer)
 
-check_c_compiler_flag(-fsanitize=leak CFLAG_LSAN)
-if (CFLAG_LSAN)
-	target_compile_options(my_cflags INTERFACE -fsanitize=leak)
-endif (CFLAG_LSAN)
-
-check_c_compiler_flag(-fsanitize=undefined CFLAG_UBSAN)
-if (CFLAG_UBSAN)
-	if (CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
-		message(STATUS "Ignoring UBSan integration on OpenBSD")
-		# Even though clang supports -fsanitize=undefined on OpenBSD,
-		# libubsan.so is not present, leading to link-time failures.
-	else (CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
-		target_compile_options(my_cflags INTERFACE -fsanitize=undefined)
-		add_library(libubsan SHARED IMPORTED)
-		target_link_libraries(my_cflags INTERFACE ubsan)
-	endif (CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
-endif (CFLAG_UBSAN)
+check_sanitizer(CFLAG_ASAN -fsanitize=address asan)
+check_sanitizer(CFLAG_LSAN -fsanitize=leak lsan)
+if (NOT CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
+	check_sanitizer(CFLAG_UBSAN -fsanitize=undefined ubsan)
+else (NOT CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
+	message(STATUS "Ignoring UBSan integration on OpenBSD")
+	# Even though clang supports -fsanitize=undefined on OpenBSD,
+	# libubsan.so is not present, leading to link-time failures.
+endif (NOT CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
 
 #
 # Quiet warnings under clang like:
