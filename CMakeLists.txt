@@ -3,6 +3,7 @@ project(youtube-unthrottle)
 
 option(BUILD_SHARED_LIBS "Build using shared libraries" OFF)
 set(CMAKE_DEBUG_POSTFIX d)
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 
 add_library(my_cflags INTERFACE)
 target_compile_features(my_cflags INTERFACE c_std_99)
@@ -10,15 +11,6 @@ target_compile_features(my_cflags INTERFACE c_std_99)
 add_executable(youtube-unthrottle)
 target_sources(youtube-unthrottle PUBLIC main.c)
 target_link_libraries(youtube-unthrottle PRIVATE youtube my_cflags)
-
-add_library(libcurl SHARED IMPORTED)
-add_library(libduktape SHARED IMPORTED)
-add_library(libpcre2-8 SHARED IMPORTED)
-target_link_libraries(youtube-unthrottle PRIVATE
-	curl
-	duktape
-	pcre2-8
-)
 
 add_subdirectory(src)
 if (BUILD_TESTING)
@@ -168,27 +160,31 @@ target_compile_options(my_cflags INTERFACE
 # ... except -fsanitize=thread, since we're single-threaded (for now)
 #
 
-check_c_compiler_flag(-fsanitize=address CFLAG_ASAN)
+include(CheckSanitizer)
+
+check_sanitizer(CFLAG_ASAN -fsanitize=address asan)
 if (CFLAG_ASAN)
 	target_compile_options(my_cflags INTERFACE -fsanitize=address)
+	add_library(libasan SHARED IMPORTED)
+	target_link_libraries(my_cflags INTERFACE asan)
 endif (CFLAG_ASAN)
 
-check_c_compiler_flag(-fsanitize=leak CFLAG_LSAN)
+check_sanitizer(CFLAG_LSAN -fsanitize=leak lsan)
 if (CFLAG_LSAN)
-	target_compile_options(my_cflags INTERFACE -fsanitize=leak)
+	if (CFLAG_ASAN)
+		message(STATUS "LSan stand-alone mode is unnecessary because ASan is already enabled")
+	else (CFLAG_ASAN)
+		target_compile_options(my_cflags INTERFACE -fsanitize=leak)
+		add_library(liblsan SHARED IMPORTED)
+		target_link_libraries(my_cflags INTERFACE lsan)
+	endif (CFLAG_ASAN)
 endif (CFLAG_LSAN)
 
-check_c_compiler_flag(-fsanitize=undefined CFLAG_UBSAN)
+check_sanitizer(CFLAG_UBSAN -fsanitize=undefined ubsan)
 if (CFLAG_UBSAN)
-	if (CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
-		message(STATUS "Ignoring UBSan integration on OpenBSD")
-		# Even though clang supports -fsanitize=undefined on OpenBSD,
-		# libubsan.so is not present, leading to link-time failures.
-	else (CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
-		target_compile_options(my_cflags INTERFACE -fsanitize=undefined)
-		add_library(libubsan SHARED IMPORTED)
-		target_link_libraries(my_cflags INTERFACE ubsan)
-	endif (CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
+	target_compile_options(my_cflags INTERFACE -fsanitize=undefined)
+	add_library(libubsan SHARED IMPORTED)
+	target_link_libraries(my_cflags INTERFACE ubsan)
 endif (CFLAG_UBSAN)
 
 #

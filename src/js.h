@@ -11,10 +11,12 @@ struct parse_ops {
 
 void
 parse_html_json(char *html, size_t sz, struct parse_ops *ops, void *userdata);
+void
+parse_json(const char *json, size_t sz, struct parse_ops *ops, void *userdata);
 
-void find_js_deobfuscator(char *js,
+void find_js_deobfuscator(const char *js,
                           size_t sz,
-                          char **deobfuscator,
+                          const char **deobfuscator,
                           size_t *deobfuscator_sz);
 
 struct call_ops {
