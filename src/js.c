@@ -34,7 +34,7 @@ try_decode(duk_context *ctx, void *udata __attribute__((unused)))
 static const char MTVIDEO[] = "video/";
 static const char MTAUDIO[] = "audio/";
 
-static void
+void
 parse_json(const char *json,
            size_t json_sz,
            struct parse_ops *ops,
@@ -142,7 +142,7 @@ parse_html_json(char *html, size_t sz, struct parse_ops *ops, void *userdata)
 {
 	debug("Got HTML doc of size %zd", sz);
 
-	char *basejs = NULL;
+	const char *basejs = NULL;
 	size_t basejs_sz = 0;
 	if (!re_capture("\"(/s/player/[^\"]+/base.js)\"",
 	                html,
@@ -155,7 +155,7 @@ parse_html_json(char *html, size_t sz, struct parse_ops *ops, void *userdata)
 		ops->got_basejs(basejs, basejs_sz, userdata);
 	}
 
-	char *json = NULL;
+	const char *json = NULL;
 	size_t json_sz = 0;
 	if (!re_capture(RE_JSON, html, sz, &json, &json_sz)) {
 		warn("Cannot find '%s' in HTML document", RE_JSON);
@@ -184,16 +184,16 @@ static const char RE_FUNC_NAME[] =
  * 5) use return value from step 4 as decoded n-parameter
  */
 void
-find_js_deobfuscator(char *js,
+find_js_deobfuscator(const char *js,
                      size_t js_sz,
-                     char **deobfuscator,
+                     const char **deobfuscator,
                      size_t *deobfuscator_sz)
 {
 	*deobfuscator = NULL;
 	*deobfuscator_sz = 0;
 
 	char escaped[256];
-	char *name = NULL;
+	const char *name = NULL;
 	size_t nsz = 0;
 	if (!re_capture(RE_FUNC_NAME, js, js_sz, &name, &nsz)) {
 		warn("Cannot find '%s' in base.js", RE_FUNC_NAME);
