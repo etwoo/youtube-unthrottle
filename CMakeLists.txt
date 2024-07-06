@@ -182,15 +182,9 @@ endif (CFLAG_LSAN)
 
 check_sanitizer(CFLAG_UBSAN -fsanitize=undefined ubsan)
 if (CFLAG_UBSAN)
-	if (CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
-		message(STATUS "Ignoring UBSan integration on OpenBSD")
-		# Even though clang supports -fsanitize=undefined on OpenBSD,
-		# libubsan.so is not present, leading to link-time failures.
-	else (CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
-		target_compile_options(my_cflags INTERFACE -fsanitize=undefined)
-		add_library(libubsan SHARED IMPORTED)
-		target_link_libraries(my_cflags INTERFACE ubsan)
-	endif (CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
+	target_compile_options(my_cflags INTERFACE -fsanitize=undefined)
+	add_library(libubsan SHARED IMPORTED)
+	target_link_libraries(my_cflags INTERFACE ubsan)
 endif (CFLAG_UBSAN)
 
 #
