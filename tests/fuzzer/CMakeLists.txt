@@ -1,4 +1,4 @@
-foreach(target parse_json find_js_deobfuscator)
+foreach(target parse_json find_js_deobfuscator call_js_foreach)
 	add_executable(${target})
 	target_sources(${target} PRIVATE ${target}.c)
 	target_include_directories(${target} PRIVATE ${PROJECT_SOURCE_DIR}/src)
