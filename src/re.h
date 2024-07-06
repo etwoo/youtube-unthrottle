@@ -17,9 +17,7 @@ bool re_capturef(const char *subject_in,
                  const char *my_format,
                  ...) __attribute__((format(printf, 5, 6)));
 
-bool re_pattern_escape(const char *in,
-                       size_t in_sz,
-                       char *out,
-                       size_t out_capacity);
+bool
+re_pattern_escape(const char *in, size_t in_sz, char *out, size_t out_capacity);
 
 #endif
