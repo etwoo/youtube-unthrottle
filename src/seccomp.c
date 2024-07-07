@@ -12,31 +12,42 @@ const unsigned SECCOMP_IO_RW   = 0x2;
 const unsigned SECCOMP_IO_INET = 0x4;
 
 static const char* ALLOWED_SYSCALLS[] = {
-	"futex",
-	"openat", /* for open() with O_TMPFILE */
-	"newfstatat", /* for open() with O_PATH, used with landlock APIs */
-	"fstat",
-	"read",
+	/*
+	 * syscalls required after_inet()
+	 */
+	"mmap", /* TODO: maybe only required by duktape after_inet(), can be dropped if duktape separated out? */
+	"munmap", /* TODO: maybe only required by duktape after_inet(), can be dropped if duktape separated out? */
 	"write",
 	"close",
-	"mmap",
-	"munmap",
-	"getpeername",
+	"fstat",
+	"futex",
+#if 0
+	"openat", /* for open() with O_TMPFILE */
+	"newfstatat", /* for open() with O_PATH, used with landlock APIs */
+	"read",
+#endif
+#if 0
+	/* after_inet(), these syscalls are only used by sandbox_verify(), which correctly causes crash, similar to pledge("stdio") */
 	"socket",
 	"setsockopt",
+	"ioctl",
 	"connect",
 	"poll",
 	"sendto",
-	"ioctl",
 	"recvfrom",
+#endif
+	"exit_group",
+#if 0
+	"getpeername",
 	"landlock_create_ruleset",
 	"landlock_add_rule",
 	"landlock_restrict_self",
 	"prctl",
 	"seccomp",
-	"exit_group",
+#endif
+#if 0
 	/*
-	 * additional syscalls (seemingly) required to call curl's easy APIs
+	 * additional syscalls required for curl and duktape
 	 */
 	"pipe2",
 	"fcntl",
@@ -56,6 +67,7 @@ static const char* ALLOWED_SYSCALLS[] = {
 	"brk",
 	"getpid",
 	"getrandom",
+#endif
 #if 0
 	// TODO: additional syscalls required for ASan/LSan StopTheWorld() during process teardown, where LSan walks threads looking for problems? needing to allow LSan to be able for fork() a child that can ptrace() the parent seems like maybe it's too powerful, basically makes the seccomp sandbox useless? maybe have to choose between a meaningful sandbox vs LSan diagnostics at runtime :(
 	// TODO: ASan/LSan hangs on exit, even with these syscalls allowed
