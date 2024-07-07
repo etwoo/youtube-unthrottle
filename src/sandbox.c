@@ -3,6 +3,7 @@
 #include "array.h"
 #include "debug.h"
 #include "landlock.h"
+#include "seccomp.h"
 
 #include <assert.h>
 #include <fcntl.h>
@@ -90,6 +91,7 @@ sandbox_only_io_inet(void)
 	const size_t sz = ARRAY_SIZE(ALLOWED_PATHS);
 #if defined(__linux__)
 	landlock_apply(ALLOWED_PATHS, sz, 443);
+	seccomp_apply(SECCOMP_IO_OPEN | SECCOMP_IO_RW | SECCOMP_IO_INET);
 #elif defined(__OpenBSD__)
 	for (size_t i = 0; i < sz; ++i) {
 		if (unveil(ALLOWED_PATHS[i], "r") < 0) {
@@ -111,7 +113,9 @@ sandbox_only_io(void)
 {
 #if defined(__linux__)
 	landlock_apply(ALLOWED_PATHS, 1, 0);
-	sandbox_verify(ALLOWED_PATHS, 1, ARRAY_SIZE(ALLOWED_PATHS), false);
+	seccomp_apply(SECCOMP_IO_RW);
+	sandbox_verify(ALLOWED_PATHS, 1, ARRAY_SIZE(ALLOWED_PATHS), false); // TODO: remove this once we verify SIGKILL on stricter enforcement of only SECCOMP_IO_RW
+	/* sandbox_verify() would abort() at this point */
 #elif defined(__OpenBSD__)
 	if (pledge("stdio", NULL) < 0) {
 		pwarn("Error in pledge()");

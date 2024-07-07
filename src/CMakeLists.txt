@@ -5,6 +5,7 @@ target_sources(youtube PRIVATE
 	landlock.c
 	re.c
 	sandbox.c
+	seccomp.c
 	tmpfile.c
 	url.c
 	youtube.c
@@ -15,10 +16,12 @@ target_link_libraries(youtube PRIVATE my_cflags)
 add_library(libcurl SHARED IMPORTED)
 add_library(libduktape SHARED IMPORTED)
 add_library(libpcre2-8 SHARED IMPORTED)
+add_library(libseccomp SHARED IMPORTED)
 target_link_libraries(youtube PRIVATE
 	curl
 	duktape
 	pcre2-8
+	seccomp
 )
 
 # choose between libyoutube.a (release build) and libyoutubed.a (debug build)
