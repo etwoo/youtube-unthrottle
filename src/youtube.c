@@ -326,9 +326,7 @@ youtube_stream_setup(struct youtube_stream *p,
 	unsigned int js_sz = 0;
 	void *js = NULL;
 
-	const size_t ciphertexts_count = ARRAY_SIZE(p->url);
-	char *ciphertexts[ciphertexts_count];
-	memset(ciphertexts, 0, ARRAY_SIZE(ciphertexts)); // TODO: figure out why using ciphertexts_count here instead of ARRAY_SIZE(ciphertexts) doesn't seem to quiet the compiler warning
+	char *ciphertexts[ARRAY_SIZE(p->url)] = {NULL};
 
 	if (ops && ops->before) {
 		ops->before(p);
@@ -381,8 +379,8 @@ youtube_stream_setup(struct youtube_stream *p,
 		goto cleanup;
 	}
 
-	pop_n_param_all(p, ciphertexts, ciphertexts_count);
-	for (size_t i = 0; i < ciphertexts_count; ++i) {
+	pop_n_param_all(p, ciphertexts, ARRAY_SIZE(ciphertexts));
+	for (size_t i = 0; i < ARRAY_SIZE(ciphertexts); ++i) {
 		if (ciphertexts[i] == NULL) {
 			goto cleanup;
 		}
@@ -394,7 +392,7 @@ youtube_stream_setup(struct youtube_stream *p,
 	call_js_foreach(deobfuscator,
 	                deobfuscator_sz,
 	                ciphertexts,
-	                ciphertexts_count,
+	                ARRAY_SIZE(ciphertexts),
 	                &cops,
 	                p);
 
@@ -405,7 +403,7 @@ youtube_stream_setup(struct youtube_stream *p,
 	result = true;
 
 cleanup:
-	for (size_t i = 0; i < ciphertexts_count; ++i) {
+	for (size_t i = 0; i < ARRAY_SIZE(ciphertexts); ++i) {
 		free(ciphertexts[i]);
 		ciphertexts[i] = NULL;
 	}
