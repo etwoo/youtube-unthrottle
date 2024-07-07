@@ -328,7 +328,7 @@ youtube_stream_setup(struct youtube_stream *p,
 
 	const size_t ciphertexts_count = ARRAY_SIZE(p->url);
 	char *ciphertexts[ciphertexts_count];
-	memset(ciphertexts, 0, ARRAY_SIZE(ciphertexts));
+	memset(ciphertexts, 0, ARRAY_SIZE(ciphertexts)); // TODO: figure out why using ciphertexts_count here instead of ARRAY_SIZE(ciphertexts) doesn't seem to quiet the compiler warning
 
 	if (ops && ops->before) {
 		ops->before(p);
