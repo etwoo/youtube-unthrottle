@@ -16,6 +16,7 @@ static const char* ALLOWED_SYSCALLS[] = {
 	 * syscalls required after_inet()
 	 */
 	"mmap", /* TODO: maybe only required by duktape after_inet(), can be dropped if duktape separated out? */
+	// TODO: after allowing mmap, prevent PROT_EXEC, i.e. only allow PROT_READ and/or PROT_WRITE, like: seccomp_rule_add(..., SCMP_SYS(mmap), ... SCMP_A2(SCMP_CMP_MASKED_NEQ, PROT_EXEC, ...))
 	"munmap", /* TODO: maybe only required by duktape after_inet(), can be dropped if duktape separated out? */
 	"write",
 	"close",
