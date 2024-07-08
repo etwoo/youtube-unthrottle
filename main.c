@@ -60,6 +60,7 @@ main(int argc, const char *argv[])
 		.after = NULL,
 	};
 
+	// TODO: what if we create a separate thread to run youtube_stream_setup and only set seccomp state in that other thread; would this leave the main thread unsandboxed? and if so, would this allow ASan/LSan to work without hanging at exit?
 	bool should_print = youtube_stream_setup(stream, &sops, argv[1]);
 	if (should_print) {
 		youtube_stream_print(stream);

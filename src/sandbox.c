@@ -113,7 +113,7 @@ sandbox_only_io(void)
 {
 #if defined(__linux__)
 	landlock_apply(ALLOWED_PATHS, 1, 0);
-	seccomp_apply(SECCOMP_IO_RW);
+	// seccomp_apply(SECCOMP_IO_RW);
 	// sandbox_verify(ALLOWED_PATHS, 1, ARRAY_SIZE(ALLOWED_PATHS), false); // TODO: remove this once we verify seccomp causes SIGKILL on socket(), connect()
 	/* sandbox_verify() would abort() at this point */
 #elif defined(__OpenBSD__)

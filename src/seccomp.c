@@ -76,6 +76,8 @@ static const char* ALLOWED_SYSCALLS[] = {
 	"getpid",
 	"clone",
 	"ptrace",
+	"sigaltstack",
+	"wait4",
 	"sched_yield",
 #endif
 };
