@@ -243,6 +243,7 @@ seccomp_allow_fcntl(scmp_filter_ctx ctx, int num)
 		SCMP_A1(SCMP_CMP_EQ, F_DUPFD),
 		SCMP_A1(SCMP_CMP_EQ, F_DUPFD_CLOEXEC),
 		SCMP_A1(SCMP_CMP_EQ, F_GETFD),
+		SCMP_A1(SCMP_CMP_EQ, F_SETFD),
 		SCMP_A1(SCMP_CMP_EQ, F_GETFL),
 		SCMP_A1(SCMP_CMP_EQ, F_SETFL),
 	};
