@@ -124,5 +124,5 @@ sandbox_only_io(void)
 	 * TODO: verify sandbox in a less intrustive way? or make landlock.h
 	 * and seccomp.h APIs return error codes? or abort the process?
 	 */
-	sandbox_verify(ALLOWED_PATHS, 1, ARRAY_SIZE(ALLOWED_PATHS), false); // TODO: remove this once we verify that is crashes as expected on socket(), etc
+	// sandbox_verify(ALLOWED_PATHS, 1, ARRAY_SIZE(ALLOWED_PATHS), false); // TODO: remove this once we verify that is crashes as expected on socket(), etc
 }

@@ -28,12 +28,12 @@ static const char* SYSCALLS_STDIO[] = {
 	"close",
 	"write",
 	"writev",
-	"pwrite",
+	"pwrite64",
 	"pwritev",
 	"pwritev2",
 	"read",
 	"readv",
-	"pread",
+	"pread64",
 	"preadv",
 	"preadv2",
 	"dup",
@@ -105,7 +105,7 @@ static const char* SYSCALLS_STDIO[] = {
 	"munmap",
 	"mincore",
 	"madvise",
-	"fadvise",
+	"fadvise64",
 	/*
 	 * TODO The prot parameter of mprotect() may only have:
 	 *
@@ -148,10 +148,10 @@ static const char* SYSCALLS_STDIO[] = {
 	"sigsuspend",
 	"sigpending",
 	"rt_sigaction",
-	"rt_sigaltstack",
 	"rt_sigprocmask",
 	"rt_sigsuspend",
 	"rt_sigpending",
+	"rt_sigtimedwait",
 	// "kill | SELF",
 	// "tkill",
 	// "tgkill | SELF",
@@ -180,7 +180,6 @@ static const char* SYSCALLS_STDIO[] = {
 	// "prlimit | STDIO",
 	"sched_getaffinity",
 	"sched_setaffinity",
-	"sigtimedwait",
 };
 
 /*
@@ -188,16 +187,15 @@ static const char* SYSCALLS_STDIO[] = {
  */
 static const char* SYSCALLS_INET[] = {
 	"socket",
-	"setsockopt",
-	"ioctl",
+	"bind",
 	"connect",
-	"poll",
+	"ioctl",
+	"getsockopt",
+	"setsockopt",
+	"getpeername",
+	"getsockname",
 	"sendto",
 	"recvfrom",
-	"getpeername",
-	"getsockopt",
-	"getsockname",
-	"bind",
 	"sendmmsg",
 	"sendmsg",
 	"recvmsg",
@@ -206,7 +204,8 @@ static const char* SYSCALLS_INET[] = {
 /*
  * Linux syscalls corresponding to Cosmopolitan's kPledgeStart, kPledgeUnveil
  */
-static const char* SYSCALLS_SANDBOX_START[] = {
+static const char* SYSCALLS_SANDBOX_SETUP[] = {
+	"exit",
 	"rseq",
 	"openat", /* for open() with O_TMPFILE */
 	"clone3",
@@ -252,8 +251,8 @@ static bool
 seccomp_allow_sandbox_start(scmp_filter_ctx ctx)
 {
 	return seccomp_allow(ctx,
-	                     SYSCALLS_SANDBOX_START,
-	                     ARRAY_SIZE(SYSCALLS_SANDBOX_START));
+	                     SYSCALLS_SANDBOX_SETUP,
+	                     ARRAY_SIZE(SYSCALLS_SANDBOX_SETUP));
 }
 
 static bool
