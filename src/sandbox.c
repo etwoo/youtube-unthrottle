@@ -91,7 +91,7 @@ sandbox_only_io_inet(void)
 	const size_t sz = ARRAY_SIZE(ALLOWED_PATHS);
 #if defined(__linux__)
 	landlock_apply(ALLOWED_PATHS, sz, 443);
-	// seccomp_apply(SECCOMP_IO_OPEN | SECCOMP_IO_RW | SECCOMP_IO_INET);
+	seccomp_apply(SECCOMP_STDIO | SECCOMP_INET);
 #elif defined(__OpenBSD__)
 	for (size_t i = 0; i < sz; ++i) {
 		if (unveil(ALLOWED_PATHS[i], "r") < 0) {
@@ -113,13 +113,16 @@ sandbox_only_io(void)
 {
 #if defined(__linux__)
 	landlock_apply(ALLOWED_PATHS, 1, 0);
-	// seccomp_apply(SECCOMP_IO_RW);
-	// sandbox_verify(ALLOWED_PATHS, 1, ARRAY_SIZE(ALLOWED_PATHS), false); // TODO: remove this once we verify seccomp causes SIGKILL on socket(), connect()
-	/* sandbox_verify() would abort() at this point */
+	seccomp_apply(SECCOMP_STDIO);
 #elif defined(__OpenBSD__)
 	if (pledge("stdio", NULL) < 0) {
 		pwarn("Error in pledge()");
 	}
-	/* sandbox_verify() would abort() at this point */
 #endif
+	/*
+	 * sandbox_verify() would abort() on a fully restricted sandbox.
+	 * TODO: verify sandbox in a less intrustive way? or make landlock.h
+	 * and seccomp.h APIs return error codes? or abort the process?
+	 */
+	sandbox_verify(ALLOWED_PATHS, 1, ARRAY_SIZE(ALLOWED_PATHS), false); // TODO: remove this once we verify that is crashes as expected on socket(), etc
 }
