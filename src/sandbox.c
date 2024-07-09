@@ -8,6 +8,7 @@
 #include <assert.h>
 #include <fcntl.h>
 #include <netdb.h>
+#include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <sys/socket.h>
@@ -21,6 +22,22 @@ sandbox_verify(const char **paths,
                size_t paths_total,
                bool connect_allowed)
 {
+#if defined(__linux__)
+	pid_t target = getpid();
+	assert(target > 0);
+
+	/*
+	 * Use kill() as a dead man's switch for the sandbox.
+	 *
+	 * Either seccomp correctly block kill(), allowing verification to
+	 * proceed, or kill() is incorrectly allowed, stopping this process
+	 * before any unexpected actions can occur.
+	 */
+	int rc = kill(target, SIGKILL);
+	assert(rc < 0);
+	assert(errno == EACCES);
+#endif
+
 	size_t i;
 
 	/* sanity-check sandbox: explicit path allowlist */
@@ -54,7 +71,7 @@ sandbox_verify(const char **paths,
 	hints.ai_socktype = SOCK_STREAM;
 
 	struct addrinfo *ai = NULL;
-	int rc = getaddrinfo("example.com", "443", &hints, &ai);
+	rc = getaddrinfo("example.com", "443", &hints, &ai);
 	if (!connect_allowed) {
 		assert(rc != 0);
 		assert(ai == NULL);
