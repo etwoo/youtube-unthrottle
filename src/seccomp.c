@@ -1,24 +1,25 @@
 #if defined(__linux__)
 
-#include "array.h"
-#include "debug.h"
 #include "seccomp.h"
 
-#include <fcntl.h> /* for F_* constants */
+#include "array.h"
+#include "debug.h"
+
+#include <fcntl.h>       /* for F_* constants */
 #include <linux/prctl.h> /* for PR_* constants */
 #include <seccomp.h>
 #include <stdbool.h>
 #include <sys/mman.h> /* for MAP_* constants */
 
 const unsigned SECCOMP_STDIO = 0x1;
-const unsigned SECCOMP_INET =  0x2;
+const unsigned SECCOMP_INET = 0x2;
 
 /*
  * Benign Linux syscalls loosely corresponding to OpenBSD pledge("stdio")
  *
  * Reference: Cosmopolitan Libc's pledge-linux.c implementation
  */
-static const char* SYSCALLS_STDIO[] = {
+static const char *SYSCALLS_STDIO[] = {
 	"sigreturn",
 	"restart_syscall",
 	"exit_group",
@@ -43,17 +44,7 @@ static const char* SYSCALLS_STDIO[] = {
 	"dup2",
 	"dup3",
 	"fchdir",
-	/*
-	 * The second argument of fcntl() must be one of:
-	 *
-	 *   - F_DUPFD (0)
-	 *   - F_DUPFD_CLOEXEC (1030)
-	 *   - F_GETFD (1)
-	 *   - F_SETFD (2)
-	 *   - F_GETFL (3)
-	 *   - F_SETFL (4)
-	 */
-	"fcntl",
+	"fcntl", /* see restrictions in seccomp_allow_fcntl() */
 	"fstat",
 	"newfstatat", /* for open() with O_PATH, used with landlock APIs */
 	"fsync",
@@ -89,34 +80,14 @@ static const char* SYSCALLS_STDIO[] = {
 	"tee",
 	"brk",
 	"msync",
-	/*
-	 * The prot parameter of mmap() may only have:
-	 *
-	 *   - PROT_NONE  (0)
-	 *   - PROT_READ  (1)
-	 *   - PROT_WRITE (2)
-	 *
-	 * The flags parameter must not have:
-	 *
-	 *   - MAP_LOCKED   (0x02000)
-	 *   - MAP_NONBLOCK (0x10000)
-	 *   - MAP_HUGETLB  (0x40000)
-	 */
-	"mmap",
+	"mmap", /* see restrictions in seccomp_allow_mmap() */
 	"mlock",
 	"mremap",
 	"munmap",
 	"mincore",
 	"madvise",
 	"fadvise64",
-	/*
-	 * The prot parameter of mprotect() may only have:
-	 *
-	 *   - PROT_NONE  (0)
-	 *   - PROT_READ  (1)
-	 *   - PROT_WRITE (2)
-	 */
-	"mprotect",
+	"mprotect", /* see restrictions in seccomp_allow_mprotect() */
 	"arch_prctl",
 	"migrate_pages",
 	"sync_file_range",
@@ -158,18 +129,7 @@ static const char* SYSCALLS_STDIO[] = {
 	"umask",
 	"wait4",
 	"uname",
-	/*
-	 * The first parameter of prctl() can be any of
-	 *
-	 *   - PR_SET_NAME         (15)
-	 *   - PR_GET_NAME         (16)
-	 *   - PR_GET_SECCOMP      (21)
-	 *   - PR_SET_SECCOMP      (22)
-	 *   - PR_SET_NO_NEW_PRIVS (38)
-	 *   - PR_CAPBSET_READ     (23)
-	 *   - PR_CAPBSET_DROP     (24)
-	 */
-	"prctl",
+	"prctl", /* see restrictions in seccomp_allow_prctl() */
 	"futex",
 	"set_robust_list",
 	"get_robust_list",
@@ -180,7 +140,7 @@ static const char* SYSCALLS_STDIO[] = {
 /*
  * Linux syscalls loosely corresponding to OpenBSD pledge("inet")
  */
-static const char* SYSCALLS_INET[] = {
+static const char *SYSCALLS_INET[] = {
 	"socket",
 	"bind",
 	"connect",
@@ -199,7 +159,7 @@ static const char* SYSCALLS_INET[] = {
 /*
  * Linux syscalls corresponding to Cosmopolitan's kPledgeStart, kPledgeUnveil
  */
-static const char* SYSCALLS_SANDBOX_SETUP[] = {
+static const char *SYSCALLS_SANDBOX_SETUP[] = {
 	"exit",
 	"rseq",
 	"openat", /* for open() with O_TMPFILE */
@@ -246,7 +206,7 @@ static int
 seccomp_allow_mprotect(scmp_filter_ctx ctx, int num)
 {
 	struct scmp_arg_cmp op[] = {
-		SCMP_A2(SCMP_CMP_MASKED_EQ, ~(PROT_READ|PROT_WRITE), 0),
+		SCMP_A2(SCMP_CMP_MASKED_EQ, ~(PROT_READ | PROT_WRITE), 0),
 	};
 	return seccomp_allow_cmp_union(ctx, num, op, ARRAY_SIZE(op));
 }
@@ -258,16 +218,11 @@ seccomp_allow_mmap(scmp_filter_ctx ctx, int num)
 	 * Add syscall rules for <prot> and <flags> args to mmap()
 	 * simultaneously, producing an AND relationship (interaction).
 	 */
+	int allowed_flags = MAP_PRIVATE | MAP_ANONYMOUS | MAP_DENYWRITE |
+	                    MAP_FIXED | MAP_NORESERVE | MAP_STACK;
 	struct scmp_arg_cmp arr[] = {
-		SCMP_A2(SCMP_CMP_MASKED_EQ, ~(PROT_READ|PROT_WRITE), 0),
-		SCMP_A3(SCMP_CMP_MASKED_EQ,
-		        ~(MAP_PRIVATE|
-			  MAP_ANONYMOUS|
-			  MAP_DENYWRITE|
-			  MAP_FIXED|
-			  MAP_NORESERVE|
-			  MAP_STACK),
-		        0),
+		SCMP_A2(SCMP_CMP_MASKED_EQ, ~(PROT_READ | PROT_WRITE), 0),
+		SCMP_A3(SCMP_CMP_MASKED_EQ, ~allowed_flags, 0),
 	};
 	return seccomp_rule_add_array(ctx, SCMP_ACT_ALLOW, num, 2, arr);
 }
@@ -311,7 +266,8 @@ seccomp_allow(scmp_filter_ctx ctx, const char **syscalls, size_t sz)
 		}
 		if (rc < 0) {
 			warn("Error in seccomp_rule_add() for syscall=%s: %s",
-			     syscalls[i], strerror(-rc));
+			     syscalls[i],
+			     strerror(-rc));
 			return false;
 		}
 	}
