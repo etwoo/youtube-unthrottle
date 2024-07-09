@@ -216,7 +216,7 @@ seccomp_allow_mmap(scmp_filter_ctx ctx, int num)
 {
 	/*
 	 * Add syscall rules for <prot> and <flags> args to mmap()
-	 * simultaneously, producing an AND relationship (interaction).
+	 * simultaneously, producing an AND relationship (intersection).
 	 */
 	const int allowed_flags = MAP_PRIVATE | MAP_ANONYMOUS | MAP_DENYWRITE |
 	                          MAP_FIXED | MAP_NORESERVE | MAP_STACK;
