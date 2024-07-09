@@ -256,7 +256,7 @@ seccomp_allow_mmap(scmp_filter_ctx ctx, int num)
 {
 	/*
 	 * Add syscall rules for <prot> and <flags> args to mmap()
-	 * simultaneously, producting an AND relationship (interaction).
+	 * simultaneously, producing an AND relationship (interaction).
 	 */
 	struct scmp_arg_cmp arr[] = {
 		SCMP_A2(SCMP_CMP_MASKED_EQ, ~(PROT_READ|PROT_WRITE), 0),
