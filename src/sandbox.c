@@ -55,21 +55,26 @@ sandbox_verify(const char **paths,
 
 	struct addrinfo *ai = NULL;
 	int rc = getaddrinfo("example.com", "443", &hints, &ai);
+	if (!connect_allowed) {
+		assert(rc != 0);
+		assert(ai == NULL);
+		goto done;
+	}
+	assert(connect_allowed);
 	assert(rc == 0);
 
 	int sfd = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
 	assert(sfd >= 0);
 
-	const bool connected = !connect(sfd, ai->ai_addr, ai->ai_addrlen);
-	assert(connected == connect_allowed);
-	if (!connect_allowed) {
-		assert(errno == EACCES);
-	}
-	debug("sandbox verify: %s connect()",
-	      connect_allowed ? "allowed" : "blocked");
+	rc = connect(sfd, ai->ai_addr, ai->ai_addrlen);
+	assert(rc == 0);
 
 	freeaddrinfo(ai);
 	close(sfd);
+
+done:
+	debug("sandbox verify: %s connect()",
+	      connect_allowed ? "allowed" : "blocked");
 }
 
 static const char *ALLOWED_PATHS[] = {
@@ -104,6 +109,7 @@ sandbox_only_io_inet(void)
 	if (pledge("dns inet rpath stdio tmppath", NULL) < 0) {
 		pwarn("Error in pledge()");
 	}
+	/* TODO: err() or abort() on pledge/unveil failure -- fail closed! */
 #endif
 	sandbox_verify(ALLOWED_PATHS, sz, sz, true);
 }
@@ -114,10 +120,12 @@ sandbox_only_io(void)
 #if defined(__linux__)
 	landlock_apply(ALLOWED_PATHS, 1, 0);
 	seccomp_apply(SECCOMP_STDIO);
+	sandbox_verify(ALLOWED_PATHS, 1, ARRAY_SIZE(ALLOWED_PATHS), false);
 #elif defined(__OpenBSD__)
 	if (pledge("stdio", NULL) < 0) {
 		pwarn("Error in pledge()");
 	}
-#endif
+	/* TODO: err() or abort() on pledge/unveil failure -- fail closed! */
 	/* sandbox_verify() would abort() at this point */
+#endif
 }

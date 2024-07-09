@@ -362,7 +362,7 @@ seccomp_apply_common(scmp_filter_ctx ctx, unsigned flags)
 void
 seccomp_apply(unsigned flags)
 {
-	scmp_filter_ctx ctx = seccomp_init(SCMP_ACT_KILL_PROCESS);
+	scmp_filter_ctx ctx = seccomp_init(SCMP_ACT_ERRNO(EACCES));
 	if (ctx == NULL) {
 		pwarn("Error in seccomp_init()");
 		goto cleanup;
