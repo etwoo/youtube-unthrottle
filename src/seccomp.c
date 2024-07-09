@@ -176,7 +176,7 @@ static const char *SYSCALLS_SANDBOX_SETUP[] = {
 static int
 seccomp_allow_cmp_union(scmp_filter_ctx ctx,
                         int num,
-                        struct scmp_arg_cmp *op,
+                        const struct scmp_arg_cmp *op,
                         size_t sz)
 {
 	for (size_t i = 0; i < sz; ++i) {
@@ -191,7 +191,7 @@ seccomp_allow_cmp_union(scmp_filter_ctx ctx,
 static int
 seccomp_allow_fcntl(scmp_filter_ctx ctx, int num)
 {
-	struct scmp_arg_cmp op[] = {
+	const struct scmp_arg_cmp op[] = {
 		SCMP_A1(SCMP_CMP_EQ, F_DUPFD),
 		SCMP_A1(SCMP_CMP_EQ, F_DUPFD_CLOEXEC),
 		SCMP_A1(SCMP_CMP_EQ, F_GETFD),
@@ -205,7 +205,7 @@ seccomp_allow_fcntl(scmp_filter_ctx ctx, int num)
 static int
 seccomp_allow_mprotect(scmp_filter_ctx ctx, int num)
 {
-	struct scmp_arg_cmp op[] = {
+	const struct scmp_arg_cmp op[] = {
 		SCMP_A2(SCMP_CMP_MASKED_EQ, ~(PROT_READ | PROT_WRITE), 0),
 	};
 	return seccomp_allow_cmp_union(ctx, num, op, ARRAY_SIZE(op));
@@ -218,9 +218,9 @@ seccomp_allow_mmap(scmp_filter_ctx ctx, int num)
 	 * Add syscall rules for <prot> and <flags> args to mmap()
 	 * simultaneously, producing an AND relationship (interaction).
 	 */
-	int allowed_flags = MAP_PRIVATE | MAP_ANONYMOUS | MAP_DENYWRITE |
-	                    MAP_FIXED | MAP_NORESERVE | MAP_STACK;
-	struct scmp_arg_cmp arr[] = {
+	const int allowed_flags = MAP_PRIVATE | MAP_ANONYMOUS | MAP_DENYWRITE |
+	                          MAP_FIXED | MAP_NORESERVE | MAP_STACK;
+	const struct scmp_arg_cmp arr[] = {
 		SCMP_A2(SCMP_CMP_MASKED_EQ, ~(PROT_READ | PROT_WRITE), 0),
 		SCMP_A3(SCMP_CMP_MASKED_EQ, ~allowed_flags, 0),
 	};
@@ -230,7 +230,7 @@ seccomp_allow_mmap(scmp_filter_ctx ctx, int num)
 static int
 seccomp_allow_prctl(scmp_filter_ctx ctx, int num)
 {
-	struct scmp_arg_cmp op[] = {
+	const struct scmp_arg_cmp op[] = {
 		SCMP_A0(SCMP_CMP_EQ, PR_SET_NAME),
 		SCMP_A0(SCMP_CMP_EQ, PR_GET_NAME),
 		SCMP_A0(SCMP_CMP_EQ, PR_GET_SECCOMP),
@@ -246,7 +246,7 @@ static bool
 seccomp_allow(scmp_filter_ctx ctx, const char **syscalls, size_t sz)
 {
 	for (size_t i = 0; i < sz; ++i) {
-		int num = seccomp_syscall_resolve_name(syscalls[i]);
+		const int num = seccomp_syscall_resolve_name(syscalls[i]);
 		if (num == __NR_SCMP_ERROR) {
 			warn("Cannot resolve syscall number for syscall=%s",
 			     syscalls[i]);
