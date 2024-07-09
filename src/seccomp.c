@@ -135,9 +135,6 @@ static const char* SYSCALLS_STDIO[] = {
 	"epoll_wait",
 	"epoll_pwait",
 	"epoll_pwait2",
-	// "recvfrom",
-	// "sendto | ADDRLESS",
-	// "ioctl | RESTRICT",
 	"alarm",
 	"pause",
 	"shutdown",
@@ -155,9 +152,6 @@ static const char* SYSCALLS_STDIO[] = {
 	"rt_sigsuspend",
 	"rt_sigpending",
 	"rt_sigtimedwait",
-	// "kill | SELF",
-	// "tkill",
-	// "tgkill | SELF",
 	"socketpair",
 	"getrusage",
 	"times",
@@ -176,11 +170,9 @@ static const char* SYSCALLS_STDIO[] = {
 	 *   - PR_CAPBSET_DROP     (24)
 	 */
 	"prctl",
-	// "clone | THREAD",
 	"futex",
 	"set_robust_list",
 	"get_robust_list",
-	// "prlimit | STDIO",
 	"sched_getaffinity",
 	"sched_setaffinity",
 };
