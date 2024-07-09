@@ -248,16 +248,13 @@ seccomp_allow_fcntl(scmp_filter_ctx ctx, int num)
 		SCMP_A1(SCMP_CMP_EQ, F_SETFL),
 	};
 	return seccomp_allow_cmp_union(ctx, num, op, ARRAY_SIZE(op));
-
 }
 
 static int
 seccomp_allow_mprotect(scmp_filter_ctx ctx, int num)
 {
 	struct scmp_arg_cmp op[] = {
-		SCMP_A2(SCMP_CMP_EQ, PROT_NONE),
-		SCMP_A2(SCMP_CMP_MASKED_EQ, PROT_READ),
-		SCMP_A2(SCMP_CMP_MASKED_EQ, PROT_WRITE),
+		SCMP_A2(SCMP_CMP_MASKED_EQ, ~(PROT_READ|PROT_WRITE), 0),
 	};
 	return seccomp_allow_cmp_union(ctx, num, op, ARRAY_SIZE(op));
 }
@@ -266,22 +263,21 @@ static int
 seccomp_allow_mmap(scmp_filter_ctx ctx, int num)
 {
 	/*
-	 * Restrictions for mmap() are a superset of those for mprotect().
+	 * Add syscall rules for <prot> and <flags> args to mmap()
+	 * simultaneously, producting an AND relationship (interaction).
 	 */
-	int rc = seccomp_allow_mprotect(ctx, num);
-	if (rc < 0) {
-		return rc;
-	}
-
-	struct scmp_arg_cmp op[] = {
-		SCMP_A3(SCMP_CMP_MASKED_EQ, MAP_PRIVATE),
-		SCMP_A3(SCMP_CMP_MASKED_EQ, MAP_ANONYMOUS),
-		SCMP_A3(SCMP_CMP_MASKED_EQ, MAP_DENYWRITE),
-		SCMP_A3(SCMP_CMP_MASKED_EQ, MAP_FIXED),
-		SCMP_A3(SCMP_CMP_MASKED_EQ, MAP_NORESERVE),
-		SCMP_A3(SCMP_CMP_MASKED_EQ, MAP_STACK),
+	struct scmp_arg_cmp arr[] = {
+		SCMP_A2(SCMP_CMP_MASKED_EQ, ~(PROT_READ|PROT_WRITE), 0),
+		SCMP_A3(SCMP_CMP_MASKED_EQ,
+		        ~(MAP_PRIVATE|
+			  MAP_ANONYMOUS|
+			  MAP_DENYWRITE|
+			  MAP_FIXED|
+			  MAP_NORESERVE|
+			  MAP_STACK),
+		        0),
 	};
-	return seccomp_allow_cmp_union(ctx, num, op, ARRAY_SIZE(op));
+	return seccomp_rule_add_array(ctx, SCMP_ACT_ALLOW, num, 2, arr);
 }
 
 static int
