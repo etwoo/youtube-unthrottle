@@ -4,8 +4,11 @@
 #include "debug.h"
 #include "seccomp.h"
 
+#include <fcntl.h>
+#include <prctl.h>
 #include <seccomp.h>
 #include <stdbool.h>
+#include <sys/mman.h>
 
 const unsigned SECCOMP_STDIO = 0x1;
 const unsigned SECCOMP_INET =  0x2;
@@ -41,7 +44,7 @@ static const char* SYSCALLS_STDIO[] = {
 	"dup3",
 	"fchdir",
 	/*
-	 * TODO The second argument of fcntl() must be one of:
+	 * The second argument of fcntl() must be one of:
 	 *
 	 *   - F_DUPFD (0)
 	 *   - F_DUPFD_CLOEXEC (1030)
@@ -87,7 +90,7 @@ static const char* SYSCALLS_STDIO[] = {
 	"brk",
 	"msync",
 	/*
-	 * TODO The prot parameter of mmap() may only have:
+	 * The prot parameter of mmap() may only have:
 	 *
 	 *   - PROT_NONE  (0)
 	 *   - PROT_READ  (1)
@@ -107,7 +110,7 @@ static const char* SYSCALLS_STDIO[] = {
 	"madvise",
 	"fadvise64",
 	/*
-	 * TODO The prot parameter of mprotect() may only have:
+	 * The prot parameter of mprotect() may only have:
 	 *
 	 *   - PROT_NONE  (0)
 	 *   - PROT_READ  (1)
@@ -162,7 +165,7 @@ static const char* SYSCALLS_STDIO[] = {
 	"wait4",
 	"uname",
 	/*
-	 * TODO The first parameter of prctl() can be any of
+	 * The first parameter of prctl() can be any of
 	 *
 	 *   - PR_SET_NAME         (15)
 	 *   - PR_GET_NAME         (16)
@@ -215,6 +218,86 @@ static const char* SYSCALLS_SANDBOX_SETUP[] = {
 	"seccomp",
 };
 
+/*
+ * Add each syscall rule separately, producing an OR relationship (union).
+ */
+static int
+seccomp_allow_cmp_union(scmp_filter_ctx ctx,
+                        int num,
+                        struct scmp_arg_cmp op*,
+                        size_t sz)
+{
+	for (size_t i = 0; i < sz; ++i) {
+		int rc = seccomp_rule_add(ctx, SCMP_ACT_ALLOW, num, 1, op[i]);
+		if (rc < 0) {
+			return rc;
+		}
+	}
+	return 0;
+}
+
+static int
+seccomp_allow_fcntl(scmp_filter_ctx ctx, int num)
+{
+	struct scmp_arg_cmp op[] = {
+		SCMP_A1(SCMP_CMP_EQ, F_DUPFD),
+		SCMP_A1(SCMP_CMP_EQ, F_DUPFD_CLOEXEC),
+		SCMP_A1(SCMP_CMP_EQ, F_GETFD),
+		SCMP_A1(SCMP_CMP_EQ, F_GETFL),
+		SCMP_A1(SCMP_CMP_EQ, F_SETFL),
+	};
+	return seccomp_allow_cmp_union(ctx, num, op, ARRAY_SIZE(op));
+
+}
+
+static int
+seccomp_allow_mmap(scmp_filter_ctx ctx, int num)
+{
+	/*
+	 * Restrictions for mmap() are a superset of those for mprotect().
+	 */
+	int rc = seccomp_allow_mprotect(ctx, num);
+	if (rc < 0) {
+		return rc;
+	}
+
+	struct scmp_arg_cmp op[] = {
+		SCMP_A3(SCMP_CMP_MASKED_EQ, MAP_PRIVATE),
+		SCMP_A3(SCMP_CMP_MASKED_EQ, MAP_ANONYMOUS),
+		SCMP_A3(SCMP_CMP_MASKED_EQ, MAP_DENYWRITE),
+		SCMP_A3(SCMP_CMP_MASKED_EQ, MAP_FIXED),
+		SCMP_A3(SCMP_CMP_MASKED_EQ, MAP_NORESERVE),
+		SCMP_A3(SCMP_CMP_MASKED_EQ, MAP_STACK),
+	};
+	return seccomp_allow_cmp_union(ctx, num, op, ARRAY_SIZE(op));
+}
+
+static int
+seccomp_allow_mprotect(scmp_filter_ctx ctx, int num)
+{
+	struct scmp_arg_cmp op[] = {
+		SCMP_A2(SCMP_CMP_EQ, PROT_NONE),
+		SCMP_A2(SCMP_CMP_MASKED_EQ, PROT_READ),
+		SCMP_A2(SCMP_CMP_MASKED_EQ, PROT_WRITE),
+	};
+	return seccomp_allow_cmp_union(ctx, num, op, ARRAY_SIZE(op));
+}
+
+static int
+seccomp_allow_prctl(scmp_filter_ctx ctx, int num)
+{
+	struct scmp_arg_cmp op[] = {
+		SCMP_A0(SCMP_CMP_EQ, PR_SET_NAME),
+		SCMP_A0(SCMP_CMP_EQ, PR_GET_NAME),
+		SCMP_A0(SCMP_CMP_EQ, PR_GET_SECCOMP),
+		SCMP_A0(SCMP_CMP_EQ, PR_SET_SECCOMP),
+		SCMP_A0(SCMP_CMP_EQ, PR_SET_NO_NEW_PRIVS),
+		SCMP_A0(SCMP_CMP_EQ, PR_CAPBSET_READ),
+		SCMP_A0(SCMP_CMP_EQ, PR_CAPBSET_DROP),
+	};
+	return seccomp_allow_cmp_union(ctx, num, op, ARRAY_SIZE(op));
+}
+
 static bool
 seccomp_allow(scmp_filter_ctx ctx, const char **syscalls, size_t sz)
 {
@@ -225,7 +308,18 @@ seccomp_allow(scmp_filter_ctx ctx, const char **syscalls, size_t sz)
 			     syscalls[i]);
 			return false;
 		}
-		int rc = seccomp_rule_add(ctx, SCMP_ACT_ALLOW, num, 0);
+		int rc = -1;
+		if (0 == strcmp(syscalls[i], "fcntl")) {
+			rc = seccomp_allow_fcntl(ctx, num);
+		} else if (0 == strcmp(syscalls[i], "mmap")) {
+			rc = seccomp_allow_mmap(ctx, num);
+		} else if (0 == strcmp(syscalls[i], "mprotect")) {
+			rc = seccomp_allow_mprotect(ctx, num);
+		else if (0 == strcmp(syscalls[i], "prctl")) {
+			rc = seccomp_allow_prctl(ctx, num);
+		} else {
+			rc = seccomp_rule_add(ctx, SCMP_ACT_ALLOW, num, 0);
+		}
 		if (rc < 0) {
 			warn("Error in seccomp_rule_add() for syscall=%s: %s",
 			     syscalls[i], strerror(-rc));
