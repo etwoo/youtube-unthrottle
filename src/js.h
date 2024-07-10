@@ -4,16 +4,17 @@
 #include <stddef.h> /* for size_t */
 
 struct parse_ops {
-	void (*got_basejs)(const char *, size_t, void *);
 	void (*got_video)(const char *, size_t, void *);
 	void (*got_audio)(const char *, size_t, void *);
 };
 
-void
-parse_html_json(char *html, size_t sz, struct parse_ops *ops, void *userdata);
-void
-parse_json(const char *json, size_t sz, struct parse_ops *ops, void *userdata);
+void parse_html_json(char *html, size_t sz, struct parse_ops *ops, void *ud);
+void parse_json(const char *json, size_t sz, struct parse_ops *ops, void *ud);
 
+void find_base_js_url(const char *html,
+                      size_t sz,
+                      const char **basejs,
+                      size_t *basejs_sz);
 void find_js_deobfuscator(const char *js,
                           size_t sz,
                           const char **deobfuscator,

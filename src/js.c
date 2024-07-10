@@ -143,19 +143,6 @@ parse_html_json(char *html, size_t sz, struct parse_ops *ops, void *userdata)
 {
 	debug("Got HTML doc of size %zd", sz);
 
-	const char *basejs = NULL;
-	size_t basejs_sz = 0;
-	if (!re_capture("\"(/s/player/[^\"]+/base.js)\"",
-	                html,
-	                sz,
-	                &basejs,
-	                &basejs_sz)) {
-		warn("Cannot find base.js URL in HTML document");
-	} else {
-		debug("Parsed base.js URI: %.*s", (int)basejs_sz, basejs);
-		ops->got_basejs(basejs, basejs_sz, userdata);
-	}
-
 	const char *json = NULL;
 	size_t json_sz = 0;
 	if (!re_capture(RE_JSON, html, sz, &json, &json_sz)) {
@@ -164,6 +151,23 @@ parse_html_json(char *html, size_t sz, struct parse_ops *ops, void *userdata)
 		// debug("Got JSON blob: %.*s", json_sz, json);
 		debug("Got JSON blob of size %zd", json_sz);
 		parse_json(json, json_sz, ops, userdata);
+	}
+}
+
+void
+find_base_js_url(const char *html,
+                 size_t sz,
+                 const char **basejs,
+                 size_t *basejs_sz)
+{
+	if (!re_capture("\"(/s/player/[^\"]+/base.js)\"",
+	                html,
+	                sz,
+	                basejs,
+	                basejs_sz)) {
+		warn("Cannot find base.js URL in HTML document");
+	} else {
+		debug("Parsed base.js URI: %.*s", (int)*basejs_sz, *basejs);
 	}
 }
 

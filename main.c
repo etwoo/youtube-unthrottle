@@ -69,6 +69,8 @@ main(int argc, const char *argv[])
 		.before = NULL,
 		.before_inet = NULL,
 		.after_inet = after_inet,
+		.before_parse = NULL,
+		.after_parse = NULL,
 		.before_eval = NULL,
 		.after_eval = NULL,
 		.after = NULL,

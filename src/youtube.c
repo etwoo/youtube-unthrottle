@@ -102,14 +102,6 @@ youtube_stream_print(struct youtube_stream *p)
 }
 
 static void
-youtube_stream_set_basejs(const char *val, size_t sz, void *userdata)
-{
-	struct youtube_stream *p = (struct youtube_stream *)userdata;
-	debug("Setting base.js URL: %.*s", (int)sz, val);
-	p->basejs = strndup(val, sz);
-}
-
-static void
 youtube_stream_set_one(struct youtube_stream *p,
                        int idx,
                        const char *val,
@@ -345,13 +337,17 @@ youtube_stream_setup(struct youtube_stream *p,
 		goto cleanup;
 	}
 
-	struct parse_ops pops = {
-		.got_basejs = youtube_stream_set_basejs,
-		.got_audio = youtube_stream_set_audio,
-		.got_video = youtube_stream_set_video,
-	};
-	parse_html_json(html, html_sz, &pops, p);
+	const char *basejs = NULL;
+	size_t basejs_sz = 0;
+	find_base_js_url(html, html_sz, &basejs, &basejs_sz);
+	if (basejs == NULL || basejs_sz == 0) {
+		goto cleanup;
+	}
+
+	debug("Setting base.js URL: %.*s", (int)basejs_sz, basejs);
+	p->basejs = strndup(basejs, basejs_sz);
 	if (p->basejs == NULL) {
+		pwarn("Error in strndup()");
 		goto cleanup;
 	}
 
@@ -366,6 +362,20 @@ youtube_stream_setup(struct youtube_stream *p,
 
 	if (ops && ops->after_inet) {
 		ops->after_inet(p);
+	}
+
+	if (ops && ops->before_parse) {
+		ops->before_parse(p);
+	}
+
+	struct parse_ops pops = {
+		.got_audio = youtube_stream_set_audio,
+		.got_video = youtube_stream_set_video,
+	};
+	parse_html_json(html, html_sz, &pops, p);
+
+	if (ops && ops->after_parse) {
+		ops->after_parse(p);
 	}
 
 	if (ops && ops->before_eval) {
