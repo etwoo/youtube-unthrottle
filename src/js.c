@@ -1,5 +1,6 @@
 #include "js.h"
 
+#include "array.h"
 #include "debug.h"
 #include "re.h"
 
@@ -166,8 +167,10 @@ parse_html_json(char *html, size_t sz, struct parse_ops *ops, void *userdata)
 	}
 }
 
-static const char RE_FUNC_NAME[] =
-	"b=a.get\\(\"n\"\\){2}&&\\(b=([^\\]]+)\\[0\\]\\(b\\)";
+static const char *RE_FUNC_NAME[] = {
+	"b=a\\.get\\(\"n\"\\){2}&&\\(b=([^\\]]+)\\[0\\]\\(b\\)",
+	"c=a\\.get\\(b\\){2}&&\\(c=([^\\]]+)\\[0\\]\\(c\\)",
+};
 
 /*
  * Based on: youtube-dl, yt-dlp, rusty_ytdl
@@ -195,8 +198,13 @@ find_js_deobfuscator(const char *js,
 	char escaped[256];
 	const char *name = NULL;
 	size_t nsz = 0;
-	if (!re_capture(RE_FUNC_NAME, js, js_sz, &name, &nsz)) {
-		warn("Cannot find '%s' in base.js", RE_FUNC_NAME);
+	for (size_t i = 0; i < ARRAY_SIZE(RE_FUNC_NAME); ++i) {
+		if (re_capture(RE_FUNC_NAME[i], js, js_sz, &name, &nsz)) {
+			break;
+		}
+		warn("Cannot find '%s' in base.js", RE_FUNC_NAME[i]);
+	}
+	if (name == NULL || nsz == 0) {
 		goto cleanup;
 	}
 	debug("Got function name 1: %.*s", (int)nsz, name);
