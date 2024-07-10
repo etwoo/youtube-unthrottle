@@ -18,6 +18,20 @@
 static const char ARG_HELP[] = "--help";
 static const char ARG_SANDBOX[] = "--try-sandbox";
 
+const char *__asan_default_options(void) __attribute__((used));
+
+const char *
+__asan_default_options(void)
+{
+	/*
+	 * Disable LSan by default, as StopTheWorld() seems to misbehave when
+	 * running under the seccomp sandbox. Even if syscalls like clone() and
+	 * ptrace() are allowed, StopTheWorld() seems to hang at process exit,
+	 * while repeatedly calling sched_yield().
+	 */
+	return "detect_leaks=0";
+}
+
 static int
 usage(const char *cmd, int rc)
 {
