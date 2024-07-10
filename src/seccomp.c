@@ -3,6 +3,11 @@
 #include "array.h"
 #include "debug.h"
 
+#include <fcntl.h>       /* for F_* constants */
+#include <linux/prctl.h> /* for PR_* constants */
+#include <stdbool.h>
+#include <sys/mman.h> /* for MAP_* constants */
+
 /*
  * Some helpful libseccomp references:
  *
@@ -12,14 +17,7 @@
  * Note: the EXAMPLES section of the seccomp_rule_add manpage (linked above)
  * contains sample code for libseccomp usage.
  */
-#include <fcntl.h>       /* for F_* constants */
-#include <linux/prctl.h> /* for PR_* constants */
 #include <seccomp.h>
-#include <stdbool.h>
-#include <sys/mman.h> /* for MAP_* constants */
-
-const unsigned SECCOMP_STDIO = 0x1;
-const unsigned SECCOMP_INET = 0x2;
 
 /*
  * Benign Linux syscalls loosely corresponding to OpenBSD pledge("stdio")
@@ -302,6 +300,9 @@ seccomp_allow_sandbox_start(scmp_filter_ctx ctx)
 	                     SYSCALLS_SANDBOX_SETUP,
 	                     ARRAY_SIZE(SYSCALLS_SANDBOX_SETUP));
 }
+
+const unsigned SECCOMP_STDIO = 0x1;
+const unsigned SECCOMP_INET = 0x2;
 
 static bool
 seccomp_apply_common(scmp_filter_ctx ctx, unsigned flags)
