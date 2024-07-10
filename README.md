@@ -69,6 +69,7 @@ I've only tested this on 64-bit Arch Linux so far.
 cmake
 curl
 duktape
+libseccomp
 pcre2
 ```
 
@@ -80,6 +81,7 @@ $ pacman -Q cmake curl duktape pcre2
 cmake 3.30.0-1
 curl 8.8.0-1
 duktape 2.7.0-6
+libseccomp 2.5.5-3
 pcre2 10.44-1
 ```
 
