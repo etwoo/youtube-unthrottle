@@ -1,5 +1,3 @@
-#if defined(__linux__)
-
 #include "seccomp.h"
 
 #include "array.h"
@@ -336,5 +334,3 @@ seccomp_apply(unsigned flags)
 cleanup:
 	seccomp_release(ctx);
 }
-
-#endif /* defined(__linux__) */

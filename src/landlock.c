@@ -1,5 +1,3 @@
-#if defined(__linux__)
-
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
@@ -154,5 +152,3 @@ cleanup:
 		pwarn("Ignoring error while close()-ing Landlock ruleset fd");
 	}
 }
-
-#endif /* defined(__linux__) */

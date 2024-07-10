@@ -11,7 +11,9 @@
 #include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/socket.h>
+#include <sysexits.h>
 #include <unistd.h>
 
 static const char NEVER_ALLOWED_CANARY[] = "/etc/passwd";
@@ -121,15 +123,17 @@ sandbox_only_io_inet(void)
 	for (size_t i = 0; i < sz; ++i) {
 		if (unveil(ALLOWED_PATHS[i], "r") < 0) {
 			pwarn("Error in unveil()");
+			exit(EX_OSERR);
 		}
 	}
 	if (unveil(NULL, NULL) < 0) {
 		pwarn("Error in final unveil()");
+		exit(EX_OSERR);
 	}
 	if (pledge("dns inet rpath stdio tmppath", NULL) < 0) {
 		pwarn("Error in pledge()");
+		exit(EX_OSERR);
 	}
-	/* TODO: err() or abort() on pledge/unveil failure -- fail closed! */
 #endif
 	sandbox_verify(ALLOWED_PATHS, sz, sz, true);
 }
@@ -144,8 +148,8 @@ sandbox_only_io(void)
 #elif defined(__OpenBSD__)
 	if (pledge("stdio", NULL) < 0) {
 		pwarn("Error in pledge()");
+		exit(EX_OSERR);
 	}
-	/* TODO: err() or abort() on pledge/unveil failure -- fail closed! */
 	/* sandbox_verify() would abort() at this point */
 #endif
 }
