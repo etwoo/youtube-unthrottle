@@ -25,6 +25,8 @@ const unsigned SECCOMP_INET = 0x2;
  * Benign Linux syscalls loosely corresponding to OpenBSD pledge("stdio")
  *
  * Reference: Cosmopolitan Libc's pledge-linux.c implementation
+ *
+ * See also: https://justine.lol/pledge/
  */
 static const char *SYSCALLS_STDIO[] = {
 	"sigreturn",
