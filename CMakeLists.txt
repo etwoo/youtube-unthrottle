@@ -41,7 +41,7 @@ add_custom_target(fmt COMMAND find
 	${CMAKE_SOURCE_DIR}/include
 	${CMAKE_SOURCE_DIR}/src
 	( -name *.h -or -name *.c )
-	-exec ${FORMATTER} -Werror --dry-run {} \;
+	-exec ${FORMATTER} -Werror --dry-run {} +
 	VERBATIM USES_TERMINAL
 )
 
