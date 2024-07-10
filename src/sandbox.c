@@ -11,9 +11,9 @@
 #include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <stdlib.h>
+#include <stdlib.h> /* for exit() */
 #include <sys/socket.h>
-#include <sysexits.h>
+#include <sysexits.h> /* for EX_OSERR */
 #include <unistd.h>
 
 static const char NEVER_ALLOWED_CANARY[] = "/etc/passwd";
