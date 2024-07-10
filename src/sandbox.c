@@ -22,6 +22,8 @@ sandbox_verify(const char **paths,
                size_t paths_total,
                bool connect_allowed)
 {
+	int rc = -1;
+
 #if defined(__linux__)
 	pid_t target = getpid();
 	assert(target > 0);
@@ -33,9 +35,10 @@ sandbox_verify(const char **paths,
 	 * proceed, or kill() is incorrectly allowed, stopping this process
 	 * before any unexpected actions can occur.
 	 */
-	int rc = kill(target, SIGKILL);
+	rc = kill(target, SIGKILL);
 	assert(rc < 0);
 	assert(errno == EACCES);
+	debug("sandbox verify: blocked kill()");
 #endif
 
 	size_t i;
