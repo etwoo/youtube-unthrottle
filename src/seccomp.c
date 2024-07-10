@@ -195,16 +195,25 @@ seccomp_allow_cmp_union(scmp_filter_ctx ctx,
 	return 0;
 }
 
+/*
+ * Quiet clang warnings about a member being left uninitialized in the
+ * scmp_arg_cmp struct (-Wmissing-field-initializers). In cases where
+ * the scmp_compare op only takes one argument, like SCMP_CMP_EQ, it is
+ * intentional for the libseccomp macros not to initialize datum_b, as
+ * this member represents an optional second argument.
+ */
+#define SCMP_ARG_UNUSED 0
+
 static int
 seccomp_allow_fcntl(scmp_filter_ctx ctx, int num)
 {
 	const struct scmp_arg_cmp op[] = {
-		SCMP_A1(SCMP_CMP_EQ, F_DUPFD),
-		SCMP_A1(SCMP_CMP_EQ, F_DUPFD_CLOEXEC),
-		SCMP_A1(SCMP_CMP_EQ, F_GETFD),
-		SCMP_A1(SCMP_CMP_EQ, F_SETFD),
-		SCMP_A1(SCMP_CMP_EQ, F_GETFL),
-		SCMP_A1(SCMP_CMP_EQ, F_SETFL),
+		SCMP_A1(SCMP_CMP_EQ, F_DUPFD, SCMP_ARG_UNUSED),
+		SCMP_A1(SCMP_CMP_EQ, F_DUPFD_CLOEXEC, SCMP_ARG_UNUSED),
+		SCMP_A1(SCMP_CMP_EQ, F_GETFD, SCMP_ARG_UNUSED),
+		SCMP_A1(SCMP_CMP_EQ, F_SETFD, SCMP_ARG_UNUSED),
+		SCMP_A1(SCMP_CMP_EQ, F_GETFL, SCMP_ARG_UNUSED),
+		SCMP_A1(SCMP_CMP_EQ, F_SETFL, SCMP_ARG_UNUSED),
 	};
 	return seccomp_allow_cmp_union(ctx, num, op, ARRAY_SIZE(op));
 }
@@ -238,13 +247,13 @@ static int
 seccomp_allow_prctl(scmp_filter_ctx ctx, int num)
 {
 	const struct scmp_arg_cmp op[] = {
-		SCMP_A0(SCMP_CMP_EQ, PR_SET_NAME),
-		SCMP_A0(SCMP_CMP_EQ, PR_GET_NAME),
-		SCMP_A0(SCMP_CMP_EQ, PR_GET_SECCOMP),
-		SCMP_A0(SCMP_CMP_EQ, PR_SET_SECCOMP),
-		SCMP_A0(SCMP_CMP_EQ, PR_SET_NO_NEW_PRIVS),
-		SCMP_A0(SCMP_CMP_EQ, PR_CAPBSET_READ),
-		SCMP_A0(SCMP_CMP_EQ, PR_CAPBSET_DROP),
+		SCMP_A0(SCMP_CMP_EQ, PR_SET_NAME, SCMP_ARG_UNUSED),
+		SCMP_A0(SCMP_CMP_EQ, PR_GET_NAME, SCMP_ARG_UNUSED),
+		SCMP_A0(SCMP_CMP_EQ, PR_GET_SECCOMP, SCMP_ARG_UNUSED),
+		SCMP_A0(SCMP_CMP_EQ, PR_SET_SECCOMP, SCMP_ARG_UNUSED),
+		SCMP_A0(SCMP_CMP_EQ, PR_SET_NO_NEW_PRIVS, SCMP_ARG_UNUSED),
+		SCMP_A0(SCMP_CMP_EQ, PR_CAPBSET_READ, SCMP_ARG_UNUSED),
+		SCMP_A0(SCMP_CMP_EQ, PR_CAPBSET_DROP, SCMP_ARG_UNUSED),
 	};
 	return seccomp_allow_cmp_union(ctx, num, op, ARRAY_SIZE(op));
 }
