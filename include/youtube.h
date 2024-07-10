@@ -16,6 +16,8 @@ struct youtube_setup_ops {
 	void (*before)(youtube_handle_t);
 	void (*before_inet)(youtube_handle_t);
 	void (*after_inet)(youtube_handle_t);
+	void (*before_parse)(youtube_handle_t);
+	void (*after_parse)(youtube_handle_t);
 	void (*before_eval)(youtube_handle_t);
 	void (*after_eval)(youtube_handle_t);
 	void (*after)(youtube_handle_t);

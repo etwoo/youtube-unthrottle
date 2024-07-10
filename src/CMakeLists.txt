@@ -40,4 +40,4 @@ set_target_properties(youtube PROPERTIES
 if (CMAKE_BUILD_TYPE STREQUAL Debug)
 	message(STATUS "Enabling runtime debug output")
 	target_compile_definitions(youtube PRIVATE WITH_DEBUG_OUTPUT)
-endif()
+endif (CMAKE_BUILD_TYPE STREQUAL Debug)
