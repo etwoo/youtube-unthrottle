@@ -45,6 +45,7 @@ are mainly personal for the author:
   error-handling codepaths are exercised by evolving external inputs on
   an ongoing basis
 - experiment with sandboxing APIs like
+  [libseccomp](https://man.archlinux.org/man/seccomp_rule_add.3.en),
   [Landlock](https://docs.kernel.org/userspace-api/landlock.html),
   [pledge()](https://man.openbsd.org/pledge.2),
   and [unveil()](https://man.openbsd.org/unveil.2)

@@ -3,6 +3,15 @@
 #include "array.h"
 #include "debug.h"
 
+/*
+ * Some helpful libseccomp references:
+ *
+ *   https://lwn.net/Articles/494252/
+ *   https://man.archlinux.org/man/seccomp_rule_add.3.en
+ *
+ * Note: the EXAMPLES section of the seccomp_rule_add manpage (linked above)
+ * contains sample code for libseccomp usage.
+ */
 #include <fcntl.h>       /* for F_* constants */
 #include <linux/prctl.h> /* for PR_* constants */
 #include <seccomp.h>
