@@ -42,7 +42,7 @@ usage(const char *cmd, int rc)
 static void
 before_inet(youtube_handle_t h __attribute__((unused)))
 {
-	sandbox_only_io_inet();
+	sandbox_only_io_inet_rpath();
 }
 
 static void
@@ -62,7 +62,7 @@ main(int argc, const char *argv[])
 		return usage(argv[0], EX_OK);
 	} else if (0 == strncmp(ARG_SANDBOX, argv[1], strlen(ARG_SANDBOX))) {
 		sandbox_only_io_inet_tmpfile();
-		sandbox_only_io_inet();
+		sandbox_only_io_inet_rpath();
 		sandbox_only_io();
 		return EX_OK;
 	}

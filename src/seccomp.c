@@ -9,6 +9,7 @@
 #include "array.h"
 #include "debug.h"
 
+#include <assert.h>
 #include <linux/prctl.h>
 #include <sched.h>
 #include <stdbool.h>
@@ -169,13 +170,11 @@ static const char *SYSCALLS_INET[] = {
 	"recvmsg",
 };
 
-// TODO, maybe update sandbox_verify() as dropping this causes P_tmpdir open() to fail with errno, even if landlock allows access to /tmp
-static const char *SYSCALLS_TMPFILE[] = {
-	"openat", /* for open() with O_TMPFILE */
-};
-
+/*
+ * Linux syscalls corresponding to the ability to create new threads
+ */
 static const char *SYSCALLS_THREAD[] = {
-	"clone3", /* for clone3() with CLONE_THREAD */
+	"clone", /* block clone3() and allow clone() with CLONE_THREAD */
 };
 
 /*
@@ -216,11 +215,29 @@ seccomp_allow_cmp_union(scmp_filter_ctx ctx,
 }
 
 static int
-seccomp_allow_clone3(scmp_filter_ctx ctx, int num)
+seccomp_allow_clone_block_clone3(scmp_filter_ctx ctx, int num)
 {
-	// TODO: can seccomp access .flags member of struct clone_args ...?
+	/*
+	 * Trick glibc into thinking that clone3() syscall is unavailable,
+	 * causing a fallback to old-school clone().
+	 *
+	 * Reference: https://github.com/AkihiroSuda/clone3-workaround
+	 */
+	int rc = seccomp_rule_add(ctx,
+	                          SCMP_ACT_ERRNO(ENOSYS),
+	                          SCMP_SYS(clone3),
+	                          0);
+	if (rc < 0) {
+		pwarn("Error hiding clone3 syscall");
+		return rc;
+	}
+
+	/*
+	 * Require clone() callers to be creating a thread (not a process).
+	 */
+	const int required = CLONE_VM | CLONE_FS | CLONE_FILES | CLONE_THREAD;
 	const struct scmp_arg_cmp op[] = {
-		SCMP_A1(SCMP_CMP_MASKED_EQ, CLONE_THREAD, CLONE_THREAD),
+		SCMP_A1(SCMP_CMP_MASKED_EQ, required, required),
 	};
 	return seccomp_allow_cmp_union(ctx, num, op, ARRAY_SIZE(op));
 }
@@ -274,15 +291,6 @@ seccomp_allow_mmap(scmp_filter_ctx ctx, int num)
 }
 
 static int
-seccomp_allow_openat(scmp_filter_ctx ctx, int num)
-{
-	const struct scmp_arg_cmp op[] = {
-		SCMP_A1(SCMP_CMP_MASKED_EQ, O_TMPFILE, O_TMPFILE),
-	};
-	return seccomp_allow_cmp_union(ctx, num, op, ARRAY_SIZE(op));
-}
-
-static int
 seccomp_allow_prctl(scmp_filter_ctx ctx, int num)
 {
 	const struct scmp_arg_cmp op[] = {
@@ -309,19 +317,18 @@ seccomp_allow(scmp_filter_ctx ctx, const char **syscalls, size_t sz)
 		}
 		int rc = -1;
 		const char *cur = syscalls[i];
-		if (0 == strcmp(cur, "clone3")) {
-			rc = seccomp_allow_clone3(ctx, num);
+		if (0 == strcmp(cur, "clone")) {
+			rc = seccomp_allow_clone_block_clone3(ctx, num);
 		} else if (0 == strcmp(cur, "fcntl")) {
 			rc = seccomp_allow_fcntl(ctx, num);
 		} else if (0 == strcmp(cur, "mmap")) {
 			rc = seccomp_allow_mmap(ctx, num);
 		} else if (0 == strcmp(cur, "mprotect")) {
 			rc = seccomp_allow_mprotect(ctx, num);
-		} else if (0 == strcmp(cur, "openat")) {
-			rc = seccomp_allow_openat(ctx, num);
 		} else if (0 == strcmp(cur, "prctl")) {
 			rc = seccomp_allow_prctl(ctx, num);
 		} else {
+			assert(0 != strcmp(cur, "openat"));
 			rc = seccomp_rule_add(ctx, SCMP_ACT_ALLOW, num, 0);
 		}
 		if (rc < 0) {
@@ -334,13 +341,41 @@ seccomp_allow(scmp_filter_ctx ctx, const char **syscalls, size_t sz)
 	return true;
 }
 
+static int
+seccomp_allow_tmpfile(scmp_filter_ctx ctx)
+{
+	const int num = SCMP_SYS(openat);
+	/*
+	 * Require openat() callers to provide O_TMPFILE or O_RDONLY.
+	 */
+	const struct scmp_arg_cmp op[] = {
+		SCMP_A1(SCMP_CMP_MASKED_EQ, O_TMPFILE, O_TMPFILE),
+		SCMP_A1(SCMP_CMP_MASKED_EQ, O_RDONLY, O_RDONLY),
+	};
+	return seccomp_allow_cmp_union(ctx, num, op, ARRAY_SIZE(op));
+}
+
+static int
+seccomp_allow_rpath(scmp_filter_ctx ctx)
+{
+	const int num = SCMP_SYS(openat);
+	/*
+	 * Require openat() callers to provide O_RDONLY.
+	 */
+	const struct scmp_arg_cmp op[] = {
+		SCMP_A1(SCMP_CMP_MASKED_EQ, O_RDONLY, O_RDONLY),
+	};
+	return seccomp_allow_cmp_union(ctx, num, op, ARRAY_SIZE(op));
+}
+
 #define ALLOW(ctx, x) seccomp_allow(ctx, x, ARRAY_SIZE(x))
 
 const unsigned SECCOMP_STDIO = 0x01;
 const unsigned SECCOMP_INET = 0x02;
 const unsigned SECCOMP_SANDBOX = 0x04;
 const unsigned SECCOMP_TMPFILE = 0x08;
-const unsigned SECCOMP_THREAD = 0x10;
+const unsigned SECCOMP_RPATH = 0x10;
+const unsigned SECCOMP_THREAD = 0x20;
 
 static bool
 seccomp_apply_common(scmp_filter_ctx ctx, unsigned flags)
@@ -362,7 +397,12 @@ seccomp_apply_common(scmp_filter_ctx ctx, unsigned flags)
 		return false;
 	}
 
-	if (((flags & SECCOMP_TMPFILE) != 0) && !ALLOW(ctx, SYSCALLS_TMPFILE)) {
+	if (((flags & SECCOMP_TMPFILE) != 0) &&
+	    (seccomp_allow_tmpfile(ctx) != 0)) {
+		return false;
+	}
+
+	if (((flags & SECCOMP_RPATH) != 0) && (seccomp_allow_rpath(ctx) != 0)) {
 		return false;
 	}
 
@@ -392,6 +432,8 @@ seccomp_apply(unsigned flags)
 		pwarn("Error in seccomp_load()");
 		goto cleanup;
 	}
+
+	debug("seccomp_apply() succeeded");
 
 cleanup:
 	seccomp_release(ctx);

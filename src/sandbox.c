@@ -132,13 +132,15 @@ sandbox_restrict_filesystem(void)
 #endif
 }
 
+#define SECCOMP_IO_INET_COMMON_FLAGS                                           \
+	(SECCOMP_STDIO | SECCOMP_INET | SECCOMP_SANDBOX | SECCOMP_THREAD)
+
 void
 sandbox_only_io_inet_tmpfile(void)
 {
 	sandbox_restrict_filesystem();
 #if defined(__linux__)
-	seccomp_apply(SECCOMP_STDIO | SECCOMP_INET | SECCOMP_SANDBOX |
-	              SECCOMP_TMPFILE | SECCOMP_THREAD);
+	seccomp_apply(SECCOMP_IO_INET_COMMON_FLAGS | SECCOMP_TMPFILE);
 #elif defined(__OpenBSD__)
 	if (pledge("dns inet rpath stdio tmppath unveil", NULL) < 0) {
 		pwarn("Error in pledge()");
@@ -147,15 +149,15 @@ sandbox_only_io_inet_tmpfile(void)
 #endif
 	const size_t sz = ARRAY_SIZE(ALLOWED_PATHS);
 	sandbox_verify(ALLOWED_PATHS, sz, sz, true);
+	debug("%s() succeeded", __FUNCTION__);
 }
 
 void
-sandbox_only_io_inet(void)
+sandbox_only_io_inet_rpath(void)
 {
 	sandbox_restrict_filesystem(); // TODO: check if this fails on openbsd, since it involves a second set of unveil calls that duplicates what was already done in sandbox_only_io_inet_tmpfile(), which is typically called before this function (though does not necessarily always have to be)
 #if defined(__linux__)
-	seccomp_apply(SECCOMP_STDIO | SECCOMP_INET | SECCOMP_SANDBOX |
-	              SECCOMP_THREAD);
+	seccomp_apply(SECCOMP_IO_INET_COMMON_FLAGS | SECCOMP_RPATH);
 #elif defined(__OpenBSD__)
 	if (pledge("dns inet rpath stdio unveil", NULL) < 0) {
 		pwarn("Error in pledge()");
@@ -164,6 +166,7 @@ sandbox_only_io_inet(void)
 #endif
 	const size_t sz = ARRAY_SIZE(ALLOWED_PATHS);
 	sandbox_verify(ALLOWED_PATHS, sz, sz, true);
+	debug("%s() succeeded", __FUNCTION__);
 }
 
 void
@@ -172,12 +175,12 @@ sandbox_only_io(void)
 #if defined(__linux__)
 	landlock_apply(ALLOWED_PATHS, 1, 0);
 	seccomp_apply(SECCOMP_STDIO);
-	sandbox_verify(ALLOWED_PATHS, 1, ARRAY_SIZE(ALLOWED_PATHS), false);
 #elif defined(__OpenBSD__)
 	if (pledge("stdio", NULL) < 0) {
 		pwarn("Error in pledge()");
 		exit(EX_OSERR);
 	}
-	/* sandbox_verify() would abort() at this point */
 #endif
+	/* sandbox_verify() would abort() at this point */
+	debug("%s() succeeded", __FUNCTION__);
 }
