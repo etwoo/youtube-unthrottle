@@ -383,7 +383,7 @@ seccomp_apply_common(scmp_filter_ctx ctx, unsigned flags)
 {
 	if (!seccomp_allow(ctx,
 	                   SYSCALLS_SANDBOX_BASIS,
-			   ARRAY_SIZE(SYSCALLS_SANDBOX_BASIS))) {
+	                   ARRAY_SIZE(SYSCALLS_SANDBOX_BASIS))) {
 		return false;
 	}
 
