@@ -216,11 +216,19 @@ cleanup:
 bool
 url_download_from(const char *host, const char *path, int fd)
 {
-	return url_download_impl(NULL, host, path, fd);
+	const bool result = url_download_impl(NULL, host, path, fd);
+	if (result) {
+		debug("Downloaded %s%s to fd=%d", host, path, fd);
+	}
+	return result;
 }
 
 bool
 url_download(const char *url, int fd)
 {
-	return url_download_impl(url, NULL, NULL, fd);
+	const bool result = url_download_impl(url, NULL, NULL, fd);
+	if (result) {
+		debug("Downloaded %s to fd=%d", url, fd);
+	}
+	return result;
 }
