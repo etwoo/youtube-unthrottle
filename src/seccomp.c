@@ -281,22 +281,21 @@ seccomp_allow(scmp_filter_ctx ctx, const char **syscalls, size_t sz)
 			return false;
 		}
 		int rc = -1;
-		const char *cur = syscalls[i];
-		if (0 == strcmp(cur, "fcntl")) {
+		if (0 == strcmp(syscalls[i], "fcntl")) {
 			rc = seccomp_allow_fcntl(ctx, num);
-		} else if (0 == strcmp(cur, "mmap")) {
+		} else if (0 == strcmp(syscalls[i], "mmap")) {
 			rc = seccomp_allow_mmap(ctx, num);
-		} else if (0 == strcmp(cur, "mprotect")) {
+		} else if (0 == strcmp(syscalls[i], "mprotect")) {
 			rc = seccomp_allow_mprotect(ctx, num);
-		} else if (0 == strcmp(cur, "prctl")) {
+		} else if (0 == strcmp(syscalls[i], "prctl")) {
 			rc = seccomp_allow_prctl(ctx, num);
 		} else {
-			assert(0 != strcmp(cur, "openat"));
+			assert(0 != strcmp(syscalls[i], "openat"));
 			rc = seccomp_rule_add(ctx, SCMP_ACT_ALLOW, num, 0);
 		}
 		if (rc < 0) {
 			warn("Error in seccomp_rule_add() for syscall=%s: %s",
-			     cur,
+			     syscalls[i],
 			     strerror(-rc));
 			return false;
 		}
