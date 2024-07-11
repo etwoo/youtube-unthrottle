@@ -340,7 +340,7 @@ const unsigned SECCOMP_SANDBOX = 0x04;
 const unsigned SECCOMP_TMPFILE = 0x08;
 const unsigned SECCOMP_RPATH = 0x10;
 
-struct seccomp_apply_handler {
+static struct seccomp_apply_handler {
 	unsigned flag;
 	bool (*handle)(scmp_filter_ctx, const char **, size_t);
 	const char **syscalls;
