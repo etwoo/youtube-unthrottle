@@ -209,7 +209,7 @@ url_download_impl(const char *url_str,  /* may be NULL */
 	}
 
 cleanup:
-	curl_url_cleanup(url);   /* handles NULL gracefully */
+	curl_url_cleanup(url); /* handles NULL gracefully */
 	return (res == CURLE_OK);
 }
 

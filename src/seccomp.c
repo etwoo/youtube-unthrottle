@@ -303,8 +303,10 @@ seccomp_allow(scmp_filter_ctx ctx, const char **syscalls, size_t sz)
 	return true;
 }
 
-static int
-seccomp_allow_tmpfile(scmp_filter_ctx ctx)
+static bool
+seccomp_allow_tmpfile(scmp_filter_ctx ctx,
+                      const char **syscalls __attribute__((unused)),
+                      size_t sz __attribute__((unused)))
 {
 	const int num = SCMP_SYS(openat);
 	/*
@@ -314,11 +316,13 @@ seccomp_allow_tmpfile(scmp_filter_ctx ctx)
 		SCMP_A1(SCMP_CMP_MASKED_EQ, O_TMPFILE, O_TMPFILE),
 		SCMP_A1(SCMP_CMP_MASKED_EQ, O_RDONLY, O_RDONLY),
 	};
-	return seccomp_allow_cmp_union(ctx, num, op, ARRAY_SIZE(op));
+	return 0 == seccomp_allow_cmp_union(ctx, num, op, ARRAY_SIZE(op));
 }
 
-static int
-seccomp_allow_rpath(scmp_filter_ctx ctx)
+static bool
+seccomp_allow_rpath(scmp_filter_ctx ctx,
+                    const char **syscalls __attribute__((unused)),
+                    size_t sz __attribute__((unused)))
 {
 	const int num = SCMP_SYS(openat);
 	/*
@@ -327,10 +331,8 @@ seccomp_allow_rpath(scmp_filter_ctx ctx)
 	const struct scmp_arg_cmp op[] = {
 		SCMP_A1(SCMP_CMP_MASKED_EQ, O_RDONLY, O_RDONLY),
 	};
-	return seccomp_allow_cmp_union(ctx, num, op, ARRAY_SIZE(op));
+	return 0 == seccomp_allow_cmp_union(ctx, num, op, ARRAY_SIZE(op));
 }
-
-#define ALLOW(ctx, x) seccomp_allow(ctx, x, ARRAY_SIZE(x))
 
 const unsigned SECCOMP_STDIO = 0x01;
 const unsigned SECCOMP_INET = 0x02;
@@ -338,39 +340,69 @@ const unsigned SECCOMP_SANDBOX = 0x04;
 const unsigned SECCOMP_TMPFILE = 0x08;
 const unsigned SECCOMP_RPATH = 0x10;
 
+struct seccomp_apply_handler {
+	unsigned flag;
+	bool (*handle)(scmp_filter_ctx, const char **, size_t);
+	const char **syscalls;
+	size_t sz;
+} SECCOMP_APPLY_HANDLERS[] = {
+	{
+		SECCOMP_STDIO,
+		seccomp_allow,
+		SYSCALLS_STDIO,
+		ARRAY_SIZE(SYSCALLS_STDIO),
+	},
+	{
+		SECCOMP_INET,
+		seccomp_allow,
+		SYSCALLS_INET,
+		ARRAY_SIZE(SYSCALLS_INET),
+	},
+	{
+		SECCOMP_SANDBOX,
+		seccomp_allow,
+		SYSCALLS_SANDBOX_MODIFY,
+		ARRAY_SIZE(SYSCALLS_SANDBOX_MODIFY),
+	},
+	{
+		SECCOMP_TMPFILE,
+		seccomp_allow_tmpfile,
+		NULL,
+		0,
+	},
+	{
+		SECCOMP_RPATH,
+		seccomp_allow_rpath,
+		NULL,
+		0,
+	},
+};
+
 static bool
 seccomp_apply_common(scmp_filter_ctx ctx, unsigned flags)
 {
-	if (!ALLOW(ctx, SYSCALLS_SANDBOX_BASIS)) {
+	if (!seccomp_allow(ctx,
+	                   SYSCALLS_SANDBOX_BASIS,
+			   ARRAY_SIZE(SYSCALLS_SANDBOX_BASIS))) {
 		return false;
 	}
 
-	if (((flags & SECCOMP_SANDBOX) != 0) &&
-	    !ALLOW(ctx, SYSCALLS_SANDBOX_MODIFY)) {
-		return false;
-	}
+	for (size_t i = 0; i < ARRAY_SIZE(SECCOMP_APPLY_HANDLERS); ++i) {
+		struct seccomp_apply_handler *h = SECCOMP_APPLY_HANDLERS + i;
 
-	if (((flags & SECCOMP_STDIO) != 0) && !ALLOW(ctx, SYSCALLS_STDIO)) {
-		return false;
-	}
+		const bool match = (0 != (flags & h->flag));
+		if (!match) {
+			continue;
+		}
 
-	if (((flags & SECCOMP_INET) != 0) && !ALLOW(ctx, SYSCALLS_INET)) {
-		return false;
-	}
-
-	if (((flags & SECCOMP_TMPFILE) != 0) &&
-	    (seccomp_allow_tmpfile(ctx) != 0)) {
-		return false;
-	}
-
-	if (((flags & SECCOMP_RPATH) != 0) && (seccomp_allow_rpath(ctx) != 0)) {
-		return false;
+		const bool result = h->handle(ctx, h->syscalls, h->sz);
+		if (!result) {
+			return false;
+		}
 	}
 
 	return true;
 }
-
-#undef ALLOW
 
 void
 seccomp_apply(unsigned flags)
