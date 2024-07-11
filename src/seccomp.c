@@ -171,13 +171,6 @@ static const char *SYSCALLS_INET[] = {
 };
 
 /*
- * Linux syscalls corresponding to the ability to create new threads
- */
-static const char *SYSCALLS_THREAD[] = {
-	"clone", /* block clone3() and allow clone() with CLONE_THREAD */
-};
-
-/*
  * Linux syscalls corresponding to the ability to modify the sandbox itself, a
  * conceptual superset of OpenBSD pledge("unveil")
  */
@@ -212,66 +205,6 @@ seccomp_allow_cmp_union(scmp_filter_ctx ctx,
 		}
 	}
 	return 0;
-}
-
-static int
-seccomp_allow_clone_block_clone3(scmp_filter_ctx ctx, int num)
-{
-	/*
-	 * Trick glibc into thinking that clone3() syscall is unavailable,
-	 * causing a fallback to old-school clone().
-	 *
-	 * Reference: https://github.com/AkihiroSuda/clone3-workaround
-	 */
-	int rc = seccomp_rule_add(ctx,
-	                          SCMP_ACT_ERRNO(ENOSYS),
-	                          SCMP_SYS(clone3),
-	                          0);
-	if (rc < 0) {
-		pwarn("Error hiding clone3 syscall");
-		return rc;
-	}
-
-	const int required =
-#ifdef WITH_ADDRESS_SANITIZER
-		/*
-		 * ASan seems to affect how clone() gets called. CLONE_VM and
-		 * CLONE_THREAD in particular seem to be removed from the
-		 * eventual syscall. Maybe this is related to how ASan replaces
-		 * malloc() and catches memory errors like use-after-free,
-		 * buffer overflow, use-after-return, and so forth?
-		 *
-		 * In any case, it seems we cannot require CLONE_THREAD under
-		 * ASan. Instead, fall back to a different bitmask, identified
-		 * through guess and check. I don't think this provides any
-		 * meaningful restriction on clone() any longer, so this might
-		 * be worth reimplementing entirely in the future.
-		 */
-		CLONE_FS | CLONE_FILES
-#else
-		/*
-		 * Require clone() callers to be creating threads.
-		 */
-		CLONE_VM | CLONE_FS | CLONE_FILES | CLONE_SIGHAND | CLONE_THREAD
-#endif
-		;
-	const struct scmp_arg_cmp op[] = {
-		SCMP_A1(SCMP_CMP_MASKED_EQ, required, required),
-	};
-	return seccomp_allow_cmp_union(ctx, num, op, ARRAY_SIZE(op));
-
-	/*
-	 * Q: Why not add a seccomp rule on clone3() to require CLONE_THREAD,
-	 * instead of applying this logic to clone()?
-	 *
-	 * A: clone3() accepts the CLONE_THREAD flag inside of a struct, rather
-	 * than as a standalone numeric argument. Unfortunately, seccomp does
-	 * not appear to support inspecting struct members (or chasing pointers
-	 * in general) for syscall arguments. This is why we force a fallback
-	 * to clone(), where we can apply a rule to the old-school flags arg.
-	 *
-	 * Reference: https://lwn.net/Articles/822256/
-	 */
 }
 
 /*
@@ -349,9 +282,7 @@ seccomp_allow(scmp_filter_ctx ctx, const char **syscalls, size_t sz)
 		}
 		int rc = -1;
 		const char *cur = syscalls[i];
-		if (0 == strcmp(cur, "clone")) {
-			rc = seccomp_allow_clone_block_clone3(ctx, num);
-		} else if (0 == strcmp(cur, "fcntl")) {
+		if (0 == strcmp(cur, "fcntl")) {
 			rc = seccomp_allow_fcntl(ctx, num);
 		} else if (0 == strcmp(cur, "mmap")) {
 			rc = seccomp_allow_mmap(ctx, num);
@@ -407,7 +338,6 @@ const unsigned SECCOMP_INET = 0x02;
 const unsigned SECCOMP_SANDBOX = 0x04;
 const unsigned SECCOMP_TMPFILE = 0x08;
 const unsigned SECCOMP_RPATH = 0x10;
-const unsigned SECCOMP_THREAD = 0x20;
 
 static bool
 seccomp_apply_common(scmp_filter_ctx ctx, unsigned flags)
@@ -435,10 +365,6 @@ seccomp_apply_common(scmp_filter_ctx ctx, unsigned flags)
 	}
 
 	if (((flags & SECCOMP_RPATH) != 0) && (seccomp_allow_rpath(ctx) != 0)) {
-		return false;
-	}
-
-	if (((flags & SECCOMP_THREAD) != 0) && !ALLOW(ctx, SYSCALLS_THREAD)) {
 		return false;
 	}
 

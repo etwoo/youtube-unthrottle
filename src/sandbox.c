@@ -133,7 +133,7 @@ sandbox_restrict_filesystem(void)
 }
 
 #define SECCOMP_IO_INET_COMMON_FLAGS                                           \
-	(SECCOMP_STDIO | SECCOMP_INET | SECCOMP_SANDBOX | SECCOMP_THREAD)
+	(SECCOMP_STDIO | SECCOMP_INET | SECCOMP_SANDBOX)
 
 void
 sandbox_only_io_inet_tmpfile(void)

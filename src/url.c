@@ -15,11 +15,19 @@
  */
 #include <curl/curl.h>
 
+static const int FD_DISCARD = -1;
+
 static size_t
 write_to_tmpfile(char *ptr, size_t size, size_t nmemb, void *userdata)
 {
 	const size_t real_size = size * nmemb;
 	const int *fd = (const int *)userdata;
+	if (*fd == FD_DISCARD) {
+		/*
+		 * FD_DISCARD means caller wants data to be discarded.
+		 */
+		return real_size;
+	}
 
 	for (size_t remaining_bytes = real_size; remaining_bytes > 0;) {
 		const ssize_t written = write(*fd, ptr, remaining_bytes);
@@ -36,8 +44,21 @@ write_to_tmpfile(char *ptr, size_t size, size_t nmemb, void *userdata)
 static CURL *
 get_easy_handle(void)
 {
-	CURL *curl = curl_easy_init();
-	if (curl == NULL) {
+	static bool GLOBAL_CURL_EASY_HANDLE_INIT = false;
+	static CURLU *GLOBAL_CURL_EASY_HANDLE = NULL;
+	/*
+	 * Initialization of these static variables is not currently
+	 * thread-safe. If youtube-unthrottle ever becomes multithreaded, this
+	 * code will need to be retrofitted with a mutex, or the caller will
+	 * need to guarantee that this is called for the first time (e.g. via
+	 * url_global_init) before going multithreaded.
+	 */
+	if (!GLOBAL_CURL_EASY_HANDLE_INIT) {
+		GLOBAL_CURL_EASY_HANDLE_INIT = true;
+		GLOBAL_CURL_EASY_HANDLE = curl_easy_init();
+	}
+
+	if (GLOBAL_CURL_EASY_HANDLE == NULL) {
 		/*
 		 * From the libcurl manpages:
 		 *
@@ -47,9 +68,30 @@ get_easy_handle(void)
 		 * ... so there isn't much we can do here to get details.
 		 */
 		warn("curl_easy_init() returned NULL");
-		return NULL;
 	}
-	return curl;
+
+	return GLOBAL_CURL_EASY_HANDLE;
+}
+
+void
+url_global_init(void)
+{
+	curl_global_init(CURL_GLOBAL_DEFAULT);
+
+	/*
+	 * Nudge curl into creating its DNS resolver thread(s) now, before the
+	 * the sandbox closes and (for example) blocks the clone3() syscall.
+	 */
+	if (!url_download("https://www.youtube.com", FD_DISCARD)) {
+		warn("Error in url_prepare_threads");
+	}
+}
+
+void
+url_global_cleanup(void)
+{
+	curl_easy_cleanup(get_easy_handle()); /* handles NULL gracefully */
+	curl_global_cleanup();
 }
 
 static CURLU *
@@ -168,7 +210,6 @@ url_download_impl(const char *url_str,  /* may be NULL */
 
 cleanup:
 	curl_url_cleanup(url);   /* handles NULL gracefully */
-	curl_easy_cleanup(curl); /* handles NULL gracefully */
 	return (res == CURLE_OK);
 }
 

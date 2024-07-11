@@ -23,13 +23,13 @@ struct youtube_stream {
 void
 youtube_global_init(void)
 {
-	curl_global_init(CURL_GLOBAL_DEFAULT);
+	url_global_init();
 }
 
 void
 youtube_global_cleanup(void)
 {
-	curl_global_cleanup();
+	url_global_cleanup();
 }
 
 struct youtube_stream *

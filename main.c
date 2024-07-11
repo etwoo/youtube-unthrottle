@@ -67,9 +67,9 @@ main(int argc, const char *argv[])
 		return EX_OK;
 	}
 
+	youtube_global_init();
 	sandbox_only_io_inet_tmpfile();
 
-	youtube_global_init();
 	youtube_handle_t stream = youtube_stream_init();
 
 	struct youtube_setup_ops sops = {
