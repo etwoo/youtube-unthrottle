@@ -3,6 +3,9 @@
 
 extern const unsigned SECCOMP_STDIO;
 extern const unsigned SECCOMP_INET;
+extern const unsigned SECCOMP_SANDBOX; /* power to modify sandbox itself */
+extern const unsigned SECCOMP_TMPFILE;
+extern const unsigned SECCOMP_THREAD;
 
 void seccomp_apply(unsigned flags);
 

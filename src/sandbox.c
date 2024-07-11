@@ -112,13 +112,12 @@ static const char *ALLOWED_PATHS[] = {
 #endif
 };
 
-void
-sandbox_only_io_inet(void)
+static void
+sandbox_restrict_filesystem(void)
 {
 	const size_t sz = ARRAY_SIZE(ALLOWED_PATHS);
 #if defined(__linux__)
 	landlock_apply(ALLOWED_PATHS, sz, 443);
-	seccomp_apply(SECCOMP_STDIO | SECCOMP_INET);
 #elif defined(__OpenBSD__)
 	for (size_t i = 0; i < sz; ++i) {
 		if (unveil(ALLOWED_PATHS[i], "r") < 0) {
@@ -130,11 +129,40 @@ sandbox_only_io_inet(void)
 		pwarn("Error in final unveil()");
 		exit(EX_OSERR);
 	}
-	if (pledge("dns inet rpath stdio tmppath", NULL) < 0) {
+#endif
+}
+
+void
+sandbox_only_io_inet_tmpfile(void)
+{
+	sandbox_restrict_filesystem();
+#if defined(__linux__)
+	seccomp_apply(SECCOMP_STDIO | SECCOMP_INET | SECCOMP_SANDBOX |
+	              SECCOMP_TMPFILE | SECCOMP_THREAD);
+#elif defined(__OpenBSD__)
+	if (pledge("dns inet rpath stdio tmppath unveil", NULL) < 0) {
 		pwarn("Error in pledge()");
 		exit(EX_OSERR);
 	}
 #endif
+	const size_t sz = ARRAY_SIZE(ALLOWED_PATHS);
+	sandbox_verify(ALLOWED_PATHS, sz, sz, true);
+}
+
+void
+sandbox_only_io_inet(void)
+{
+	sandbox_restrict_filesystem(); // TODO: check if this fails on openbsd, since it involves a second set of unveil calls that duplicates what was already done in sandbox_only_io_inet_tmpfile(), which is typically called before this function (though does not necessarily always have to be)
+#if defined(__linux__)
+	seccomp_apply(SECCOMP_STDIO | SECCOMP_INET | SECCOMP_SANDBOX |
+	              SECCOMP_THREAD);
+#elif defined(__OpenBSD__)
+	if (pledge("dns inet rpath stdio unveil", NULL) < 0) {
+		pwarn("Error in pledge()");
+		exit(EX_OSERR);
+	}
+#endif
+	const size_t sz = ARRAY_SIZE(ALLOWED_PATHS);
 	sandbox_verify(ALLOWED_PATHS, sz, sz, true);
 }
 

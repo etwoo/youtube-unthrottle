@@ -1,12 +1,18 @@
 #include "seccomp.h"
 
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE /* for O_TMPFILE in open() */
+#endif
+#include <fcntl.h>
+#undef _GNU_SOURCE /* revert for any other includes */
+
 #include "array.h"
 #include "debug.h"
 
-#include <fcntl.h>       /* for F_* constants */
-#include <linux/prctl.h> /* for PR_* constants */
+#include <linux/prctl.h>
+#include <sched.h>
 #include <stdbool.h>
-#include <sys/mman.h> /* for MAP_* constants */
+#include <sys/mman.h>
 
 /*
  * Some helpful libseccomp references:
@@ -163,18 +169,32 @@ static const char *SYSCALLS_INET[] = {
 	"recvmsg",
 };
 
-/*
- * Linux syscalls corresponding to Cosmopolitan's kPledgeStart, kPledgeUnveil
- */
-static const char *SYSCALLS_SANDBOX_SETUP[] = {
-	"exit",
-	"rseq",
+// TODO, maybe update sandbox_verify() as dropping this causes P_tmpdir open() to fail with errno, even if landlock allows access to /tmp
+static const char *SYSCALLS_TMPFILE[] = {
 	"openat", /* for open() with O_TMPFILE */
-	"clone3",
+};
+
+static const char *SYSCALLS_THREAD[] = {
+	"clone3", /* for clone3() with CLONE_THREAD */
+};
+
+/*
+ * Linux syscalls corresponding to the ability to modify the sandbox itself, a
+ * conceptual superset of OpenBSD pledge("unveil")
+ */
+static const char *SYSCALLS_SANDBOX_MODIFY[] = {
 	"landlock_create_ruleset",
 	"landlock_add_rule",
 	"landlock_restrict_self",
 	"seccomp",
+};
+
+/*
+ * Linux syscalls that we always allow, no matter what the caller specifies.
+ */
+static const char *SYSCALLS_SANDBOX_BASIS[] = {
+	"exit",
+	"rseq",
 };
 
 /*
@@ -193,6 +213,16 @@ seccomp_allow_cmp_union(scmp_filter_ctx ctx,
 		}
 	}
 	return 0;
+}
+
+static int
+seccomp_allow_clone3(scmp_filter_ctx ctx, int num)
+{
+	// TODO: can seccomp access .flags member of struct clone_args ...?
+	const struct scmp_arg_cmp op[] = {
+		SCMP_A1(SCMP_CMP_MASKED_EQ, CLONE_THREAD, CLONE_THREAD),
+	};
+	return seccomp_allow_cmp_union(ctx, num, op, ARRAY_SIZE(op));
 }
 
 /*
@@ -244,6 +274,15 @@ seccomp_allow_mmap(scmp_filter_ctx ctx, int num)
 }
 
 static int
+seccomp_allow_openat(scmp_filter_ctx ctx, int num)
+{
+	const struct scmp_arg_cmp op[] = {
+		SCMP_A1(SCMP_CMP_MASKED_EQ, O_TMPFILE, O_TMPFILE),
+	};
+	return seccomp_allow_cmp_union(ctx, num, op, ARRAY_SIZE(op));
+}
+
+static int
 seccomp_allow_prctl(scmp_filter_ctx ctx, int num)
 {
 	const struct scmp_arg_cmp op[] = {
@@ -269,20 +308,25 @@ seccomp_allow(scmp_filter_ctx ctx, const char **syscalls, size_t sz)
 			return false;
 		}
 		int rc = -1;
-		if (0 == strcmp(syscalls[i], "fcntl")) {
+		const char *cur = syscalls[i];
+		if (0 == strcmp(cur, "clone3")) {
+			rc = seccomp_allow_clone3(ctx, num);
+		} else if (0 == strcmp(cur, "fcntl")) {
 			rc = seccomp_allow_fcntl(ctx, num);
-		} else if (0 == strcmp(syscalls[i], "mmap")) {
+		} else if (0 == strcmp(cur, "mmap")) {
 			rc = seccomp_allow_mmap(ctx, num);
-		} else if (0 == strcmp(syscalls[i], "mprotect")) {
+		} else if (0 == strcmp(cur, "mprotect")) {
 			rc = seccomp_allow_mprotect(ctx, num);
-		} else if (0 == strcmp(syscalls[i], "prctl")) {
+		} else if (0 == strcmp(cur, "openat")) {
+			rc = seccomp_allow_openat(ctx, num);
+		} else if (0 == strcmp(cur, "prctl")) {
 			rc = seccomp_allow_prctl(ctx, num);
 		} else {
 			rc = seccomp_rule_add(ctx, SCMP_ACT_ALLOW, num, 0);
 		}
 		if (rc < 0) {
 			warn("Error in seccomp_rule_add() for syscall=%s: %s",
-			     syscalls[i],
+			     cur,
 			     strerror(-rc));
 			return false;
 		}
@@ -290,49 +334,46 @@ seccomp_allow(scmp_filter_ctx ctx, const char **syscalls, size_t sz)
 	return true;
 }
 
-static bool
-seccomp_allow_stdio(scmp_filter_ctx ctx)
-{
-	return seccomp_allow(ctx, SYSCALLS_STDIO, ARRAY_SIZE(SYSCALLS_STDIO));
-}
+#define ALLOW(ctx, x) seccomp_allow(ctx, x, ARRAY_SIZE(x))
 
-static bool
-seccomp_allow_inet(scmp_filter_ctx ctx)
-{
-	return seccomp_allow(ctx, SYSCALLS_INET, ARRAY_SIZE(SYSCALLS_INET));
-}
-
-static bool
-seccomp_allow_sandbox_start(scmp_filter_ctx ctx)
-{
-	return seccomp_allow(ctx,
-	                     SYSCALLS_SANDBOX_SETUP,
-	                     ARRAY_SIZE(SYSCALLS_SANDBOX_SETUP));
-}
-
-const unsigned SECCOMP_STDIO = 0x1;
-const unsigned SECCOMP_INET = 0x2;
+const unsigned SECCOMP_STDIO = 0x01;
+const unsigned SECCOMP_INET = 0x02;
+const unsigned SECCOMP_SANDBOX = 0x04;
+const unsigned SECCOMP_TMPFILE = 0x08;
+const unsigned SECCOMP_THREAD = 0x10;
 
 static bool
 seccomp_apply_common(scmp_filter_ctx ctx, unsigned flags)
 {
-	const bool allow_stdio = ((flags & SECCOMP_STDIO) != 0);
-	const bool allow_inet = ((flags & SECCOMP_INET) != 0);
-
-	if (!seccomp_allow_sandbox_start(ctx)) {
+	if (!ALLOW(ctx, SYSCALLS_SANDBOX_BASIS)) {
 		return false;
 	}
 
-	if (allow_stdio && !seccomp_allow_stdio(ctx)) {
+	if (((flags & SECCOMP_SANDBOX) != 0) &&
+	    !ALLOW(ctx, SYSCALLS_SANDBOX_MODIFY)) {
 		return false;
 	}
 
-	if (allow_inet && !seccomp_allow_inet(ctx)) {
+	if (((flags & SECCOMP_STDIO) != 0) && !ALLOW(ctx, SYSCALLS_STDIO)) {
+		return false;
+	}
+
+	if (((flags & SECCOMP_INET) != 0) && !ALLOW(ctx, SYSCALLS_INET)) {
+		return false;
+	}
+
+	if (((flags & SECCOMP_TMPFILE) != 0) && !ALLOW(ctx, SYSCALLS_TMPFILE)) {
+		return false;
+	}
+
+	if (((flags & SECCOMP_THREAD) != 0) && !ALLOW(ctx, SYSCALLS_THREAD)) {
 		return false;
 	}
 
 	return true;
 }
+
+#undef ALLOW
 
 void
 seccomp_apply(unsigned flags)
