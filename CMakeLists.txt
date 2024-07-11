@@ -164,7 +164,6 @@ include(CheckSanitizer)
 
 check_sanitizer(CFLAG_ASAN -fsanitize=address asan)
 if (CFLAG_ASAN)
-	target_compile_definitions(my_cflags INTERFACE WITH_ADDRESS_SANITIZER)
 	target_compile_options(my_cflags INTERFACE -fsanitize=address)
 	add_library(libasan SHARED IMPORTED)
 	target_link_libraries(my_cflags INTERFACE asan)
