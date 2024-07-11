@@ -240,6 +240,19 @@ seccomp_allow_clone_block_clone3(scmp_filter_ctx ctx, int num)
 		SCMP_A1(SCMP_CMP_MASKED_EQ, required, required),
 	};
 	return seccomp_allow_cmp_union(ctx, num, op, ARRAY_SIZE(op));
+
+	/*
+	 * Q: Why not add a seccomp rule on clone3() to require CLONE_THREAD,
+	 * instead of applying this logic to clone()?
+	 *
+	 * A: clone3() accepts the CLONE_THREAD flag inside of a struct, rather
+	 * than as a standalone numeric argument. Unfortunately, seccomp does
+	 * not appear to support inspecting struct members (or chasing pointers
+	 * in general) for syscall arguments. This is why we force a fallback
+	 * to clone(), where we can apply a rule to the old-school flags arg.
+	 *
+	 * Reference: https://lwn.net/Articles/822256/
+	 */
 }
 
 /*
