@@ -232,10 +232,29 @@ seccomp_allow_clone_block_clone3(scmp_filter_ctx ctx, int num)
 		return rc;
 	}
 
-	/*
-	 * Require clone() callers to be creating a thread (not a process).
-	 */
-	const int required = CLONE_VM | CLONE_FS | CLONE_FILES | CLONE_THREAD;
+	const int required =
+#ifdef WITH_ADDRESS_SANITIZER
+		/*
+		 * ASan seems to affect how clone() gets called. CLONE_VM and
+		 * CLONE_THREAD in particular seem to be removed from the
+		 * eventual syscall. Maybe this is related to how ASan replaces
+		 * malloc() and catches memory errors like use-after-free,
+		 * buffer overflow, use-after-return, and so forth?
+		 *
+		 * In any case, it seems we cannot require CLONE_THREAD under
+		 * ASan. Instead, fall back to a different bitmask, identified
+		 * through guess and check. I don't think this provides any
+		 * meaningful restriction on clone() any longer, so this might
+		 * be worth reimplementing entirely in the future.
+		 */
+		CLONE_FS | CLONE_FILES
+#else
+		/*
+		 * Require clone() callers to be creating threads.
+		 */
+		CLONE_VM | CLONE_FS | CLONE_FILES | CLONE_SIGHAND | CLONE_THREAD
+#endif
+		;
 	const struct scmp_arg_cmp op[] = {
 		SCMP_A1(SCMP_CMP_MASKED_EQ, required, required),
 	};
