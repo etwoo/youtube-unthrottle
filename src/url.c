@@ -82,7 +82,7 @@ url_global_init(void)
 
 	/*
 	 * Nudge curl into creating its DNS resolver thread(s) now, before the
-	 * the sandbox closes and (for example) blocks the clone3() syscall.
+	 * the process sandbox closes and blocks the clone3() syscall.
 	 */
 	if (!url_download("https://www.youtube.com", FD_DISCARD)) {
 		warn("Error in url_prepare_threads");
