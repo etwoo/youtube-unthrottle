@@ -48,10 +48,12 @@ get_easy_handle(void)
 	static CURLU *GLOBAL_CURL_EASY_HANDLE = NULL;
 	/*
 	 * Initialization of these static variables is not currently
-	 * thread-safe. If youtube-unthrottle ever becomes multithreaded, this
-	 * code will need to be retrofitted with a mutex, or the caller will
-	 * need to guarantee that this is called for the first time (e.g. via
-	 * url_global_init) before going multithreaded.
+	 * thread-safe. Ditto for callers of get_easy_handle() who use the
+	 * resulting (cached, shared) curl easy handle.
+	 *
+	 * If youtube-unthrottle ever becomes multithreaded, this code will
+	 * need to be retrofitted with a mutex and/or the callers will need
+	 * to ensure that initialization happens while still single-threaded.
 	 */
 	if (!GLOBAL_CURL_EASY_HANDLE_INIT) {
 		GLOBAL_CURL_EASY_HANDLE_INIT = true;
