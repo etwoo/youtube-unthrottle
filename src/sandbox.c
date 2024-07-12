@@ -125,10 +125,6 @@ sandbox_restrict_filesystem(void)
 			exit(EX_OSERR);
 		}
 	}
-	if (unveil(NULL, NULL) < 0) {
-		pwarn("Error in final unveil()");
-		exit(EX_OSERR);
-	}
 #endif
 }
 
@@ -155,7 +151,7 @@ sandbox_only_io_inet_tmpfile(void)
 void
 sandbox_only_io_inet_rpath(void)
 {
-	sandbox_restrict_filesystem(); // TODO: check if this fails on openbsd, since it involves a second set of unveil calls that duplicates what was already done in sandbox_only_io_inet_tmpfile(), which is typically called before this function (though does not necessarily always have to be)
+	sandbox_restrict_filesystem();
 #if defined(__linux__)
 	seccomp_apply(SECCOMP_IO_INET_COMMON_FLAGS | SECCOMP_RPATH);
 #elif defined(__OpenBSD__)
@@ -176,6 +172,10 @@ sandbox_only_io(void)
 	landlock_apply(ALLOWED_PATHS, 1, 0);
 	seccomp_apply(SECCOMP_STDIO);
 #elif defined(__OpenBSD__)
+	if (unveil(NULL, NULL) < 0) {
+		pwarn("Error in final unveil()");
+		exit(EX_OSERR);
+	}
 	if (pledge("stdio", NULL) < 0) {
 		pwarn("Error in pledge()");
 		exit(EX_OSERR);
