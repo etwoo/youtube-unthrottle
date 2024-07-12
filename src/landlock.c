@@ -145,7 +145,7 @@ landlock_apply(const char **paths, int sz, int port)
 		goto cleanup;
 	}
 
-	debug("ruleset_apply() succeeded");
+	debug("landlock_apply() succeeded");
 
 cleanup:
 	if (fd >= 0 && close(fd) < 0) {

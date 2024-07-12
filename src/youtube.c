@@ -23,13 +23,13 @@ struct youtube_stream {
 void
 youtube_global_init(void)
 {
-	curl_global_init(CURL_GLOBAL_DEFAULT);
+	url_global_init();
 }
 
 void
 youtube_global_cleanup(void)
 {
-	curl_global_cleanup();
+	url_global_cleanup();
 }
 
 struct youtube_stream *
@@ -273,27 +273,24 @@ static bool
 download_and_mmap_tmpfd(const char *url,
                         const char *host,
                         const char *path,
-                        int *fd,
+                        int fd,
                         void **addr,
                         unsigned int *sz)
 {
-	*fd = tmpfd();
-	if (*fd < 0) {
-		goto error;
-	}
+	assert(fd >= 0);
 
 	if (url) {
-		if (!url_download(url, *fd)) {
+		if (!url_download(url, fd)) {
 			goto error;
 		}
 	} else {
 		assert(host != NULL && path != NULL);
-		if (!url_download_from(host, path, *fd)) {
+		if (!url_download_from(host, path, fd)) {
 			goto error;
 		}
 	}
 
-	if (!tmpmap(*fd, addr, sz)) {
+	if (!tmpmap(fd, addr, sz)) {
 		goto error;
 	}
 
@@ -324,6 +321,16 @@ youtube_stream_setup(struct youtube_stream *p,
 		ops->before(p);
 	}
 
+	html_fd = tmpfd();
+	if (html_fd < 0) {
+		goto cleanup;
+	}
+
+	js_fd = tmpfd();
+	if (js_fd < 0) {
+		goto cleanup;
+	}
+
 	if (ops && ops->before_inet) {
 		ops->before_inet(p);
 	}
@@ -331,7 +338,7 @@ youtube_stream_setup(struct youtube_stream *p,
 	if (!download_and_mmap_tmpfd(target,
 	                             NULL,
 	                             NULL,
-	                             &html_fd,
+	                             html_fd,
 	                             &html,
 	                             &html_sz)) {
 		goto cleanup;
@@ -354,7 +361,7 @@ youtube_stream_setup(struct youtube_stream *p,
 	if (!download_and_mmap_tmpfd(NULL,
 	                             "www.youtube.com",
 	                             p->basejs,
-	                             &js_fd,
+	                             js_fd,
 	                             &js,
 	                             &js_sz)) {
 		goto cleanup;
