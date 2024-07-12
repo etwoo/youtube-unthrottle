@@ -11,7 +11,6 @@
 
 #include <assert.h>
 #include <linux/prctl.h>
-#include <sched.h>
 #include <stdbool.h>
 #include <sys/mman.h>
 
