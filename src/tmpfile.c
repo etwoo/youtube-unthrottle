@@ -33,6 +33,7 @@ tmpfd(void)
 		}
 	}
 #endif
+	debug("Got tmpfile with fd=%d", fd);
 	return fd;
 }
 

@@ -40,6 +40,12 @@ usage(const char *cmd, int rc)
 }
 
 static void
+before_inet(youtube_handle_t h __attribute__((unused)))
+{
+	sandbox_only_io_inet_rpath();
+}
+
+static void
 after_inet(youtube_handle_t h __attribute__((unused)))
 {
 	sandbox_only_io();
@@ -55,19 +61,20 @@ main(int argc, const char *argv[])
 	if (0 == strncmp(ARG_HELP, argv[1], strlen(ARG_HELP))) {
 		return usage(argv[0], EX_OK);
 	} else if (0 == strncmp(ARG_SANDBOX, argv[1], strlen(ARG_SANDBOX))) {
-		sandbox_only_io_inet();
+		sandbox_only_io_inet_tmpfile();
+		sandbox_only_io_inet_rpath();
 		sandbox_only_io();
 		return EX_OK;
 	}
 
-	sandbox_only_io_inet();
-
 	youtube_global_init();
+	sandbox_only_io_inet_tmpfile();
+
 	youtube_handle_t stream = youtube_stream_init();
 
 	struct youtube_setup_ops sops = {
 		.before = NULL,
-		.before_inet = NULL,
+		.before_inet = before_inet,
 		.after_inet = after_inet,
 		.before_parse = NULL,
 		.after_parse = NULL,
