@@ -12,6 +12,8 @@ add_executable(youtube-unthrottle)
 target_sources(youtube-unthrottle PUBLIC main.c)
 target_link_libraries(youtube-unthrottle PRIVATE youtube my_cflags)
 
+include(get_cpm)
+
 add_subdirectory(src)
 if (BUILD_TESTING)
 	add_subdirectory(tests)

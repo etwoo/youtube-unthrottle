@@ -35,7 +35,6 @@
 static const char *SYSCALLS_STDIO[] = {
 	"sigreturn",
 	"restart_syscall",
-	"exit_group",
 	"sched_yield",
 	"sched_getaffinity",
 	"clock_getres",
@@ -184,6 +183,7 @@ static const char *SYSCALLS_SANDBOX_MODIFY[] = {
  * Linux syscalls that we always allow, no matter what the caller specifies.
  */
 static const char *SYSCALLS_SANDBOX_BASIS[] = {
+	"exit_group",
 	"exit",
 	"rseq",
 };
