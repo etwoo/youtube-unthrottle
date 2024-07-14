@@ -329,7 +329,7 @@ seccomp_allow_rpath(scmp_filter_ctx ctx,
 	 * Require openat() callers to provide O_RDONLY (i.e. all-zero flags).
 	 */
 	const struct scmp_arg_cmp op[] = {
-		SCMP_A2(SCMP_CMP_EQ, O_RDONLY),
+		SCMP_A2(SCMP_CMP_EQ, O_RDONLY, SCMP_ARG_UNUSED),
 	};
 	return 0 == seccomp_allow_cmp_union(ctx, num, op, ARRAY_SIZE(op));
 }
