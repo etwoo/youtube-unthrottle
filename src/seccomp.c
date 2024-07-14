@@ -309,9 +309,10 @@ seccomp_allow_tmpfile(scmp_filter_ctx ctx,
 {
 	const int num = SCMP_SYS(openat);
 	/*
-	 * Require openat() callers to provide O_TMPFILE or O_RDONLY.
+	 * Require openat() callers to be doing either landlock-related O_PATH
+	 * calls or tmpfile-creation O_TMPFILE|O_EXCL calls.
 	 */
-	const int allowed_flags = O_RDONLY | O_CLOEXEC | O_PATH | O_TMPFILE;
+	const int allowed_flags = O_PATH | O_TMPFILE | O_EXCL | O_RDWR;
 	const struct scmp_arg_cmp op[] = {
 		SCMP_A2(SCMP_CMP_MASKED_EQ, ~allowed_flags, 0),
 	};
@@ -325,11 +326,10 @@ seccomp_allow_rpath(scmp_filter_ctx ctx,
 {
 	const int num = SCMP_SYS(openat);
 	/*
-	 * Require openat() callers to provide O_RDONLY.
+	 * Require openat() callers to provide O_RDONLY (i.e. all-zero flags).
 	 */
-	const int allowed_flags = O_RDONLY | O_CLOEXEC | O_PATH;
 	const struct scmp_arg_cmp op[] = {
-		SCMP_A2(SCMP_CMP_MASKED_EQ, ~allowed_flags, 0),
+		SCMP_A2(SCMP_CMP_EQ, O_RDONLY),
 	};
 	return 0 == seccomp_allow_cmp_union(ctx, num, op, ARRAY_SIZE(op));
 }
