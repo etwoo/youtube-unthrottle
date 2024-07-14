@@ -162,13 +162,16 @@ target_compile_options(my_cflags INTERFACE
 # ... except -fsanitize=thread, since we're single-threaded (for now)
 #
 
+add_library(sanitizers INTERFACE)
+target_link_libraries(youtube-unthrottle PRIVATE sanitizers)
+
 include(CheckSanitizer)
 
 check_sanitizer(CFLAG_ASAN -fsanitize=address asan)
 if (CFLAG_ASAN)
-	target_compile_options(my_cflags INTERFACE -fsanitize=address)
+	target_compile_options(sanitizers INTERFACE -fsanitize=address)
 	add_library(libasan SHARED IMPORTED)
-	target_link_libraries(my_cflags INTERFACE asan)
+	target_link_libraries(sanitizers INTERFACE asan)
 endif (CFLAG_ASAN)
 
 check_sanitizer(CFLAG_LSAN -fsanitize=leak lsan)
@@ -176,17 +179,17 @@ if (CFLAG_LSAN)
 	if (CFLAG_ASAN)
 		message(STATUS "LSan stand-alone mode is unnecessary because ASan is already enabled")
 	else (CFLAG_ASAN)
-		target_compile_options(my_cflags INTERFACE -fsanitize=leak)
+		target_compile_options(sanitizers INTERFACE -fsanitize=leak)
 		add_library(liblsan SHARED IMPORTED)
-		target_link_libraries(my_cflags INTERFACE lsan)
+		target_link_libraries(sanitizers INTERFACE lsan)
 	endif (CFLAG_ASAN)
 endif (CFLAG_LSAN)
 
 check_sanitizer(CFLAG_UBSAN -fsanitize=undefined ubsan)
 if (CFLAG_UBSAN)
-	target_compile_options(my_cflags INTERFACE -fsanitize=undefined)
+	target_compile_options(sanitizers INTERFACE -fsanitize=undefined)
 	add_library(libubsan SHARED IMPORTED)
-	target_link_libraries(my_cflags INTERFACE ubsan)
+	target_link_libraries(sanitizers INTERFACE ubsan)
 endif (CFLAG_UBSAN)
 
 #
