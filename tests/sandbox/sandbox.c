@@ -45,10 +45,11 @@ TEST before_landlock_network(void) {
 	memset(&sa, 0, sizeof(sa));
 	sa.sin_family = AF_INET;
 	sa.sin_port = htons(443);
-	sa.sin_addr.s_addr = inet_addr("example.com");
+	inet_pton(AF_INET, "93.184.215.14", &sa.sin_addr); /* example.com */
 
 	int rc = connect(sfd, &sa, sizeof(sa));
-	ASSERT_EQ(rc, 0);
+	printf("huh %d\n", rc);
+	ASSERT_GTE(rc, 0);
 
 	rc = close(sfd);
 	ASSERT_EQ(rc, 0);
@@ -115,7 +116,7 @@ TEST after_landlock_network(void) {
 	memset(&sa, 0, sizeof(sa));
 	sa.sin_family = AF_INET;
 	sa.sin_port = htons(443);
-	sa.sin_addr.s_addr = inet_addr("example.com");
+	inet_pton(AF_INET, "93.184.215.14", &sa.sin_addr); /* example.com */
 
 	int rc = connect(sfd, &sa, sizeof(sa));
 	ASSERT_EQ(rc, -1);
