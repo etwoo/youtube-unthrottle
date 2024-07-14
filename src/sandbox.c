@@ -5,7 +5,7 @@
 #include "landlock.h"
 #include "seccomp.h"
 
-#include <arpa/inet.h> /* for inet_addr() */
+#include <arpa/inet.h>
 #include <assert.h>
 #include <fcntl.h>
 #include <netdb.h>
