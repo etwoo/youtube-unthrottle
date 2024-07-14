@@ -8,9 +8,11 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 add_library(my_cflags INTERFACE)
 target_compile_features(my_cflags INTERFACE c_std_99)
 
+add_library(sanitizers INTERFACE)
+
 add_executable(youtube-unthrottle)
 target_sources(youtube-unthrottle PUBLIC main.c)
-target_link_libraries(youtube-unthrottle PRIVATE youtube my_cflags)
+target_link_libraries(youtube-unthrottle PRIVATE sanitizers youtube my_cflags)
 
 include(get_cpm)
 
@@ -161,9 +163,6 @@ target_compile_options(my_cflags INTERFACE
 #
 # ... except -fsanitize=thread, since we're single-threaded (for now)
 #
-
-add_library(sanitizers INTERFACE)
-target_link_libraries(youtube-unthrottle PRIVATE sanitizers)
 
 include(CheckSanitizer)
 
