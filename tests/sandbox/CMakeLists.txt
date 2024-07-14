@@ -18,11 +18,10 @@ macro(add_sandbox_test source)
 		${PROJECT_SOURCE_DIR}/src
 		${greatest_SOURCE_DIR}
 	)
-	target_link_libraries(${target} PRIVATE youtube my_cflags seccomp)
+	target_link_libraries(${target} PRIVATE youtube my_cflags)
 endmacro()
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-	add_library(libseccomp SHARED IMPORTED)
 	add_sandbox_test(landlock)
 	add_sandbox_test(seccomp)
 endif (CMAKE_SYSTEM_NAME STREQUAL "Linux")
