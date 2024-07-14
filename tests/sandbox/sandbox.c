@@ -48,7 +48,6 @@ TEST before_landlock_network(void) {
 	inet_pton(AF_INET, "93.184.215.14", &sa.sin_addr); /* example.com */
 
 	int rc = connect(sfd, &sa, sizeof(sa));
-	printf("huh %d\n", rc);
 	ASSERT_GTE(rc, 0);
 
 	rc = close(sfd);
