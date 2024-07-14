@@ -226,7 +226,6 @@ TEST seccomp_io_inet_rpath(void) {
 
 	/* open should no longer allow O_TMPFILE */
 	int tmpfd = open(P_tmpdir, O_TMPFILE | O_EXCL | O_RDWR, 0);
-	printf("WTF tmpfd %d\n", tmpfd);
 	ASSERT_LT(tmpfd, 0);
 	ASSERT_EQ(errno, EACCES);
 
