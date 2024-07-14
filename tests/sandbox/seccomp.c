@@ -16,20 +16,26 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 
-TEST getpid_allowed(void) {
+TEST
+getpid_allowed(void)
+{
 	ASSERT_GT(getpid(), 0);
 	PASS();
 }
 
-TEST mmap_exec_allowed(void) {
-	void *p = mmap(NULL, 4, PROT_EXEC, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+TEST
+mmap_exec_allowed(void)
+{
+	void *p = mmap(NULL, 4, PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 	ASSERT_NEQ(p, MAP_FAILED);
 	int rc = munmap(p, 4);
 	ASSERT_EQ(rc, 0);
 	PASS();
 }
 
-TEST socket_allowed(void) {
+TEST
+socket_allowed(void)
+{
 	int sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	ASSERT_GTE(sfd, 0);
 	int rc = close(sfd);
@@ -37,7 +43,9 @@ TEST socket_allowed(void) {
 	PASS();
 }
 
-TEST open_rdonly_allowed(void) {
+TEST
+open_rdonly_allowed(void)
+{
 	int fd = open(__FILE__, O_RDONLY);
 	ASSERT_GTE(fd, 0);
 	int rc = close(fd);
@@ -45,7 +53,9 @@ TEST open_rdonly_allowed(void) {
 	PASS();
 }
 
-TEST open_tmpfile_allowed(void) {
+TEST
+open_tmpfile_allowed(void)
+{
 	int tmpfd = open(P_tmpdir, O_TMPFILE | O_EXCL | O_RDWR, 0);
 	ASSERT_GTE(tmpfd, 0);
 	int rc = close(tmpfd);
@@ -53,14 +63,17 @@ TEST open_tmpfile_allowed(void) {
 	PASS();
 }
 
-TEST seccomp_change_allowed(void) {
+TEST
+seccomp_change_allowed(void)
+{
 	uint32_t action;
 	int rc = syscall(__NR_seccomp, SECCOMP_GET_ACTION_AVAIL, 0, &action);
 	ASSERT_EQ(rc, 0);
 	PASS();
 }
 
-SUITE(before_seccomp) {
+SUITE(before_seccomp)
+{
 	RUN_TEST(getpid_allowed);
 	RUN_TEST(mmap_exec_allowed);
 	RUN_TEST(socket_allowed);
@@ -69,21 +82,26 @@ SUITE(before_seccomp) {
 	RUN_TEST(seccomp_change_allowed);
 }
 
-TEST mmap_exec_blocked(void) {
-	void *p = mmap(NULL, 4, PROT_EXEC, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+TEST
+mmap_exec_blocked(void)
+{
+	void *p = mmap(NULL, 4, PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 	ASSERT_EQ(p, MAP_FAILED);
 	PASS();
 }
 
-TEST mmap_read_allowed(void) {
-	void *p = mmap(NULL, 4, PROT_READ, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+TEST
+mmap_read_allowed(void)
+{
+	void *p = mmap(NULL, 4, PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 	ASSERT_NEQ(p, MAP_FAILED);
 	int rc = munmap(p, 4);
 	ASSERT_EQ(rc, 0);
 	PASS();
 }
 
-SUITE(seccomp_io_inet_tmpfile) {
+SUITE(seccomp_io_inet_tmpfile)
+{
 	seccomp_apply(SECCOMP_SANDBOX | SECCOMP_STDIO | SECCOMP_INET |
 	              SECCOMP_TMPFILE);
 
@@ -96,14 +114,17 @@ SUITE(seccomp_io_inet_tmpfile) {
 	RUN_TEST(seccomp_change_allowed);
 }
 
-TEST open_tmpfile_blocked(void) {
+TEST
+open_tmpfile_blocked(void)
+{
 	int tmpfd = open(P_tmpdir, O_TMPFILE | O_EXCL | O_RDWR, 0);
 	ASSERT_LT(tmpfd, 0);
 	ASSERT_EQ(errno, EACCES);
 	PASS();
 }
 
-SUITE(seccomp_io_inet_rpath) {
+SUITE(seccomp_io_inet_rpath)
+{
 	seccomp_apply(SECCOMP_SANDBOX | SECCOMP_STDIO | SECCOMP_INET |
 	              SECCOMP_RPATH);
 
@@ -116,14 +137,17 @@ SUITE(seccomp_io_inet_rpath) {
 	RUN_TEST(seccomp_change_allowed);
 }
 
-TEST open_rdonly_blocked(void) {
+TEST
+open_rdonly_blocked(void)
+{
 	int fd = open(__FILE__, O_RDONLY);
 	ASSERT_LT(fd, 0);
 	ASSERT_EQ(errno, EACCES);
 	PASS();
 }
 
-SUITE(seccomp_io_inet) {
+SUITE(seccomp_io_inet)
+{
 	seccomp_apply(SECCOMP_SANDBOX | SECCOMP_STDIO | SECCOMP_INET);
 
 	RUN_TEST(getpid_allowed);
@@ -135,14 +159,17 @@ SUITE(seccomp_io_inet) {
 	RUN_TEST(seccomp_change_allowed);
 }
 
-TEST socket_blocked(void) {
+TEST
+socket_blocked(void)
+{
 	int sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	ASSERT_LT(sfd, 0);
 	ASSERT_EQ(errno, EACCES);
 	PASS();
 }
 
-SUITE(seccomp_io) {
+SUITE(seccomp_io)
+{
 	seccomp_apply(SECCOMP_SANDBOX | SECCOMP_STDIO);
 
 	RUN_TEST(getpid_allowed);
@@ -154,7 +181,9 @@ SUITE(seccomp_io) {
 	RUN_TEST(seccomp_change_allowed);
 }
 
-TEST seccomp_change_blocked(void) {
+TEST
+seccomp_change_blocked(void)
+{
 	uint32_t action;
 	int rc = syscall(__NR_seccomp, SECCOMP_GET_ACTION_AVAIL, 0, &action);
 	ASSERT_NEQ(rc, 0);
@@ -162,7 +191,8 @@ TEST seccomp_change_blocked(void) {
 	PASS();
 }
 
-SUITE(seccomp_io_sealed_sandbox) {
+SUITE(seccomp_io_sealed_sandbox)
+{
 	seccomp_apply(SECCOMP_STDIO);
 
 	RUN_TEST(getpid_allowed);

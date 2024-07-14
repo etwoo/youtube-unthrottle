@@ -13,7 +13,9 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-TEST before_landlock_filesystem(void) {
+TEST
+before_landlock_filesystem(void)
+{
 	int fd = open(__FILE__, O_RDONLY);
 	ASSERT_GTE(fd, 0);
 	int rc = close(fd);
@@ -27,7 +29,9 @@ TEST before_landlock_filesystem(void) {
 	PASS();
 }
 
-TEST before_landlock_network(void) {
+TEST
+before_landlock_network(void)
+{
 	int sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	ASSERT_GTE(sfd, 0);
 
@@ -46,12 +50,15 @@ TEST before_landlock_network(void) {
 	PASS();
 }
 
-SUITE(before_landlock) {
+SUITE(before_landlock)
+{
 	RUN_TEST(before_landlock_filesystem);
 	RUN_TEST(before_landlock_network);
 }
 
-TEST setup_partial_landlock(void) {
+TEST
+setup_partial_landlock(void)
+{
 	const char *paths[] = {
 		P_tmpdir,
 	};
@@ -59,7 +66,9 @@ TEST setup_partial_landlock(void) {
 	PASS();
 }
 
-TEST partial_landlock_filesystem(void) {
+TEST
+partial_landlock_filesystem(void)
+{
 	int fd = open(__FILE__, O_RDONLY);
 	ASSERT_LT(fd, 0);
 
@@ -71,18 +80,23 @@ TEST partial_landlock_filesystem(void) {
 	PASS();
 }
 
-SUITE(partial_landlock) {
+SUITE(partial_landlock)
+{
 	RUN_TEST(setup_partial_landlock);
 	RUN_TEST(partial_landlock_filesystem);
 	RUN_TEST(before_landlock_network); /* reuse before_* network check */
 }
 
-TEST setup_full_landlock(void) {
+TEST
+setup_full_landlock(void)
+{
 	landlock_apply(NULL, 0, 0);
 	PASS();
 }
 
-TEST after_landlock_filesystem(void) {
+TEST
+after_landlock_filesystem(void)
+{
 	int fd = open(__FILE__, O_RDONLY);
 	ASSERT_LT(fd, 0);
 
@@ -92,7 +106,9 @@ TEST after_landlock_filesystem(void) {
 	PASS();
 }
 
-TEST after_landlock_network(void) {
+TEST
+after_landlock_network(void)
+{
 	int sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	ASSERT_GTE(sfd, 0);
 
@@ -112,7 +128,8 @@ TEST after_landlock_network(void) {
 	PASS();
 }
 
-SUITE(full_landlock) {
+SUITE(full_landlock)
+{
 	RUN_TEST(setup_full_landlock);
 	RUN_TEST(after_landlock_filesystem);
 	RUN_TEST(after_landlock_network);
