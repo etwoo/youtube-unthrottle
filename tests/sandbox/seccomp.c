@@ -62,7 +62,7 @@ open_tmpfile_allowed(void)
 TEST
 seccomp_change_allowed(void)
 {
-	uint32_t action;
+	uint32_t action = SECCOMP_RET_KILL_PROCESS;
 	int rc = syscall(__NR_seccomp, SECCOMP_GET_ACTION_AVAIL, 0, &action);
 	ASSERT_EQ(rc, 0);
 	PASS();
@@ -180,7 +180,7 @@ SUITE(seccomp_io)
 TEST
 seccomp_change_blocked(void)
 {
-	uint32_t action;
+	uint32_t action = SECCOMP_RET_KILL_PROCESS;
 	int rc = syscall(__NR_seccomp, SECCOMP_GET_ACTION_AVAIL, 0, &action);
 	ASSERT_NEQ(rc, 0);
 	ASSERT_EQ(errno, EACCES);
