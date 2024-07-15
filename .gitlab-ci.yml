@@ -1,7 +1,7 @@
-image: archlinux/archlinux:base-devel
+image: debian:unstable-slim
 
 .build_dependencies: &build_dependencies
-    - pacman --noconfirm -Sy cmake clang curl duktape git libseccomp pcre2
+    - apt-get install --yes cmake clang curl duktape git libseccomp pcre2
 
 # TODO: add -Werror=dev back: https://github.com/cpm-cmake/CPM.cmake/pull/570
 # TODO: enable sandbox-landlock if CI runners start supporting landlock APIs
