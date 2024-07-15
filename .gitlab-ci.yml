@@ -1,8 +1,7 @@
-image: debian:unstable-slim
+image: archlinux/archlinux:base-devel
 
 .build_dependencies: &build_dependencies
-    - apt-get update
-    - apt-get install --yes cmake clang duktape-dev git libcurl4-openssl-dev libpcre2-dev libseccomp-dev
+    - pacman --noconfirm -Sy cmake clang curl duktape git libseccomp pcre2
 
 # TODO: add -Werror=dev back: https://github.com/cpm-cmake/CPM.cmake/pull/570
 # TODO: enable sandbox-landlock if CI runners start supporting landlock APIs
@@ -17,6 +16,7 @@ build_with_gcc:
     - *build_dependencies
   script:
     - export CC=gcc
+    - export CXX=g++
     - *build_steps
   artifacts:
     when: always
@@ -31,6 +31,7 @@ build_with_clang:
     - *build_dependencies
   script:
     - export CC=clang
+    - export CXX=clang++
     - *build_steps
   artifacts:
     when: always

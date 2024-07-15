@@ -33,7 +33,9 @@ tmpfd(void)
 		}
 	}
 #endif
-	debug("Got tmpfile with fd=%d", fd);
+	if (fd >= 0) {
+		debug("Got tmpfile with fd=%d", fd);
+	}
 	return fd;
 }
 

@@ -6,6 +6,7 @@
 
 #include "greatest.h"
 #include "seccomp.h"
+#include "tmpfile.h"
 
 #include <arpa/inet.h>
 #include <errno.h>
@@ -56,10 +57,9 @@ open_rdonly_allowed(void)
 TEST
 open_tmpfile_allowed(void)
 {
-	// TODO: i suspect this is failing under CI because the archlinux:base-devel container image might not set /tmp to 777 (??)
-	int tmpfd = open(P_tmpdir, O_TMPFILE | O_EXCL | O_RDWR, 0);
-	ASSERT_GTE(tmpfd, 0);
-	int rc = close(tmpfd);
+	int tmp = tmpfd();
+	ASSERT_GTE(tmp, 0);
+	int rc = close(tmp);
 	ASSERT_EQ(rc, 0);
 	PASS();
 }
@@ -118,8 +118,8 @@ SUITE(seccomp_io_inet_tmpfile)
 TEST
 open_tmpfile_blocked(void)
 {
-	int tmpfd = open(P_tmpdir, O_TMPFILE | O_EXCL | O_RDWR, 0);
-	ASSERT_LT(tmpfd, 0);
+	int tmp = tmpfd();
+	ASSERT_LT(tmp, 0);
 	ASSERT_EQ(errno, EACCES);
 	PASS();
 }
