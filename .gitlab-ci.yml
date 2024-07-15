@@ -7,7 +7,7 @@ image: archlinux/archlinux:base-devel
 .build_steps: &build_steps
     - cmake -Wdev -Wno-error=dev -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=1 . -B ./build
     - cmake --build ./build
-    - cd ./build/tests && ctest -E '^cli-try-sandbox$' .
+    - cd ./build/tests && ctest --output-junit junit.xml -E '^cli-try-sandbox$' .
 
 build_with_gcc:
   stage: build
@@ -17,6 +17,12 @@ build_with_gcc:
     - export CC=gcc
     - export CXX=g++
     - *build_steps
+  artifacts:
+    when: always
+    paths:
+      - ./build/tests/junit.xml
+    reports:
+      junit: ./build/tests/junit.xml
 
 build_with_clang:
   stage: build
@@ -26,6 +32,12 @@ build_with_clang:
     - export CC=clang
     - export CXX=clang++
     - *build_steps
+  artifacts:
+    when: always
+    paths:
+      - ./build/tests/junit.xml
+    reports:
+      junit: ./build/tests/junit.xml
 
 # TODO: add -Werror=dev back: https://github.com/cpm-cmake/CPM.cmake/pull/570
 format:
