@@ -17,7 +17,6 @@ build_with_gcc:
     - *build_dependencies
   script:
     - export CC=gcc
-    - export CXX=g++
     - *build_steps
   artifacts:
     when: always
@@ -32,7 +31,6 @@ build_with_clang:
     - *build_dependencies
   script:
     - export CC=clang
-    - export CXX=clang++
     - *build_steps
   artifacts:
     when: always
