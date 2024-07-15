@@ -1,7 +1,7 @@
 image: archlinux/archlinux:base-devel
 
 .build_dependencies: &build_dependencies
-    - pacman --noconfirm -Sy cmake clang curl duktape pcre2
+    - pacman --noconfirm -Sy cmake clang curl duktape git libseccomp pcre2
 
 # TODO: add -Werror=dev back: https://github.com/cpm-cmake/CPM.cmake/pull/570
 .build_steps: &build_steps
