@@ -3,8 +3,9 @@ image: archlinux/archlinux:base-devel
 .build_dependencies: &build_dependencies
     - pacman --noconfirm -Sy cmake clang curl duktape pcre2
 
+# TODO: add -Werror=dev back: https://github.com/cpm-cmake/CPM.cmake/pull/570
 .build_steps: &build_steps
-    - cmake -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=1 . -B ./build
+    - cmake -Wdev -Wno-error=dev -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=1 . -B ./build
     - cmake --build ./build
     - cd ./build/tests && ctest -E '^cli-try-sandbox$' .
 
@@ -26,10 +27,11 @@ build_with_clang:
     - export CXX=clang++
     - *build_steps
 
+# TODO: add -Werror=dev back: https://github.com/cpm-cmake/CPM.cmake/pull/570
 format:
   stage: build
   before_script:
     - *build_dependencies
   script:
-    - cmake -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Debug . -B ./build
+    - cmake -Wdev -Wno-error=dev -DCMAKE_BUILD_TYPE=Debug . -B ./build
     - cmake --build ./build --target fmt
