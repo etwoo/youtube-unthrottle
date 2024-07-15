@@ -16,11 +16,6 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 
-/*
- * Workaround lack of P_tmpdir under containerized CI runners.
- */
-#define TEST_TMPDIR "/var/tmp"
-
 TEST
 getpid_allowed(void)
 {
@@ -61,7 +56,7 @@ open_rdonly_allowed(void)
 TEST
 open_tmpfile_allowed(void)
 {
-	int tmpfd = open(TEST_TMPDIR, O_TMPFILE | O_EXCL | O_RDWR, 0);
+	int tmpfd = open(P_tmpdir, O_TMPFILE | O_EXCL | O_RDWR, 0);
 	ASSERT_GTE(tmpfd, 0);
 	int rc = close(tmpfd);
 	ASSERT_EQ(rc, 0);
@@ -122,7 +117,7 @@ SUITE(seccomp_io_inet_tmpfile)
 TEST
 open_tmpfile_blocked(void)
 {
-	int tmpfd = open(TEST_TMPDIR, O_TMPFILE | O_EXCL | O_RDWR, 0);
+	int tmpfd = open(P_tmpdir, O_TMPFILE | O_EXCL | O_RDWR, 0);
 	ASSERT_LT(tmpfd, 0);
 	ASSERT_EQ(errno, EACCES);
 	PASS();
