@@ -4,10 +4,11 @@ image: archlinux/archlinux:base-devel
     - pacman --noconfirm -Sy cmake clang curl duktape git libseccomp pcre2
 
 # TODO: add -Werror=dev back: https://github.com/cpm-cmake/CPM.cmake/pull/570
+# TODO: enable sandbox-landlock if CI runners start supporting landlock APIs
 .build_steps: &build_steps
     - cmake -Wdev -Wno-error=dev -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=1 . -B ./build
     - cmake --build ./build
-    - cd ./build/tests && ctest --output-junit junit.xml -E '^cli-try-sandbox$' .
+    - cd ./build/tests && ctest --output-junit junit.xml -E '^cli-try-sandbox|sandbox-landlock$' .
 
 build_with_gcc:
   stage: build
