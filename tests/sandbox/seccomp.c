@@ -56,6 +56,7 @@ open_rdonly_allowed(void)
 TEST
 open_tmpfile_allowed(void)
 {
+	// TODO: i suspect this is failing under CI because the archlinux:base-devel container image might not set /tmp to 777 (??)
 	int tmpfd = open(P_tmpdir, O_TMPFILE | O_EXCL | O_RDWR, 0);
 	ASSERT_GTE(tmpfd, 0);
 	int rc = close(tmpfd);

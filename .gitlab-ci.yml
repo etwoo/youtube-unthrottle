@@ -1,6 +1,7 @@
 image: debian:unstable-slim
 
 .build_dependencies: &build_dependencies
+    - apt-get update
     - apt-get install --yes cmake clang curl duktape git libseccomp pcre2
 
 # TODO: add -Werror=dev back: https://github.com/cpm-cmake/CPM.cmake/pull/570
