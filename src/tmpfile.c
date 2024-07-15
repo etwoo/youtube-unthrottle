@@ -23,8 +23,10 @@ tmpfd(void)
 	 * Put another way, if we fclose(fs) before returning fd, the latter
 	 * will produce an EBADF when we attempt to close(fd).
 	 */
+#if !defined(__clang__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wanalyzer-malloc-leak"
+#endif
 
 	int fd = -1;
 	{
@@ -50,7 +52,9 @@ tmpfd(void)
 	}
 	return fd;
 
+#if !defined(__clang__)
 #pragma GCC diagnostic pop
+#endif
 }
 
 bool
