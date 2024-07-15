@@ -31,7 +31,7 @@ tmpfd(void)
 		/*
 		 * strace suggests that tmpfile() already uses O_TMPFILE when
 		 * possible, at least under glibc. As a result, there's no need
-		 * to call open() with O_TMPFILE|O_EXCL|O_CREATE ourselves.
+		 * to call open() with O_TMPFILE|O_EXCL ourselves.
 		 */
 		FILE *fs = tmpfile();
 		if (fs == NULL) {

@@ -313,6 +313,7 @@ seccomp_allow_tmpfile(scmp_filter_ctx ctx,
 	 * calls or tmpfile-creation O_TMPFILE|O_EXCL calls.
 	 */
 	const int allowed_flags = O_PATH | O_TMPFILE | O_EXCL | O_RDWR;
+	/* TODO: this is currently too restrictive, in the case where tmpfile() has to fallback to regular O_CREAT due to lack of support for O_TMPFILE on the underlying filesystem, in particular overlayfs inside of CI container image */
 	const struct scmp_arg_cmp op[] = {
 		SCMP_A2(SCMP_CMP_MASKED_EQ, ~allowed_flags, 0),
 	};
