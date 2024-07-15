@@ -1,11 +1,6 @@
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE /* for O_TMPFILE in open() */
-#endif
-#include <fcntl.h>
-#undef _GNU_SOURCE /* revert for any other includes */
-
 #include "greatest.h"
 #include "landlock.h"
+#include "tmpfile.h"
 
 #include <arpa/inet.h>
 #include <errno.h>
@@ -21,9 +16,9 @@ before_landlock_filesystem(void)
 	int rc = close(fd);
 	ASSERT_EQ(rc, 0);
 
-	int tmpfd = open(P_tmpdir, O_TMPFILE | O_EXCL | O_RDWR, 0);
-	ASSERT_GTE(tmpfd, 0);
-	rc = close(tmpfd);
+	int tmp = tmpfd();
+	ASSERT_GTE(tmp, 0);
+	rc = close(tmp);
 	ASSERT_EQ(rc, 0);
 
 	PASS();
@@ -41,11 +36,10 @@ before_landlock_network(void)
 	sa.sin_port = htons(443);
 	inet_pton(AF_INET, "93.184.215.14", &sa.sin_addr); /* example.com */
 
-	int rc = connect(sfd, &sa, sizeof(sa));
-	ASSERT_GTE(rc, 0);
-
-	rc = close(sfd);
-	ASSERT_EQ(rc, 0);
+	const int connected = connect(sfd, (struct sockaddr *)&sa, sizeof(sa));
+	const int closed = close(sfd);
+	ASSERT_EQ(connected, 0);
+	ASSERT_EQ(closed, 0);
 
 	PASS();
 }
@@ -72,9 +66,9 @@ partial_landlock_filesystem(void)
 	int fd = open(__FILE__, O_RDONLY);
 	ASSERT_LT(fd, 0);
 
-	int tmpfd = open(P_tmpdir, O_TMPFILE | O_EXCL | O_RDWR, 0);
-	ASSERT_GTE(tmpfd, 0);
-	int rc = close(tmpfd);
+	int tmp = tmpfd();
+	ASSERT_GTE(tmp, 0);
+	int rc = close(tmp);
 	ASSERT_EQ(rc, 0);
 
 	PASS();
@@ -100,8 +94,8 @@ after_landlock_filesystem(void)
 	int fd = open(__FILE__, O_RDONLY);
 	ASSERT_LT(fd, 0);
 
-	int tmpfd = open(P_tmpdir, O_TMPFILE | O_EXCL | O_RDWR, 0);
-	ASSERT_LT(tmpfd, 0);
+	int tmp = tmpfd();
+	ASSERT_LT(tmp, 0);
 
 	PASS();
 }
@@ -118,7 +112,7 @@ after_landlock_network(void)
 	sa.sin_port = htons(443);
 	inet_pton(AF_INET, "93.184.215.14", &sa.sin_addr); /* example.com */
 
-	int rc = connect(sfd, &sa, sizeof(sa));
+	int rc = connect(sfd, (struct sockaddr *)&sa, sizeof(sa));
 	ASSERT_EQ(rc, -1);
 	ASSERT_EQ(errno, EACCES);
 

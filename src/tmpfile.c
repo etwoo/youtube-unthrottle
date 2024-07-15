@@ -1,14 +1,9 @@
 #include "tmpfile.h"
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE /* for O_TMPFILE in open() */
-#endif
-#include <fcntl.h>
-#undef _GNU_SOURCE /* revert for any other includes */
-
 #include "debug.h"
 
 #include <assert.h>
+#include <fcntl.h>
 #include <stdio.h> /* for P_tmpdir */
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -16,27 +11,46 @@
 int
 tmpfd(void)
 {
+	/*
+	 * Disable spurious -fanalyzer warning under GCC:
+	 *
+	 *     warning: leak of "fs" [CWE-401] [-Wanalyzer-malloc-leak]
+	 *
+	 * GCC seems to think we should fclose(fs) before returning the fd
+	 * produced by fileno(fs), but this would actually result in the fd
+	 * being invalidated as well.
+	 *
+	 * Put another way, if we fclose(fs) before returning fd, the latter
+	 * will produce an EBADF when we attempt to close(fd).
+	 */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wanalyzer-malloc-leak"
+
 	int fd = -1;
-#if defined(__linux__)
-	fd = open(P_tmpdir, O_TMPFILE | O_EXCL | O_RDWR, 0);
-	if (fd < 0) {
-		pwarn("Error creating tmpfile via open() with O_TMPFILE");
-	}
-#else
-	FILE *fs = tmpfile();
-	if (fs == NULL) {
-		pwarn("Error in tmpfile()");
-	} else {
-		fd = fileno(fs);
-		if (fd < 0) {
-			pwarn("Error in fileno()");
+	{
+		/*
+		 * strace suggests that tmpfile() already uses O_TMPFILE when
+		 * possible, at least under glibc. As a result, there's no need
+		 * to call open() with O_TMPFILE|O_EXCL|O_CREATE ourselves.
+		 */
+		FILE *fs = tmpfile();
+		if (fs == NULL) {
+			pwarn("Error in tmpfile()");
+		} else {
+			fd = fileno(fs);
+			if (fd < 0) {
+				pwarn("Error in fileno()");
+				fclose(fs);
+			}
 		}
 	}
-#endif
+
 	if (fd >= 0) {
 		debug("Got tmpfile with fd=%d", fd);
 	}
 	return fd;
+
+#pragma GCC diagnostic pop
 }
 
 bool
