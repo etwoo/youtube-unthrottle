@@ -1,5 +1,6 @@
-#include "greatest.h"
 #include "seccomp.h"
+
+#include "greatest.h"
 #include "tmpfile.h"
 
 #include <arpa/inet.h>

@@ -1,5 +1,6 @@
-#include "greatest.h"
 #include "landlock.h"
+
+#include "greatest.h"
 #include "tmpfile.h"
 
 #include <arpa/inet.h>
