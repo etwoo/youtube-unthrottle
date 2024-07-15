@@ -2,7 +2,7 @@ image: debian:unstable-slim
 
 .build_dependencies: &build_dependencies
     - apt-get update
-    - apt-get install --yes cmake clang curl duktape git libseccomp pcre2
+    - apt-get install --yes cmake clang duktape-dev git libcurl4-openssl-dev libpcre2-dev libseccomp-dev
 
 # TODO: add -Werror=dev back: https://github.com/cpm-cmake/CPM.cmake/pull/570
 # TODO: enable sandbox-landlock if CI runners start supporting landlock APIs
