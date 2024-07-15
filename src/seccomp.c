@@ -356,10 +356,13 @@ seccomp_allow_rpath(scmp_filter_ctx ctx,
 {
 	const int num = SCMP_SYS(openat);
 	/*
-	 * Require openat() callers to provide O_RDONLY (i.e. all-zero flags).
+	 * Require openat() callers to be doing either landlock-related O_PATH
+	 * calls or O_RDONLY operations (i.e. all-zero flags).
 	 */
+	assert(O_RDONLY == 0);
+	const int allowed_flags = O_PATH | O_RDONLY;
 	const struct scmp_arg_cmp op[] = {
-		SCMP_A2(SCMP_CMP_EQ, O_RDONLY, SCMP_ARG_UNUSED),
+		SCMP_A2(SCMP_CMP_MASKED_EQ, ~allowed_flags, 0),
 	};
 	int rc = seccomp_allow_cmp_union(ctx, num, op, ARRAY_SIZE(op));
 	if (rc < 0) {
