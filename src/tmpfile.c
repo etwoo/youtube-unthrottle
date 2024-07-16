@@ -7,54 +7,49 @@
 #include <stdio.h> /* for P_tmpdir */
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 int
 tmpfd(void)
 {
-	/*
-	 * Disable spurious -fanalyzer warning under GCC:
-	 *
-	 *     warning: leak of "fs" [CWE-401] [-Wanalyzer-malloc-leak]
-	 *
-	 * GCC seems to think we should fclose(fs) before returning the fd
-	 * produced by fileno(fs), but this would actually result in the fd
-	 * being invalidated as well.
-	 *
-	 * Put another way, if we fclose(fs) before returning fd, the latter
-	 * will produce an EBADF when we attempt to close(fd).
-	 */
-#if !defined(__clang__)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wanalyzer-malloc-leak"
-#endif
-
 	int fd = -1;
-	{
-		/*
-		 * strace suggests that tmpfile() already uses O_TMPFILE when
-		 * possible, at least under glibc. As a result, there's no need
-		 * to call open() with O_TMPFILE|O_EXCL ourselves.
-		 */
-		FILE *fs = tmpfile();
-		if (fs == NULL) {
-			pwarn("Error in tmpfile()");
-		} else {
-			fd = fileno(fs);
-			if (fd < 0) {
-				pwarn("Error in fileno()");
-				fclose(fs);
-			}
-		}
+
+	/*
+	 * strace suggests that tmpfile() already uses O_TMPFILE when
+	 * possible, at least under glibc. As a result, there's no need
+	 * to call open() with O_TMPFILE|O_EXCL ourselves.
+	 */
+	FILE *fs = tmpfile();
+	if (fs == NULL) {
+		pwarn("Error in tmpfile()");
+		goto cleanup;
 	}
 
-	if (fd >= 0) {
-		debug("Got tmpfile with fd=%d", fd);
+	/*
+	 * dup the underlying file descriptor behind the tmpfile stream, and
+	 * then close the original stream. I believe (though I'm not totally
+	 * sure) that this is necessary to avoid leaking the FILE* itself.
+	 */
+
+	int inner_fd = fileno(fs);
+	if (inner_fd < 0) {
+		pwarn("Error in fileno()");
+		goto cleanup;
+	}
+
+	fd = dup(inner_fd);
+	if (fd < 0) {
+		pwarn("Error in dup()");
+		goto cleanup;
+	}
+
+	debug("Got tmpfile with fd=%d", fd);
+
+cleanup:
+	if (fs != NULL && fclose(fs) != 0) {
+		pwarn("Ignoring error while fclose()-ing tmpfile stream");
 	}
 	return fd;
-
-#if !defined(__clang__)
-#pragma GCC diagnostic pop
-#endif
 }
 
 bool
