@@ -3,10 +3,8 @@ image: archlinux/archlinux:base-devel
 .build_dependencies: &build_dependencies
     - pacman --noconfirm -Sy cmake clang curl duktape git libseccomp pcre2
 
-# TODO: add -Werror=dev back: https://github.com/cpm-cmake/CPM.cmake/pull/570
-# TODO: enable sandbox-landlock if CI runners start supporting landlock APIs
 .build_steps: &build_steps
-    - cmake -Wdev -Wno-error=dev -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=1 . -B ./build
+    - cmake -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=1 . -B ./build
     - cmake --build ./build
     - cd ./build/tests && ctest --output-junit junit.xml -E '^cli-try-sandbox|sandbox-landlock$' .
 
@@ -40,11 +38,10 @@ build_with_clang:
     reports:
       junit: ./build/tests/junit.xml
 
-# TODO: add -Werror=dev back: https://github.com/cpm-cmake/CPM.cmake/pull/570
 format:
   stage: build
   before_script:
     - *build_dependencies
   script:
-    - cmake -Wdev -Wno-error=dev -DCMAKE_BUILD_TYPE=Debug . -B ./build
+    - cmake -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Debug . -B ./build
     - cmake --build ./build --target fmt
