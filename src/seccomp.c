@@ -10,9 +10,12 @@
 #include "debug.h"
 
 #include <assert.h>
+#include <linux/magic.h> /* for OVERLAYFS_SUPER_MAGIC */
 #include <linux/prctl.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <sys/mman.h>
+#include <sys/statfs.h>
 
 /*
  * Some helpful libseccomp references:
@@ -35,7 +38,6 @@
 static const char *SYSCALLS_STDIO[] = {
 	"sigreturn",
 	"restart_syscall",
-	"exit_group",
 	"sched_yield",
 	"sched_getaffinity",
 	"clock_getres",
@@ -184,9 +186,16 @@ static const char *SYSCALLS_SANDBOX_MODIFY[] = {
  * Linux syscalls that we always allow, no matter what the caller specifies.
  */
 static const char *SYSCALLS_SANDBOX_BASIS[] = {
+	"exit_group",
 	"exit",
 	"rseq",
 };
+
+static void
+warn_seccomp_rule_add(const char *sc, int rc)
+{
+	warn("Error adding seccomp rule for syscall=%s: %s", sc, strerror(-rc));
+}
 
 /*
  * Add each syscall rule separately, producing an OR relationship (union).
@@ -293,9 +302,7 @@ seccomp_allow(scmp_filter_ctx ctx, const char **syscalls, size_t sz)
 			rc = seccomp_rule_add(ctx, SCMP_ACT_ALLOW, num, 0);
 		}
 		if (rc < 0) {
-			warn("Error in seccomp_rule_add() for syscall=%s: %s",
-			     syscalls[i],
-			     strerror(-rc));
+			warn_seccomp_rule_add(syscalls[i], rc);
 			return false;
 		}
 	}
@@ -308,14 +315,38 @@ seccomp_allow_tmpfile(scmp_filter_ctx ctx,
                       size_t sz __attribute__((unused)))
 {
 	const int num = SCMP_SYS(openat);
+
+	struct statfs fs;
+	memset(&fs, 0, sizeof(fs));
+	if (statfs(P_tmpdir, &fs) < 0) {
+		pwarn("Error in statfs()");
+	} else if (fs.f_type == OVERLAYFS_SUPER_MAGIC) {
+		warn("%s is overlayfs, which does not support O_TMPFILE; "
+		     "now allowing openat() unconditionally and relying on "
+		     "Landlock to restrict access to the filesystem!",
+		     P_tmpdir);
+		int rc = seccomp_rule_add(ctx, SCMP_ACT_ALLOW, num, 0);
+		if (rc < 0) {
+			warn_seccomp_rule_add("openat", rc);
+			return false;
+		}
+		return true;
+	}
+
 	/*
-	 * Require openat() callers to provide O_TMPFILE or O_RDONLY.
+	 * Require openat() callers to be doing either landlock-related O_PATH
+	 * calls or tmpfile-creation O_TMPFILE|O_EXCL calls.
 	 */
+	const int allowed_flags = O_PATH | O_TMPFILE | O_EXCL | O_RDWR;
 	const struct scmp_arg_cmp op[] = {
-		SCMP_A1(SCMP_CMP_MASKED_EQ, O_TMPFILE, O_TMPFILE),
-		SCMP_A1(SCMP_CMP_MASKED_EQ, O_RDONLY, O_RDONLY),
+		SCMP_A2(SCMP_CMP_MASKED_EQ, ~allowed_flags, 0),
 	};
-	return 0 == seccomp_allow_cmp_union(ctx, num, op, ARRAY_SIZE(op));
+	int rc = seccomp_allow_cmp_union(ctx, num, op, ARRAY_SIZE(op));
+	if (rc < 0) {
+		warn_seccomp_rule_add("openat", rc);
+		return false;
+	}
+	return true;
 }
 
 static bool
@@ -325,12 +356,20 @@ seccomp_allow_rpath(scmp_filter_ctx ctx,
 {
 	const int num = SCMP_SYS(openat);
 	/*
-	 * Require openat() callers to provide O_RDONLY.
+	 * Require openat() callers to be doing either landlock-related O_PATH
+	 * calls or O_RDONLY operations (i.e. all-zero flags).
 	 */
+	assert(O_RDONLY == 0);
+	const int allowed_flags = O_PATH | O_RDONLY;
 	const struct scmp_arg_cmp op[] = {
-		SCMP_A1(SCMP_CMP_MASKED_EQ, O_RDONLY, O_RDONLY),
+		SCMP_A2(SCMP_CMP_MASKED_EQ, ~allowed_flags, 0),
 	};
-	return 0 == seccomp_allow_cmp_union(ctx, num, op, ARRAY_SIZE(op));
+	int rc = seccomp_allow_cmp_union(ctx, num, op, ARRAY_SIZE(op));
+	if (rc < 0) {
+		warn_seccomp_rule_add("openat", rc);
+		return false;
+	}
+	return true;
 }
 
 const unsigned SECCOMP_STDIO = 0x01;

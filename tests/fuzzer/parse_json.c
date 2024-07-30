@@ -14,6 +14,8 @@ got_audio(const char *val __attribute__((unused)),
 {
 }
 
+int LLVMFuzzerTestOneInput(const char *data, size_t sz);
+
 int
 LLVMFuzzerTestOneInput(const char *data, size_t sz)
 {

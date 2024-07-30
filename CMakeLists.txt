@@ -8,9 +8,13 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 add_library(my_cflags INTERFACE)
 target_compile_features(my_cflags INTERFACE c_std_99)
 
+add_library(sanitizers INTERFACE)
+
 add_executable(youtube-unthrottle)
 target_sources(youtube-unthrottle PUBLIC main.c)
-target_link_libraries(youtube-unthrottle PRIVATE youtube my_cflags)
+target_link_libraries(youtube-unthrottle PRIVATE sanitizers youtube my_cflags)
+
+include(get_cpm)
 
 add_subdirectory(src)
 if (BUILD_TESTING)
@@ -40,6 +44,7 @@ add_custom_target(fmt COMMAND find
 	${CMAKE_SOURCE_DIR}/main.c
 	${CMAKE_SOURCE_DIR}/include
 	${CMAKE_SOURCE_DIR}/src
+	${CMAKE_SOURCE_DIR}/tests
 	( -name *.h -or -name *.c )
 	-exec ${FORMATTER} -Werror --dry-run {} +
 	VERBATIM USES_TERMINAL
@@ -164,9 +169,9 @@ include(CheckSanitizer)
 
 check_sanitizer(CFLAG_ASAN -fsanitize=address asan)
 if (CFLAG_ASAN)
-	target_compile_options(my_cflags INTERFACE -fsanitize=address)
+	target_compile_options(sanitizers INTERFACE -fsanitize=address)
 	add_library(libasan SHARED IMPORTED)
-	target_link_libraries(my_cflags INTERFACE asan)
+	target_link_libraries(sanitizers INTERFACE asan)
 endif (CFLAG_ASAN)
 
 check_sanitizer(CFLAG_LSAN -fsanitize=leak lsan)
@@ -174,17 +179,17 @@ if (CFLAG_LSAN)
 	if (CFLAG_ASAN)
 		message(STATUS "LSan stand-alone mode is unnecessary because ASan is already enabled")
 	else (CFLAG_ASAN)
-		target_compile_options(my_cflags INTERFACE -fsanitize=leak)
+		target_compile_options(sanitizers INTERFACE -fsanitize=leak)
 		add_library(liblsan SHARED IMPORTED)
-		target_link_libraries(my_cflags INTERFACE lsan)
+		target_link_libraries(sanitizers INTERFACE lsan)
 	endif (CFLAG_ASAN)
 endif (CFLAG_LSAN)
 
 check_sanitizer(CFLAG_UBSAN -fsanitize=undefined ubsan)
 if (CFLAG_UBSAN)
-	target_compile_options(my_cflags INTERFACE -fsanitize=undefined)
+	target_compile_options(sanitizers INTERFACE -fsanitize=undefined)
 	add_library(libubsan SHARED IMPORTED)
-	target_link_libraries(my_cflags INTERFACE ubsan)
+	target_link_libraries(sanitizers INTERFACE ubsan)
 endif (CFLAG_UBSAN)
 
 #

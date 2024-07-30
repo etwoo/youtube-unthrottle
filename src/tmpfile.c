@@ -1,39 +1,54 @@
 #include "tmpfile.h"
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE /* for O_TMPFILE in open() */
-#endif
-#include <fcntl.h>
-#undef _GNU_SOURCE /* revert for any other includes */
-
 #include "debug.h"
 
 #include <assert.h>
+#include <fcntl.h>
 #include <stdio.h> /* for P_tmpdir */
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 int
 tmpfd(void)
 {
 	int fd = -1;
-#if defined(__linux__)
-	fd = open(P_tmpdir, O_TMPFILE | O_EXCL | O_RDWR, 0);
-	if (fd < 0) {
-		pwarn("Error creating tmpfile via open() with O_TMPFILE");
-	}
-#else
+
+	/*
+	 * strace suggests that tmpfile() already uses O_TMPFILE when
+	 * possible, at least under glibc. As a result, there's no need
+	 * to call open() with O_TMPFILE|O_EXCL ourselves.
+	 */
 	FILE *fs = tmpfile();
 	if (fs == NULL) {
 		pwarn("Error in tmpfile()");
-	} else {
-		fd = fileno(fs);
-		if (fd < 0) {
-			pwarn("Error in fileno()");
-		}
+		goto cleanup;
 	}
-#endif
+
+	/*
+	 * dup the underlying file descriptor behind the tmpfile stream, and
+	 * then close the original stream. I believe (though I'm not totally
+	 * sure) that this is necessary to avoid leaking the FILE* itself.
+	 */
+
+	int inner_fd = fileno(fs);
+	if (inner_fd < 0) {
+		pwarn("Error in fileno()");
+		goto cleanup;
+	}
+
+	fd = dup(inner_fd);
+	if (fd < 0) {
+		pwarn("Error in dup()");
+		goto cleanup;
+	}
+
 	debug("Got tmpfile with fd=%d", fd);
+
+cleanup:
+	if (fs != NULL && fclose(fs) != 0) {
+		pwarn("Ignoring error while fclose()-ing tmpfile stream");
+	}
 	return fd;
 }
 

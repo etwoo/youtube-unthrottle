@@ -5,6 +5,7 @@
 #include "landlock.h"
 #include "seccomp.h"
 
+#include <arpa/inet.h>
 #include <assert.h>
 #include <fcntl.h>
 #include <netdb.h>
@@ -70,29 +71,25 @@ sandbox_verify(const char **paths,
 
 	/* sanity-check sandbox: network connect() */
 
-	struct addrinfo hints;
-	memset(&hints, 0, sizeof(hints));
-	hints.ai_family = AF_INET;
-	hints.ai_socktype = SOCK_STREAM;
-
-	struct addrinfo *ai = NULL;
-	rc = getaddrinfo("example.com", "443", &hints, &ai);
+	int sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (!connect_allowed) {
-		assert(rc != 0);
-		assert(ai == NULL);
+		assert(sfd < 0);
 		goto done;
 	}
 	assert(connect_allowed);
-	assert(rc == 0);
-
-	int sfd = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
 	assert(sfd >= 0);
 
-	rc = connect(sfd, ai->ai_addr, ai->ai_addrlen);
+	struct sockaddr_in sa;
+	memset(&sa, 0, sizeof(sa));
+	sa.sin_family = AF_INET;
+	sa.sin_port = htons(443);
+	inet_pton(AF_INET, "93.184.215.14", &sa.sin_addr); /* example.com */
+
+	rc = connect(sfd, (struct sockaddr *)&sa, sizeof(sa));
 	assert(rc == 0);
 
-	freeaddrinfo(ai);
-	close(sfd);
+	rc = close(sfd);
+	assert(rc == 0);
 
 done:
 	debug("sandbox verify: %s connect()",
