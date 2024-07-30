@@ -5,9 +5,14 @@
 #include <stdio.h>
 
 static void
-vlog(const char *fname, unsigned int lineno, const char *pattern, va_list ap)
+vlog(const char *level,
+     const char *fname,
+     unsigned int lineno,
+     const char *pattern,
+     va_list ap)
 {
-	fprintf(stderr, "%s:%u: ", fname, lineno);
+	fprintf(stderr, "%-*s %s:%u: ", 5, level, fname, lineno);
+	/* magic number 5: longest logging level is 5 chars */
 	vfprintf(stderr, pattern, ap);
 	fputc('\n', stderr);
 
@@ -23,7 +28,7 @@ debug_at_line(const char *fname, unsigned int lineno, const char *pattern, ...)
 #ifdef WITH_DEBUG_OUTPUT
 	va_list ap;
 	va_start(ap, pattern);
-	vlog(fname, lineno, pattern, ap);
+	vlog("DEBUG", fname, lineno, pattern, ap);
 	va_end(ap);
 #else
 	(void)fname;   /* unused */
@@ -37,6 +42,6 @@ warn_at_line(const char *fname, unsigned int lineno, const char *pattern, ...)
 {
 	va_list ap;
 	va_start(ap, pattern);
-	vlog(fname, lineno, pattern, ap);
+	vlog("WARN", fname, lineno, pattern, ap);
 	va_end(ap);
 }

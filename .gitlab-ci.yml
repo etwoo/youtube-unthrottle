@@ -1,12 +1,12 @@
 image: archlinux/archlinux:base-devel
 
 .build_dependencies: &build_dependencies
-    - pacman --noconfirm -Sy cmake clang curl duktape pcre2
+    - pacman --noconfirm -Sy cmake clang curl duktape git libseccomp pcre2
 
 .build_steps: &build_steps
     - cmake -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=1 . -B ./build
     - cmake --build ./build
-    - cd ./build/tests && ctest -E '^cli-try-sandbox$' .
+    - cd ./build/tests && ctest --output-junit junit.xml -E '^cli-try-sandbox|sandbox-landlock$' .
 
 build_with_gcc:
   stage: build
@@ -16,6 +16,12 @@ build_with_gcc:
     - export CC=gcc
     - export CXX=g++
     - *build_steps
+  artifacts:
+    when: always
+    paths:
+      - ./build/tests/junit.xml
+    reports:
+      junit: ./build/tests/junit.xml
 
 build_with_clang:
   stage: build
@@ -25,6 +31,12 @@ build_with_clang:
     - export CC=clang
     - export CXX=clang++
     - *build_steps
+  artifacts:
+    when: always
+    paths:
+      - ./build/tests/junit.xml
+    reports:
+      junit: ./build/tests/junit.xml
 
 format:
   stage: build
