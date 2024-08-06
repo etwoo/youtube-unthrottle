@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.15)
 project(youtube-unthrottle)
 
 option(BUILD_SHARED_LIBS "Build using shared libraries" OFF)
+option(BUILD_COVERAGE "Build with code coverage integration" OFF)
+
 set(CMAKE_DEBUG_POSTFIX d)
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 
@@ -59,12 +61,11 @@ include(CheckCCompilerFlag)
 target_compile_options(my_cflags INTERFACE -Wall -Wextra)
 
 check_c_compiler_flag(-fhardened CFLAG_HARDENED)
-if (CFLAG_HARDENED)
+if (CFLAG_HARDENED AND NOT BUILD_COVERAGE)
 	target_compile_options(my_cflags INTERFACE -fhardened)
-else (CFLAG_HARDENED)
-	# -fhardened is not supported; set constituent options individually
+else ()
+	# cannot use -fhardened; set constituent options individually
 	target_compile_options(my_cflags INTERFACE
-		-D_FORTIFY_SOURCE=3
 		-D_GLIBCXX_ASSERTIONS
 		-fPIE -pie
 		-Wl,-z,now
@@ -73,8 +74,18 @@ else (CFLAG_HARDENED)
 		-fstack-clash-protection
 		-fcf-protection=full
 	)
-endif (CFLAG_HARDENED)
-target_compile_options(my_cflags INTERFACE -O2) # req'ed by _FORTIFY_SOURCE
+	if (NOT BUILD_COVERAGE)
+		target_compile_options(my_cflags INTERFACE -D_FORTIFY_SOURCE=3)
+	endif (NOT BUILD_COVERAGE)
+endif ()
+
+if (BUILD_COVERAGE)
+	target_compile_options(my_cflags INTERFACE -O0 --coverage)
+	add_library(libgcov SHARED IMPORTED)
+	target_link_libraries(my_cflags INTERFACE gcov)
+else (BUILD_COVERAGE)
+	target_compile_options(my_cflags INTERFACE -O2) # _FORTIFY_SOURCE req
+endif (BUILD_COVERAGE)
 
 #
 # Enable some of the warnings recommended by https://kristerw.blogspot.com
