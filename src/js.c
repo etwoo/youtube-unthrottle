@@ -172,9 +172,8 @@ find_base_js_url(const char *html,
 }
 
 static const char *RE_FUNC_NAME[] = {
-	"b=a\\.j\\.n\\|\\|null\\)&&\\(b=([^\\]]+)\\[0\\]\\(b\\)",
-	"c=a\\.get\\(b\\){2}&&\\(c=([^\\]]+)\\[0\\]\\(c\\)",
-	"b=a\\.get\\(\"n\"\\){2}&&\\(b=([^\\]]+)\\[0\\]\\(b\\)",
+	"&&\\(c=([^\\]]+)\\[0\\]\\(c\\)",
+	"&&\\(b=([^\\]]+)\\[0\\]\\(b\\)",
 };
 
 /*
@@ -182,7 +181,7 @@ static const char *RE_FUNC_NAME[] = {
  *
  * find_js_deobfuscator() does the following:
  *
- * 1) find <foo> in base.js like: b=a.get("n"))&&(b=foo[0](b),
+ * 1) find <foo> in base.js like: &&(b=foo[0](b)
  * 2) find <bar> in base.js like: var foo=[bar]
  * 3) find <...> in base.js like: bar=function(a){...}
  *
