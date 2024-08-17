@@ -273,22 +273,17 @@ static bool
 download_and_mmap_tmpfd(const char *url,
                         const char *host,
                         const char *path,
+                        const char *post_body,
                         int fd,
                         void **addr,
                         unsigned int *sz)
 {
 	assert(fd >= 0);
 
-	if (url) {
-		if (!url_download(url, fd)) {
-			goto error;
-		}
-	} else {
-		assert(host != NULL && path != NULL);
-		if (!url_download_from(host, path, fd)) {
-			goto error;
-		}
+	if (!url_download(url, host, path, post_body, fd)) {
+		goto error;
 	}
+	debug("Downloaded %s to fd=%d", url ? url : path, fd);
 
 	if (!tmpmap(fd, addr, sz)) {
 		goto error;
@@ -300,12 +295,70 @@ error:
 	return false;
 }
 
+static const char INNERTUBE_URI[] =
+	"https://www.youtube.com/youtubei/v1/player";
+
+static const char INNERTUBE_POST_FORMAT[] =
+	"{\n"
+	"  \"context\": {\n"
+	"    \"client\": {\n"
+	"      \"clientName\": \"WEB_CREATOR\",\n"
+	"      \"clientVersion\": \"1.20240723.03.00\",\n"
+	"      \"hl\": \"en\",\n"
+	"      \"timeZone\": \"UTC\",\n"
+	"      \"utcOffsetMinutes\": 0\n"
+	"    }\n"
+	"  },\n"
+	"  \"videoId\": \"%.*s\",\n"
+	"  \"playbackContext\": {\n"
+	"    \"contentPlaybackContext\": {\n"
+	"      \"html5Preference\": \"HTML5_PREF_WANTS\",\n"
+	"    }\n"
+	"  },\n"
+	"  \"contentCheckOk\": true,\n"
+	"  \"racyCheckOk\": true\n"
+	"}";
+
+static bool
+format_innertube_post(const char *target, char *body, int capacity)
+{
+	const char *id = NULL;
+	size_t sz = 0;
+
+	/* Note use of non-capturing group: (?:...) */
+	if (!re_capture("(?:&|\\?)v=([^&]+)(?:&|$)",
+	                target,
+	                strlen(target),
+	                &id,
+	                &sz)) {
+		warn("Cannot find target_id in URL: %s", target);
+		return false;
+	}
+	debug("Parsed target_id: %.*s", (int)sz, id);
+
+	const int printed =
+		snprintf(body, capacity, INNERTUBE_POST_FORMAT, (int)sz, id);
+	if (printed >= capacity || body[printed] != '\0') {
+		warn("%d bytes is too small for snprintf()", capacity);
+		return false;
+	}
+	debug("Formatted InnerTube POST body:\n%s", body);
+
+	return true;
+}
+
 bool
 youtube_stream_setup(struct youtube_stream *p,
                      struct youtube_setup_ops *ops,
                      const char *target)
 {
 	bool result = false;
+	char innertube_post_body[4096];
+	const int innertube_post_capacity = sizeof(innertube_post_body);
+
+	int json_fd = -1; /* guarantee fd is invalid by default */
+	unsigned int json_sz = 0;
+	void *json = NULL;
 
 	int html_fd = -1; /* guarantee fd is invalid by default */
 	unsigned int html_sz = 0;
@@ -319,6 +372,11 @@ youtube_stream_setup(struct youtube_stream *p,
 
 	if (ops && ops->before) {
 		ops->before(p);
+	}
+
+	json_fd = tmpfd();
+	if (json_fd < 0) {
+		goto cleanup;
 	}
 
 	html_fd = tmpfd();
@@ -335,7 +393,21 @@ youtube_stream_setup(struct youtube_stream *p,
 		ops->before_inet(p);
 	}
 
+	if (!format_innertube_post(target,
+	                           innertube_post_body,
+	                           innertube_post_capacity) ||
+	    !download_and_mmap_tmpfd(INNERTUBE_URI,
+	                             NULL,
+	                             NULL,
+	                             innertube_post_body,
+	                             json_fd,
+	                             &json,
+	                             &json_sz)) {
+		goto cleanup;
+	}
+
 	if (!download_and_mmap_tmpfd(target,
+	                             NULL,
 	                             NULL,
 	                             NULL,
 	                             html_fd,
@@ -361,6 +433,7 @@ youtube_stream_setup(struct youtube_stream *p,
 	if (!download_and_mmap_tmpfd(NULL,
 	                             "www.youtube.com",
 	                             p->basejs,
+	                             NULL,
 	                             js_fd,
 	                             &js,
 	                             &js_sz)) {
@@ -379,7 +452,7 @@ youtube_stream_setup(struct youtube_stream *p,
 		.got_audio = youtube_stream_set_audio,
 		.got_video = youtube_stream_set_video,
 	};
-	parse_html_json(html, html_sz, &pops, p);
+	parse_json(json, json_sz, &pops, p);
 
 	if (ops && ops->after_parse) {
 		ops->after_parse(p);
@@ -424,13 +497,17 @@ cleanup:
 		free(ciphertexts[i]);
 		ciphertexts[i] = NULL;
 	}
+	tmpunmap(json, json_sz);
 	tmpunmap(html, html_sz);
 	tmpunmap(js, js_sz);
+	if (json_fd >= 0 && close(json_fd) < 0) {
+		pwarn("Ignoring error while close()-ing JSON tmpfile");
+	}
 	if (html_fd >= 0 && close(html_fd) < 0) {
-		pwarn("Ignoring error while close()-ing tmpfile");
+		pwarn("Ignoring error while close()-ing HTML tmpfile");
 	}
 	if (js_fd >= 0 && close(js_fd) < 0) {
-		pwarn("Ignoring error while close()-ing tmpfile");
+		pwarn("Ignoring error while close()-ing JavaScript tmpfile");
 	}
 	if (ops && ops->after) {
 		ops->after(p);

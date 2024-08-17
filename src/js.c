@@ -41,6 +41,9 @@ parse_json(const char *json,
            struct parse_ops *ops,
            void *userdata)
 {
+	// debug("Got JSON blob: %.*s", json_sz, json);
+	debug("Got JSON blob of size %zd", json_sz);
+
 	duk_ret_t res = DUK_EXEC_ERROR;
 
 	duk_context *ctx = duk_create_heap_default(); /* may return NULL! */
@@ -134,24 +137,6 @@ parse_json(const char *json,
 
 cleanup:
 	duk_destroy_heap(ctx); /* handles NULL gracefully */
-}
-
-static const char RE_JSON[] = "var ytInitialPlayerResponse\\s*=\\s*({.*});";
-
-void
-parse_html_json(char *html, size_t sz, struct parse_ops *ops, void *userdata)
-{
-	debug("Got HTML doc of size %zd", sz);
-
-	const char *json = NULL;
-	size_t json_sz = 0;
-	if (!re_capture(RE_JSON, html, sz, &json, &json_sz)) {
-		warn("Cannot find '%s' in HTML document", RE_JSON);
-	} else {
-		// debug("Got JSON blob: %.*s", json_sz, json);
-		debug("Got JSON blob of size %zd", json_sz);
-		parse_json(json, json_sz, ops, userdata);
-	}
 }
 
 void
