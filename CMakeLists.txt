@@ -21,6 +21,18 @@ if (BUILD_TESTING)
 	add_subdirectory(tests)
 endif (BUILD_TESTING)
 
+if (BUILD_COVERAGE)
+	target_compile_definitions(my_cflags INTERFACE WITH_COVERAGE)
+	target_compile_options(my_cflags INTERFACE
+		-fprofile-instr-generate
+		-fcoverage-mapping
+	)
+	target_link_options(my_cflags INTERFACE
+		-fprofile-instr-generate
+		-fcoverage-mapping
+	)
+endif (BUILD_COVERAGE)
+
 #
 # Set up a custom `fmt` target that runs clang-format.
 #

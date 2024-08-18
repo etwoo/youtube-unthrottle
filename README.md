@@ -85,6 +85,13 @@ libseccomp 2.5.5-3
 pcre2 10.44-1
 ```
 
+Optional dependencies for code coverage and fuzzing:
+
+```sh
+clang
+llvm
+```
+
 ## Build
 
 To perform an initial build:
@@ -116,6 +123,18 @@ To reconfigure and build with clang instead of gcc:
 ```sh
 CC=clang CXX=clang++ cmake --fresh -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Debug . -B ./build
 cmake --build ./build --clean-first
+```
+
+To generate a code coverage report:
+
+```sh
+CC=clang CXX=clang++ cmake --fresh -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=1 -DBUILD_COVERAGE=1 . -B ./build
+cmake --build ./build --clean-first
+cd ./build/tests/sandbox/
+LLVM_PROFILE_FILE=sandbox-landlock.profraw ./sandbox-landlock -v
+llvm-profdata merge -sparse sandbox-landlock.profraw -o sandbox-landlock.profdata
+llvm-cov report -show-region-summary=0 -show-branch-summary=0 -ignore-filename-regex=build/ ./sandbox-landlock -instr-profile=sandbox-landlock.profdata | grep -v '^---'
+llvm-cov show -ignore-filename-regex=build/ ./sandbox-landlock -instr-profile=sandbox-landlock.profdata
 ```
 
 To build and fuzz:
