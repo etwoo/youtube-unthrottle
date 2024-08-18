@@ -1,5 +1,6 @@
 #include "seccomp.h"
 
+#include "coverage.h"
 #include "greatest.h"
 #include "tmpfile.h"
 
@@ -216,12 +217,16 @@ main(int argc, char **argv)
 {
 	GREATEST_MAIN_BEGIN();
 
+	int fd = open_coverage_fd();
+
 	RUN_SUITE(before_seccomp);
 	RUN_SUITE(seccomp_io_inet_tmpfile);
 	RUN_SUITE(seccomp_io_inet_rpath);
 	RUN_SUITE(seccomp_io_inet);
 	RUN_SUITE(seccomp_io);
 	RUN_SUITE(seccomp_io_sealed_sandbox);
+
+	write_coverage_and_close_fd(fd);
 
 	GREATEST_MAIN_END();
 }
