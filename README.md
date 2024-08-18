@@ -135,8 +135,7 @@ COVERAGE_PROFILE=sandbox-landlock.profraw ./sandbox-landlock -v
 COVERAGE_PROFILE=sandbox-seccomp.profraw ./sandbox-seccomp -v
 llvm-profdata merge -sparse sandbox-landlock.profraw sandbox-seccomp.profraw -o sandbox.profdata
 llvm-cov report -show-region-summary=0 -show-branch-summary=0 -ignore-filename-regex=build/ -instr-profile=sandbox.profdata -object ./sandbox-landlock -object ./sandbox-seccomp
-
-llvm-cov show -ignore-filename-regex=build/ ./sandbox-landlock -instr-profile=sandbox-landlock.profdata
+llvm-cov show -ignore-filename-regex='(build|test)/' -instr-profile=sandbox.profdata -object ./sandbox-landlock -object ./sandbox-seccomp
 ```
 
 To build and fuzz:
