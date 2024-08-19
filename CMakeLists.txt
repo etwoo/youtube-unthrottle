@@ -18,6 +18,12 @@ include(get_cpm)
 
 add_subdirectory(src)
 if (BUILD_TESTING)
+	CPMAddPackage(
+		NAME greatest
+		GITHUB_REPOSITORY silentbicycle/greatest
+		VERSION 1.5.0
+		DOWNLOAD_ONLY YES
+	)
 	add_subdirectory(tests)
 endif (BUILD_TESTING)
 
@@ -30,6 +36,12 @@ if (BUILD_COVERAGE)
 	target_link_options(my_cflags INTERFACE
 		-fprofile-instr-generate
 		-fcoverage-mapping
+	)
+	CPMAddPackage(
+		NAME lcov-to-cobertura-xml
+		GITHUB_REPOSITORY eriwen/lcov-to-cobertura-xml
+		GIT_TAG 028da3798355d0260c6c6491b39347d84ca7a02d
+		DOWNLOAD_ONLY YES
 	)
 endif (BUILD_COVERAGE)
 
