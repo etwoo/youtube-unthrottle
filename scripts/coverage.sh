@@ -10,5 +10,6 @@ llvm-profdata merge -sparse -o sandbox.profdata *.profraw
 
 llvm-cov export -instr-profile=sandbox.profdata ./build/youtube-unthrottle -format=lcov > sandbox.lcov
 
+# TODO: use CPM to manage this dependency, like greatest.h; CPM should handle github natively
 curl -o lcov_cobertura.py 'https://raw.githubusercontent.com/eriwen/lcov-to-cobertura-xml/master/lcov_cobertura/lcov_cobertura.py'
 python ./lcov_cobertura.py sandbox.lcov -o sandbox.xml
