@@ -1,7 +1,7 @@
 image: archlinux/archlinux:base-devel
 
 .build_dependencies: &build_dependencies
-    - pacman --noconfirm -Sy clang cmake curl duktape git libseccomp llvm pcre2
+    - pacman --noconfirm -Sy cmake clang curl duktape git libseccomp pcre2
 
 .build_steps: &build_steps
     - cmake -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=1 . -B ./build
@@ -50,6 +50,7 @@ coverage:
   stage: build
   before_script:
     - *build_dependencies
+    - pacman --noconfirm -Sy llvm python
   script:
     - export CC=clang
     - export CXX=clang++
