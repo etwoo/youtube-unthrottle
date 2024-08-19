@@ -61,4 +61,4 @@ coverage:
     reports:
       coverage_report:
         coverage_format: cobertura
-        path: ./build/tests/sandbox/sandbox.xml
+        path: ./sandbox.xml
