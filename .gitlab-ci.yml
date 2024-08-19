@@ -1,7 +1,7 @@
 image: archlinux/archlinux:base-devel
 
 .build_dependencies: &build_dependencies
-    - pacman --noconfirm -Sy cmake clang curl duktape git libseccomp pcre2
+    - pacman --noconfirm -Sy clang cmake curl duktape git libseccomp llvm pcre2
 
 .build_steps: &build_steps
     - cmake -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=1 . -B ./build
@@ -45,3 +45,19 @@ format:
   script:
     - cmake -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Debug . -B ./build
     - cmake --build ./build --target fmt
+
+coverage:
+  stage: build
+  before_script:
+    - *build_dependencies
+  script:
+    - cmake -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=1 -DBUILD_COVERAGE=1 . -B ./build
+    - cmake --build ./build
+    - ./scripts/coverage.sh
+  artifacts:
+    name: ${CI_JOB_NAME}-${CI_COMMIT_REF_NAME}-${CI_COMMIT_SHA}
+    expire_in: 2 days
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: ./build/tests/sandbox/sandbox.xml
