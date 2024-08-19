@@ -51,6 +51,8 @@ coverage:
   before_script:
     - *build_dependencies
   script:
+    - export CC=clang
+    - export CXX=clang++
     - cmake -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=1 -DBUILD_COVERAGE=1 . -B ./build
     - cmake --build ./build
     - ./scripts/coverage.sh
