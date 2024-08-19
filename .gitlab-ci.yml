@@ -58,8 +58,9 @@ coverage:
     - cmake --build ./build
     - ./scripts/coverage.sh
   artifacts:
-    name: ${CI_JOB_NAME}-${CI_COMMIT_REF_NAME}-${CI_COMMIT_SHA}
-    expire_in: 2 days
+    when: always
+    paths:
+      - ./build/tests/sandbox/sandbox.xml
     reports:
       coverage_report:
         coverage_format: cobertura
