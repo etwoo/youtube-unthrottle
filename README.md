@@ -131,11 +131,11 @@ To generate a code coverage report:
 CC=clang CXX=clang++ cmake --fresh -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=1 -DBUILD_COVERAGE=1 . -B ./build
 cmake --build ./build --clean-first
 cd ./build/tests/sandbox/
-COVERAGE_PROFILE=sandbox-landlock.profraw ./sandbox-landlock -v
-COVERAGE_PROFILE=sandbox-seccomp.profraw ./sandbox-seccomp -v
-llvm-profdata merge -sparse sandbox-landlock.profraw sandbox-seccomp.profraw -o sandbox.profdata
-llvm-cov report -show-region-summary=0 -show-branch-summary=0 -ignore-filename-regex=build/ -instr-profile=sandbox.profdata -object ./sandbox-landlock -object ./sandbox-seccomp
-llvm-cov show -ignore-filename-regex='(build|test)/' -instr-profile=sandbox.profdata -object ./sandbox-landlock -object ./sandbox-seccomp
+COVERAGE_PROFILE=landlock.profraw ./sandbox-landlock -v
+COVERAGE_PROFILE=seccomp.profraw ./sandbox-seccomp -v
+llvm-profdata merge -sparse -o sandbox.profdata *.profraw
+llvm-cov report -show-region-summary=0 -show-branch-summary=0 -ignore-filename-regex=build/ -instr-profile=sandbox.profdata -object ../../youtube-unthrottle
+llvm-cov show -ignore-filename-regex='(build|test)/' -instr-profile=sandbox.profdata -object ../../youtube-unthrottle
 ```
 
 To build and fuzz:
