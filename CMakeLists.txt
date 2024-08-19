@@ -17,6 +17,7 @@ target_link_libraries(youtube-unthrottle PRIVATE sanitizers youtube my_cflags)
 include(get_cpm)
 
 add_subdirectory(src)
+
 if (BUILD_TESTING)
 	CPMAddPackage(
 		NAME greatest
@@ -28,6 +29,12 @@ if (BUILD_TESTING)
 endif (BUILD_TESTING)
 
 if (BUILD_COVERAGE)
+	CPMAddPackage(
+		NAME lcov-to-cobertura-xml
+		GITHUB_REPOSITORY eriwen/lcov-to-cobertura-xml
+		GIT_TAG 028da3798355d0260c6c6491b39347d84ca7a02d
+		DOWNLOAD_ONLY YES
+	)
 	target_compile_definitions(my_cflags INTERFACE WITH_COVERAGE)
 	target_compile_options(my_cflags INTERFACE
 		-fprofile-instr-generate
@@ -36,12 +43,6 @@ if (BUILD_COVERAGE)
 	target_link_options(my_cflags INTERFACE
 		-fprofile-instr-generate
 		-fcoverage-mapping
-	)
-	CPMAddPackage(
-		NAME lcov-to-cobertura-xml
-		GITHUB_REPOSITORY eriwen/lcov-to-cobertura-xml
-		GIT_TAG 028da3798355d0260c6c6491b39347d84ca7a02d
-		DOWNLOAD_ONLY YES
 	)
 endif (BUILD_COVERAGE)
 
