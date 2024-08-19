@@ -58,9 +58,6 @@ coverage:
     - cmake --build ./build
     - ./scripts/coverage.sh
   artifacts:
-    when: always
-    paths:
-      - ./build/tests/sandbox/sandbox.xml
     reports:
       coverage_report:
         coverage_format: cobertura
