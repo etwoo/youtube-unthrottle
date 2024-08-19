@@ -8,8 +8,7 @@ COVERAGE_PROFILE=seccomp.profraw ./build/tests/sandbox/sandbox-seccomp -v
 
 llvm-profdata merge -sparse -o sandbox.profdata *.profraw
 
-llvm-cov export -ignore-filename-regex=build/ -instr-profile=sandbox.profdata \
-	./build/youtube-unthrottle -format=lcov > sandbox.lcov
+llvm-cov export -instr-profile=sandbox.profdata ./build/youtube-unthrottle -format=lcov > sandbox.lcov
 
 curl -o lcov_cobertura.py 'https://raw.githubusercontent.com/eriwen/lcov-to-cobertura-xml/master/lcov_cobertura/lcov_cobertura.py'
 python ./lcov_cobertura.py sandbox.lcov -o sandbox.xml

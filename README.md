@@ -134,8 +134,8 @@ cd ./build/tests/sandbox/
 COVERAGE_PROFILE=landlock.profraw ./sandbox-landlock -v
 COVERAGE_PROFILE=seccomp.profraw ./sandbox-seccomp -v
 llvm-profdata merge -sparse -o sandbox.profdata *.profraw
-llvm-cov report -show-region-summary=0 -show-branch-summary=0 -ignore-filename-regex=build/ -instr-profile=sandbox.profdata -object ../../youtube-unthrottle
-llvm-cov show -ignore-filename-regex='(build|test)/' -instr-profile=sandbox.profdata -object ../../youtube-unthrottle
+llvm-cov report -show-region-summary=0 -show-branch-summary=0 -instr-profile=sandbox.profdata -object ../../youtube-unthrottle
+llvm-cov show -instr-profile=sandbox.profdata -object ../../youtube-unthrottle
 ```
 
 To build and fuzz:
