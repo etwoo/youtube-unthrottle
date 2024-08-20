@@ -542,7 +542,7 @@ find_js_deobfuscator_third_match_success(void)
 	PASS();
 }
 
-SUITE(find_using_re)
+SUITE(find_with_pcre)
 {
 	RUN_TEST(find_base_js_url_negative);
 	RUN_TEST(find_base_js_url_positive);
@@ -552,6 +552,17 @@ SUITE(find_using_re)
 	RUN_TEST(find_js_deobfuscator_second_match_too_long);
 	RUN_TEST(find_js_deobfuscator_third_match_fail);
 	RUN_TEST(find_js_deobfuscator_third_match_success);
+}
+
+SUITE(call_with_duktape)
+{
+	/*
+	 * TODO: use JS fragments to exercise call_js_foreach() codepaths like:
+	 * error in pcompile
+	 * can compile, error in pcall
+	 * can compile, can pcall, error fetching non-string result
+	 * can compile, can pcall, can get string result
+	 */
 }
 
 GREATEST_MAIN_DEFS();
@@ -567,7 +578,8 @@ main(int argc, char **argv)
 	RUN_SUITE(incorrect_root_type);
 	RUN_SUITE(incorrect_shape);
 	RUN_SUITE(correct_shape);
-	RUN_SUITE(find_using_re);
+	RUN_SUITE(find_with_pcre);
+	RUN_SUITE(call_with_duktape);
 
 	coverage_write_and_close(fd);
 
