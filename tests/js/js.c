@@ -23,7 +23,7 @@ static struct parse_ops NOOP = {
 };
 
 static void
-parse_json_with_noop(const char *str)
+parse(const char *str)
 {
 	parse_json(str, strlen(str), &NOOP, NULL);
 }
@@ -31,105 +31,105 @@ parse_json_with_noop(const char *str)
 TEST
 root_empty(void)
 {
-	parse_json_with_noop("");
+	parse("");
 	PASS();
 }
 
 TEST
 root_number_NaN(void)
 {
-	parse_json_with_noop("NaN");
+	parse("NaN");
 	PASS();
 }
 
 TEST
 root_number_too_large(void)
 {
-	parse_json_with_noop("9007199254740992"); /* 2^53 */
+	parse("9007199254740992"); /* 2^53 */
 	PASS();
 }
 
 TEST
 root_string_missing_quotes(void)
 {
-	parse_json_with_noop("Hello, World!");
+	parse("Hello, World!");
 	PASS();
 }
 
 TEST
 root_string_missing_opening_quote(void)
 {
-	parse_json_with_noop("Hello, World!\"");
+	parse("Hello, World!\"");
 	PASS();
 }
 
 TEST
 root_string_missing_closing_quote(void)
 {
-	parse_json_with_noop("\"Hello, World!");
+	parse("\"Hello, World!");
 	PASS();
 }
 
 TEST
 root_boolean_uppercase(void)
 {
-	parse_json_with_noop("FALSE");
+	parse("FALSE");
 	PASS();
 }
 
 TEST
 root_array_only_opening_brace(void)
 {
-	parse_json_with_noop("[");
+	parse("[");
 	PASS();
 }
 
 TEST
 root_array_only_closing_brace(void)
 {
-	parse_json_with_noop("]");
+	parse("]");
 	PASS();
 }
 
 TEST
 root_array_missing_opening_brace(void)
 {
-	parse_json_with_noop("1, 2, 3]");
+	parse("1, 2, 3]");
 	PASS();
 }
 
 TEST
 root_array_missing_closing_brace(void)
 {
-	parse_json_with_noop("[1, 2, 3");
+	parse("[1, 2, 3");
 	PASS();
 }
 
 TEST
 root_object_only_closing_brace(void)
 {
-	parse_json_with_noop("}");
+	parse("}");
 	PASS();
 }
 
 TEST
 root_object_only_opening_brace(void)
 {
-	parse_json_with_noop("{");
+	parse("{");
 	PASS();
 }
 
 TEST
 root_object_missing_closing_brace(void)
 {
-	parse_json_with_noop("{\"foo\": \"bar\"");
+	parse("{\"foo\": \"bar\"");
 	PASS();
 }
 
 TEST
 root_object_missing_opening_brace(void)
 {
-	parse_json_with_noop("\"foo\": \"bar\"}");
+	parse("\"foo\": \"bar\"}");
 	PASS();
 }
 
@@ -158,49 +158,49 @@ SUITE(invalid_json)
 TEST
 root_null(void)
 {
-	parse_json_with_noop("null");
+	parse("null");
 	PASS();
 }
 
 TEST
 root_number(void)
 {
-	parse_json_with_noop("-123.456");
+	parse("-123.456");
 	PASS();
 }
 
 TEST
 root_string_empty(void)
 {
-	parse_json_with_noop("\"\"");
+	parse("\"\"");
 	PASS();
 }
 
 TEST
 root_string_nonempty(void)
 {
-	parse_json_with_noop("\"Hello, World!\"");
+	parse("\"Hello, World!\"");
 	PASS();
 }
 
 TEST
 root_boolean(void)
 {
-	parse_json_with_noop("false");
+	parse("false");
 	PASS();
 }
 
 TEST
 root_array_empty(void)
 {
-	parse_json_with_noop("[]");
+	parse("[]");
 	PASS();
 }
 
 TEST
 root_array_nonempty(void)
 {
-	parse_json_with_noop("[1, 2, 3]");
+	parse("[1, 2, 3]");
 	PASS();
 }
 
@@ -221,35 +221,90 @@ SUITE(incorrect_root_type)
 TEST
 root_object_empty(void)
 {
-	parse_json_with_noop("{}");
+	parse("{}");
 	PASS();
 }
 
 TEST
 missing_streamingData_key(void)
 {
-	parse_json_with_noop("{\"foo\": \"bar\"}");
+	parse("{\"foo\": \"bar\"}");
 	PASS();
 }
 
 TEST
 incorrect_streamingData_value_type(void)
 {
-	parse_json_with_noop("{\"streamingData\": 1}");
+	parse("{\"streamingData\": 1}");
 	PASS();
 }
 
 TEST
 missing_adaptiveFormats_key(void)
 {
-	parse_json_with_noop("{\"streamingData\": {\"foo\": \"bar\"}}");
+	parse("{\"streamingData\": {\"foo\": \"bar\"}}");
 	PASS();
 }
 
 TEST
 incorrect_adaptiveFormats_value_type(void)
 {
-	parse_json_with_noop("{\"streamingData\": {\"adaptiveFormats\": 2}}");
+	parse("{\"streamingData\": {\"adaptiveFormats\": 2}}");
+	PASS();
+}
+
+TEST
+incorrect_adaptiveFormats_element_type(void)
+{
+	parse("{\"streamingData\": {\"adaptiveFormats\": [3]}}");
+	PASS();
+}
+
+TEST
+missing_mimeType_key(void)
+{
+	parse("{\"streamingData\": {\"adaptiveFormats\": "
+	      "[{\"foo\": \"bar\"}]"
+	      "}}");
+	PASS();
+}
+
+TEST
+incorrect_mimeType_value_type(void)
+{
+	parse("{\"streamingData\": {\"adaptiveFormats\": "
+	      "[{\"mimeType\": 4}]"
+	      "}}");
+	PASS();
+}
+
+
+TEST
+missing_url_key(void)
+{
+	parse("{\"streamingData\": {\"adaptiveFormats\": "
+	      "[{\"mimeType\": \"audio/foobar\"}]"
+	      "}}");
+	PASS();
+}
+
+TEST
+incorrect_url_value_type(void)
+{
+	parse("{\"streamingData\": {\"adaptiveFormats\": "
+	      "[{\"mimeType\": \"audio/foobar\", \"url\": 5}]"
+	      "}}");
+	PASS();
+}
+
+TEST
+unsupported_signatureCipher_key(void)
+{
+	parse("{\"streamingData\": {\"adaptiveFormats\": [{"
+	      "\"mimeType\": \"audio/foobar\","
+	      "\"url\": \"foobar\","
+	      "\"signatureCipher\": \"foobar\""
+	      "}]}}");
 	PASS();
 }
 
@@ -263,6 +318,27 @@ SUITE(incorrect_shape)
 	RUN_TEST(incorrect_streamingData_value_type);
 	RUN_TEST(missing_adaptiveFormats_key);
 	RUN_TEST(incorrect_adaptiveFormats_value_type);
+	RUN_TEST(incorrect_adaptiveFormats_element_type);
+	RUN_TEST(missing_mimeType_key);
+	RUN_TEST(incorrect_mimeType_value_type);
+	RUN_TEST(missing_url_key);
+	RUN_TEST(incorrect_url_value_type);
+	RUN_TEST(unsupported_signatureCipher_key);
+}
+
+TEST
+minimum_json_with_correct_shape(void)
+{
+	parse("{\"streamingData\": {\"adaptiveFormats\": ["
+	      "{\"mimeType\": \"audio/foobar\",\"url\": \"foobar\"},"
+	      "{\"mimeType\": \"video/foobar\",\"url\": \"foobar\"}"
+	      "]}}");
+	PASS();
+}
+
+SUITE(correct_shape)
+{
+	RUN_TEST(minimum_json_with_correct_shape);
 }
 
 GREATEST_MAIN_DEFS();
@@ -277,6 +353,7 @@ main(int argc, char **argv)
 	RUN_SUITE(invalid_json);
 	RUN_SUITE(incorrect_root_type);
 	RUN_SUITE(incorrect_shape);
+	RUN_SUITE(correct_shape);
 
 	coverage_write_and_close(fd);
 
