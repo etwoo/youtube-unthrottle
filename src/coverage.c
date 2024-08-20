@@ -24,11 +24,11 @@ coverage_write_and_close(int fd __attribute__((unused)))
 #include "array.h"
 #include "debug.h"
 
-#include <sys/random.h>
-#include <sys/stat.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/random.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 int __llvm_profile_runtime(void);
@@ -70,20 +70,20 @@ coverage_open(void)
 		goto error;
 	}
 
-	char name[(2 * sizeof(random_bytes)) + 1];
-	memset(name, '\0', sizeof(name));
+	char p[(2 * sizeof(random_bytes)) + 1];
+	memset(p, '\0', sizeof(p));
 
 	for (size_t i = 0; i < ARRAY_SIZE(random_bytes); ++i) {
-		sprintf(name + (i * 2), "%02hhX", random_bytes[i]);
+		sprintf(p + (i * 2), "%02hhX", random_bytes[i]);
 	}
 
-	fd = openat(dirfd, name, O_CREAT|O_EXCL|O_WRONLY, S_IRUSR|S_IWUSR);
+	fd = openat(dirfd, p, O_CREAT | O_EXCL | O_WRONLY, S_IRUSR | S_IWUSR);
 	if (fd < 0) {
 		pwarn("Error opening coverage profile file");
 		goto error;
 	}
 
-	debug("Opened coverage file with dir=%s, filename=%s", profile, name);
+	debug("Opened coverage file with dir=%s, filename=%s", profile, p);
 error:
 	return fd;
 }
