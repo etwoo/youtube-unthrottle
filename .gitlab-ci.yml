@@ -56,7 +56,7 @@ coverage:
     - export CXX=clang++
     - cmake -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=1 -DBUILD_COVERAGE=1 . -B ./build
     - cmake --build ./build
-    - COVERAGE_PROFILE_DIR=coverage.profraw ctest --test-dir ./build/tests/ --output-junit junit.xml -E '^cli-try-sandbox|sandbox-landlock$'
+    - COVERAGE_PROFILE_DIR=coverage.profraw ctest --test-dir ./build/tests/ --output-junit junit.xml -E '^cli-try-sandbox|landlock$'
     - ./scripts/coverage.sh coverage.profraw coverage.xml
   artifacts:
     reports:
