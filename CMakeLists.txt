@@ -25,7 +25,6 @@ if (BUILD_TESTING)
 		VERSION 1.5.0
 		DOWNLOAD_ONLY YES
 	)
-	include(CTest)
 	add_subdirectory(tests)
 endif (BUILD_TESTING)
 
