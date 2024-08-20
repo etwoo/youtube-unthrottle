@@ -1,10 +1,10 @@
 #include "js.h"
 
-#include <assert.h>
-
 #include "coverage.h"
 #include "debug.h"
 #include "greatest.h"
+
+#include <assert.h>
 
 static void
 parse_callback_noop(const char *val __attribute__((unused)),
