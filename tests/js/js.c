@@ -477,8 +477,7 @@ find_js_deobfuscator_second_match_fail(void)
 	const char *deobfuscator = NULL;
 	size_t deobfuscator_sz = 0;
 
-	static const char js[] =
-		"&&(c=ODa[0](c),";
+	static const char js[] = "&&(c=ODa[0](c),";
 	find_js_deobfuscator(js, sizeof(js), &deobfuscator, &deobfuscator_sz);
 
 	ASSERT_EQ(deobfuscator, NULL);
@@ -514,9 +513,7 @@ find_js_deobfuscator_third_match_fail(void)
 	const char *deobfuscator = NULL;
 	size_t deobfuscator_sz = 0;
 
-	static const char js[] =
-		"&&(c=ODa[0](c),\n"
-		"var ODa=[Pma];";
+	static const char js[] = "&&(c=ODa[0](c),\nvar ODa=[Pma];";
 	find_js_deobfuscator(js, sizeof(js), &deobfuscator, &deobfuscator_sz);
 
 	ASSERT_EQ(deobfuscator, NULL);
@@ -531,9 +528,8 @@ find_js_deobfuscator_third_match_success(void)
 	size_t deobfuscator_sz = 0;
 
 	static const char js[] =
-		"&&(c=ODa[0](c),\n"
-		"var ODa=[Pma];"
-		"Pma=function(a){return b.join(\"\")};";
+		"&&(c=ODa[0](c),\nvar ODa=[Pma];\nPma=function(a)"
+		"{return b.join(\"\")};";
 	find_js_deobfuscator(js, sizeof(js), &deobfuscator, &deobfuscator_sz);
 
 	static const char expected[] = "function(a){return b.join(\"\")};";
