@@ -278,7 +278,6 @@ incorrect_mimeType_value_type(void)
 	PASS();
 }
 
-
 TEST
 missing_url_key(void)
 {
@@ -336,9 +335,22 @@ minimum_json_with_correct_shape(void)
 	PASS();
 }
 
+TEST
+extra_adaptiveFormats_elements(void)
+{
+	parse("{\"streamingData\": {\"adaptiveFormats\": ["
+	      "{\"mimeType\": \"audio/foobar\",\"url\": \"foobar\"},"
+	      "{\"mimeType\": \"audio/extra\",\"url\": \"foobar\"},"
+	      "{\"mimeType\": \"video/foobar\",\"url\": \"foobar\"},"
+	      "{\"mimeType\": \"video/extra\",\"url\": \"foobar\"}"
+	      "]}}");
+	PASS();
+}
+
 SUITE(correct_shape)
 {
 	RUN_TEST(minimum_json_with_correct_shape);
+	RUN_TEST(extra_adaptiveFormats_elements);
 }
 
 GREATEST_MAIN_DEFS();
