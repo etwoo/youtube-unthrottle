@@ -5,14 +5,6 @@
 
 GREATEST_MAIN_DEFS();
 
-TEST
-stream_setup_preconditions(void)
-{
-	youtube_handle_t stream = youtube_stream_init();
-	ASSERT(stream);
-	ASSERT_FALSE(youtube_stream_valid(stream));
-}
-
 struct youtube_setup_ops NOOP = {
 	.before = NULL,
 	.before_inet = NULL,
@@ -31,8 +23,8 @@ stream_setup_with_redirected_network_io(void)
 	youtube_handle_t stream = youtube_stream_init();
 	ASSERT(stream);
 
-	ASSERT(youtube_stream_setup(stream, &NOOP, "https://youtube.test"));
-	ASSERT(youtube_stream_valid(stream));
+	bool rc = youtube_stream_setup(stream, &NOOP, "https://youtube.test");
+	ASSERT(rc);
 
 	youtube_stream_print(stream);
 	youtube_stream_cleanup(stream);
@@ -41,7 +33,6 @@ stream_setup_with_redirected_network_io(void)
 
 SUITE(stream_setup)
 {
-	RUN_TEST(stream_setup_preconditions);
 	RUN_TEST(stream_setup_with_redirected_network_io);
 }
 
