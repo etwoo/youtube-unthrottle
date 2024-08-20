@@ -1,25 +1,21 @@
 #include "js.h"
 
+#include <assert.h>
+
 #include "coverage.h"
+#include "debug.h"
 #include "greatest.h"
 
 static void
-got_video(const char *val __attribute__((unused)),
-          size_t sz __attribute__((unused)),
-          void *userdata __attribute__((unused)))
-{
-}
-
-static void
-got_audio(const char *val __attribute__((unused)),
-          size_t sz __attribute__((unused)),
-          void *userdata __attribute__((unused)))
+parse_callback_noop(const char *val __attribute__((unused)),
+                    size_t sz __attribute__((unused)),
+                    void *userdata __attribute__((unused)))
 {
 }
 
 static struct parse_ops NOOP = {
-	.got_audio = got_video,
-	.got_video = got_audio,
+	.got_video = parse_callback_noop,
+	.got_audio = parse_callback_noop,
 };
 
 static void
@@ -325,25 +321,76 @@ SUITE(incorrect_shape)
 	RUN_TEST(unsupported_signatureCipher_key);
 }
 
+struct copies {
+	char video[16];
+	char audio[16];
+};
+
+static void
+copies_init(struct copies *c)
+{
+	c->video[0] = '\0';
+	c->audio[0] = '\0';
+}
+
+static void
+copy_video(const char *val, size_t sz, void *userdata)
+{
+	struct copies *urls = (struct copies *)userdata;
+	assert(sizeof(urls->video) >= sz);
+	strlcpy(urls->video, val, sizeof(urls->video));
+	debug("Copied video URL: %s", urls->video);
+}
+
+static void
+copy_audio(const char *val, size_t sz, void *userdata)
+{
+	struct copies *urls = (struct copies *)userdata;
+	assert(sizeof(urls->audio) >= sz);
+	strlcpy(urls->audio, val, sizeof(urls->audio));
+	debug("Copied audio URL: %s", urls->audio);
+}
+
+static struct parse_ops COPY_OPS = {
+	.got_video = copy_video,
+	.got_audio = copy_audio,
+};
+
 TEST
 minimum_json_with_correct_shape(void)
 {
-	parse("{\"streamingData\": {\"adaptiveFormats\": ["
-	      "{\"mimeType\": \"audio/foobar\",\"url\": \"foobar\"},"
-	      "{\"mimeType\": \"video/foobar\",\"url\": \"foobar\"}"
-	      "]}}");
+	static const char json[] =
+		"{\"streamingData\": {\"adaptiveFormats\": ["
+		"{\"mimeType\": \"audio/foo\",\"url\": \"http://a.test\"},"
+		"{\"mimeType\": \"video/foo\",\"url\": \"http://v.test\"}"
+		"]}}";
+
+	struct copies urls;
+	copies_init(&urls);
+	parse_json(json, strlen(json), &COPY_OPS, &urls);
+
+	ASSERT_STR_EQ(urls.audio, "http://a.test");
+	ASSERT_STR_EQ(urls.video, "http://v.test");
 	PASS();
 }
 
 TEST
 extra_adaptiveFormats_elements(void)
 {
-	parse("{\"streamingData\": {\"adaptiveFormats\": ["
-	      "{\"mimeType\": \"audio/foobar\",\"url\": \"foobar\"},"
-	      "{\"mimeType\": \"audio/extra\",\"url\": \"foobar\"},"
-	      "{\"mimeType\": \"video/foobar\",\"url\": \"foobar\"},"
-	      "{\"mimeType\": \"video/extra\",\"url\": \"foobar\"}"
-	      "]}}");
+	static const char json[] =
+		"{\"streamingData\": {\"adaptiveFormats\": ["
+		"{\"mimeType\": \"audio/foo\",\"url\": \"http://a.test\"},"
+		"{\"mimeType\": \"audio/bar\",\"url\": \"http://extra.test\"},"
+		"{\"mimeType\": \"video/foo\",\"url\": \"http://v.test\"},"
+		"{\"mimeType\": \"video/bar\",\"url\": \"http://extra.test\"}"
+		"]}}";
+
+	struct copies urls;
+	copies_init(&urls);
+	parse_json(json, strlen(json), &COPY_OPS, &urls);
+
+	ASSERT_STR_EQ(urls.audio, "http://a.test");
+	ASSERT_STR_EQ(urls.video, "http://v.test");
 	PASS();
 }
 
