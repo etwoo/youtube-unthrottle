@@ -1,5 +1,6 @@
 #include "js.h"
 
+#include "array.h"
 #include "coverage.h"
 #include "debug.h"
 #include "greatest.h"
@@ -338,7 +339,8 @@ copy_video(const char *val, size_t sz, void *userdata)
 {
 	struct copies *urls = (struct copies *)userdata;
 	assert(sizeof(urls->video) >= sz);
-	strlcpy(urls->video, val, sizeof(urls->video));
+	memcpy(urls->video, val, sz);
+	urls->video[sz] = '\0';
 	debug("Copied video URL: %s", urls->video);
 }
 
@@ -347,7 +349,8 @@ copy_audio(const char *val, size_t sz, void *userdata)
 {
 	struct copies *urls = (struct copies *)userdata;
 	assert(sizeof(urls->audio) >= sz);
-	strlcpy(urls->audio, val, sizeof(urls->audio));
+	memcpy(urls->audio, val, sz);
+	urls->audio[sz] = '\0';
 	debug("Copied audio URL: %s", urls->audio);
 }
 
@@ -550,15 +553,84 @@ SUITE(find_with_pcre)
 	RUN_TEST(find_js_deobfuscator_third_match_success);
 }
 
+TEST
+call_with_duktape_pcompile_fail(void)
+{
+	static const char js[] = "\"Not a valid function definition!\"";
+	call_js_foreach(js, sizeof(js), NULL, 0, NULL, NULL);
+	PASS();
+}
+
+TEST
+call_with_duktape_pcall_fail(void)
+{
+	char *args[1];
+	args[0] = "Hello, World!";
+
+	static const char js[] = "function(a){return not_defined;};";
+	call_js_foreach(js, sizeof(js), args, ARRAY_SIZE(args), NULL, NULL);
+	PASS();
+}
+
+TEST
+call_with_duktape_pcall_incorrect_result_type(void)
+{
+	char *args[1];
+	args[0] = "Hello, World!";
+
+	static const char js[] = "function(a){return true;};";
+	call_js_foreach(js, sizeof(js), args, ARRAY_SIZE(args), NULL, NULL);
+	PASS();
+}
+
+struct copy {
+	char str[16];
+};
+
+static void
+copy_init(struct copy *c)
+{
+	c->str[0] = '\0';
+}
+
+static void
+copy_result(const char *val, size_t sz, void *userdata)
+{
+	struct copy *result = (struct copy *)userdata;
+	assert(sizeof(result->str) >= sz);
+	memcpy(result->str, val, sz);
+	result->str[sz] = '\0';
+	debug("Copied result: %s", result->str);
+}
+
+TEST
+call_with_duktape_minimum_valid_function(void)
+{
+	static const char js[] = "function(a){return a.toUpperCase();};";
+
+	char *args[1];
+	args[0] = "Hello, World!";
+
+	struct call_ops cops = {
+		.got_result = copy_result,
+	};
+
+	struct copy result;
+	copy_init(&result);
+
+	call_js_foreach(js, sizeof(js), args, ARRAY_SIZE(args), &cops, &result);
+
+	// ASSERT_EQ(strlen(result.str), strlen(args[0]));
+	ASSERT_STR_EQ(result.str, "HELLO, WORLD!");
+	PASS();
+}
+
 SUITE(call_with_duktape)
 {
-	/*
-	 * TODO: use JS fragments to exercise call_js_foreach() codepaths like:
-	 * error in pcompile
-	 * can compile, error in pcall
-	 * can compile, can pcall, error fetching non-string result
-	 * can compile, can pcall, can get string result
-	 */
+	RUN_TEST(call_with_duktape_pcompile_fail);
+	RUN_TEST(call_with_duktape_pcall_fail);
+	RUN_TEST(call_with_duktape_pcall_incorrect_result_type);
+	RUN_TEST(call_with_duktape_minimum_valid_function);
 }
 
 GREATEST_MAIN_DEFS();
