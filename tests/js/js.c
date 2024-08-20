@@ -122,14 +122,14 @@ root_object_only_opening_brace(void)
 TEST
 root_object_missing_closing_brace(void)
 {
-	parse_json_with_noop("{ \"foo\" : \"bar\"");
+	parse_json_with_noop("{\"foo\": \"bar\"");
 	PASS();
 }
 
 TEST
 root_object_missing_opening_brace(void)
 {
-	parse_json_with_noop("\"foo\" : \"bar\"}");
+	parse_json_with_noop("\"foo\": \"bar\"}");
 	PASS();
 }
 
@@ -225,12 +225,44 @@ root_object_empty(void)
 	PASS();
 }
 
+TEST
+missing_streamingData_key(void)
+{
+	parse_json_with_noop("{\"foo\": \"bar\"}");
+	PASS();
+}
+
+TEST
+incorrect_streamingData_value_type(void)
+{
+	parse_json_with_noop("{\"streamingData\": 1}");
+	PASS();
+}
+
+TEST
+missing_adaptiveFormats_key(void)
+{
+	parse_json_with_noop("{\"streamingData\": {\"foo\": \"bar\"}}");
+	PASS();
+}
+
+TEST
+incorrect_adaptiveFormats_value_type(void)
+{
+	parse_json_with_noop("{\"streamingData\": {\"adaptiveFormats\": 2}}");
+	PASS();
+}
+
 /*
- * Test that incorrect JSON content does not crash.
+ * Test that incorrect JSON content shape does not crash.
  */
-SUITE(incorrect_root_content)
+SUITE(incorrect_shape)
 {
 	RUN_TEST(root_object_empty);
+	RUN_TEST(missing_streamingData_key);
+	RUN_TEST(incorrect_streamingData_value_type);
+	RUN_TEST(missing_adaptiveFormats_key);
+	RUN_TEST(incorrect_adaptiveFormats_value_type);
 }
 
 GREATEST_MAIN_DEFS();
@@ -244,7 +276,7 @@ main(int argc, char **argv)
 
 	RUN_SUITE(invalid_json);
 	RUN_SUITE(incorrect_root_type);
-	RUN_SUITE(incorrect_root_content);
+	RUN_SUITE(incorrect_shape);
 
 	coverage_write_and_close(fd);
 
