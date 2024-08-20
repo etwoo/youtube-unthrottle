@@ -2,9 +2,8 @@ macro(add_sandbox_test source)
 	set(target sandbox-${source})
 	add_test(${target} ${target} -v)
 	add_executable(${target})
-	target_sources(${target} PRIVATE ${source}.c coverage.c)
+	target_sources(${target} PRIVATE ${source}.c)
 	target_include_directories(${target} PRIVATE
-		${CMAKE_CURRENT_SOURCE_DIR}
 		${PROJECT_SOURCE_DIR}/src
 		${greatest_SOURCE_DIR}
 	)

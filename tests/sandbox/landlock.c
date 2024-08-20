@@ -138,13 +138,13 @@ main(int argc, char **argv)
 {
 	GREATEST_MAIN_BEGIN();
 
-	int fd = open_coverage_fd();
+	int fd = coverage_open();
 
 	RUN_SUITE(before_landlock);
 	RUN_SUITE(partial_landlock);
 	RUN_SUITE(full_landlock);
 
-	write_coverage_and_close_fd(fd);
+	coverage_write_and_close(fd);
 
 	GREATEST_MAIN_END();
 }

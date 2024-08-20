@@ -6,7 +6,7 @@ image: archlinux/archlinux:base-devel
 .build_steps: &build_steps
     - cmake -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=1 . -B ./build
     - cmake --build ./build
-    - cd ./build/tests && ctest --output-junit junit.xml -E '^cli-try-sandbox|sandbox-landlock$' .
+    - ctest --test-dir ./build/tests/ --output-junit junit.xml -E '^cli-try-sandbox|sandbox-landlock$'
 
 build_with_gcc:
   stage: build
@@ -56,9 +56,10 @@ coverage:
     - export CXX=clang++
     - cmake -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=1 -DBUILD_COVERAGE=1 . -B ./build
     - cmake --build ./build
-    - ./scripts/coverage.sh
+    - COVERAGE_PROFILE_DIR=coverage.profraw ctest --test-dir ./build/tests/ --output-junit junit.xml -E '^cli-try-sandbox|sandbox-landlock$'
+    - ./scripts/coverage.sh coverage.profraw coverage.xml
   artifacts:
     reports:
       coverage_report:
         coverage_format: cobertura
-        path: ./sandbox.xml
+        path: ./coverage.xml

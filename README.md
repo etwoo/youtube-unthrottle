@@ -114,8 +114,7 @@ To build and run unit tests:
 ```sh
 cmake --fresh -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=1 . -B ./build
 cmake --build ./build --clean-first
-cd ./build/tests
-ctest .
+ctest --test-dir ./build/tests/
 ```
 
 To reconfigure and build with clang instead of gcc:
@@ -130,12 +129,10 @@ To generate a code coverage report:
 ```sh
 CC=clang CXX=clang++ cmake --fresh -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=1 -DBUILD_COVERAGE=1 . -B ./build
 cmake --build ./build --clean-first
-cd ./build/tests/sandbox/
-COVERAGE_PROFILE=landlock.profraw ./sandbox-landlock -v
-COVERAGE_PROFILE=seccomp.profraw ./sandbox-seccomp -v
-llvm-profdata merge -sparse -o sandbox.profdata *.profraw
-llvm-cov report -show-region-summary=0 -show-branch-summary=0 -instr-profile=sandbox.profdata -object ../../youtube-unthrottle
-llvm-cov show -instr-profile=sandbox.profdata -object ../../youtube-unthrottle
+COVERAGE_PROFILE_DIR=coverage.profraw ctest --test-dir ./build/tests/
+./scripts/coverage.sh coverage.profraw coverage.xml
+llvm-cov report -show-region-summary=0 -show-branch-summary=0 -instr-profile=coverage.profdata -object ./build/youtube-unthrottle
+llvm-cov show -instr-profile=coverage.profdata -object ./build/youtube-unthrottle
 ```
 
 To build and fuzz:
