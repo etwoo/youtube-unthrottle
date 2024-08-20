@@ -449,8 +449,8 @@ youtube_stream_setup(struct youtube_stream *p,
 	}
 
 	struct parse_ops pops = {
-		.got_audio = youtube_stream_set_audio,
 		.got_video = youtube_stream_set_video,
+		.got_audio = youtube_stream_set_audio,
 	};
 	parse_json(json, json_sz, &pops, p);
 
