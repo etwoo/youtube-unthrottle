@@ -400,6 +400,160 @@ SUITE(correct_shape)
 	RUN_TEST(extra_adaptiveFormats_elements);
 }
 
+TEST
+find_base_js_url_negative(void)
+{
+	const char *p = NULL;
+	size_t sz = 0;
+
+	static const char html[] = "<html/>";
+	find_base_js_url(html, sizeof(html), &p, &sz);
+
+	ASSERT_EQ(p, NULL);
+	ASSERT_EQ(sz, 0);
+	PASS();
+}
+
+TEST
+find_base_js_url_positive(void)
+{
+	const char *got_url = NULL;
+	size_t got_sz = 0;
+
+	static const char html[] =
+		"<script "
+		"src=\"/s/player/deadbeef/player_ias.vflset/en_US/base.js\" "
+		"nonce=\"AAAAAAAAAAAAAAAAAAAAAA\""
+		">"
+		"</script>";
+	find_base_js_url(html, sizeof(html), &got_url, &got_sz);
+
+	static const char expected[] =
+		"/s/player/deadbeef/player_ias.vflset/en_US/base.js";
+	ASSERT_EQ(got_sz, strlen(expected));
+	ASSERT_STRN_EQ(got_url, expected, got_sz);
+	PASS();
+}
+
+TEST
+find_js_deobfuscator_first_match_fail(void)
+{
+	const char *deobfuscator = NULL;
+	size_t deobfuscator_sz = 0;
+
+	static const char js[] =
+		"var _yt_player={};(function(g){})(_yt_player);";
+	find_js_deobfuscator(js, sizeof(js), &deobfuscator, &deobfuscator_sz);
+
+	ASSERT_EQ(deobfuscator, NULL);
+	ASSERT_EQ(deobfuscator_sz, 0);
+	PASS();
+}
+
+TEST
+find_js_deobfuscator_first_match_too_long(void)
+{
+	const char *deobfuscator = NULL;
+	size_t deobfuscator_sz = 0;
+
+	static const char js[] =
+		"&&(c="
+		"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+		"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+		"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+		"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+		"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+		"[0](c),";
+	find_js_deobfuscator(js, sizeof(js), &deobfuscator, &deobfuscator_sz);
+
+	ASSERT_EQ(deobfuscator, NULL);
+	ASSERT_EQ(deobfuscator_sz, 0);
+	PASS();
+}
+
+TEST
+find_js_deobfuscator_second_match_fail(void)
+{
+	const char *deobfuscator = NULL;
+	size_t deobfuscator_sz = 0;
+
+	static const char js[] =
+		"&&(c=ODa[0](c),";
+	find_js_deobfuscator(js, sizeof(js), &deobfuscator, &deobfuscator_sz);
+
+	ASSERT_EQ(deobfuscator, NULL);
+	ASSERT_EQ(deobfuscator_sz, 0);
+	PASS();
+}
+
+TEST
+find_js_deobfuscator_second_match_too_long(void)
+{
+	const char *deobfuscator = NULL;
+	size_t deobfuscator_sz = 0;
+
+	static const char js[] =
+		"&&(c=ODa[0](c),\n"
+		"var ODa=["
+		"CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"
+		"CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"
+		"CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"
+		"CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"
+		"CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"
+		"]";
+	find_js_deobfuscator(js, sizeof(js), &deobfuscator, &deobfuscator_sz);
+
+	ASSERT_EQ(deobfuscator, NULL);
+	ASSERT_EQ(deobfuscator_sz, 0);
+	PASS();
+}
+
+TEST
+find_js_deobfuscator_third_match_fail(void)
+{
+	const char *deobfuscator = NULL;
+	size_t deobfuscator_sz = 0;
+
+	static const char js[] =
+		"&&(c=ODa[0](c),\n"
+		"var ODa=[Pma];";
+	find_js_deobfuscator(js, sizeof(js), &deobfuscator, &deobfuscator_sz);
+
+	ASSERT_EQ(deobfuscator, NULL);
+	ASSERT_EQ(deobfuscator_sz, 0);
+	PASS();
+}
+
+TEST
+find_js_deobfuscator_third_match_success(void)
+{
+	const char *deobfuscator = NULL;
+	size_t deobfuscator_sz = 0;
+
+	static const char js[] =
+		"&&(c=ODa[0](c),\n"
+		"var ODa=[Pma];"
+		"Pma=function(a){return b.join(\"\")};";
+	find_js_deobfuscator(js, sizeof(js), &deobfuscator, &deobfuscator_sz);
+
+	static const char expected[] = "function(a){return b.join(\"\")};";
+	ASSERT_EQ(deobfuscator_sz, strlen(expected));
+	ASSERT_STRN_EQ(deobfuscator, expected, deobfuscator_sz);
+	PASS();
+}
+
+SUITE(find_using_re)
+{
+	RUN_TEST(find_base_js_url_negative);
+	RUN_TEST(find_base_js_url_positive);
+	RUN_TEST(find_js_deobfuscator_first_match_fail);
+	RUN_TEST(find_js_deobfuscator_first_match_too_long);
+	RUN_TEST(find_js_deobfuscator_second_match_fail);
+	RUN_TEST(find_js_deobfuscator_second_match_too_long);
+	RUN_TEST(find_js_deobfuscator_third_match_fail);
+	RUN_TEST(find_js_deobfuscator_third_match_success);
+}
+
 GREATEST_MAIN_DEFS();
 
 int
@@ -413,6 +567,7 @@ main(int argc, char **argv)
 	RUN_SUITE(incorrect_root_type);
 	RUN_SUITE(incorrect_shape);
 	RUN_SUITE(correct_shape);
+	RUN_SUITE(find_using_re);
 
 	coverage_write_and_close(fd);
 
