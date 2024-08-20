@@ -322,13 +322,13 @@ SUITE(incorrect_shape)
 	RUN_TEST(unsupported_signatureCipher_key);
 }
 
-struct copies {
+struct url_copy {
 	char video[16];
 	char audio[16];
 };
 
 static void
-copies_init(struct copies *c)
+url_copy_init(struct url_copy *c)
 {
 	c->video[0] = '\0';
 	c->audio[0] = '\0';
@@ -337,7 +337,7 @@ copies_init(struct copies *c)
 static void
 copy_video(const char *val, size_t sz, void *userdata)
 {
-	struct copies *urls = (struct copies *)userdata;
+	struct url_copy *urls = (struct url_copy *)userdata;
 	assert(sizeof(urls->video) >= sz);
 	memcpy(urls->video, val, sz);
 	urls->video[sz] = '\0';
@@ -347,14 +347,14 @@ copy_video(const char *val, size_t sz, void *userdata)
 static void
 copy_audio(const char *val, size_t sz, void *userdata)
 {
-	struct copies *urls = (struct copies *)userdata;
+	struct url_copy *urls = (struct url_copy *)userdata;
 	assert(sizeof(urls->audio) >= sz);
 	memcpy(urls->audio, val, sz);
 	urls->audio[sz] = '\0';
 	debug("Copied audio URL: %s", urls->audio);
 }
 
-static struct parse_ops COPY_OPS = {
+static struct parse_ops URL_COPY_OPS = {
 	.got_video = copy_video,
 	.got_audio = copy_audio,
 };
@@ -368,9 +368,9 @@ minimum_json_with_correct_shape(void)
 		"{\"mimeType\": \"video/foo\",\"url\": \"http://v.test\"}"
 		"]}}";
 
-	struct copies urls;
-	copies_init(&urls);
-	parse_json(json, strlen(json), &COPY_OPS, &urls);
+	struct url_copy urls;
+	url_copy_init(&urls);
+	parse_json(json, strlen(json), &URL_COPY_OPS, &urls);
 
 	ASSERT_STR_EQ(urls.audio, "http://a.test");
 	ASSERT_STR_EQ(urls.video, "http://v.test");
@@ -388,9 +388,9 @@ extra_adaptiveFormats_elements(void)
 		"{\"mimeType\": \"video/bar\",\"url\": \"http://extra.test\"}"
 		"]}}";
 
-	struct copies urls;
-	copies_init(&urls);
-	parse_json(json, strlen(json), &COPY_OPS, &urls);
+	struct url_copy urls;
+	url_copy_init(&urls);
+	parse_json(json, strlen(json), &URL_COPY_OPS, &urls);
 
 	ASSERT_STR_EQ(urls.audio, "http://a.test");
 	ASSERT_STR_EQ(urls.video, "http://v.test");
@@ -583,12 +583,12 @@ call_with_duktape_pcall_incorrect_result_type(void)
 	PASS();
 }
 
-struct copy {
+struct result_copy {
 	char str[16];
 };
 
 static void
-copy_init(struct copy *c)
+result_copy_init(struct result_copy *c)
 {
 	c->str[0] = '\0';
 }
@@ -596,7 +596,7 @@ copy_init(struct copy *c)
 static void
 copy_result(const char *val, size_t sz, void *userdata)
 {
-	struct copy *result = (struct copy *)userdata;
+	struct result_copy *result = (struct result_copy *)userdata;
 	assert(sizeof(result->str) >= sz);
 	memcpy(result->str, val, sz);
 	result->str[sz] = '\0';
@@ -606,21 +606,19 @@ copy_result(const char *val, size_t sz, void *userdata)
 TEST
 call_with_duktape_minimum_valid_function(void)
 {
-	static const char js[] = "function(a){return a.toUpperCase();};";
-
-	char *args[1];
-	args[0] = "Hello, World!";
-
 	struct call_ops cops = {
 		.got_result = copy_result,
 	};
 
-	struct copy result;
-	copy_init(&result);
+	struct result_copy result;
+	result_copy_init(&result);
 
+	char *args[1];
+	args[0] = "Hello, World!";
+
+	static const char js[] = "function(a){return a.toUpperCase();};";
 	call_js_foreach(js, sizeof(js), args, ARRAY_SIZE(args), &cops, &result);
 
-	// ASSERT_EQ(strlen(result.str), strlen(args[0]));
 	ASSERT_STR_EQ(result.str, "HELLO, WORLD!");
 	PASS();
 }
