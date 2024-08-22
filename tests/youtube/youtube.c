@@ -13,8 +13,8 @@ static const char FAKE_YT_URL[] = "https://www.youtube.com/watch?v=FOOBAR";
 static const char FAKE_HTML_RESPONSE[] = "\"/s/player/foobar/base.js\"";
 static const char FAKE_JSON_RESPONSE[] =
 	"{\"streamingData\": {\"adaptiveFormats\": ["
-	"{\"mimeType\": \"audio/foobar\",\"url\": \"http://a.test?n=aaa&\"},"
-	"{\"mimeType\": \"video/foobar\",\"url\": \"http://v.test?n=vvv&\"}"
+	"{\"mimeType\": \"audio/foobar\",\"url\": \"http://a.test?n=aaa\"},"
+	"{\"mimeType\": \"video/foobar\",\"url\": \"http://v.test?n=vvv\"}"
 	"]}}";
 static const char FAKE_JS_RESPONSE[] =
 	"&&(c=X[0](c),\nvar X=[Y];\nY=function(a)"

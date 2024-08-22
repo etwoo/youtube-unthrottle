@@ -202,8 +202,13 @@ pop_n_param_one(CURLU *url, char **result)
 	 * return type to have a single function definition body expand to both
 	 * const and non-const variants.
 	 */
-	char *dst = (char *)ciphertext_within_getargs - 3;
-	/* magic number 3: two chars for preceding "n=", one char for '&' */
+	assert(ciphertext_within_getargs[-2] == 'n' &&
+	       ciphertext_within_getargs[-1] == '=');
+	char *dst = (char *)ciphertext_within_getargs - strlen("n=");
+	if (dst > getargs) {
+		assert(dst[-1] == '&');
+		--dst;
+	} /* else: dst == getargs, and n-parameter is the first GET argument */
 	char *after_ciphertext =
 		(char *)ciphertext_within_getargs + ciphertext_sz;
 	const size_t remaining = (getargs + getargs_sz) - after_ciphertext;
