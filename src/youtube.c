@@ -36,9 +36,7 @@ struct youtube_stream *
 youtube_stream_init(void)
 {
 	struct youtube_stream *p = malloc(sizeof(*p));
-	if (p == NULL) {
-		goto error;
-	}
+	error_if(p == NULL, "Cannot allocate youtube_stream struct");
 
 	p->basejs = NULL;
 	p->pos = 0;
@@ -46,17 +44,11 @@ youtube_stream_init(void)
 
 	for (size_t i = 0; i < ARRAY_SIZE(p->url); ++i) {
 		p->url[i] = curl_url(); /* may return NULL! */
-		if (p->url[i] == NULL) {
-			warn("curl_url() returned NULL");
-			goto error;
-		}
+		error_if(p->url[i] == NULL,
+		         "Cannot allocate URL handle via curl_url()");
 	}
 
 	return p;
-
-error:
-	free(p);
-	return NULL;
 }
 
 void
@@ -72,32 +64,27 @@ youtube_stream_cleanup(struct youtube_stream *p)
 	free(p);
 }
 
-static bool
+static void
 youtube_stream_valid(struct youtube_stream *p)
 {
 	assert(p->pos <= ARRAY_SIZE(p->url));
 	for (size_t i = 0; i < ARRAY_SIZE(p->url); ++i) {
-		if (p->url[i] == NULL) {
-			return false;
-		}
+		assert(p->url[i] != NULL);
 	}
-	return true;
 }
 
 void
 youtube_stream_visitor(struct youtube_stream *p, void (*visit)(const char *))
 {
-	assert(youtube_stream_valid(p));
+	youtube_stream_valid(p);
 	for (size_t i = 0; i < ARRAY_SIZE(p->url); ++i) {
 		char *s = NULL;
 		CURLUcode uc = curl_url_get(p->url[i], CURLUPART_URL, &s, 0);
-		if (!uc && s != NULL) {
-			visit(s);
-			curl_free(s);
-		} else {
-			warn("Error getting CURLUPART_URL: %s",
-			     curl_url_strerror(uc));
-		}
+		error_if(uc || s == NULL,
+		         "Cannot get CURLUPART_URL: %s",
+		         curl_url_strerror(uc));
+		visit(s);
+		curl_free(s);
 	}
 }
 
@@ -105,15 +92,10 @@ static void
 youtube_stream_set_one(struct youtube_stream *p,
                        int idx,
                        const char *val,
-                       size_t sz)
+                       size_t sz __attribute__((unused)))
 {
 	CURLUcode uc = curl_url_set(p->url[idx], CURLUPART_URL, val, 0);
-	if (uc) {
-		warn("Error setting CURLUPART_URL of %.*s: %s",
-		     (int)sz,
-		     val,
-		     curl_url_strerror(uc));
-	}
+	error_if(uc, "Cannot set CURLUPART_URL: %s", curl_url_strerror(uc));
 }
 
 static void
@@ -145,11 +127,9 @@ pop_n_param_one(CURLU *url, char **result)
 	char *getargs = NULL;
 
 	CURLUcode uc = curl_url_get(url, CURLUPART_QUERY, &getargs, 0);
-	if (uc || getargs == NULL) {
-		warn("Error getting CURLUPART_QUERY: %s",
-		     curl_url_strerror(uc));
-		goto cleanup;
-	}
+	error_if(uc || getargs == NULL,
+		 "Cannot get CURLUPART_QUERY: %s",
+		 curl_url_strerror(uc));
 
 	const size_t getargs_sz = strlen(getargs);
 	assert(*(getargs + getargs_sz) == '\0');
@@ -167,11 +147,7 @@ pop_n_param_one(CURLU *url, char **result)
 	}
 
 	*result = malloc((ciphertext_sz + 1) * sizeof(*result));
-	if (*result == NULL) {
-		warn("Error allocating %zd bytes for ciphertext",
-		     ciphertext_sz + 1);
-		goto cleanup;
-	}
+	error_if(*result == NULL, "Cannot allocate ciphertext buffer");
 
 	/*
 	 * Copy n-parameter value out of storage owned by CURLU <url>.
@@ -218,11 +194,9 @@ pop_n_param_one(CURLU *url, char **result)
 	debug("After n-param ciphertext removal:  %s", getargs);
 
 	uc = curl_url_set(url, CURLUPART_QUERY, getargs, 0);
-	if (uc) {
-		warn("Error clearing ciphertext n-parameter: %s",
-		     curl_url_strerror(uc));
-		goto cleanup;
-	}
+	error_if(uc,
+	         "Cannot clear ciphertext n-parameter: %s",
+	         curl_url_strerror(uc));
 
 cleanup:
 	curl_free(getargs); /* handles NULL gracefully */
@@ -250,10 +224,7 @@ append_n_param(const char *plaintext, size_t sz, void *userdata)
 	const size_t kv_sz = sz + 3;
 	/* magic number 3: two chars for "n=", one char for NUL terminator */
 	char *kv = malloc(kv_sz * sizeof(*kv));
-	if (kv == NULL) {
-		warn("Error allocating %zd bytes for kv-pair", kv_sz);
-		goto cleanup;
-	}
+	error_if(kv == NULL, "Cannot allocate kv-pair buffer");
 
 	kv[0] = 'n';
 	kv[1] = '=';
@@ -264,13 +235,10 @@ append_n_param(const char *plaintext, size_t sz, void *userdata)
 
 	CURLUcode uc =
 		curl_url_set(url, CURLUPART_QUERY, kv, CURLU_APPENDQUERY);
-	if (uc) {
-		warn("Error appending plaintext n-parameter: %s",
-		     curl_url_strerror(uc));
-		goto cleanup;
-	}
+	error_if(uc,
+	         "Cannot append plaintext n-parameter: %s",
+	         curl_url_strerror(uc));
 
-cleanup:
 	free(kv);
 }
 
@@ -285,19 +253,13 @@ download_and_mmap_tmpfd(const char *url,
 {
 	assert(fd >= 0);
 
-	if (!url_download(url, host, path, post_body, fd)) {
-		goto error;
+	const bool downloaded_and_mapped =
+		url_download(url, host, path, post_body, fd) &&
+		tmpmap(fd, addr, sz);
+	if (downloaded_and_mapped) {
+		debug("Downloaded %s to fd=%d", url ? url : path, fd);
 	}
-	debug("Downloaded %s to fd=%d", url ? url : path, fd);
-
-	if (!tmpmap(fd, addr, sz)) {
-		goto error;
-	}
-
-	return true;
-
-error:
-	return false;
+	return downloaded_and_mapped;
 }
 
 static const char INNERTUBE_URI[] =
@@ -430,10 +392,7 @@ youtube_stream_setup(struct youtube_stream *p,
 
 	debug("Setting base.js URL: %.*s", (int)basejs_sz, basejs);
 	p->basejs = strndup(basejs, basejs_sz);
-	if (p->basejs == NULL) {
-		pwarn("Error in strndup()");
-		goto cleanup;
-	}
+	error_if(p->basejs == NULL, "Cannot strndup() base.js URL");
 
 	if (!download_and_mmap_tmpfd(NULL,
 	                             "www.youtube.com",

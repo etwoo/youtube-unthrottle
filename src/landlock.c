@@ -71,15 +71,15 @@ ruleset_add_rule_paths(int fd, const char **paths, size_t sz)
 		const char *p = paths[i];
 
 		pb.parent_fd = open(p, O_PATH);
-		if (pb.parent_fd < 0) {
-			warn("Error opening %s for landlock restriction", p);
-			goto cleanup;
-		}
+		error_if(pb.parent_fd < 0,
+		         "Cannot open %s for landlock restriction",
+			 p);
 
-		if (landlock_add_rule(fd, LANDLOCK_RULE_PATH_BENEATH, &pb, 0)) {
-			pwarn("Error in LANDLOCK_RULE_PATH_BENEATH");
-			goto cleanup;
-		}
+		error_if(landlock_add_rule(fd,
+		                           LANDLOCK_RULE_PATH_BENEATH,
+		                           &pb,
+		                           0),
+			 "Cannot add rule with LANDLOCK_RULE_PATH_BENEATH");
 
 		if (close(pb.parent_fd) < 0) {
 			pwarn("Error while close()-ing Landlock paths fd");
@@ -103,29 +103,20 @@ ruleset_add_rule_port(int fd, int port)
 		.allowed_access = LANDLOCK_ACCESS_NET_CONNECT_TCP,
 		.port = port,
 	};
-
-	if (landlock_add_rule(fd, LANDLOCK_RULE_NET_PORT, &np, 0)) {
-		pwarn("Error in LANDLOCK_RULE_NET_PORT");
-		goto cleanup;
-	}
-
-cleanup:; /* no particular cleanup to do (yet) */
+	error_if(landlock_add_rule(fd, LANDLOCK_RULE_NET_PORT, &np, 0),
+		 "Cannot add rule with LANDLOCK_RULE_NET_PORT");
 }
 
 void
 landlock_apply(const char **paths, int sz, int port)
 {
-	int fd = -1;
-	struct landlock_ruleset_attr ruleset_attr = {
+	struct landlock_ruleset_attr ra = {
 		.handled_access_fs = LANDLOCK_ACCESS_FS_READ_FILE,
 		.handled_access_net = LANDLOCK_ACCESS_NET_CONNECT_TCP,
 	};
 
-	fd = landlock_create_ruleset(&ruleset_attr, sizeof(ruleset_attr), 0);
-	if (fd < 0) {
-		pwarn("Error in landlock_create_ruleset()");
-		goto cleanup;
-	}
+	int fd = landlock_create_ruleset(&ra, sizeof(ra), 0);
+	error_if(fd < 0, "Cannot landlock_create_ruleset()");
 
 	if (paths) {
 		ruleset_add_rule_paths(fd, paths, sz);
@@ -135,19 +126,14 @@ landlock_apply(const char **paths, int sz, int port)
 		ruleset_add_rule_port(fd, port);
 	}
 
-	if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)) {
-		pwarn("Error in prctl(PR_SET_NO_NEW_PRIVS, ...)");
-		goto cleanup;
-	}
+	error_if(prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0),
+	         "Cannot prctl(PR_SET_NO_NEW_PRIVS, ...)");
 
-	if (landlock_restrict_self(fd, 0)) {
-		pwarn("Error in landlock_restrict_self()");
-		goto cleanup;
-	}
+	error_if(landlock_restrict_self(fd, 0),
+	         "Cannot landlock_restrict_self()");
 
 	debug("landlock_apply() succeeded");
 
-cleanup:
 	if (fd >= 0 && close(fd) < 0) {
 		pwarn("Ignoring error while close()-ing Landlock ruleset fd");
 	}

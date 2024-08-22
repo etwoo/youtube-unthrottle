@@ -2,6 +2,7 @@
 #define DEBUG_H
 
 #include <errno.h>
+#include <error.h>
 #include <string.h> /* for strerror() */
 
 #define debug(pattern, ...)                                                    \
@@ -19,5 +20,18 @@ debug_at_line(const char *fname, unsigned int lineno, const char *pattern, ...)
 void
 warn_at_line(const char *fname, unsigned int lineno, const char *pattern, ...)
 	__attribute__((format(printf, 3, 4)));
+
+#define error_if(cond, pattern, ...)                                           \
+	do {                                                                   \
+		if (!(cond)) {                                                 \
+			break;                                                 \
+		}                                                              \
+		error_at_line(1,                                               \
+		              errno,                                           \
+		              __FILE_NAME__,                                   \
+		              __LINE__,                                        \
+		              "ERROR: " pattern,                               \
+		              ##__VA_ARGS__);                                  \
+	} while (0);
 
 #endif

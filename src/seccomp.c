@@ -446,19 +446,14 @@ void
 seccomp_apply(unsigned flags)
 {
 	scmp_filter_ctx ctx = seccomp_init(SCMP_ACT_ERRNO(EACCES));
-	if (ctx == NULL) {
-		pwarn("Error in seccomp_init()");
-		goto cleanup;
-	}
+	error_if(ctx == NULL, "Cannot seccomp_init()");
 
 	if (!seccomp_apply_common(ctx, flags)) {
 		goto cleanup;
 	}
 
-	if (seccomp_load(ctx) < 0) {
-		pwarn("Error in seccomp_load()");
-		goto cleanup;
-	}
+	int rc = seccomp_load(ctx);
+	error_if(rc < 0, "Cannot seccomp_load()");
 
 	debug("seccomp_apply() succeeded");
 
