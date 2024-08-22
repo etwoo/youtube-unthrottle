@@ -35,6 +35,7 @@ write_to_tmpfile(char *ptr, size_t size, size_t nmemb, void *userdata)
 			pwarn("Error writing to tmpfile");
 			break;
 		}
+		ptr += written;
 		remaining_bytes -= written;
 	}
 
@@ -102,6 +103,22 @@ url_global_cleanup(void)
 	curl_global_cleanup();
 }
 
+static int
+wrap_curl_easy_perform(void *request,
+                       const char *path __attribute__((unused)),
+                       int fd __attribute__((unused)))
+{
+	return curl_easy_perform(request);
+}
+
+int (*CURL_EASY_PERFORM)(void *, const char *, int) = wrap_curl_easy_perform;
+
+void
+url_global_set_request_handler(int (*handler)(void *, const char *, int))
+{
+	CURL_EASY_PERFORM = handler;
+}
+
 static CURLU *
 url_prepare(const char *hostp, const char *pathp)
 {
@@ -148,6 +165,7 @@ static const char BROWSER_USERAGENT[] =
 	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, "
 	"like Gecko) Chrome/87.0.4280.101 Safari/537.36";
 static const char CONTENT_TYPE_JSON[] = "Content-Type: application/json";
+static const char DEFAULT_HOST_STR[] = "www.youtube.com";
 
 bool
 url_download(const char *url_str,   /* may be NULL */
@@ -187,6 +205,7 @@ url_download(const char *url_str,   /* may be NULL */
 		goto cleanup;
 	}
 
+	const char *url_fragment_or_path_str = NULL;
 	if (url_str) {
 		res = curl_easy_setopt(curl, CURLOPT_URL, url_str);
 		if (res) {
@@ -194,6 +213,10 @@ url_download(const char *url_str,   /* may be NULL */
 			     url_str,
 			     curl_easy_strerror(res));
 			goto cleanup;
+		}
+		url_fragment_or_path_str = strstr(url_str, DEFAULT_HOST_STR);
+		if (url_fragment_or_path_str) {
+			url_fragment_or_path_str += strlen(DEFAULT_HOST_STR);
 		}
 	} else {
 		assert(host_str != NULL && path_str != NULL);
@@ -210,6 +233,8 @@ url_download(const char *url_str,   /* may be NULL */
 			     curl_easy_strerror(res));
 			goto cleanup;
 		}
+
+		url_fragment_or_path_str = path_str;
 	}
 
 	if (post_body) {
@@ -232,7 +257,7 @@ url_download(const char *url_str,   /* may be NULL */
 		}
 	}
 
-	res = curl_easy_perform(curl);
+	res = CURL_EASY_PERFORM(curl, url_fragment_or_path_str, fd);
 	if (res) {
 		warn("Error in curl_easy_perform(): %s",
 		     curl_easy_strerror(res));

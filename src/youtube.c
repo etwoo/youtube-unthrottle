@@ -269,8 +269,6 @@ cleanup:
 	free(kv);
 }
 
-// TODO: create API for registering download_and_mmap_tmpfd as callback; in main.c, register the existing function (moved out of youtube.c), and for unit tests, register a test function that writes & maps static payloads to <fd> based on the values of url/host/path/post_body
-// TODO: maybe consider something similar for url.c, which could expose API that allows curl_easy_perform() to be redirected to a test verifier that validates the in-memory state of the passed-in CURL* instead of actually executing it
 static bool
 download_and_mmap_tmpfd(const char *url,
                         const char *host,

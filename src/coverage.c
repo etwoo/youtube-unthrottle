@@ -121,6 +121,7 @@ coverage_write_and_close(int fd)
 			pwarn("Error writing to coverage profile file");
 			goto error;
 		}
+		buf += written;
 		remaining_bytes -= written;
 	}
 
