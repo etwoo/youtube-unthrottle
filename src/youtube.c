@@ -14,6 +14,8 @@
 #include <string.h>
 #include <unistd.h>
 
+#define error_if_uc_msg(uc, msg) error_if(uc, msg ": %s", curl_url_strerror(uc))
+
 struct youtube_stream {
 	char *basejs;
 	size_t pos;
@@ -79,9 +81,8 @@ youtube_stream_visitor(struct youtube_stream *p, void (*visit)(const char *))
 	for (size_t i = 0; i < ARRAY_SIZE(p->url); ++i) {
 		char *s = NULL;
 		CURLUcode uc = curl_url_get(p->url[i], CURLUPART_URL, &s, 0);
-		error_if(uc || s == NULL,
-		         "Cannot get CURLUPART_URL: %s",
-		         curl_url_strerror(uc));
+		error_if_uc_msg(uc, "Cannot get CURLUPART_URL");
+		assert(s);
 		visit(s);
 		curl_free(s);
 	}
@@ -94,7 +95,7 @@ youtube_stream_set_one(struct youtube_stream *p,
                        size_t sz __attribute__((unused)))
 {
 	CURLUcode uc = curl_url_set(p->url[idx], CURLUPART_URL, val, 0);
-	error_if(uc, "Cannot set CURLUPART_URL: %s", curl_url_strerror(uc));
+	error_if_uc_msg(uc, "Cannot set CURLUPART_URL");
 }
 
 static void
@@ -126,9 +127,8 @@ pop_n_param_one(CURLU *url, char **result)
 	char *getargs = NULL;
 
 	CURLUcode uc = curl_url_get(url, CURLUPART_QUERY, &getargs, 0);
-	error_if(uc || getargs == NULL,
-	         "Cannot get CURLUPART_QUERY: %s",
-	         curl_url_strerror(uc));
+	error_if_uc_msg(uc, "Cannot get CURLUPART_QUERY");
+	assert(getargs);
 
 	const size_t getargs_sz = strlen(getargs);
 	assert(*(getargs + getargs_sz) == '\0');
@@ -193,9 +193,7 @@ pop_n_param_one(CURLU *url, char **result)
 	debug("After n-param ciphertext removal:  %s", getargs);
 
 	uc = curl_url_set(url, CURLUPART_QUERY, getargs, 0);
-	error_if(uc,
-	         "Cannot clear ciphertext n-parameter: %s",
-	         curl_url_strerror(uc));
+	error_if_uc_msg(uc, "Cannot clear ciphertext n-parameter");
 
 cleanup:
 	curl_free(getargs); /* handles NULL gracefully */
@@ -230,13 +228,9 @@ append_n_param(const char *plaintext, size_t sz, void *userdata)
 	memcpy(kv + 2, plaintext, sz);
 	kv[kv_sz - 1] = '\0';
 
-	CURLU *url = p->url[p->pos++];
-
-	CURLUcode uc =
-		curl_url_set(url, CURLUPART_QUERY, kv, CURLU_APPENDQUERY);
-	error_if(uc,
-	         "Cannot append plaintext n-parameter: %s",
-	         curl_url_strerror(uc));
+	CURLU *u = p->url[p->pos++];
+	CURLUcode uc = curl_url_set(u, CURLUPART_QUERY, kv, CURLU_APPENDQUERY);
+	error_if_uc_msg(uc, "Cannot append plaintext n-parameter");
 
 	free(kv);
 }
@@ -465,3 +459,5 @@ cleanup:
 	}
 	return result;
 }
+
+#undef error_if_uc_msg
