@@ -61,6 +61,21 @@ struct youtube_setup_ops NOOP = {
 	.after = NULL,
 };
 
+static bool CHECK_URL_RESULT = true;
+
+static void
+check_url(const char *url)
+{
+	if (0 == strcmp("http://a.test/?n=AAA", url)) {
+		debug("Got expected audio URL: %s", url);
+	} else if (0 == strcmp("http://v.test/?n=VVV", url)) {
+		debug("Got expected video URL: %s", url);
+	} else {
+		warn("check_url() fails: %s", url);
+		CHECK_URL_RESULT = false;
+	}
+}
+
 TEST
 stream_setup_with_redirected_network_io(void)
 {
@@ -72,8 +87,9 @@ stream_setup_with_redirected_network_io(void)
 	bool rc = youtube_stream_setup(stream, &NOOP, FAKE_YT_URL);
 	ASSERT(rc);
 
-	// TODO: add something like youtube_stream_print() that lets us examine the char* URL values, so that we can verify deobfuscation functions were called, e.g. convert to uppercase, or whatever we return in test_fixture_request_handler()
-	youtube_stream_print(stream);
+	youtube_stream_visitor(stream, check_url);
+	ASSERT(CHECK_URL_RESULT);
+
 	youtube_stream_cleanup(stream);
 	PASS();
 }

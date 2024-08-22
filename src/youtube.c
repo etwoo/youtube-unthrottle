@@ -85,14 +85,14 @@ youtube_stream_valid(struct youtube_stream *p)
 }
 
 void
-youtube_stream_print(struct youtube_stream *p)
+youtube_stream_visitor(struct youtube_stream *p, void (*visit)(const char *))
 {
 	assert(youtube_stream_valid(p));
 	for (size_t i = 0; i < ARRAY_SIZE(p->url); ++i) {
 		char *s = NULL;
 		CURLUcode uc = curl_url_get(p->url[i], CURLUPART_URL, &s, 0);
 		if (!uc && s != NULL) {
-			puts(s);
+			visit(s);
 			curl_free(s);
 		} else {
 			warn("Error getting CURLUPART_URL: %s",

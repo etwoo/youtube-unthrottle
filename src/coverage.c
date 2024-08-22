@@ -115,13 +115,14 @@ coverage_write_and_close(int fd)
 		goto error;
 	}
 
+	void *to_write = buf;
 	for (size_t remaining_bytes = sz; remaining_bytes > 0;) {
-		const ssize_t written = write(fd, buf, remaining_bytes);
+		const ssize_t written = write(fd, to_write, remaining_bytes);
 		if (written < 0) {
 			pwarn("Error writing to coverage profile file");
 			goto error;
 		}
-		buf += written;
+		to_write += written;
 		remaining_bytes -= written;
 	}
 

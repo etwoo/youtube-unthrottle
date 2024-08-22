@@ -52,6 +52,12 @@ after_inet(youtube_handle_t h __attribute__((unused)))
 	sandbox_only_io();
 }
 
+static void
+print_url(const char *url)
+{
+	puts(url);
+}
+
 int
 main(int argc, const char *argv[])
 {
@@ -90,7 +96,7 @@ main(int argc, const char *argv[])
 	};
 
 	if (youtube_stream_setup(stream, &sops, argv[1])) {
-		youtube_stream_print(stream);
+		youtube_stream_visitor(stream, print_url);
 	} else {
 		rc = EX_DATAERR;
 	}
