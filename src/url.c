@@ -52,19 +52,18 @@ get_easy_handle(void)
 	 * need to be retrofitted with a mutex and/or the callers will need
 	 * to ensure that initialization happens while still single-threaded.
 	 */
-	if (GLOBAL_CURL_EASY_HANDLE == NULL) {
+	if (!GLOBAL_CURL_EASY_HANDLE) {
 		GLOBAL_CURL_EASY_HANDLE = curl_easy_init();
-		/*
-		 * From the libcurl manpages:
-		 *
-		 *   If this function returns NULL, something went wrong
-		 *   and you cannot use the other curl functions.
-		 *
-		 * ... so there isn't much we can do here to get details.
-		 */
-		error_if(GLOBAL_CURL_EASY_HANDLE == NULL,
-		         "Cannot allocate easy handle via curl_easy_init()");
 	}
+	/*
+	 * From the libcurl manpages for curl_easy_init():
+	 *
+	 *   If this function returns NULL, something went wrong
+	 *   and you cannot use the other curl functions.
+	 *
+	 * ... so there isn't much we can do here to get details.
+	 */
+	error_if(!GLOBAL_CURL_EASY_HANDLE, "Cannot allocate easy handle");
 
 	curl_easy_reset(GLOBAL_CURL_EASY_HANDLE);
 	return GLOBAL_CURL_EASY_HANDLE;
@@ -120,7 +119,7 @@ url_prepare(const char *hostp, const char *pathp)
 	CURLUcode uc = CURLUE_OK;
 
 	CURLU *url = curl_url();
-	error_if(url == NULL, "Cannot allocate URL handle via curl_url()");
+	error_if(url == NULL, "Cannot allocate URL handle");
 
 	uc = curl_url_set(url, CURLUPART_SCHEME, "https", 0);
 	error_if_uc(uc, CURLUPART_SCHEME);

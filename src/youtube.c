@@ -44,8 +44,7 @@ youtube_stream_init(void)
 
 	for (size_t i = 0; i < ARRAY_SIZE(p->url); ++i) {
 		p->url[i] = curl_url(); /* may return NULL! */
-		error_if(p->url[i] == NULL,
-		         "Cannot allocate URL handle via curl_url()");
+		error_if(p->url[i] == NULL, "Cannot allocate URL handle");
 	}
 
 	return p;
