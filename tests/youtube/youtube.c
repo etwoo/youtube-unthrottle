@@ -50,15 +50,20 @@ test_fixture_request_handler(void *request, const char *path, int fd)
 	return 0;
 }
 
+static void
+setup_callback_noop(youtube_handle_t h __attribute__((unused)))
+{
+}
+
 struct youtube_setup_ops NOOP = {
-	.before = NULL,
-	.before_inet = NULL,
-	.after_inet = NULL,
-	.before_parse = NULL,
-	.after_parse = NULL,
-	.before_eval = NULL,
-	.after_eval = NULL,
-	.after = NULL,
+	.before = setup_callback_noop,
+	.before_inet = setup_callback_noop,
+	.after_inet = setup_callback_noop,
+	.before_parse = setup_callback_noop,
+	.after_parse = setup_callback_noop,
+	.before_eval = setup_callback_noop,
+	.after_eval = setup_callback_noop,
+	.after = setup_callback_noop,
 };
 
 static bool CHECK_URL_RESULT = true;
@@ -79,8 +84,6 @@ check_url(const char *url)
 TEST
 stream_setup_with_redirected_network_io(void)
 {
-	url_global_set_request_handler(test_fixture_request_handler);
-
 	youtube_handle_t stream = youtube_stream_init();
 	ASSERT(stream);
 
@@ -94,9 +97,35 @@ stream_setup_with_redirected_network_io(void)
 	PASS();
 }
 
+struct youtube_setup_ops NULL_OPS = {
+	.before = NULL,
+	.before_inet = NULL,
+	.after_inet = NULL,
+	.before_parse = NULL,
+	.after_parse = NULL,
+	.before_eval = NULL,
+	.after_eval = NULL,
+	.after = NULL,
+};
+
+TEST
+stream_setup_with_null_ops(void)
+{
+	youtube_handle_t stream = youtube_stream_init();
+	ASSERT(stream);
+
+	bool rc = youtube_stream_setup(stream, &NULL_OPS, FAKE_YT_URL);
+	ASSERT(rc);
+
+	youtube_stream_cleanup(stream);
+	PASS();
+}
+
 SUITE(stream_setup)
 {
+	url_global_set_request_handler(test_fixture_request_handler);
 	RUN_TEST(stream_setup_with_redirected_network_io);
+	RUN_TEST(stream_setup_with_null_ops);
 }
 
 int
