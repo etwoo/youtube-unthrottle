@@ -47,8 +47,7 @@ parse_json(const char *json,
 	duk_ret_t res = DUK_EXEC_ERROR;
 
 	duk_context *ctx = duk_create_heap_default(); /* may return NULL! */
-	error_if(ctx == NULL,
-	         "Cannot allocate Duktape heap via duk_create_heap_default()");
+	error_if(ctx == NULL, "Cannot allocate Duktape heap");
 
 	duk_push_lstring(ctx, json, json_sz);
 	res = duk_safe_call(ctx, try_decode, NULL, 1, 1);
@@ -286,8 +285,7 @@ call_js_foreach(const char *code,
                 void *userdata)
 {
 	duk_context *ctx = duk_create_heap_default(); /* may return NULL! */
-	error_if(ctx == NULL,
-	         "Cannot allocate Duktape heap via duk_create_heap_default()");
+	error_if(ctx == NULL, "Cannot allocate Duktape heap");
 
 	duk_push_lstring(ctx, code, sz);
 	assert(duk_get_type(ctx, -1) == DUK_TYPE_STRING);

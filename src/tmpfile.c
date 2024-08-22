@@ -46,8 +46,7 @@ tmpfd(void)
 	debug("Got tmpfile with fd=%d", fd);
 
 cleanup:
-	warn_if(fs != NULL && fclose(fs) != 0,
-	        "Ignoring error while fclose()-ing tmpfile stream");
+	warn_if(fs && fclose(fs), "Ignoring error fclose()-ing tmpfile stream");
 	return fd;
 }
 
@@ -89,5 +88,5 @@ tmpunmap(void *addr, unsigned int sz)
 	}
 
 	const int rc = munmap(addr, sz);
-	warn_if(rc < 0, "Ignoring error while munmap()-ing tmpfile");
+	warn_if(rc < 0, "Ignoring error munmap()-ing tmpfile");
 }

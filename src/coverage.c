@@ -107,7 +107,7 @@ coverage_write_and_close(int fd)
 	debug("Wrote %zd bytes to coverage fd=%d", sz, fd);
 
 	free(buf);
-	warn_if(close(fd) < 0, "Ignoring error while close()-ing coverage fd");
+	warn_if(close(fd) < 0, "Ignoring error close()-ing coverage fd");
 }
 
 #endif

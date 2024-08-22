@@ -342,19 +342,13 @@ youtube_stream_setup(struct youtube_stream *p,
 	}
 
 	json_fd = tmpfd();
-	if (json_fd < 0) {
-		goto cleanup;
-	}
+	error_if(json_fd < 0, "Cannot get JSON tmpfile");
 
 	html_fd = tmpfd();
-	if (html_fd < 0) {
-		goto cleanup;
-	}
+	error_if(html_fd < 0, "Cannot get HTML tmpfile");
 
 	js_fd = tmpfd();
-	if (js_fd < 0) {
-		goto cleanup;
-	}
+	error_if(js_fd < 0, "Cannot get JS tmpfile");
 
 	if (ops && ops->before_inet) {
 		ops->before_inet(p);
@@ -464,12 +458,9 @@ cleanup:
 	tmpunmap(json, json_sz);
 	tmpunmap(html, html_sz);
 	tmpunmap(js, js_sz);
-	warn_if(json_fd >= 0 && close(json_fd) < 0,
-	        "Ignoring error while close()-ing JSON tmpfile");
-	warn_if(html_fd >= 0 && close(html_fd) < 0,
-	        "Ignoring error while close()-ing HTML tmpfile");
-	warn_if(js_fd >= 0 && close(js_fd) < 0,
-	        "Ignoring error while close()-ing JavaScript tmpfile");
+	warn_if(close(json_fd) < 0, "Ignoring error close()-ing JSON tmpfile");
+	warn_if(close(html_fd) < 0, "Ignoring error close()-ing HTML tmpfile");
+	warn_if(close(js_fd) < 0, "Ignoring error close()-ing JS tmpfile");
 	if (ops && ops->after) {
 		ops->after(p);
 	}
