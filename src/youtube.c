@@ -128,8 +128,8 @@ pop_n_param_one(CURLU *url, char **result)
 
 	CURLUcode uc = curl_url_get(url, CURLUPART_QUERY, &getargs, 0);
 	error_if(uc || getargs == NULL,
-		 "Cannot get CURLUPART_QUERY: %s",
-		 curl_url_strerror(uc));
+	         "Cannot get CURLUPART_QUERY: %s",
+	         curl_url_strerror(uc));
 
 	const size_t getargs_sz = strlen(getargs);
 	assert(*(getargs + getargs_sz) == '\0');

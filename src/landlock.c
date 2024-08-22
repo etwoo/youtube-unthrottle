@@ -73,13 +73,13 @@ ruleset_add_rule_paths(int fd, const char **paths, size_t sz)
 		pb.parent_fd = open(p, O_PATH);
 		error_if(pb.parent_fd < 0,
 		         "Cannot open %s for landlock restriction",
-			 p);
+		         p);
 
 		error_if(landlock_add_rule(fd,
 		                           LANDLOCK_RULE_PATH_BENEATH,
 		                           &pb,
 		                           0),
-			 "Cannot add rule with LANDLOCK_RULE_PATH_BENEATH");
+		         "Cannot add rule with LANDLOCK_RULE_PATH_BENEATH");
 
 		if (close(pb.parent_fd) < 0) {
 			pwarn("Error while close()-ing Landlock paths fd");
@@ -104,7 +104,7 @@ ruleset_add_rule_port(int fd, int port)
 		.port = port,
 	};
 	error_if(landlock_add_rule(fd, LANDLOCK_RULE_NET_PORT, &np, 0),
-		 "Cannot add rule with LANDLOCK_RULE_NET_PORT");
+	         "Cannot add rule with LANDLOCK_RULE_NET_PORT");
 }
 
 void
