@@ -191,11 +191,11 @@ static const char *SYSCALLS_SANDBOX_BASIS[] = {
 	"rseq",
 };
 
-static void
-warn_seccomp_rule_add(const char *sc, int rc)
-{
-	warn("Error adding seccomp rule for syscall=%s: %s", sc, strerror(-rc));
-}
+#define warn_seccomp_rule_add_if(rc, syscall_name)                             \
+	warn_if(rc < 0,                                                        \
+	        "Error adding seccomp rule for syscall=%s: %s",                \
+	        syscall_name,                                                  \
+	        strerror(-rc))
 
 /*
  * Add each syscall rule separately, producing an OR relationship (union).
@@ -206,13 +206,11 @@ seccomp_allow_cmp_union(scmp_filter_ctx ctx,
                         const struct scmp_arg_cmp *op,
                         size_t sz)
 {
-	for (size_t i = 0; i < sz; ++i) {
-		int rc = seccomp_rule_add(ctx, SCMP_ACT_ALLOW, num, 1, op[i]);
-		if (rc < 0) {
-			return rc;
-		}
+	int rc = 0;
+	for (size_t i = 0; i < sz && rc == 0; ++i) {
+		rc = seccomp_rule_add(ctx, SCMP_ACT_ALLOW, num, 1, op[i]);
 	}
-	return 0;
+	return rc;
 }
 
 /*
@@ -281,15 +279,14 @@ seccomp_allow_prctl(scmp_filter_ctx ctx, int num)
 static bool
 seccomp_allow(scmp_filter_ctx ctx, const char **syscalls, size_t sz)
 {
-	for (size_t i = 0; i < sz; ++i) {
+	int rc = 0;
+	for (size_t i = 0; i < sz && rc == 0; ++i) {
 		const int num = seccomp_syscall_resolve_name(syscalls[i]);
 		if (num == __NR_SCMP_ERROR) {
+			rc = -EINVAL;
 			warn("Cannot resolve syscall number for syscall=%s",
 			     syscalls[i]);
-			return false;
-		}
-		int rc = -1;
-		if (0 == strcmp(syscalls[i], "fcntl")) {
+		} else if (0 == strcmp(syscalls[i], "fcntl")) {
 			rc = seccomp_allow_fcntl(ctx, num);
 		} else if (0 == strcmp(syscalls[i], "mmap")) {
 			rc = seccomp_allow_mmap(ctx, num);
@@ -301,10 +298,7 @@ seccomp_allow(scmp_filter_ctx ctx, const char **syscalls, size_t sz)
 			assert(0 != strcmp(syscalls[i], "openat"));
 			rc = seccomp_rule_add(ctx, SCMP_ACT_ALLOW, num, 0);
 		}
-		if (rc < 0) {
-			warn_seccomp_rule_add(syscalls[i], rc);
-			return false;
-		}
+		warn_seccomp_rule_add_if(rc, syscalls[i]);
 	}
 	return true;
 }
@@ -325,12 +319,9 @@ seccomp_allow_tmpfile(scmp_filter_ctx ctx,
 		     "now allowing openat() unconditionally and relying on "
 		     "Landlock to restrict access to the filesystem!",
 		     P_tmpdir);
-		int rc = seccomp_rule_add(ctx, SCMP_ACT_ALLOW, num, 0);
-		if (rc < 0) {
-			warn_seccomp_rule_add("openat", rc);
-			return false;
-		}
-		return true;
+		const int rc = seccomp_rule_add(ctx, SCMP_ACT_ALLOW, num, 0);
+		warn_seccomp_rule_add_if(rc, "openat");
+		return rc == 0;
 	}
 
 	/*
@@ -341,12 +332,9 @@ seccomp_allow_tmpfile(scmp_filter_ctx ctx,
 	const struct scmp_arg_cmp op[] = {
 		SCMP_A2(SCMP_CMP_MASKED_EQ, ~allowed_flags, 0),
 	};
-	int rc = seccomp_allow_cmp_union(ctx, num, op, ARRAY_SIZE(op));
-	if (rc < 0) {
-		warn_seccomp_rule_add("openat", rc);
-		return false;
-	}
-	return true;
+	const int rc = seccomp_allow_cmp_union(ctx, num, op, ARRAY_SIZE(op));
+	warn_seccomp_rule_add_if(rc, "openat");
+	return rc == 0;
 }
 
 static bool
@@ -364,12 +352,9 @@ seccomp_allow_rpath(scmp_filter_ctx ctx,
 	const struct scmp_arg_cmp op[] = {
 		SCMP_A2(SCMP_CMP_MASKED_EQ, ~allowed_flags, 0),
 	};
-	int rc = seccomp_allow_cmp_union(ctx, num, op, ARRAY_SIZE(op));
-	if (rc < 0) {
-		warn_seccomp_rule_add("openat", rc);
-		return false;
-	}
-	return true;
+	const int rc = seccomp_allow_cmp_union(ctx, num, op, ARRAY_SIZE(op));
+	warn_seccomp_rule_add_if(rc, "openat");
+	return rc == 0;
 }
 
 const unsigned SECCOMP_STDIO = 0x01;
@@ -419,11 +404,10 @@ static struct seccomp_apply_handler {
 static bool
 seccomp_apply_common(scmp_filter_ctx ctx, unsigned flags)
 {
-	if (!seccomp_allow(ctx,
-	                   SYSCALLS_SANDBOX_BASIS,
-	                   ARRAY_SIZE(SYSCALLS_SANDBOX_BASIS))) {
-		return false;
-	}
+	error_if(!seccomp_allow(ctx,
+	                        SYSCALLS_SANDBOX_BASIS,
+	                        ARRAY_SIZE(SYSCALLS_SANDBOX_BASIS)),
+	         "Cannot add SYSCALLS_SANDBOX_BASIS seccomp filter rules");
 
 	for (size_t i = 0; i < ARRAY_SIZE(SECCOMP_APPLY_HANDLERS); ++i) {
 		struct seccomp_apply_handler *h = SECCOMP_APPLY_HANDLERS + i;
@@ -448,15 +432,15 @@ seccomp_apply(unsigned flags)
 	scmp_filter_ctx ctx = seccomp_init(SCMP_ACT_ERRNO(EACCES));
 	error_if(ctx == NULL, "Cannot seccomp_init()");
 
-	if (!seccomp_apply_common(ctx, flags)) {
-		goto cleanup;
-	}
+	const bool applied = seccomp_apply_common(ctx, flags);
+	warn_if(!applied, "Cannot add expected seccomp filter rules");
 
-	int rc = seccomp_load(ctx);
-	error_if(rc < 0, "Cannot seccomp_load()");
-
-	debug("seccomp_apply() succeeded");
-
-cleanup:
+	error_if(seccomp_load(ctx) < 0, "Cannot seccomp_load()");
 	seccomp_release(ctx);
+
+	if (applied) {
+		debug("seccomp_apply() succeeded");
+	}
 }
+
+#undef warn_seccomp_rule_add_if

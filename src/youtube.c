@@ -464,15 +464,12 @@ cleanup:
 	tmpunmap(json, json_sz);
 	tmpunmap(html, html_sz);
 	tmpunmap(js, js_sz);
-	if (json_fd >= 0 && close(json_fd) < 0) {
-		pwarn("Ignoring error while close()-ing JSON tmpfile");
-	}
-	if (html_fd >= 0 && close(html_fd) < 0) {
-		pwarn("Ignoring error while close()-ing HTML tmpfile");
-	}
-	if (js_fd >= 0 && close(js_fd) < 0) {
-		pwarn("Ignoring error while close()-ing JavaScript tmpfile");
-	}
+	warn_if(json_fd >= 0 && close(json_fd) < 0,
+	        "Ignoring error while close()-ing JSON tmpfile");
+	warn_if(html_fd >= 0 && close(html_fd) < 0,
+	        "Ignoring error while close()-ing HTML tmpfile");
+	warn_if(js_fd >= 0 && close(js_fd) < 0,
+	        "Ignoring error while close()-ing JavaScript tmpfile");
 	if (ops && ops->after) {
 		ops->after(p);
 	}

@@ -81,18 +81,9 @@ ruleset_add_rule_paths(int fd, const char **paths, size_t sz)
 		                           0),
 		         "Cannot add rule with LANDLOCK_RULE_PATH_BENEATH");
 
-		if (close(pb.parent_fd) < 0) {
-			pwarn("Error while close()-ing Landlock paths fd");
-			pb.parent_fd = -1; /* avoid double-close() on cleanup */
-			goto cleanup;
-		}
-
+		warn_if(close(pb.parent_fd) < 0,
+		        "Ignoring error while close()-ing Landlock paths fd");
 		pb.parent_fd = -1;
-	}
-
-cleanup:
-	if (pb.parent_fd >= 0 && close(pb.parent_fd) < 0) {
-		pwarn("Ignoring error while close()-ing Landlock paths fd");
 	}
 }
 
@@ -134,7 +125,6 @@ landlock_apply(const char **paths, int sz, int port)
 
 	debug("landlock_apply() succeeded");
 
-	if (fd >= 0 && close(fd) < 0) {
-		pwarn("Ignoring error while close()-ing Landlock ruleset fd");
-	}
+	const int rc = close(fd);
+	warn_if(rc < 0, "Ignoring error while close()-ing Landlock ruleset fd");
 }

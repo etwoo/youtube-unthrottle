@@ -15,6 +15,14 @@ debug_at_line(const char *fname, unsigned int lineno, const char *pattern, ...)
 #define warn(pattern, ...)                                                     \
 	warn_at_line(__FILE_NAME__, __LINE__, pattern, ##__VA_ARGS__)
 
+#define warn_if(cond, pattern, ...)                                            \
+	do {                                                                   \
+		if (!(cond)) {                                                 \
+			break;                                                 \
+		}                                                              \
+		warn(pattern ": %s", ##__VA_ARGS__, strerror(errno));          \
+	} while (0);
+
 #define pwarn(msg) warn("%s: %s", msg, strerror(errno))
 
 void
