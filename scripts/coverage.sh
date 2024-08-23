@@ -2,6 +2,15 @@
 
 set -euxo pipefail
 
+COVERAGE_EXCLUDES=
+while getopts "e:" option; do
+	case "$option" in
+		e) COVERAGE_EXCLUDES="$OPTARG" ;;
+		*) echo "Unimplemented option" && exit 1 ;;
+	esac
+done
+shift $(($OPTIND - 1))
+
 COVERAGE_PROFILE_DIR="$1"
 COBERTURA_OUTPUT="$2"
 BIN='./build/youtube-unthrottle'
@@ -20,7 +29,7 @@ find ./build -path "*/$COVERAGE_PROFILE_DIR/*" | \
 #
 llvm-cov report -show-region-summary=0 -show-branch-summary=0 \
 	-instr-profile="$PROFILE_DATA" "$BIN" \
-	-ignore-filename-regex 'main.c|src/coverage.c'
+	-ignore-filename-regex "main.c|src/(coverage|${COVERAGE_EXCLUDES}).c"
 
 #
 # Convert profdata -> lcov -> cobertura. GitLab the latter to drive the test
