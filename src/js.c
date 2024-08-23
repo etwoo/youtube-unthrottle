@@ -63,14 +63,10 @@ parse_json(const char *json,
 	}
 	if (DUK_TYPE_OBJECT != duk_get_type(ctx, -1) ||
 	    0 == duk_get_prop_literal(ctx, -1, "adaptiveFormats")) {
-		warn0_then("Cannot get .streamingData.adaptiveFormats", {
-			goto cleanup;
-		});
+		warn0_then("Cannot get .adaptiveFormats", { goto cleanup; });
 	}
 	if (DUK_TYPE_OBJECT != duk_get_type(ctx, -1)) {
-		warn0_then("Cannot iterate .streamingData.adaptiveFormats", {
-			goto cleanup;
-		});
+		warn0_then("Cannot iter .adaptiveFormats", { goto cleanup; });
 	}
 
 	bool got_video = false;

@@ -41,9 +41,7 @@ test_fixture_request_handler(void *request, const char *path, int fd)
 	for (size_t remaining_bytes = strlen(to_write); remaining_bytes > 0;) {
 		const ssize_t written = write(fd, to_write, remaining_bytes);
 		if (written < 0) {
-			warn0_then("Error writing to tmpfile", {
-				return 1;
-			});
+			warn0_then("Error writing to tmpfile", { return 1; });
 		}
 		to_write += written;
 		remaining_bytes -= written;
