@@ -19,6 +19,18 @@ peek(duk_context *ctx)
 	return duk_safe_to_string(ctx, -1);
 }
 
+static void
+pop(duk_context **ctx)
+{
+	duk_pop(*ctx);
+}
+
+static void
+destroy_heap(duk_context **ctx)
+{
+	duk_destroy_heap(*ctx); /* handles NULL gracefully */
+}
+
 /*
  * Set up boilerplate so that it is possible to provide some error logs when
  * given an invalid JSON payload. For reference, see:
@@ -46,27 +58,26 @@ parse_json(const char *json,
 
 	duk_ret_t res = DUK_EXEC_ERROR;
 
-	duk_context *ctx = duk_create_heap_default(); /* may return NULL! */
+	duk_context *ctx __attribute__((cleanup(destroy_heap))) =
+		duk_create_heap_default(); /* may return NULL! */
 	error_if(ctx == NULL, "Cannot allocate Duktape heap");
 
 	duk_push_lstring(ctx, json, json_sz);
 	res = duk_safe_call(ctx, try_decode, NULL, 1, 1);
 	if (res != DUK_EXEC_SUCCESS) {
-		warn1_then("Error in duk_json_decode(): %s", peek(ctx), {
-			goto cleanup;
-		});
+		warn_then_return("Error in duk_json_decode(): %s", peek(ctx));
 	}
 
 	if (DUK_TYPE_OBJECT != duk_get_type(ctx, -1) ||
 	    0 == duk_get_prop_literal(ctx, -1, "streamingData")) {
-		warn0_then("Cannot get .streamingData", { goto cleanup; });
+		warn_then_return("Cannot get .streamingData");
 	}
 	if (DUK_TYPE_OBJECT != duk_get_type(ctx, -1) ||
 	    0 == duk_get_prop_literal(ctx, -1, "adaptiveFormats")) {
-		warn0_then("Cannot get .adaptiveFormats", { goto cleanup; });
+		warn_then_return("Cannot get .adaptiveFormats");
 	}
 	if (DUK_TYPE_OBJECT != duk_get_type(ctx, -1)) {
-		warn0_then("Cannot iter .adaptiveFormats", { goto cleanup; });
+		warn_then_return("Cannot iterate over .adaptiveFormats");
 	}
 
 	bool got_video = false;
@@ -78,23 +89,17 @@ parse_json(const char *json,
 		duk_get_prop_index(ctx, -1, i);
 
 		if (DUK_TYPE_OBJECT != duk_get_type(ctx, -1)) {
-			warn1_then("%zdth element is not object-coercible", i, {
-				goto cleanup;
-			});
+			warn_then_return(".[%zd] is not object-coercible", i);
 		}
 
 		if (0 == duk_get_prop_literal(ctx, -1, "mimeType") ||
 		    DUK_TYPE_STRING != duk_get_type(ctx, -1)) {
-			warn1_then("Cannot get .mimeType of %zdth element", i, {
-				goto cleanup;
-			});
+			warn_then_return("Cannot get .[%zd].mimeType", i);
 		}
 
 		if (0 == duk_get_prop_literal(ctx, -2, "url") ||
 		    DUK_TYPE_STRING != duk_get_type(ctx, -1)) {
-			warn1_then("Cannot get .url of %zdth element", i, {
-				goto cleanup;
-			});
+			warn_then_return("Cannot get .[%zd].url", i);
 		}
 
 		const char *url = duk_get_string(ctx, -1);
@@ -132,9 +137,6 @@ parse_json(const char *json,
 	}
 
 	duk_pop_2(ctx); /* for .streamingData.adaptiveFormats */
-
-cleanup:
-	duk_destroy_heap(ctx); /* handles NULL gracefully */
 }
 
 void
@@ -192,12 +194,12 @@ find_js_deobfuscator(const char *js,
 		info("Cannot find '%s' in base.js", RE_FUNC_NAME[i]);
 	}
 	if (name == NULL || nsz == 0) {
-		goto cleanup;
+		return;
 	}
 	debug("Got function name 1: %.*s", (int)nsz, name);
 
 	if (!re_pattern_escape(name, nsz, escaped, sizeof(escaped))) {
-		goto cleanup;
+		return;
 	}
 	debug("Escaped function name 1: %s", escaped);
 
@@ -207,14 +209,12 @@ find_js_deobfuscator(const char *js,
 	                 &nsz,
 	                 "var %s=\\[([^\\]]+)\\]",
 	                 escaped)) {
-		warn2_then("Cannot find '%.*s' in base.js", (int)nsz, name, {
-			goto cleanup;
-		});
+		warn_then_return("Cannot find %.*s in base.js", (int)nsz, name);
 	}
 	debug("Got function name 2: %.*s", (int)nsz, name);
 
 	if (!re_pattern_escape(name, nsz, escaped, sizeof(escaped))) {
-		goto cleanup;
+		return;
 	}
 	debug("Escaped function name 2: %s", escaped);
 
@@ -224,14 +224,10 @@ find_js_deobfuscator(const char *js,
 	                 deobfuscator_sz,
 	                 "(?s)%s=(function\\(a\\){.*return b.join\\(\"\"\\)};)",
 	                 escaped)) {
-		warn2_then("Cannot find '%.*s' in base.js", (int)nsz, name, {
-			goto cleanup;
-		});
+		warn_then_return("Cannot find %.*s in base.js", (int)nsz, name);
 	}
 	// debug("Got function body: %.*s", *deobfuscator_sz, *deobfuscator);
 	debug("Got function body of size %zd", *deobfuscator_sz);
-
-cleanup:; /* no particular cleanup to do (yet) */
 }
 
 static void
@@ -254,6 +250,8 @@ call_js_one(duk_context *ctx,
 	 */
 	duk_dup_top(ctx);
 
+	duk_context *guard __attribute__((cleanup(pop))) = ctx;
+
 	/*
 	 * Push supplied argument onto the Duktape stack, and then call the
 	 * compiled JavaScript function that is ready to go on the Duktape
@@ -261,22 +259,16 @@ call_js_one(duk_context *ctx,
 	 */
 	duk_push_lstring(ctx, js_arg, strlen(js_arg));
 	if (duk_pcall(ctx, 1) != DUK_EXEC_SUCCESS) {
-		warn1_then("Error in duk_pcall(): %s", peek(ctx), {
-			goto cleanup;
-		});
+		warn_then_return("Error in duk_pcall(): %s", peek(ctx));
 	}
 
 	const char *result = duk_get_string(ctx, -1);
 	if (result == NULL) {
-		warn0_then("Error fetching function result", { goto cleanup; });
+		warn_then_return("Error fetching function result");
 	}
 
 	debug("Got JavaScript function result: %s", result);
 	ops->got_result(result, strlen(result), userdata);
-
-cleanup:
-	duk_pop(ctx); /* <result> now points at free-d memory! */
-	result = NULL;
 }
 
 void
@@ -287,7 +279,8 @@ call_js_foreach(const char *code,
                 struct call_ops *ops,
                 void *userdata)
 {
-	duk_context *ctx = duk_create_heap_default(); /* may return NULL! */
+	duk_context *ctx __attribute__((cleanup(destroy_heap))) =
+		duk_create_heap_default(); /* may return NULL! */
 	error_if(ctx == NULL, "Cannot allocate Duktape heap");
 
 	duk_push_lstring(ctx, code, sz);
@@ -295,15 +288,10 @@ call_js_foreach(const char *code,
 
 	duk_push_string(ctx, __FUNCTION__);
 	if (duk_pcompile(ctx, DUK_COMPILE_FUNCTION) != 0) {
-		warn1_then("Error in duk_pcompile(): %s", peek(ctx), {
-			goto cleanup;
-		});
+		warn_then_return("Error in duk_pcompile(): %s", peek(ctx));
 	}
 
 	for (size_t i = 0; i < argc; ++i) {
 		call_js_one(ctx, args[i], ops, userdata);
 	}
-
-cleanup:
-	duk_destroy_heap(ctx); /* handles NULL gracefully */
 }

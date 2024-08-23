@@ -136,15 +136,13 @@ GREATEST_MAIN_DEFS();
 int
 main(int argc, char **argv)
 {
-	GREATEST_MAIN_BEGIN();
+	int fd __attribute__((cleanup(coverage_cleanup))) = coverage_open();
 
-	int fd = coverage_open();
+	GREATEST_MAIN_BEGIN();
 
 	RUN_SUITE(before_landlock);
 	RUN_SUITE(partial_landlock);
 	RUN_SUITE(full_landlock);
-
-	coverage_write_and_close(fd);
 
 	GREATEST_MAIN_END();
 }

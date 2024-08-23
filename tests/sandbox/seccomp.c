@@ -215,9 +215,9 @@ GREATEST_MAIN_DEFS();
 int
 main(int argc, char **argv)
 {
-	GREATEST_MAIN_BEGIN();
+	int fd __attribute__((cleanup(coverage_cleanup))) = coverage_open();
 
-	int fd = coverage_open();
+	GREATEST_MAIN_BEGIN();
 
 	RUN_SUITE(before_seccomp);
 	RUN_SUITE(seccomp_io_inet_tmpfile);
@@ -225,8 +225,6 @@ main(int argc, char **argv)
 	RUN_SUITE(seccomp_io_inet);
 	RUN_SUITE(seccomp_io);
 	RUN_SUITE(seccomp_io_sealed_sandbox);
-
-	coverage_write_and_close(fd);
 
 	GREATEST_MAIN_END();
 }

@@ -50,48 +50,32 @@ info_at_line(const char *fname, unsigned int lineno, const char *pattern, ...)
 	__attribute__((format(printf, 3, 4)));
 
 /*
- * Log a message at WARN level, then execute <error_block> as subsequent
- * error-handling control flow.
+ * Log a message at WARN level, then return from the caller's current function.
  *
  * In direct constrast with info_if(), this macro should be used when a change
- * in control flow (e.g. early return, jump to function cleanup) is desired.
+ * in control flow (e.g. early return) is desired.
  *
- * In other words, info_if() and warnN_then() create a relationship between log
- * levels and error-handling control flow: INFO messages should be for status
- * checks that do _not_ change control flow, while WARN messages should be for
- * error-handling that _does_ change control flow.
+ * In other words, info_if() and warn_then_return*() create a relationship
+ * between log levels and error-handling control flow: INFO messages should be
+ * for status checks that do _not_ change control flow, while WARN messages
+ * should be for error-handling that _does_ change control flow.
  */
-#define warn0_then(msg, error_block)                                           \
+#define warn_then_return(pattern, ...)                                         \
 	do {                                                                   \
-		warn_at_line(__FILE_NAME__, __LINE__, "%s", msg);              \
-		if (true)                                                      \
-			error_block                                            \
-		/* -Wempty-body should warn if given empty <error_block> */    \
+		warn_at_line(__FILE_NAME__, __LINE__, pattern, ##__VA_ARGS__); \
+		return;                                                        \
 	} while (0)
-
-/*
- * Like warn0_then(), except with a printf-style format string and a single
- * argument, rather than a constant string literal message.
- */
-#define warn1_then(pattern, arg, error_block)                                  \
+#define warn_then_return_val(val, pattern, ...)                                \
 	do {                                                                   \
-		warn_at_line(__FILE_NAME__, __LINE__, pattern, arg);           \
-		if (true)                                                      \
-			error_block                                            \
-		/* -Wempty-body should warn if given empty <error_block> */    \
+		warn_at_line(__FILE_NAME__, __LINE__, pattern, ##__VA_ARGS__); \
+		return val;                                                    \
 	} while (0)
-
-/*
- * Like warn0_then(), except with a printf-style format string and a pair of
- * arguments, rather than a constant string literal message.
- */
-#define warn2_then(pattern, arg0, arg1, error_block)                           \
-	do {                                                                   \
-		warn_at_line(__FILE_NAME__, __LINE__, pattern, arg0, arg1);    \
-		if (true)                                                      \
-			error_block                                            \
-		/* -Wempty-body should warn if given empty <error_block> */    \
-	} while (0)
+#define warn_then_return_false(pattern, ...)                                   \
+		warn_then_return_val(false, pattern, ##__VA_ARGS__)
+#define warn_then_return_1(pattern, ...)                                       \
+		warn_then_return_val(1, pattern, ##__VA_ARGS__)
+#define warn_then_return_negative_1(pattern, ...)                              \
+		warn_then_return_val(-1, pattern, ##__VA_ARGS__)
 
 void
 warn_at_line(const char *fname, unsigned int lineno, const char *pattern, ...)

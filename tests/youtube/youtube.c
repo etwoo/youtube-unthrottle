@@ -33,15 +33,13 @@ test_fixture_request_handler(void *request, const char *path, int fd)
 	} else if (strstr(path, "/base.js")) {
 		to_write = FAKE_JS_RESPONSE;
 	} else {
-		warn1_then("No test fixture for URL path: %s", path, {
-			return 1;
-		});
+		warn_then_return_1("No test fixture for URL path: %s", path);
 	}
 
 	for (size_t remaining_bytes = strlen(to_write); remaining_bytes > 0;) {
 		const ssize_t written = write(fd, to_write, remaining_bytes);
 		if (written < 0) {
-			warn0_then("Error writing to tmpfile", { return 1; });
+			warn_then_return_1("Error writing to tmpfile");
 		}
 		to_write += written;
 		remaining_bytes -= written;
@@ -76,9 +74,8 @@ check_url(const char *url)
 	} else if (0 == strcmp("http://v.test/?n=VVV", url)) {
 		debug("Got expected video URL: %s", url);
 	} else {
-		warn1_then("check_url() fails: %s", url, {
-			CHECK_URL_RESULT = false;
-		});
+		CHECK_URL_RESULT = false;
+		warn_then_return("check_url() fails: %s", url);
 	}
 }
 
@@ -132,20 +129,18 @@ SUITE(stream_setup)
 int
 main(int argc, char **argv)
 {
+	int fd __attribute__((cleanup(coverage_cleanup))) = coverage_open();
+
 	GREATEST_MAIN_BEGIN();
 
-	int fd = coverage_open();
 	/*
 	 * Note: youtube_global_init() and youtube_global_cleanup() are treated
 	 * as test fixtures, not TEST() cases, in case we ever want to run the
 	 * individual suites and testcases above in shuffled order.
 	 */
 	youtube_global_init();
-
 	RUN_SUITE(stream_setup);
-
 	youtube_global_cleanup();
-	coverage_write_and_close(fd);
 
 	GREATEST_MAIN_END();
 }

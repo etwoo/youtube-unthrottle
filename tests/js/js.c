@@ -636,9 +636,9 @@ GREATEST_MAIN_DEFS();
 int
 main(int argc, char **argv)
 {
-	GREATEST_MAIN_BEGIN();
+	int fd __attribute__((cleanup(coverage_cleanup))) = coverage_open();
 
-	int fd = coverage_open();
+	GREATEST_MAIN_BEGIN();
 
 	RUN_SUITE(invalid_json);
 	RUN_SUITE(incorrect_root_type);
@@ -646,8 +646,6 @@ main(int argc, char **argv)
 	RUN_SUITE(correct_shape);
 	RUN_SUITE(find_with_pcre);
 	RUN_SUITE(call_with_duktape);
-
-	coverage_write_and_close(fd);
 
 	GREATEST_MAIN_END();
 }

@@ -61,22 +61,19 @@ print_url(const char *url)
 int
 main(int argc, const char *argv[])
 {
-	int rc = EX_OK;
-	int fd = coverage_open();
+	int fd __attribute__((cleanup(coverage_cleanup))) = coverage_open();
 
 	if (argc < 2) {
-		rc = usage(argv[0], EX_USAGE);
-		goto done;
+		return usage(argv[0], EX_USAGE);
 	}
 
 	if (0 == strncmp(ARG_HELP, argv[1], strlen(ARG_HELP))) {
-		rc = usage(argv[0], EX_OK);
-		goto done;
+		return usage(argv[0], EX_OK);
 	} else if (0 == strncmp(ARG_SANDBOX, argv[1], strlen(ARG_SANDBOX))) {
 		sandbox_only_io_inet_tmpfile();
 		sandbox_only_io_inet_rpath();
 		sandbox_only_io();
-		goto done;
+		return EX_OK;
 	}
 
 	youtube_global_init();
@@ -95,16 +92,13 @@ main(int argc, const char *argv[])
 		.after = NULL,
 	};
 
+	int rc = EX_DATAERR;
 	if (youtube_stream_setup(stream, &sops, argv[1])) {
 		youtube_stream_visitor(stream, print_url);
-	} else {
-		rc = EX_DATAERR;
+		rc = EX_OK;
 	}
 
 	youtube_stream_cleanup(stream);
 	youtube_global_cleanup();
-
-done:
-	coverage_write_and_close(fd);
 	return rc;
 }

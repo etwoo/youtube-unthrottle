@@ -46,11 +46,9 @@ int __llvm_profile_write_buffer(char *buffer);
 int
 coverage_open(void)
 {
-	int fd = -1;
-
 	char *profile = getenv("COVERAGE_PROFILE_DIR");
 	if (profile == NULL) {
-		warn0_then("COVERAGE_PROFILE_DIR is not set", { goto error; });
+		warn_then_return_negative_1("COVERAGE_PROFILE_DIR is not set");
 	}
 
 	bool rc = mkdir(profile, S_IRWXU) == 0 || errno == EEXIST;
@@ -70,11 +68,11 @@ coverage_open(void)
 		sprintf(p + (i * 2), "%02hhX", random_bytes[i]);
 	}
 
+	int fd = -1;
 	fd = openat(dirfd, p, O_CREAT | O_EXCL | O_WRONLY, S_IRUSR | S_IWUSR);
 	error_if(fd < 0, "Cannot open coverage profile file");
 
 	debug("Opened coverage file with dir=%s, filename=%s", profile, p);
-error:
 	return fd;
 }
 
@@ -82,7 +80,7 @@ void
 coverage_write_and_close(int fd)
 {
 	if (fd < 0) {
-		warn1_then("Invalid coverage fd: %d", fd, { return; });
+		warn_then_return("Invalid coverage fd: %d", fd);
 	}
 
 	uint64_t sz = __llvm_profile_get_size_for_buffer();
@@ -109,3 +107,9 @@ coverage_write_and_close(int fd)
 }
 
 #endif
+
+void
+coverage_cleanup(int *fd)
+{
+	coverage_write_and_close(*fd);
+}

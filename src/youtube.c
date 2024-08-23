@@ -114,6 +114,12 @@ youtube_stream_set_audio(const char *val, size_t sz, void *userdata)
 	youtube_stream_set_one(p, 0, val, sz);
 }
 
+static void
+curl_free_getargs(char **getargs)
+{
+	curl_free(*getargs); /* handles NULL gracefully */
+}
+
 /*
  * Copy and clear n-parameters from query string in <url>.
  *
@@ -124,7 +130,7 @@ pop_n_param_one(CURLU *url, char **result)
 {
 	*result = NULL; /* NULL out early, just in case */
 
-	char *getargs = NULL;
+	char *getargs __attribute__((cleanup(curl_free_getargs))) = NULL;
 
 	CURLUcode uc = curl_url_get(url, CURLUPART_QUERY, &getargs, 0);
 	error_if_uc_msg(uc, "Cannot get CURLUPART_QUERY");
@@ -141,9 +147,7 @@ pop_n_param_one(CURLU *url, char **result)
 	                getargs_sz,
 	                &ciphertext_within_getargs,
 	                &ciphertext_sz)) {
-		warn1_then("No n-parameter in query: %s", getargs, {
-			goto cleanup;
-		});
+		warn_then_return("No n-parameter in query: %s", getargs);
 	}
 
 	*result = malloc((ciphertext_sz + 1) * sizeof(*result));
@@ -195,9 +199,6 @@ pop_n_param_one(CURLU *url, char **result)
 
 	uc = curl_url_set(url, CURLUPART_QUERY, getargs, 0);
 	error_if_uc_msg(uc, "Cannot clear ciphertext n-parameter");
-
-cleanup:
-	curl_free(getargs); /* handles NULL gracefully */
 }
 
 /*
@@ -292,18 +293,15 @@ format_innertube_post(const char *target, char *body, int capacity)
 	                strlen(target),
 	                &id,
 	                &sz)) {
-		warn1_then("Cannot find target_id in URL: %s", target, {
-			return false;
-		});
+		warn_then_return_false("Cannot find ID in URL: %s", target);
 	}
-	debug("Parsed target_id: %.*s", (int)sz, id);
+	debug("Parsed ID: %.*s", (int)sz, id);
 
 	const int printed =
 		snprintf(body, capacity, INNERTUBE_POST_FORMAT, (int)sz, id);
 	if (printed >= capacity || body[printed] != '\0') {
-		warn1_then("%d bytes is too small for snprintf()", capacity, {
-			return false;
-		});
+		warn_then_return_false("%d bytes is too small for snprintf()",
+		                       capacity);
 	}
 	debug("Formatted InnerTube POST body:\n%s", body);
 
@@ -446,7 +444,7 @@ youtube_stream_setup(struct youtube_stream *p,
 
 	result = true;
 
-cleanup:
+cleanup: // TODO: refactor to use __attribute__((cleanup(...)))
 	for (size_t i = 0; i < ARRAY_SIZE(ciphertexts); ++i) {
 		free(ciphertexts[i]);
 		ciphertexts[i] = NULL;

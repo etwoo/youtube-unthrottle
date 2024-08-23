@@ -140,9 +140,8 @@ re_pattern_escape(const char *in, size_t in_sz, char *out, size_t out_capacity)
 	}
 
 	if (out_pos >= out_capacity) {
-		warn1_then("Escaped pattern exceeds %zd bytes", out_capacity, {
-			return false;
-		});
+		warn_then_return_false("Escaped pattern exceeds %zd bytes",
+		                       out_capacity);
 	}
 
 	out[out_pos] = '\0';
