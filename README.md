@@ -131,7 +131,6 @@ CC=clang CXX=clang++ cmake --fresh -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Debug -D
 cmake --build ./build --clean-first
 COVERAGE_PROFILE_DIR=coverage.profraw ctest --test-dir ./build/tests/
 ./scripts/coverage.sh coverage.profraw coverage.xml
-llvm-cov report -show-region-summary=0 -show-branch-summary=0 -instr-profile=coverage.profdata -object ./build/youtube-unthrottle
 llvm-cov show -instr-profile=coverage.profdata -object ./build/youtube-unthrottle
 ```
 
