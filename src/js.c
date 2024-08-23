@@ -122,9 +122,8 @@ parse_json(const char *json,
 		const duk_bool_t get_streaming_cipher =
 			duk_get_prop_literal(ctx, -3, "signatureCipher");
 		if (get_streaming_cipher && !warned_about_signature_cipher) {
-			warn0_then("signatureCipher is unsupported!", {
-				warned_about_signature_cipher = true;
-			});
+			warned_about_signature_cipher = true;
+			info("signatureCipher is unsupported!");
 		}
 		duk_pop(ctx); /* for .signatureCipher */
 
@@ -269,9 +268,7 @@ call_js_one(duk_context *ctx,
 
 	const char *result = duk_get_string(ctx, -1);
 	if (result == NULL) {
-		warn0_then("Error fetching result of duk_pcall()", {
-			goto cleanup;
-		});
+		warn0_then("Error fetching function result", { goto cleanup; });
 	}
 
 	debug("Got JavaScript function result: %s", result);
