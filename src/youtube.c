@@ -141,8 +141,9 @@ pop_n_param_one(CURLU *url, char **result)
 	                getargs_sz,
 	                &ciphertext_within_getargs,
 	                &ciphertext_sz)) {
-		warn("No n-parameter in query: %s", getargs);
-		goto cleanup;
+		warn1_then("No n-parameter in query: %s", getargs, {
+			goto cleanup;
+		});
 	}
 
 	*result = malloc((ciphertext_sz + 1) * sizeof(*result));
@@ -291,16 +292,18 @@ format_innertube_post(const char *target, char *body, int capacity)
 	                strlen(target),
 	                &id,
 	                &sz)) {
-		warn("Cannot find target_id in URL: %s", target);
-		return false;
+		warn1_then("Cannot find target_id in URL: %s", target, {
+			return false;
+		});
 	}
 	debug("Parsed target_id: %.*s", (int)sz, id);
 
 	const int printed =
 		snprintf(body, capacity, INNERTUBE_POST_FORMAT, (int)sz, id);
 	if (printed >= capacity || body[printed] != '\0') {
-		warn("%d bytes is too small for snprintf()", capacity);
-		return false;
+		warn1_then("%d bytes is too small for snprintf()", capacity, {
+			return false;
+		});
 	}
 	debug("Formatted InnerTube POST body:\n%s", body);
 
@@ -451,9 +454,9 @@ cleanup:
 	tmpunmap(json, json_sz);
 	tmpunmap(html, html_sz);
 	tmpunmap(js, js_sz);
-	warn_if(close(json_fd) < 0, "Ignoring error close()-ing JSON tmpfile");
-	warn_if(close(html_fd) < 0, "Ignoring error close()-ing HTML tmpfile");
-	warn_if(close(js_fd) < 0, "Ignoring error close()-ing JS tmpfile");
+	info_if(close(json_fd) < 0, "Ignoring error close()-ing JSON tmpfile");
+	info_if(close(html_fd) < 0, "Ignoring error close()-ing HTML tmpfile");
+	info_if(close(js_fd) < 0, "Ignoring error close()-ing JS tmpfile");
 	if (ops && ops->after) {
 		ops->after(p);
 	}

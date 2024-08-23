@@ -33,15 +33,17 @@ test_fixture_request_handler(void *request, const char *path, int fd)
 	} else if (strstr(path, "/base.js")) {
 		to_write = FAKE_JS_RESPONSE;
 	} else {
-		warn("No test fixture for URL path: %s", path);
-		return 1;
+		warn1_then("No test fixture for URL path: %s", path, {
+			return 1;
+		});
 	}
 
 	for (size_t remaining_bytes = strlen(to_write); remaining_bytes > 0;) {
 		const ssize_t written = write(fd, to_write, remaining_bytes);
 		if (written < 0) {
-			pwarn("Error writing to tmpfile");
-			return 1;
+			warn0_then("Error writing to tmpfile", {
+				return 1;
+			});
 		}
 		to_write += written;
 		remaining_bytes -= written;
@@ -76,8 +78,9 @@ check_url(const char *url)
 	} else if (0 == strcmp("http://v.test/?n=VVV", url)) {
 		debug("Got expected video URL: %s", url);
 	} else {
-		warn("check_url() fails: %s", url);
-		CHECK_URL_RESULT = false;
+		warn1_then("check_url() fails: %s", url, {
+			CHECK_URL_RESULT = false;
+		});
 	}
 }
 

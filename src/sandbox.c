@@ -118,8 +118,7 @@ sandbox_restrict_filesystem(void)
 #elif defined(__OpenBSD__)
 	for (size_t i = 0; i < sz; ++i) {
 		if (unveil(ALLOWED_PATHS[i], "r") < 0) {
-			pwarn("Error in unveil()");
-			exit(EX_OSERR);
+			err(EX_OSERR, "Error in unveil()");
 		}
 	}
 #endif
@@ -136,8 +135,7 @@ sandbox_only_io_inet_tmpfile(void)
 	seccomp_apply(SECCOMP_IO_INET_COMMON_FLAGS | SECCOMP_TMPFILE);
 #elif defined(__OpenBSD__)
 	if (pledge("dns inet rpath stdio tmppath unveil", NULL) < 0) {
-		pwarn("Error in pledge()");
-		exit(EX_OSERR);
+		err(EX_OSERR, "Error in pledge()");
 	}
 #endif
 	const size_t sz = ARRAY_SIZE(ALLOWED_PATHS);
@@ -153,8 +151,7 @@ sandbox_only_io_inet_rpath(void)
 	seccomp_apply(SECCOMP_IO_INET_COMMON_FLAGS | SECCOMP_RPATH);
 #elif defined(__OpenBSD__)
 	if (pledge("dns inet rpath stdio unveil", NULL) < 0) {
-		pwarn("Error in pledge()");
-		exit(EX_OSERR);
+		err(EX_OSERR, "Error in pledge()");
 	}
 #endif
 	const size_t sz = ARRAY_SIZE(ALLOWED_PATHS);
@@ -170,12 +167,10 @@ sandbox_only_io(void)
 	seccomp_apply(SECCOMP_STDIO);
 #elif defined(__OpenBSD__)
 	if (unveil(NULL, NULL) < 0) {
-		pwarn("Error in final unveil()");
-		exit(EX_OSERR);
+		err(EX_OSERR, "Error in final unveil()");
 	}
 	if (pledge("stdio", NULL) < 0) {
-		pwarn("Error in pledge()");
-		exit(EX_OSERR);
+		err(EX_OSERR, "Error in pledge()");
 	}
 #endif
 	/* sandbox_verify() would abort() at this point */

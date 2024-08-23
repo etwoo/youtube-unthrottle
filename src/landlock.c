@@ -71,7 +71,7 @@ ruleset_add_one(int fd, const char *path, struct landlock_path_beneath_attr *pb)
 	error_if(rc < 0, "Cannot add rule with LANDLOCK_RULE_PATH_BENEATH");
 
 	rc = close(pb->parent_fd);
-	warn_if(rc < 0, "Ignoring error close()-ing Landlock paths fd");
+	info_if(rc < 0, "Ignoring error close()-ing Landlock paths fd");
 	pb->parent_fd = -1;
 }
 
@@ -128,5 +128,5 @@ landlock_apply(const char **paths, int sz, int port)
 	debug("landlock_apply() succeeded");
 
 	rc = close(fd);
-	warn_if(rc < 0, "Ignoring error close()-ing Landlock ruleset fd");
+	info_if(rc < 0, "Ignoring error close()-ing Landlock ruleset fd");
 }

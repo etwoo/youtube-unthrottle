@@ -78,13 +78,12 @@ url_global_init(void)
 	 * Nudge curl into creating its DNS resolver thread(s) now, before the
 	 * the process sandbox closes and blocks the clone3() syscall.
 	 */
-	if (!url_download("https://www.youtube.com",
-	                  NULL,
-	                  NULL,
-	                  NULL,
-	                  FD_DISCARD)) {
-		warn("Error creating early URL worker threads");
-	}
+	info_if(!url_download("https://www.youtube.com",
+	                      NULL,
+	                      NULL,
+	                      NULL,
+	                      FD_DISCARD),
+	        "Error creating early URL worker threads");
 }
 
 void

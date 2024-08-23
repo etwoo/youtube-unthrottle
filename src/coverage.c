@@ -50,8 +50,7 @@ coverage_open(void)
 
 	char *profile = getenv("COVERAGE_PROFILE_DIR");
 	if (profile == NULL) {
-		warn("COVERAGE_PROFILE_DIR is not set");
-		goto error;
+		warn0_then("COVERAGE_PROFILE_DIR is not set", { goto error; });
 	}
 
 	bool rc = mkdir(profile, S_IRWXU) == 0 || errno == EEXIST;
@@ -83,8 +82,7 @@ void
 coverage_write_and_close(int fd)
 {
 	if (fd < 0) {
-		warn("Invalid coverage fd: %d", fd);
-		return;
+		warn1_then("Invalid coverage fd: %d", fd, { return; });
 	}
 
 	uint64_t sz = __llvm_profile_get_size_for_buffer();
@@ -107,7 +105,7 @@ coverage_write_and_close(int fd)
 	debug("Wrote %zd bytes to coverage fd=%d", sz, fd);
 
 	free(buf);
-	warn_if(close(fd) < 0, "Ignoring error close()-ing coverage fd");
+	info_if(close(fd) < 0, "Ignoring error close()-ing coverage fd");
 }
 
 #endif

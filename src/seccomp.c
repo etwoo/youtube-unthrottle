@@ -191,8 +191,8 @@ static const char *SYSCALLS_SANDBOX_BASIS[] = {
 	"rseq",
 };
 
-#define warn_seccomp_rule_add_if(rc, syscall_name)                             \
-	warn_if(rc < 0,                                                        \
+#define info_seccomp_rule_add_if(rc, syscall_name)                             \
+	info_if(rc < 0,                                                        \
 	        "Error adding seccomp rule for syscall=%s: %s",                \
 	        syscall_name,                                                  \
 	        strerror(-rc))
@@ -284,7 +284,7 @@ seccomp_allow(scmp_filter_ctx ctx, const char **syscalls, size_t sz)
 		const int num = seccomp_syscall_resolve_name(syscalls[i]);
 		if (num == __NR_SCMP_ERROR) {
 			rc = -EINVAL;
-			warn("Cannot resolve syscall number for syscall=%s",
+			info("Cannot resolve syscall number for syscall=%s",
 			     syscalls[i]);
 		} else if (0 == strcmp(syscalls[i], "fcntl")) {
 			rc = seccomp_allow_fcntl(ctx, num);
@@ -298,7 +298,7 @@ seccomp_allow(scmp_filter_ctx ctx, const char **syscalls, size_t sz)
 			assert(0 != strcmp(syscalls[i], "openat"));
 			rc = seccomp_rule_add(ctx, SCMP_ACT_ALLOW, num, 0);
 		}
-		warn_seccomp_rule_add_if(rc, syscalls[i]);
+		info_seccomp_rule_add_if(rc, syscalls[i]);
 	}
 	return true;
 }
@@ -312,15 +312,15 @@ seccomp_allow_tmpfile(scmp_filter_ctx ctx,
 
 	struct statfs fs;
 	memset(&fs, 0, sizeof(fs));
-	if (statfs(P_tmpdir, &fs) < 0) {
-		pwarn("Error in statfs()");
-	} else if (fs.f_type == OVERLAYFS_SUPER_MAGIC) {
-		warn("%s is overlayfs, which does not support O_TMPFILE; "
+	error_if(statfs(P_tmpdir, &fs) < 0, "Error in statfs()");
+
+	if (fs.f_type == OVERLAYFS_SUPER_MAGIC) {
+		info("%s is overlayfs, which does not support O_TMPFILE; "
 		     "now allowing openat() unconditionally and relying on "
 		     "Landlock to restrict access to the filesystem!",
 		     P_tmpdir);
 		const int rc = seccomp_rule_add(ctx, SCMP_ACT_ALLOW, num, 0);
-		warn_seccomp_rule_add_if(rc, "openat");
+		info_seccomp_rule_add_if(rc, "openat");
 		return rc == 0;
 	}
 
@@ -333,7 +333,7 @@ seccomp_allow_tmpfile(scmp_filter_ctx ctx,
 		SCMP_A2(SCMP_CMP_MASKED_EQ, ~allowed_flags, 0),
 	};
 	const int rc = seccomp_allow_cmp_union(ctx, num, op, ARRAY_SIZE(op));
-	warn_seccomp_rule_add_if(rc, "openat");
+	info_seccomp_rule_add_if(rc, "openat");
 	return rc == 0;
 }
 
@@ -353,7 +353,7 @@ seccomp_allow_rpath(scmp_filter_ctx ctx,
 		SCMP_A2(SCMP_CMP_MASKED_EQ, ~allowed_flags, 0),
 	};
 	const int rc = seccomp_allow_cmp_union(ctx, num, op, ARRAY_SIZE(op));
-	warn_seccomp_rule_add_if(rc, "openat");
+	info_seccomp_rule_add_if(rc, "openat");
 	return rc == 0;
 }
 
@@ -433,7 +433,7 @@ seccomp_apply(unsigned flags)
 	error_if(ctx == NULL, "Cannot seccomp_init()");
 
 	const bool applied = seccomp_apply_common(ctx, flags);
-	warn_if(!applied, "Cannot add expected seccomp filter rules");
+	info_if(!applied, "Cannot add expected seccomp filter rules");
 
 	error_if(seccomp_load(ctx) < 0, "Cannot seccomp_load()");
 	seccomp_release(ctx);
@@ -443,4 +443,4 @@ seccomp_apply(unsigned flags)
 	}
 }
 
-#undef warn_seccomp_rule_add_if
+#undef info_seccomp_rule_add_if

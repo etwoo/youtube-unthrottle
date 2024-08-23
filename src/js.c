@@ -52,23 +52,25 @@ parse_json(const char *json,
 	duk_push_lstring(ctx, json, json_sz);
 	res = duk_safe_call(ctx, try_decode, NULL, 1, 1);
 	if (res != DUK_EXEC_SUCCESS) {
-		warn("Error in duk_json_decode(): %s", peek(ctx));
-		goto cleanup;
+		warn1_then("Error in duk_json_decode(): %s", peek(ctx), {
+			goto cleanup;
+		});
 	}
 
 	if (DUK_TYPE_OBJECT != duk_get_type(ctx, -1) ||
 	    0 == duk_get_prop_literal(ctx, -1, "streamingData")) {
-		warn("Cannot get .streamingData");
-		goto cleanup;
+		warn0_then("Cannot get .streamingData", { goto cleanup; });
 	}
 	if (DUK_TYPE_OBJECT != duk_get_type(ctx, -1) ||
 	    0 == duk_get_prop_literal(ctx, -1, "adaptiveFormats")) {
-		warn("Cannot get .streamingData.adaptiveFormats");
-		goto cleanup;
+		warn0_then("Cannot get .streamingData.adaptiveFormats", {
+			goto cleanup;
+		});
 	}
 	if (DUK_TYPE_OBJECT != duk_get_type(ctx, -1)) {
-		warn("Cannot iterate over .streamingData.adaptiveFormats");
-		goto cleanup;
+		warn0_then("Cannot iterate .streamingData.adaptiveFormats", {
+			goto cleanup;
+		});
 	}
 
 	bool got_video = false;
@@ -80,20 +82,23 @@ parse_json(const char *json,
 		duk_get_prop_index(ctx, -1, i);
 
 		if (DUK_TYPE_OBJECT != duk_get_type(ctx, -1)) {
-			warn("%zd-th element is not object-coercible", i);
-			goto cleanup;
+			warn1_then("%zdth element is not object-coercible", i, {
+				goto cleanup;
+			});
 		}
 
 		if (0 == duk_get_prop_literal(ctx, -1, "mimeType") ||
 		    DUK_TYPE_STRING != duk_get_type(ctx, -1)) {
-			warn("Cannot get .mimeType of %zd-th element", i);
-			goto cleanup;
+			warn1_then("Cannot get .mimeType of %zdth element", i, {
+				goto cleanup;
+			});
 		}
 
 		if (0 == duk_get_prop_literal(ctx, -2, "url") ||
 		    DUK_TYPE_STRING != duk_get_type(ctx, -1)) {
-			warn("Cannot get .url of %zd-th element", i);
-			goto cleanup;
+			warn1_then("Cannot get .url of %zdth element", i, {
+				goto cleanup;
+			});
 		}
 
 		const char *url = duk_get_string(ctx, -1);
@@ -121,8 +126,9 @@ parse_json(const char *json,
 		const duk_bool_t get_streaming_cipher =
 			duk_get_prop_literal(ctx, -3, "signatureCipher");
 		if (get_streaming_cipher && !warned_about_signature_cipher) {
-			warn("signatureCipher is unsupported!");
-			warned_about_signature_cipher = true;
+			warn0_then("signatureCipher is unsupported!", {
+				warned_about_signature_cipher = true;
+			});
 		}
 		duk_pop(ctx); /* for .signatureCipher */
 
@@ -147,7 +153,7 @@ find_base_js_url(const char *html,
 	                sz,
 	                basejs,
 	                basejs_sz)) {
-		warn("Cannot find base.js URL in HTML document");
+		info("Cannot find base.js URL in HTML document");
 	} else {
 		debug("Parsed base.js URI: %.*s", (int)*basejs_sz, *basejs);
 	}
@@ -188,7 +194,7 @@ find_js_deobfuscator(const char *js,
 		if (re_capture(RE_FUNC_NAME[i], js, js_sz, &name, &nsz)) {
 			break;
 		}
-		warn("Cannot find '%s' in base.js", RE_FUNC_NAME[i]);
+		info("Cannot find '%s' in base.js", RE_FUNC_NAME[i]);
 	}
 	if (name == NULL || nsz == 0) {
 		goto cleanup;
@@ -206,8 +212,9 @@ find_js_deobfuscator(const char *js,
 	                 &nsz,
 	                 "var %s=\\[([^\\]]+)\\]",
 	                 escaped)) {
-		warn("Cannot find '%.*s' reference in base.js", (int)nsz, name);
-		goto cleanup;
+		warn2_then("Cannot find '%.*s' in base.js", (int)nsz, name, {
+			goto cleanup;
+		});
 	}
 	debug("Got function name 2: %.*s", (int)nsz, name);
 
@@ -222,8 +229,9 @@ find_js_deobfuscator(const char *js,
 	                 deobfuscator_sz,
 	                 "(?s)%s=(function\\(a\\){.*return b.join\\(\"\"\\)};)",
 	                 escaped)) {
-		warn("Cannot find '%.*s' reference in base.js", (int)nsz, name);
-		goto cleanup;
+		warn2_then("Cannot find '%.*s' in base.js", (int)nsz, name, {
+			goto cleanup;
+		});
 	}
 	// debug("Got function body: %.*s", *deobfuscator_sz, *deobfuscator);
 	debug("Got function body of size %zd", *deobfuscator_sz);
@@ -258,14 +266,16 @@ call_js_one(duk_context *ctx,
 	 */
 	duk_push_lstring(ctx, js_arg, strlen(js_arg));
 	if (duk_pcall(ctx, 1) != DUK_EXEC_SUCCESS) {
-		warn("Error in duk_pcall(): %s", peek(ctx));
-		goto cleanup;
+		warn1_then("Error in duk_pcall(): %s", peek(ctx), {
+			goto cleanup;
+		});
 	}
 
 	const char *result = duk_get_string(ctx, -1);
 	if (result == NULL) {
-		warn("Error fetching result of duk_pcall()");
-		goto cleanup;
+		warn0_then("Error fetching result of duk_pcall()", {
+			goto cleanup;
+		});
 	}
 
 	debug("Got JavaScript function result: %s", result);
@@ -292,8 +302,9 @@ call_js_foreach(const char *code,
 
 	duk_push_string(ctx, __FUNCTION__);
 	if (duk_pcompile(ctx, DUK_COMPILE_FUNCTION) != 0) {
-		warn("Error in duk_pcompile(): %s", peek(ctx));
-		goto cleanup;
+		warn1_then("Error in duk_pcompile(): %s", peek(ctx), {
+			goto cleanup;
+		});
 	}
 
 	for (size_t i = 0; i < argc; ++i) {

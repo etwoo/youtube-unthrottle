@@ -21,8 +21,7 @@ tmpfd(void)
 	 */
 	FILE *fs = tmpfile();
 	if (fs == NULL) {
-		pwarn("Error in tmpfile()");
-		goto cleanup;
+		warn0_then("Error in tmpfile()", { goto cleanup; });
 	}
 
 	/*
@@ -33,20 +32,18 @@ tmpfd(void)
 
 	int inner_fd = fileno(fs);
 	if (inner_fd < 0) {
-		pwarn("Error in fileno()");
-		goto cleanup;
+		warn0_then("Error in fileno()", { goto cleanup; });
 	}
 
 	fd = dup(inner_fd);
 	if (fd < 0) {
-		pwarn("Error in dup()");
-		goto cleanup;
+		warn0_then("Error in dup()", { goto cleanup; });
 	}
 
 	debug("Got tmpfile with fd=%d", fd);
 
 cleanup:
-	warn_if(fs && fclose(fs), "Ignoring error fclose()-ing tmpfile stream");
+	info_if(fs && fclose(fs), "Ignoring error fclose()-ing tmpfile stream");
 	return fd;
 }
 
@@ -57,15 +54,15 @@ tmpmap(int fd, void **addr, unsigned int *sz)
 		.st_size = 0,
 	};
 	if (fstat(fd, &st) < 0) {
-		pwarn("Error fetching size of tmpfile via fstat()");
-		return false;
+		warn0_then("Error fetching size of tmpfile via fstat()", {
+			return false;
+		});
 	}
 	*sz = st.st_size;
 
 	*addr = mmap(NULL, *sz, PROT_READ, MAP_PRIVATE, fd, 0);
 	if (*addr == MAP_FAILED) {
-		pwarn("Error mmap()-ing tmpfile");
-		return false;
+		warn0_then("Error mmap()-ing tmpfile", { return false; });
 	}
 
 	/*
@@ -88,5 +85,5 @@ tmpunmap(void *addr, unsigned int sz)
 	}
 
 	const int rc = munmap(addr, sz);
-	warn_if(rc < 0, "Ignoring error munmap()-ing tmpfile");
+	info_if(rc < 0, "Ignoring error munmap()-ing tmpfile");
 }

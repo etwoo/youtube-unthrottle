@@ -70,11 +70,11 @@ cleanup:
 
 	PCRE2_UCHAR err[256];
 	if (pcre2_get_error_message(rc, err, sizeof(err)) < 0) {
-		warn("Error (no details) while %s regex \"%s\"",
+		info("Error (no details) while %s regex \"%s\"",
 		     action_that_caused_error,
 		     pattern_in);
 	} else {
-		warn("Error %s regex \"%s\" at offset %zd: %s",
+		info("Error %s regex \"%s\" at offset %zd: %s",
 		     action_that_caused_error,
 		     pattern_in,
 		     (size_t)loc,
@@ -98,10 +98,8 @@ re_capturef(const char *subject_in,
 	va_start(ap, my_format);
 
 	const int printed = vsnprintf(pattern, capacity, my_format, ap);
-	if (printed >= capacity || pattern[printed] != '\0') {
-		warn("%d bytes is too small for vsnprintf()", capacity);
-		return false;
-	}
+	const bool too_small = printed >= capacity || pattern[printed] != '\0';
+	info_if(too_small, "%d bytes is too small for vsnprintf()", capacity);
 
 	va_end(ap);
 
@@ -142,8 +140,9 @@ re_pattern_escape(const char *in, size_t in_sz, char *out, size_t out_capacity)
 	}
 
 	if (out_pos >= out_capacity) {
-		warn("Escaped function name exceeds %zd bytes", out_capacity);
-		return false;
+		warn1_then("Escaped pattern exceeds %zd bytes", out_capacity, {
+			return false;
+		});
 	}
 
 	out[out_pos] = '\0';
