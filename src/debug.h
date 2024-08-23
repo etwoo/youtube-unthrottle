@@ -71,11 +71,11 @@ info_at_line(const char *fname, unsigned int lineno, const char *pattern, ...)
 		return val;                                                    \
 	} while (0)
 #define warn_then_return_false(pattern, ...)                                   \
-		warn_then_return_val(false, pattern, ##__VA_ARGS__)
+	warn_then_return_val(false, pattern, ##__VA_ARGS__)
 #define warn_then_return_1(pattern, ...)                                       \
-		warn_then_return_val(1, pattern, ##__VA_ARGS__)
+	warn_then_return_val(1, pattern, ##__VA_ARGS__)
 #define warn_then_return_negative_1(pattern, ...)                              \
-		warn_then_return_val(-1, pattern, ##__VA_ARGS__)
+	warn_then_return_val(-1, pattern, ##__VA_ARGS__)
 
 void
 warn_at_line(const char *fname, unsigned int lineno, const char *pattern, ...)
