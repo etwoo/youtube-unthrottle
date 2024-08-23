@@ -9,7 +9,7 @@ while getopts "E:" option; do
 		*) echo "Unimplemented option" && exit 1 ;;
 	esac
 done
-shift $(($OPTIND - 1))
+shift $((OPTIND - 1))
 
 COVERAGE_PROFILE_DIR="$1"
 COBERTURA_OUTPUT="$2"
@@ -18,8 +18,8 @@ PROFILE_DATA='coverage.profdata'
 LCOV_FMT='coverage.lcov'
 LCOV_TO_COBERTURA=$(find ./build -name lcov_cobertura.py)
 
-find ./build -path "*/$COVERAGE_PROFILE_DIR/*" | \
-	xargs llvm-profdata merge -sparse -o "$PROFILE_DATA"
+find ./build -path "*/$COVERAGE_PROFILE_DIR/*" -print0 | \
+	xargs -0 llvm-profdata merge -sparse -o "$PROFILE_DATA"
 
 #
 # Generate a coverage report that includes a single-value line coverage
