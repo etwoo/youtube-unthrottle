@@ -29,7 +29,7 @@ find ./build -path "*/$COVERAGE_PROFILE_DIR/*" | \
 #
 llvm-cov report -show-region-summary=0 -show-branch-summary=0 \
 	-instr-profile="$PROFILE_DATA" "$BIN" \
-	-ignore-filename-regex "main.c|src/(coverage|${COVERAGE_EXCLUDES}).c"
+	-ignore-filename-regex "$COVERAGE_EXCLUDES"
 
 #
 # Convert profdata -> lcov -> cobertura. GitLab uses cobertura files to drive
