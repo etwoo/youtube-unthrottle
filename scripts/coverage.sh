@@ -32,8 +32,8 @@ llvm-cov report -show-region-summary=0 -show-branch-summary=0 \
 	-ignore-filename-regex "main.c|src/(coverage|${COVERAGE_EXCLUDES}).c"
 
 #
-# Convert profdata -> lcov -> cobertura. GitLab the latter to drive the test
-# coverage visualization feature in the file diff view of MRs.
+# Convert profdata -> lcov -> cobertura. GitLab uses cobertura files to drive
+# the test coverage visualization feature in the file diff view of MRs.
 #
 # https://docs.gitlab.com/ee/ci/testing/test_coverage_visualization/index.html
 #
