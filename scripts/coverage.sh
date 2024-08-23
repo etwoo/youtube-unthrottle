@@ -3,9 +3,9 @@
 set -euxo pipefail
 
 COVERAGE_EXCLUDES=
-while getopts "e:" option; do
+while getopts "E:" option; do
 	case "$option" in
-		e) COVERAGE_EXCLUDES="$OPTARG" ;;
+		E) COVERAGE_EXCLUDES="$OPTARG" ;;
 		*) echo "Unimplemented option" && exit 1 ;;
 	esac
 done
