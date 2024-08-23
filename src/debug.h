@@ -40,7 +40,7 @@ debug_at_line(const char *fname, unsigned int lineno, const char *pattern, ...)
 	while (cond) {                                                         \
 		info(pattern ": %s", ##__VA_ARGS__, strerror(errno));          \
 		break;                                                         \
-	} while (0)
+	}
 
 #define info(pattern, ...)                                                     \
 	info_at_line(__FILE_NAME__, __LINE__, pattern, ##__VA_ARGS__)

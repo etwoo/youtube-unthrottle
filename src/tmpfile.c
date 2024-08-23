@@ -54,9 +54,7 @@ tmpmap(int fd, void **addr, unsigned int *sz)
 		.st_size = 0,
 	};
 	if (fstat(fd, &st) < 0) {
-		warn0_then("Error fetching size of tmpfile via fstat()", {
-			return false;
-		});
+		warn0_then("Error fstat()-ing tmpfile", { return false; });
 	}
 	*sz = st.st_size;
 
