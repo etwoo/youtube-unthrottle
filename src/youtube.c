@@ -308,46 +308,71 @@ format_innertube_post(const char *target, char *body, int capacity)
 	return true;
 }
 
+struct downloaded {
+	const char *description; /* does not own */
+	int fd;
+	unsigned int sz;
+	void *buf;
+};
+
+static void
+downloaded_init(struct downloaded *d, const char *description)
+{
+	d->description = description;
+	d->fd = -1; /* guarantee fd is invalid by default */
+	d->sz = 0;
+	d->buf = NULL;
+}
+
+static void
+downloaded_cleanup(struct downloaded *d)
+{
+	tmpunmap(d->buf, d->sz);
+	info_if(close(d->fd) < 0, "Ignoring error closing %s", d->description);
+}
+
+static void
+ciphertexts_cleanup(char *ciphertexts[][2])
+{
+	for (size_t i = 0; i < ARRAY_SIZE(*ciphertexts); ++i) {
+		free((*ciphertexts)[i]);
+		(*ciphertexts)[i] = NULL;
+	}
+	debug("free()-d %zd n-param ciphertext bufs", ARRAY_SIZE(*ciphertexts));
+}
+
 bool
 youtube_stream_setup(struct youtube_stream *p,
                      struct youtube_setup_ops *ops,
                      const char *target)
 {
-	bool result = false;
-	char innertube_post_body[4096];
-	const int innertube_post_capacity = sizeof(innertube_post_body);
+	struct downloaded json __attribute__((cleanup(downloaded_cleanup)));
+	struct downloaded html __attribute__((cleanup(downloaded_cleanup)));
+	struct downloaded js __attribute__((cleanup(downloaded_cleanup)));
 
-	int json_fd = -1; /* guarantee fd is invalid by default */
-	unsigned int json_sz = 0;
-	void *json = NULL;
-
-	int html_fd = -1; /* guarantee fd is invalid by default */
-	unsigned int html_sz = 0;
-	void *html = NULL;
-
-	int js_fd = -1; /* guarantee fd is invalid by default */
-	unsigned int js_sz = 0;
-	void *js = NULL;
-
-	char *ciphertexts[ARRAY_SIZE(p->url)] = {NULL};
+	downloaded_init(&json, "JSON tmpfile");
+	downloaded_init(&html, "HTML tmpfile");
+	downloaded_init(&js, "JavaScript tmpfile");
 
 	if (ops && ops->before) {
 		ops->before(p);
 	}
 
-	json_fd = tmpfd();
-	error_if(json_fd < 0, "Cannot get JSON tmpfile");
+	json.fd = tmpfd();
+	error_if(json.fd < 0, "Cannot get JSON tmpfile");
 
-	html_fd = tmpfd();
-	error_if(html_fd < 0, "Cannot get HTML tmpfile");
+	html.fd = tmpfd();
+	error_if(html.fd < 0, "Cannot get HTML tmpfile");
 
-	js_fd = tmpfd();
-	error_if(js_fd < 0, "Cannot get JS tmpfile");
+	js.fd = tmpfd();
+	error_if(js.fd < 0, "Cannot get JavaScript tmpfile");
 
 	if (ops && ops->before_inet) {
 		ops->before_inet(p);
 	}
 
+	char innertube_post_body[4096];
+	const int innertube_post_capacity = sizeof(innertube_post_body);
 	if (!format_innertube_post(target,
 	                           innertube_post_body,
 	                           innertube_post_capacity) ||
@@ -355,27 +380,27 @@ youtube_stream_setup(struct youtube_stream *p,
 	                             NULL,
 	                             NULL,
 	                             innertube_post_body,
-	                             json_fd,
-	                             &json,
-	                             &json_sz)) {
-		goto cleanup;
+	                             json.fd,
+	                             &json.buf,
+	                             &json.sz)) {
+		return false;
 	}
 
 	if (!download_and_mmap_tmpfd(target,
 	                             NULL,
 	                             NULL,
 	                             NULL,
-	                             html_fd,
-	                             &html,
-	                             &html_sz)) {
-		goto cleanup;
+	                             html.fd,
+	                             &html.buf,
+	                             &html.sz)) {
+		return false;
 	}
 
 	const char *basejs = NULL;
 	size_t basejs_sz = 0;
-	find_base_js_url(html, html_sz, &basejs, &basejs_sz);
+	find_base_js_url(html.buf, html.sz, &basejs, &basejs_sz);
 	if (basejs == NULL || basejs_sz == 0) {
-		goto cleanup;
+		return false;
 	}
 
 	debug("Setting base.js URL: %.*s", (int)basejs_sz, basejs);
@@ -386,10 +411,10 @@ youtube_stream_setup(struct youtube_stream *p,
 	                             "www.youtube.com",
 	                             p->basejs,
 	                             NULL,
-	                             js_fd,
-	                             &js,
-	                             &js_sz)) {
-		goto cleanup;
+	                             js.fd,
+	                             &js.buf,
+	                             &js.sz)) {
+		return false;
 	}
 
 	if (ops && ops->after_inet) {
@@ -404,7 +429,7 @@ youtube_stream_setup(struct youtube_stream *p,
 		.got_video = youtube_stream_set_video,
 		.got_audio = youtube_stream_set_audio,
 	};
-	parse_json(json, json_sz, &pops, p);
+	parse_json(json.buf, json.sz, &pops, p);
 
 	if (ops && ops->after_parse) {
 		ops->after_parse(p);
@@ -416,15 +441,17 @@ youtube_stream_setup(struct youtube_stream *p,
 
 	const char *deobfuscator = NULL;
 	size_t deobfuscator_sz = 0;
-	find_js_deobfuscator(js, js_sz, &deobfuscator, &deobfuscator_sz);
+	find_js_deobfuscator(js.buf, js.sz, &deobfuscator, &deobfuscator_sz);
 	if (deobfuscator == NULL || deobfuscator_sz == 0) {
-		goto cleanup;
+		return false;
 	}
 
+	char *ciphertexts[ARRAY_SIZE(p->url)]
+		__attribute__((cleanup(ciphertexts_cleanup))) = {NULL};
 	pop_n_param_all(p, ciphertexts, ARRAY_SIZE(ciphertexts));
 	for (size_t i = 0; i < ARRAY_SIZE(ciphertexts); ++i) {
 		if (ciphertexts[i] == NULL) {
-			goto cleanup;
+			return false;
 		}
 	}
 
@@ -442,23 +469,11 @@ youtube_stream_setup(struct youtube_stream *p,
 		ops->after_eval(p);
 	}
 
-	result = true;
-
-cleanup: // TODO: refactor to use __attribute__((cleanup(...)))
-	for (size_t i = 0; i < ARRAY_SIZE(ciphertexts); ++i) {
-		free(ciphertexts[i]);
-		ciphertexts[i] = NULL;
-	}
-	tmpunmap(json, json_sz);
-	tmpunmap(html, html_sz);
-	tmpunmap(js, js_sz);
-	info_if(close(json_fd) < 0, "Ignoring error close()-ing JSON tmpfile");
-	info_if(close(html_fd) < 0, "Ignoring error close()-ing HTML tmpfile");
-	info_if(close(js_fd) < 0, "Ignoring error close()-ing JS tmpfile");
 	if (ops && ops->after) {
 		ops->after(p);
 	}
-	return result;
+
+	return true;
 }
 
 #undef error_if_uc_msg
