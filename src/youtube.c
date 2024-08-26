@@ -328,7 +328,9 @@ static void
 downloaded_cleanup(struct downloaded *d)
 {
 	tmpunmap(d->buf, d->sz);
-	info_if(close(d->fd) < 0, "Ignoring error closing %s", d->description);
+	info_if(d->fd > 0 && close(d->fd) < 0,
+	        "Ignoring error close()-ing %s",
+	        d->description);
 }
 
 static void
