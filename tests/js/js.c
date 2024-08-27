@@ -6,6 +6,7 @@
 #include "greatest.h"
 
 #include <assert.h>
+#include <limits.h>
 
 static void
 parse_callback_noop(const char *val __attribute__((unused)),
@@ -439,6 +440,43 @@ find_base_js_url_positive(void)
 }
 
 TEST
+find_js_timestamp_negative_re_pattern(void)
+{
+	static const char json[] = "{signatureTimestamp:\"foobar\"}";
+	long long int timestamp = find_js_timestamp(json, sizeof(json));
+	ASSERT_LT(timestamp, 0);
+	PASS();
+}
+
+TEST
+find_js_timestamp_negative_strtoll_erange(void)
+{
+	static const char json[] = "{signatureTimestamp:9223372036854775808}";
+	long long int timestamp = find_js_timestamp(json, sizeof(json));
+	ASSERT_LT(timestamp, 0);
+	ASSERT_EQ(errno, ERANGE);
+	PASS();
+}
+
+TEST
+find_js_timestamp_positive_strtoll_max(void)
+{
+	static const char json[] = "{signatureTimestamp:9223372036854775807}";
+	long long int timestamp = find_js_timestamp(json, sizeof(json));
+	ASSERT_EQ(timestamp, LLONG_MAX);
+	PASS();
+}
+
+TEST
+find_js_timestamp_positive_simple(void)
+{
+	static const char json[] = "{signatureTimestamp:19957}";
+	long long int timestamp = find_js_timestamp(json, sizeof(json));
+	ASSERT_EQ(timestamp, 19957);
+	PASS();
+}
+
+TEST
 find_js_deobfuscator_first_match_fail(void)
 {
 	const char *deobfuscator = NULL;
@@ -545,6 +583,10 @@ SUITE(find_with_pcre)
 {
 	RUN_TEST(find_base_js_url_negative);
 	RUN_TEST(find_base_js_url_positive);
+	RUN_TEST(find_js_timestamp_negative_re_pattern);
+	RUN_TEST(find_js_timestamp_negative_strtoll_erange);
+	RUN_TEST(find_js_timestamp_positive_strtoll_max);
+	RUN_TEST(find_js_timestamp_positive_simple);
 	RUN_TEST(find_js_deobfuscator_first_match_fail);
 	RUN_TEST(find_js_deobfuscator_first_match_too_long);
 	RUN_TEST(find_js_deobfuscator_second_match_fail);

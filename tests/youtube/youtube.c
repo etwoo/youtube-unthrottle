@@ -17,6 +17,7 @@ static const char FAKE_JSON_RESPONSE[] =
 	"{\"mimeType\": \"video/foobar\",\"url\": \"http://v.test?n=vvv\"}"
 	"]}}";
 static const char FAKE_JS_RESPONSE[] =
+	"{signatureTimestamp:12345}"
 	"&&(c=X[0](c),\nvar X=[Y];\nY=function(a)"
 	"{b=[a.toUpperCase()]; return b.join(\"\")};";
 

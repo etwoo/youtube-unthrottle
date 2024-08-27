@@ -260,7 +260,7 @@ download_and_mmap_tmpfd(const char *url,
 static const char INNERTUBE_URI[] =
 	"https://www.youtube.com/youtubei/v1/player";
 
-static const char INNERTUBE_POST_FORMAT[] =
+static const char INNERTUBE_POST_FMT[] =
 	"{\n"
 	"  \"context\": {\n"
 	"    \"client\": {\n"
@@ -275,6 +275,7 @@ static const char INNERTUBE_POST_FORMAT[] =
 	"  \"playbackContext\": {\n"
 	"    \"contentPlaybackContext\": {\n"
 	"      \"html5Preference\": \"HTML5_PREF_WANTS\",\n"
+	"      \"signatureTimestamp\": %lld,\n"
 	"    }\n"
 	"  },\n"
 	"  \"contentCheckOk\": true,\n"
@@ -282,7 +283,10 @@ static const char INNERTUBE_POST_FORMAT[] =
 	"}";
 
 static bool
-format_innertube_post(const char *target, char *body, int capacity)
+format_innertube_post(const char *target,
+                      long long int ts, /* parsed signatureTimestamp value */
+                      char *body,
+                      int capacity)
 {
 	const char *id = NULL;
 	size_t sz = 0;
@@ -298,7 +302,7 @@ format_innertube_post(const char *target, char *body, int capacity)
 	debug("Parsed ID: %.*s", (int)sz, id);
 
 	const int printed =
-		snprintf(body, capacity, INNERTUBE_POST_FORMAT, (int)sz, id);
+		snprintf(body, capacity, INNERTUBE_POST_FMT, (int)sz, id, ts);
 	if (printed >= capacity || body[printed] != '\0') {
 		warn_then_return_false("%d bytes is too small for snprintf()",
 		                       capacity);
@@ -373,21 +377,6 @@ youtube_stream_setup(struct youtube_stream *p,
 		ops->before_inet(p);
 	}
 
-	char innertube_post_body[4096];
-	const int innertube_post_capacity = sizeof(innertube_post_body);
-	if (!format_innertube_post(target,
-	                           innertube_post_body,
-	                           innertube_post_capacity) ||
-	    !download_and_mmap_tmpfd(INNERTUBE_URI,
-	                             NULL,
-	                             NULL,
-	                             innertube_post_body,
-	                             json.fd,
-	                             &json.buf,
-	                             &json.sz)) {
-		return false;
-	}
-
 	if (!download_and_mmap_tmpfd(target,
 	                             NULL,
 	                             NULL,
@@ -416,6 +405,27 @@ youtube_stream_setup(struct youtube_stream *p,
 	                             js.fd,
 	                             &js.buf,
 	                             &js.sz)) {
+		return false;
+	}
+
+	long long int timestamp = find_js_timestamp(js.buf, js.sz);
+	if (timestamp < 0) {
+		return false;
+	}
+
+	char innertube_post_body[4096];
+	const int innertube_post_capacity = sizeof(innertube_post_body);
+	if (!format_innertube_post(target,
+	                           timestamp,
+	                           innertube_post_body,
+	                           innertube_post_capacity) ||
+	    !download_and_mmap_tmpfd(INNERTUBE_URI,
+	                             NULL,
+	                             NULL,
+	                             innertube_post_body,
+	                             json.fd,
+	                             &json.buf,
+	                             &json.sz)) {
 		return false;
 	}
 

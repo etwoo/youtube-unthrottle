@@ -156,6 +156,33 @@ find_base_js_url(const char *html,
 	}
 }
 
+long long int
+find_js_timestamp(const char *js, size_t sz)
+{
+	const char *ts = NULL;
+	size_t ts_sz = 0;
+	if (!re_capture("signatureTimestamp:([0-9]+)", js, sz, &ts, &ts_sz)) {
+		warn_then_return_negative_1("Cannot find timestamp in base.js");
+	}
+
+	/*
+	 * strtoll() does not modify errno on success, so we must clear it
+	 * explicitly if we want a predictable value.
+	 */
+	errno = 0;
+
+	long long int res = strtoll(ts, NULL, 10);
+	if (errno != 0) {
+		warn_then_return_negative_1("strtoll() error on %.*s: %s",
+		                            (int)ts_sz,
+		                            ts,
+		                            strerror(errno));
+	}
+
+	debug("Parsed signatureTimestamp %.*s into %lld", (int)ts_sz, ts, res);
+	return res;
+}
+
 static const char *RE_FUNC_NAME[] = {
 	"&&\\(c=([^\\]]+)\\[0\\]\\(c\\)",
 	"&&\\(b=([^\\]]+)\\[0\\]\\(b\\)",
