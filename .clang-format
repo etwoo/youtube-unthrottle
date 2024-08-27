@@ -2,6 +2,7 @@
 BasedOnStyle: LLVM
 AllowAllArgumentsOnNextLine: false
 AllowAllParametersOfDeclarationOnNextLine: false
+AllowShortFunctionsOnASingleLine: None
 AlwaysBreakAfterReturnType: TopLevelDefinitions
 BinPackArguments: false
 BinPackParameters: false

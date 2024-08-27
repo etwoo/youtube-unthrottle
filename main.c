@@ -8,6 +8,7 @@
  * of an embedded JavaScript engine (in this case, Duktape).
  */
 
+#include "coverage.h"
 #include "sandbox.h"
 #include "youtube.h"
 
@@ -51,9 +52,17 @@ after_inet(youtube_handle_t h __attribute__((unused)))
 	sandbox_only_io();
 }
 
+static void
+print_url(const char *url)
+{
+	puts(url);
+}
+
 int
 main(int argc, const char *argv[])
 {
+	int fd __attribute__((cleanup(coverage_cleanup))) = coverage_open();
+
 	if (argc < 2) {
 		return usage(argv[0], EX_USAGE);
 	}
@@ -83,12 +92,13 @@ main(int argc, const char *argv[])
 		.after = NULL,
 	};
 
-	bool should_print = youtube_stream_setup(stream, &sops, argv[1]);
-	if (should_print) {
-		youtube_stream_print(stream);
+	int rc = EX_DATAERR;
+	if (youtube_stream_setup(stream, &sops, argv[1])) {
+		youtube_stream_visitor(stream, print_url);
+		rc = EX_OK;
 	}
 
 	youtube_stream_cleanup(stream);
 	youtube_global_cleanup();
-	return should_print ? EX_OK : EX_DATAERR;
+	return rc;
 }

@@ -17,9 +17,34 @@ target_link_libraries(youtube-unthrottle PRIVATE sanitizers youtube my_cflags)
 include(get_cpm)
 
 add_subdirectory(src)
+
 if (BUILD_TESTING)
+	CPMAddPackage(
+		NAME greatest
+		GITHUB_REPOSITORY silentbicycle/greatest
+		VERSION 1.5.0
+		DOWNLOAD_ONLY YES
+	)
 	add_subdirectory(tests)
 endif (BUILD_TESTING)
+
+if (BUILD_COVERAGE)
+	CPMAddPackage(
+		NAME lcov-to-cobertura-xml
+		GITHUB_REPOSITORY eriwen/lcov-to-cobertura-xml
+		GIT_TAG 028da3798355d0260c6c6491b39347d84ca7a02d
+		DOWNLOAD_ONLY YES
+	)
+	target_compile_definitions(my_cflags INTERFACE WITH_COVERAGE)
+	target_compile_options(my_cflags INTERFACE
+		-fprofile-instr-generate
+		-fcoverage-mapping
+	)
+	target_link_options(my_cflags INTERFACE
+		-fprofile-instr-generate
+		-fcoverage-mapping
+	)
+endif (BUILD_COVERAGE)
 
 #
 # Set up a custom `fmt` target that runs clang-format.

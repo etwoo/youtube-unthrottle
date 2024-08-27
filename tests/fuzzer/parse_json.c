@@ -20,8 +20,8 @@ int
 LLVMFuzzerTestOneInput(const char *data, size_t sz)
 {
 	struct parse_ops pops = {
-		.got_audio = got_video,
 		.got_video = got_audio,
+		.got_audio = got_video,
 	};
 	parse_json(data, sz, &pops, NULL);
 	return 0;

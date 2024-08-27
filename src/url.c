@@ -31,10 +31,8 @@ write_to_tmpfile(char *ptr, size_t size, size_t nmemb, void *userdata)
 
 	for (size_t remaining_bytes = real_size; remaining_bytes > 0;) {
 		const ssize_t written = write(*fd, ptr, remaining_bytes);
-		if (written < 0) {
-			pwarn("Error writing to tmpfile");
-			break;
-		}
+		error_if(written < 0, "Cannot write to tmpfile");
+		ptr += written;
 		remaining_bytes -= written;
 	}
 
@@ -44,7 +42,6 @@ write_to_tmpfile(char *ptr, size_t size, size_t nmemb, void *userdata)
 static CURL *
 get_easy_handle(void)
 {
-	static bool GLOBAL_CURL_EASY_HANDLE_INIT = false;
 	static CURLU *GLOBAL_CURL_EASY_HANDLE = NULL;
 	/*
 	 * Initialization of these static variables is not currently
@@ -55,25 +52,20 @@ get_easy_handle(void)
 	 * need to be retrofitted with a mutex and/or the callers will need
 	 * to ensure that initialization happens while still single-threaded.
 	 */
-	if (!GLOBAL_CURL_EASY_HANDLE_INIT) {
-		GLOBAL_CURL_EASY_HANDLE_INIT = true;
+	if (!GLOBAL_CURL_EASY_HANDLE) {
 		GLOBAL_CURL_EASY_HANDLE = curl_easy_init();
 	}
+	/*
+	 * From the libcurl manpages for curl_easy_init():
+	 *
+	 *   If this function returns NULL, something went wrong
+	 *   and you cannot use the other curl functions.
+	 *
+	 * ... so there isn't much we can do here to get details.
+	 */
+	error_if(!GLOBAL_CURL_EASY_HANDLE, "Cannot allocate easy handle");
 
-	if (GLOBAL_CURL_EASY_HANDLE == NULL) {
-		/*
-		 * From the libcurl manpages:
-		 *
-		 *   If this function returns NULL, something went wrong
-		 *   and you cannot use the other curl functions.
-		 *
-		 * ... so there isn't much we can do here to get details.
-		 */
-		warn("curl_easy_init() returned NULL");
-	} else {
-		curl_easy_reset(GLOBAL_CURL_EASY_HANDLE);
-	}
-
+	curl_easy_reset(GLOBAL_CURL_EASY_HANDLE);
 	return GLOBAL_CURL_EASY_HANDLE;
 }
 
@@ -86,13 +78,12 @@ url_global_init(void)
 	 * Nudge curl into creating its DNS resolver thread(s) now, before the
 	 * the process sandbox closes and blocks the clone3() syscall.
 	 */
-	if (!url_download("https://www.youtube.com",
-	                  NULL,
-	                  NULL,
-	                  NULL,
-	                  FD_DISCARD)) {
-		warn("Error in url_prepare_threads");
-	}
+	info_if(!url_download("https://www.youtube.com",
+	                      NULL,
+	                      NULL,
+	                      NULL,
+	                      FD_DISCARD),
+	        "Error creating early URL worker threads");
 }
 
 void
@@ -102,52 +93,55 @@ url_global_cleanup(void)
 	curl_global_cleanup();
 }
 
+static int
+wrap_curl_easy_perform(void *request,
+                       const char *path __attribute__((unused)),
+                       int fd __attribute__((unused)))
+{
+	return curl_easy_perform(request);
+}
+
+int (*CURL_EASY_PERFORM)(void *, const char *, int) = wrap_curl_easy_perform;
+
+void
+url_global_set_request_handler(int (*handler)(void *, const char *, int))
+{
+	CURL_EASY_PERFORM = handler;
+}
+
+#define error_if_uc(uc, part)                                                  \
+	error_if(uc, "Cannot set " #part ": %s", curl_url_strerror(uc))
+
 static CURLU *
 url_prepare(const char *hostp, const char *pathp)
 {
 	CURLUcode uc = CURLUE_OK;
 
 	CURLU *url = curl_url();
-	if (url == NULL) {
-		warn("curl_url() returned NULL");
-		goto cleanup;
-	}
+	error_if(url == NULL, "Cannot allocate URL handle");
 
 	uc = curl_url_set(url, CURLUPART_SCHEME, "https", 0);
-	if (uc) {
-		warn("Error setting CURLUPART_HOST value: %s",
-		     curl_url_strerror(uc));
-		goto cleanup;
-	}
+	error_if_uc(uc, CURLUPART_SCHEME);
 
 	uc = curl_url_set(url, CURLUPART_HOST, hostp, 0);
-	if (uc) {
-		warn("Error setting CURLUPART_HOST value: %s",
-		     curl_url_strerror(uc));
-		goto cleanup;
-	}
+	error_if_uc(uc, CURLUPART_HOST);
 
 	uc = curl_url_set(url, CURLUPART_PATH, pathp, 0);
-	if (uc) {
-		warn("Error setting CURLUPART_PATH of %s: %s",
-		     pathp,
-		     curl_url_strerror(uc));
-		goto cleanup;
-	}
+	error_if_uc(uc, CURLUPART_PATH);
 
-cleanup:
-	if (uc == CURLUE_OK) {
-		return url;
-	} else {
-		curl_url_cleanup(url); /* handles NULL gracefully */
-		return NULL;
-	}
+	return url;
 }
+
+#undef error_if_uc
 
 static const char BROWSER_USERAGENT[] =
 	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, "
 	"like Gecko) Chrome/87.0.4280.101 Safari/537.36";
 static const char CONTENT_TYPE_JSON[] = "Content-Type: application/json";
+static const char DEFAULT_HOST_STR[] = "www.youtube.com";
+
+#define error_if_res(uc, opt)                                                  \
+	error_if(res, "Cannot set " #opt ": %s", curl_easy_strerror(uc))
 
 bool
 url_download(const char *url_str,   /* may be NULL */
@@ -161,86 +155,54 @@ url_download(const char *url_str,   /* may be NULL */
 	struct curl_slist *headers = NULL;
 
 	CURLU *curl = get_easy_handle();
-	if (curl == NULL) {
-		res = CURLE_OUT_OF_MEMORY;
-		goto cleanup;
-	}
+	assert(curl);
 
 	res = curl_easy_setopt(curl, CURLOPT_WRITEDATA, &fd);
-	if (res) {
-		warn("Error on CURLOPT_WRITEDATA of %p: %s",
-		     &fd,
-		     curl_easy_strerror(res));
-		goto cleanup;
-	}
+	error_if_res(res, CURLOPT_WRITEDATA);
 
 	res = curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_to_tmpfile);
-	if (res) {
-		warn("Error on CURLOPT_WRITEFUNCTION: %s",
-		     curl_easy_strerror(res));
-		goto cleanup;
-	}
+	error_if_res(res, CURLOPT_WRITEFUNCTION);
 
 	res = curl_easy_setopt(curl, CURLOPT_USERAGENT, BROWSER_USERAGENT);
-	if (res) {
-		warn("Error on CURLOPT_USERAGENT: %s", curl_easy_strerror(res));
-		goto cleanup;
-	}
+	error_if_res(res, CURLOPT_USERAGENT);
 
+	const char *url_fragment_or_path_str = NULL;
 	if (url_str) {
 		res = curl_easy_setopt(curl, CURLOPT_URL, url_str);
-		if (res) {
-			warn("Error on CURLOPT_URL of %s: %s",
-			     url_str,
-			     curl_easy_strerror(res));
-			goto cleanup;
+		error_if_res(res, CURLOPT_URL);
+
+		url_fragment_or_path_str = strstr(url_str, DEFAULT_HOST_STR);
+		if (url_fragment_or_path_str) {
+			url_fragment_or_path_str += strlen(DEFAULT_HOST_STR);
 		}
 	} else {
 		assert(host_str != NULL && path_str != NULL);
 
 		url = url_prepare(host_str, path_str);
-		if (url == NULL) {
-			res = CURLE_URL_MALFORMAT;
-			goto cleanup;
-		}
+		assert(url);
 
 		res = curl_easy_setopt(curl, CURLOPT_CURLU, url);
-		if (res) {
-			warn("Error on CURLOPT_CURLU value: %s",
-			     curl_easy_strerror(res));
-			goto cleanup;
-		}
+		error_if_res(res, CURLOPT_CURLU);
+
+		url_fragment_or_path_str = path_str;
 	}
 
 	if (post_body) {
 		headers = curl_slist_append(headers, CONTENT_TYPE_JSON);
 		res = curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-		if (res) {
-			warn("Error on CURLOPT_HTTPHEADER of \"%s\": %s",
-			     CONTENT_TYPE_JSON,
-			     curl_easy_strerror(res));
-			goto cleanup;
-		}
+		error_if_res(res, CURLOPT_HTTPHEADER);
 
 		res = curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_body);
 		/* Note: libcurl does not copy <post_body> */
-		if (res) {
-			warn("Error on CURLOPT_POSTFIELDS of \"%s\": %s",
-			     post_body,
-			     curl_easy_strerror(res));
-			goto cleanup;
-		}
+		error_if_res(res, CURLOPT_POSTFIELDS);
 	}
 
-	res = curl_easy_perform(curl);
-	if (res) {
-		warn("Error in curl_easy_perform(): %s",
-		     curl_easy_strerror(res));
-		goto cleanup;
-	}
+	res = CURL_EASY_PERFORM(curl, url_fragment_or_path_str, fd);
+	error_if(res, "curl_easy_perform(): %s", curl_easy_strerror(res));
 
-cleanup:
 	curl_slist_free_all(headers); /* handles NULL gracefully */
 	curl_url_cleanup(url);        /* handles NULL gracefully */
 	return (res == CURLE_OK);
 }
+
+#undef error_if_res

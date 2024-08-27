@@ -85,6 +85,13 @@ libseccomp 2.5.5-3
 pcre2 10.44-1
 ```
 
+Optional dependencies for code coverage and fuzzing:
+
+```sh
+clang
+llvm
+```
+
 ## Build
 
 To perform an initial build:
@@ -107,8 +114,7 @@ To build and run unit tests:
 ```sh
 cmake --fresh -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=1 . -B ./build
 cmake --build ./build --clean-first
-cd ./build/tests
-ctest .
+ctest --test-dir ./build/tests/
 ```
 
 To reconfigure and build with clang instead of gcc:
@@ -116,6 +122,16 @@ To reconfigure and build with clang instead of gcc:
 ```sh
 CC=clang CXX=clang++ cmake --fresh -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Debug . -B ./build
 cmake --build ./build --clean-first
+```
+
+To generate a code coverage report:
+
+```sh
+CC=clang CXX=clang++ cmake --fresh -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=1 -DBUILD_COVERAGE=1 . -B ./build
+cmake --build ./build --clean-first
+COVERAGE_PROFILE_DIR=coverage.profraw ctest --test-dir ./build/tests/
+./scripts/coverage.sh coverage.profraw coverage.xml
+llvm-cov show -instr-profile=coverage.profdata -object ./build/youtube-unthrottle
 ```
 
 To build and fuzz:
