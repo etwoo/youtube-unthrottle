@@ -38,6 +38,15 @@ debug_at_line(const char *fname, unsigned int lineno, const char *pattern, ...)
 }
 
 void
+info_at_line(const char *fname, unsigned int lineno, const char *pattern, ...)
+{
+	va_list ap;
+	va_start(ap, pattern);
+	vlog("INFO", fname, lineno, pattern, ap);
+	va_end(ap);
+}
+
+void
 warn_at_line(const char *fname, unsigned int lineno, const char *pattern, ...)
 {
 	va_list ap;

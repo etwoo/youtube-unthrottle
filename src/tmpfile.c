@@ -9,20 +9,23 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+static void
+checked_fclose(FILE **fs)
+{
+	info_if(*fs && fclose(*fs), "Ignoring error fclose()-ing stream");
+}
+
 int
 tmpfd(void)
 {
-	int fd = -1;
-
 	/*
 	 * strace suggests that tmpfile() already uses O_TMPFILE when
 	 * possible, at least under glibc. As a result, there's no need
 	 * to call open() with O_TMPFILE|O_EXCL ourselves.
 	 */
-	FILE *fs = tmpfile();
+	FILE *fs __attribute__((cleanup(checked_fclose))) = tmpfile();
 	if (fs == NULL) {
-		pwarn("Error in tmpfile()");
-		goto cleanup;
+		warn_then_return_negative_1("Error in tmpfile()");
 	}
 
 	/*
@@ -33,22 +36,15 @@ tmpfd(void)
 
 	int inner_fd = fileno(fs);
 	if (inner_fd < 0) {
-		pwarn("Error in fileno()");
-		goto cleanup;
+		warn_then_return_negative_1("Error in fileno()");
 	}
 
-	fd = dup(inner_fd);
+	int fd = dup(inner_fd);
 	if (fd < 0) {
-		pwarn("Error in dup()");
-		goto cleanup;
+		warn_then_return_negative_1("Error in dup()");
 	}
 
 	debug("Got tmpfile with fd=%d", fd);
-
-cleanup:
-	if (fs != NULL && fclose(fs) != 0) {
-		pwarn("Ignoring error while fclose()-ing tmpfile stream");
-	}
 	return fd;
 }
 
@@ -59,15 +55,13 @@ tmpmap(int fd, void **addr, unsigned int *sz)
 		.st_size = 0,
 	};
 	if (fstat(fd, &st) < 0) {
-		pwarn("Error fetching size of tmpfile via fstat()");
-		return false;
+		warn_then_return_false("Error fstat()-ing tmpfile");
 	}
 	*sz = st.st_size;
 
 	*addr = mmap(NULL, *sz, PROT_READ, MAP_PRIVATE, fd, 0);
 	if (*addr == MAP_FAILED) {
-		pwarn("Error mmap()-ing tmpfile");
-		return false;
+		warn_then_return_false("Error mmap()-ing tmpfile");
 	}
 
 	/*
@@ -89,7 +83,6 @@ tmpunmap(void *addr, unsigned int sz)
 		return;
 	}
 
-	if (munmap(addr, sz) < 0) {
-		pwarn("Ignoring error while munmap()-ing tmpfile");
-	}
+	const int rc = munmap(addr, sz);
+	info_if(rc < 0, "Ignoring error munmap()-ing tmpfile");
 }

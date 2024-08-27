@@ -1,5 +1,6 @@
 #include "landlock.h"
 
+#include "coverage.h"
 #include "greatest.h"
 #include "tmpfile.h"
 
@@ -135,6 +136,8 @@ GREATEST_MAIN_DEFS();
 int
 main(int argc, char **argv)
 {
+	int fd __attribute__((cleanup(coverage_cleanup))) = coverage_open();
+
 	GREATEST_MAIN_BEGIN();
 
 	RUN_SUITE(before_landlock);

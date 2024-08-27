@@ -5,6 +5,7 @@
 
 void url_global_init(void);
 void url_global_cleanup(void);
+void url_global_set_request_handler(int (*handler)(void *, const char *, int));
 
 bool url_download(const char *url,
                   const char *host,

@@ -10,7 +10,7 @@ typedef struct youtube_stream *youtube_handle_t;
 
 youtube_handle_t youtube_stream_init(void);
 void youtube_stream_cleanup(youtube_handle_t h);
-void youtube_stream_print(youtube_handle_t h);
+void youtube_stream_visitor(youtube_handle_t h, void (*visit)(const char *));
 
 struct youtube_setup_ops {
 	void (*before)(youtube_handle_t);
