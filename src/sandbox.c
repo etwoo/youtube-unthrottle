@@ -110,52 +110,38 @@ static const char *ALLOWED_PATHS[] = {
 };
 
 static void
-sandbox_restrict_filesystem(void)
+sandbox_with(unsigned flags, const char *promises)
 {
 	const size_t sz = ARRAY_SIZE(ALLOWED_PATHS);
 #if defined(__linux__)
+	(void)promises; /* unused */
 	landlock_apply(ALLOWED_PATHS, sz, 443);
+	seccomp_apply(SECCOMP_STDIO | SECCOMP_INET | SECCOMP_SANDBOX | flags);
 #elif defined(__OpenBSD__)
+	(void)flags; /* unused */
 	for (size_t i = 0; i < sz; ++i) {
 		if (unveil(ALLOWED_PATHS[i], "r") < 0) {
 			err(EX_OSERR, "Error in unveil()");
 		}
 	}
+	if (pledge(promises, NULL) < 0) {
+		err(EX_OSERR, "Error in pledge()");
+	}
 #endif
+	sandbox_verify(ALLOWED_PATHS, sz, sz, true);
 }
-
-#define SECCOMP_IO_INET_COMMON_FLAGS                                           \
-	(SECCOMP_STDIO | SECCOMP_INET | SECCOMP_SANDBOX)
 
 void
 sandbox_only_io_inet_tmpfile(void)
 {
-	sandbox_restrict_filesystem();
-#if defined(__linux__)
-	seccomp_apply(SECCOMP_IO_INET_COMMON_FLAGS | SECCOMP_TMPFILE);
-#elif defined(__OpenBSD__)
-	if (pledge("dns inet rpath stdio tmppath unveil", NULL) < 0) {
-		err(EX_OSERR, "Error in pledge()");
-	}
-#endif
-	const size_t sz = ARRAY_SIZE(ALLOWED_PATHS);
-	sandbox_verify(ALLOWED_PATHS, sz, sz, true);
+	sandbox_with(SECCOMP_TMPFILE, "dns inet rpath stdio tmppath unveil");
 	debug("%s() succeeded", __FUNCTION__);
 }
 
 void
 sandbox_only_io_inet_rpath(void)
 {
-	sandbox_restrict_filesystem();
-#if defined(__linux__)
-	seccomp_apply(SECCOMP_IO_INET_COMMON_FLAGS | SECCOMP_RPATH);
-#elif defined(__OpenBSD__)
-	if (pledge("dns inet rpath stdio unveil", NULL) < 0) {
-		err(EX_OSERR, "Error in pledge()");
-	}
-#endif
-	const size_t sz = ARRAY_SIZE(ALLOWED_PATHS);
-	sandbox_verify(ALLOWED_PATHS, sz, sz, true);
+	sandbox_with(SECCOMP_RPATH, "dns inet rpath stdio unveil");
 	debug("%s() succeeded", __FUNCTION__);
 }
 
@@ -163,8 +149,9 @@ void
 sandbox_only_io(void)
 {
 #if defined(__linux__)
-	landlock_apply(ALLOWED_PATHS, 1, 0);
+	landlock_apply(NULL, 0, 0);
 	seccomp_apply(SECCOMP_STDIO);
+	sandbox_verify(ALLOWED_PATHS, 0, ARRAY_SIZE(ALLOWED_PATHS), false);
 #elif defined(__OpenBSD__)
 	if (unveil(NULL, NULL) < 0) {
 		err(EX_OSERR, "Error in final unveil()");
@@ -172,7 +159,7 @@ sandbox_only_io(void)
 	if (pledge("stdio", NULL) < 0) {
 		err(EX_OSERR, "Error in pledge()");
 	}
+	/* sandbox_verify() would abort() here due to pledge() restrictions */
 #endif
-	/* sandbox_verify() would abort() at this point */
 	debug("%s() succeeded", __FUNCTION__);
 }
