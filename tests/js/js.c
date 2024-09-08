@@ -477,7 +477,7 @@ find_js_timestamp_positive_simple(void)
 }
 
 TEST
-find_js_deobfuscator_first_match_fail(void)
+find_js_deobfuscator_negative_first_match_fail(void)
 {
 	const char *deobfuscator = NULL;
 	size_t deobfuscator_sz = 0;
@@ -492,28 +492,7 @@ find_js_deobfuscator_first_match_fail(void)
 }
 
 TEST
-find_js_deobfuscator_first_match_too_long(void)
-{
-	const char *deobfuscator = NULL;
-	size_t deobfuscator_sz = 0;
-
-	static const char js[] =
-		"&&(c="
-		"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
-		"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
-		"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
-		"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
-		"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
-		"[0](c),";
-	find_js_deobfuscator(js, sizeof(js), &deobfuscator, &deobfuscator_sz);
-
-	ASSERT_EQ(deobfuscator, NULL);
-	ASSERT_EQ(deobfuscator_sz, 0);
-	PASS();
-}
-
-TEST
-find_js_deobfuscator_second_match_fail(void)
+find_js_deobfuscator_negative_second_match_fail(void)
 {
 	const char *deobfuscator = NULL;
 	size_t deobfuscator_sz = 0;
@@ -527,29 +506,7 @@ find_js_deobfuscator_second_match_fail(void)
 }
 
 TEST
-find_js_deobfuscator_second_match_too_long(void)
-{
-	const char *deobfuscator = NULL;
-	size_t deobfuscator_sz = 0;
-
-	static const char js[] =
-		"&&(c=ODa[0](c),\n"
-		"var ODa=["
-		"CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"
-		"CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"
-		"CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"
-		"CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"
-		"CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"
-		"]";
-	find_js_deobfuscator(js, sizeof(js), &deobfuscator, &deobfuscator_sz);
-
-	ASSERT_EQ(deobfuscator, NULL);
-	ASSERT_EQ(deobfuscator_sz, 0);
-	PASS();
-}
-
-TEST
-find_js_deobfuscator_third_match_fail(void)
+find_js_deobfuscator_negative_third_match_fail(void)
 {
 	const char *deobfuscator = NULL;
 	size_t deobfuscator_sz = 0;
@@ -563,13 +520,30 @@ find_js_deobfuscator_third_match_fail(void)
 }
 
 TEST
-find_js_deobfuscator_third_match_success(void)
+find_js_deobfuscator_positive_simple(void)
 {
 	const char *deobfuscator = NULL;
 	size_t deobfuscator_sz = 0;
 
 	static const char js[] =
 		"&&(c=ODa[0](c),\nvar ODa=[Pma];\nPma=function(a)"
+		"{return b.join(\"\")};";
+	find_js_deobfuscator(js, sizeof(js), &deobfuscator, &deobfuscator_sz);
+
+	static const char expected[] = "function(a){return b.join(\"\")};";
+	ASSERT_EQ(deobfuscator_sz, strlen(expected));
+	ASSERT_STRN_EQ(deobfuscator, expected, deobfuscator_sz);
+	PASS();
+}
+
+TEST
+find_js_deobfuscator_positive_with_escaping(void)
+{
+	const char *deobfuscator = NULL;
+	size_t deobfuscator_sz = 0;
+
+	static const char js[] =
+		"&&(c=$aa[0](c),\nvar $aa=[$bb];\n$bb=function(a)"
 		"{return b.join(\"\")};";
 	find_js_deobfuscator(js, sizeof(js), &deobfuscator, &deobfuscator_sz);
 
@@ -587,12 +561,11 @@ SUITE(find_with_pcre)
 	RUN_TEST(find_js_timestamp_negative_strtoll_erange);
 	RUN_TEST(find_js_timestamp_positive_strtoll_max);
 	RUN_TEST(find_js_timestamp_positive_simple);
-	RUN_TEST(find_js_deobfuscator_first_match_fail);
-	RUN_TEST(find_js_deobfuscator_first_match_too_long);
-	RUN_TEST(find_js_deobfuscator_second_match_fail);
-	RUN_TEST(find_js_deobfuscator_second_match_too_long);
-	RUN_TEST(find_js_deobfuscator_third_match_fail);
-	RUN_TEST(find_js_deobfuscator_third_match_success);
+	RUN_TEST(find_js_deobfuscator_negative_first_match_fail);
+	RUN_TEST(find_js_deobfuscator_negative_second_match_fail);
+	RUN_TEST(find_js_deobfuscator_negative_third_match_fail);
+	RUN_TEST(find_js_deobfuscator_positive_simple);
+	RUN_TEST(find_js_deobfuscator_positive_with_escaping);
 }
 
 TEST
