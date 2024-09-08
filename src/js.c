@@ -20,12 +20,6 @@ peek(duk_context *ctx)
 }
 
 static void
-asprintf_free(char **strp)
-{
-	free(*strp);
-}
-
-static void
 pop(duk_context **ctx)
 {
 	duk_pop(*ctx);
@@ -187,6 +181,12 @@ find_js_timestamp(const char *js, size_t sz)
 
 	debug("Parsed signatureTimestamp %.*s into %lld", (int)ts_sz, ts, res);
 	return res;
+}
+
+static void
+asprintf_free(char **strp)
+{
+	free(*strp);
 }
 
 static const char *RE_FUNC_NAME[] = {
