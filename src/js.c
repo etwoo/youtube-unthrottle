@@ -20,6 +20,12 @@ peek(duk_context *ctx)
 }
 
 static void
+asprintf_free(char **strp)
+{
+	free(*strp);
+}
+
+static void
 pop(duk_context **ctx)
 {
 	duk_pop(*ctx);
@@ -210,8 +216,8 @@ find_js_deobfuscator(const char *js,
 {
 	*deobfuscator = NULL;
 	*deobfuscator_sz = 0;
+	int rc = 0;
 
-	char escaped[256];
 	const char *name = NULL;
 	size_t nsz = 0;
 	for (size_t i = 0; i < ARRAY_SIZE(RE_FUNC_NAME); ++i) {
@@ -225,32 +231,25 @@ find_js_deobfuscator(const char *js,
 	}
 	debug("Got function name 1: %.*s", (int)nsz, name);
 
-	if (!re_pattern_escape(name, nsz, escaped, sizeof(escaped))) {
-		return;
-	}
-	debug("Escaped function name 1: %s", escaped);
+	char *p2 __attribute__((cleanup(asprintf_free))) = NULL;
+	rc = asprintf(&p2, "var \\Q%.*s\\E=\\[([^\\]]+)\\]", (int)nsz, name);
+	error_if(rc < 0, "Cannot allocate asprintf buffer");
 
-	if (!re_capturef(js,
-	                 js_sz,
-	                 &name,
-	                 &nsz,
-	                 "var %s=\\[([^\\]]+)\\]",
-	                 escaped)) {
+	if (!re_capture(p2, js, js_sz, &name, &nsz)) {
 		warn_then_return("Cannot find %.*s in base.js", (int)nsz, name);
 	}
 	debug("Got function name 2: %.*s", (int)nsz, name);
 
-	if (!re_pattern_escape(name, nsz, escaped, sizeof(escaped))) {
-		return;
-	}
-	debug("Escaped function name 2: %s", escaped);
+	char *p3 __attribute__((cleanup(asprintf_free))) = NULL;
+	rc = asprintf(&p3,
+	              "(?s)\\Q%.*s\\E=("
+	              "function\\(a\\){.*return b.join\\(\"\"\\)};"
+	              ")",
+	              (int)nsz,
+	              name);
+	error_if(rc < 0, "Cannot allocate asprintf buffer");
 
-	if (!re_capturef(js,
-	                 js_sz,
-	                 deobfuscator,
-	                 deobfuscator_sz,
-	                 "(?s)%s=(function\\(a\\){.*return b.join\\(\"\"\\)};)",
-	                 escaped)) {
+	if (!re_capture(p3, js, js_sz, deobfuscator, deobfuscator_sz)) {
 		warn_then_return("Cannot find %.*s in base.js", (int)nsz, name);
 	}
 	// debug("Got function body: %.*s", *deobfuscator_sz, *deobfuscator);
