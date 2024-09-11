@@ -1,6 +1,7 @@
 #include "url.h"
 
 #include "debug.h"
+#include "write.h"
 
 #include <assert.h>
 #include <unistd.h>
@@ -29,12 +30,8 @@ write_to_tmpfile(char *ptr, size_t size, size_t nmemb, void *userdata)
 		return real_size;
 	}
 
-	for (size_t remaining_bytes = real_size; remaining_bytes > 0;) {
-		const ssize_t written = write(*fd, ptr, remaining_bytes);
-		error_m_if(written < 0, "Cannot write to tmpfile");
-		ptr += written;
-		remaining_bytes -= written;
-	}
+	const ssize_t written = write_with_retry(*fd, ptr, real_size);
+	error_m_if(written < 0, "Cannot write to tmpfile");
 
 	return real_size; /* always consider buffer entirely consumed */
 }

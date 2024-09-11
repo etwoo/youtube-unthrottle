@@ -4,6 +4,7 @@
 #include "debug.h"
 #include "greatest.h"
 #include "url.h"
+#include "write.h"
 
 #include <unistd.h>
 
@@ -26,27 +27,21 @@ test_fixture_request_handler(void *request, const char *path, int fd)
 {
 	debug("Mocking request: CURL* %p, %s, fd=%d", request, path, fd);
 
-	const char *to_write = "";
+	const char *to_write = NULL;
 	if (strstr(path, "/watch?v=")) {
 		to_write = FAKE_HTML_RESPONSE;
 	} else if (strstr(path, "/youtubei/v1/player")) {
 		to_write = FAKE_JSON_RESPONSE;
 	} else if (strstr(path, "/base.js")) {
 		to_write = FAKE_JS_RESPONSE;
-	} else {
-		info("No test fixture for URL path: %s", path);
 	}
 
-	for (size_t remaining_bytes = strlen(to_write); remaining_bytes > 0;) {
-		const ssize_t written = write(fd, to_write, remaining_bytes);
-		if (written < 0) {
-			warn_m_then_return(1, "Error writing to tmpfile");
-		}
-		to_write += written;
-		remaining_bytes -= written;
-	}
+	error_if(to_write == NULL, "No test fixture for URL path: %s", path);
 
-	return strlen(to_write) > 0 ? 0 : 1;
+	ssize_t written = write_with_retry(fd, to_write, strlen(to_write));
+	error_m_if(written < 0, "Cannot write to tmpfile");
+
+	return 0;
 }
 
 static void

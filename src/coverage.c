@@ -23,6 +23,7 @@ coverage_write_and_close(int fd __attribute__((unused)))
 
 #include "array.h"
 #include "debug.h"
+#include "write.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -48,7 +49,8 @@ coverage_open(void)
 {
 	char *profile = getenv("COVERAGE_PROFILE_DIR");
 	if (profile == NULL) {
-		warn_m_then_return(-1, "COVERAGE_PROFILE_DIR is not set");
+		debug("COVERAGE_PROFILE_DIR is not set");
+		return -1;
 	}
 
 	bool rc = mkdir(profile, S_IRWXU) == 0 || errno == EEXIST;
@@ -80,7 +82,8 @@ void
 coverage_write_and_close(int fd)
 {
 	if (fd < 0) {
-		warn_then_return("Invalid coverage fd: %d", fd);
+		debug("No coverage fd set");
+		return;
 	}
 
 	uint64_t sz = __llvm_profile_get_size_for_buffer();
@@ -92,13 +95,8 @@ coverage_write_and_close(int fd)
 	int copied = __llvm_profile_write_buffer(buf);
 	error_m_if(copied < 0, "Cannot copy coverage data to in-memory buffer");
 
-	void *to_write = buf;
-	for (size_t remaining_bytes = sz; remaining_bytes > 0;) {
-		const ssize_t written = write(fd, to_write, remaining_bytes);
-		error_m_if(written < 0, "Cannot write to coverage fd");
-		to_write += written;
-		remaining_bytes -= written;
-	}
+	const ssize_t written = write_with_retry(fd, buf, sz);
+	error_m_if(written < 0, "Cannot write to coverage fd");
 
 	debug("Wrote %zd bytes to coverage fd=%d", sz, fd);
 

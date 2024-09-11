@@ -2,7 +2,7 @@
 #define DEBUG_H
 
 #include <errno.h>
-#include <string.h> /* for strerror() */
+#include <string.h>   /* for strerror() */
 #include <sysexits.h> /* for EX_* exit status codes */
 
 /*
@@ -122,11 +122,10 @@ warn_at_line(const char *fname, unsigned int lineno, const char *pattern, ...)
 		break;                                                         \
 	}
 
-void
-error_at_line(int status,
-              const char *fname,
-              unsigned int lineno,
-              const char *pattern,
-              ...) __attribute__((format(printf, 4, 5)));
+void error_at_line(int status,
+                   const char *fname,
+                   unsigned int lineno,
+                   const char *pattern,
+                   ...) __attribute__((format(printf, 4, 5)));
 
 #endif

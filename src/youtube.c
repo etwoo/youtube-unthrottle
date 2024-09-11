@@ -283,10 +283,7 @@ static const char INNERTUBE_POST_FMT[] =
 	"}";
 
 static bool
-format_innertube_post(const char *target,
-                      long long int ts, /* parsed signatureTimestamp value */
-                      char *body,
-                      int capacity)
+format_innertube_post(const char *target, long long int ts, char **body)
 {
 	const char *id = NULL;
 	size_t sz = 0;
@@ -302,15 +299,10 @@ format_innertube_post(const char *target,
 	}
 	debug("Parsed ID: %.*s", (int)sz, id);
 
-	// TODO: remove below, replace with asprintf
-	const int printed =
-		snprintf(body, capacity, INNERTUBE_POST_FMT, (int)sz, id, ts);
-	if (printed >= capacity || body[printed] != '\0') {
-		warn_then_return_false("%d bytes is too small for snprintf()",
-		                       capacity);
-	}
-	debug("Formatted InnerTube POST body:\n%s", body);
+	const int rc = asprintf(body, INNERTUBE_POST_FMT, (int)sz, id, ts);
+	error_m_if(rc < 0, "Cannot allocate asprintf buffer");
 
+	debug("Formatted InnerTube POST body:\n%s", *body);
 	return true;
 }
 
@@ -347,6 +339,12 @@ ciphertexts_cleanup(char *ciphertexts[][2])
 		(*ciphertexts)[i] = NULL;
 	}
 	debug("free()-d %zd n-param ciphertext bufs", ARRAY_SIZE(*ciphertexts));
+}
+
+static void
+asprintf_free(char **strp)
+{
+	free(*strp);
 }
 
 bool
@@ -415,16 +413,12 @@ youtube_stream_setup(struct youtube_stream *p,
 		return false;
 	}
 
-	char innertube_post_body[4096];
-	const int innertube_post_capacity = sizeof(innertube_post_body);
-	if (!format_innertube_post(target,
-	                           timestamp,
-	                           innertube_post_body,
-	                           innertube_post_capacity) ||
+	char *innertube_post __attribute__((cleanup(asprintf_free))) = NULL;
+	if (!format_innertube_post(target, timestamp, &innertube_post) ||
 	    !download_and_mmap_tmpfd(INNERTUBE_URI,
 	                             NULL,
 	                             NULL,
-	                             innertube_post_body,
+	                             innertube_post,
 	                             json.fd,
 	                             &json.buf,
 	                             &json.sz)) {
