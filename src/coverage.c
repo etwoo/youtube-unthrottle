@@ -98,7 +98,7 @@ coverage_write_and_close(int fd)
 	const ssize_t written = write_with_retry(fd, buf, sz);
 	error_m_if(written < 0, "Cannot write to coverage fd");
 
-	debug("Wrote %zd bytes to coverage fd=%d", sz, fd);
+	debug("Wrote %zd bytes to coverage fd=%d", written, fd);
 
 	free(buf);
 	info_m_if(close(fd) < 0, "Ignoring error close()-ing coverage fd");
