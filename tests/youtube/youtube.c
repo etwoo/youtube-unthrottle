@@ -26,7 +26,7 @@ test_fixture_request_handler(void *request, const char *path, int fd)
 {
 	debug("Mocking request: CURL* %p, %s, fd=%d", request, path, fd);
 
-	const char *to_write = NULL;
+	const char *to_write = "";
 	if (strstr(path, "/watch?v=")) {
 		to_write = FAKE_HTML_RESPONSE;
 	} else if (strstr(path, "/youtubei/v1/player")) {
@@ -34,19 +34,19 @@ test_fixture_request_handler(void *request, const char *path, int fd)
 	} else if (strstr(path, "/base.js")) {
 		to_write = FAKE_JS_RESPONSE;
 	} else {
-		warn_then_return_1("No test fixture for URL path: %s", path);
+		info("No test fixture for URL path: %s", path);
 	}
 
 	for (size_t remaining_bytes = strlen(to_write); remaining_bytes > 0;) {
 		const ssize_t written = write(fd, to_write, remaining_bytes);
 		if (written < 0) {
-			warn_then_return_1("Error writing to tmpfile");
+			warn_m_then_return(1, "Error writing to tmpfile");
 		}
 		to_write += written;
 		remaining_bytes -= written;
 	}
 
-	return 0;
+	return strlen(to_write) > 0 ? 0 : 1;
 }
 
 static void

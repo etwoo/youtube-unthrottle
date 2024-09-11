@@ -60,7 +60,7 @@ parse_json(const char *json,
 
 	duk_context *ctx __attribute__((cleanup(destroy_heap))) =
 		duk_create_heap_default(); /* may return NULL! */
-	error_if(ctx == NULL, "Cannot allocate Duktape heap");
+	error_m_if(ctx == NULL, "Cannot allocate Duktape heap");
 
 	duk_push_lstring(ctx, json, json_sz);
 	res = duk_safe_call(ctx, try_decode, NULL, 1, 1);
@@ -157,12 +157,13 @@ find_base_js_url(const char *html,
 }
 
 long long int
-find_js_timestamp(const char *js, size_t sz)
+find_js_timestamp(const char *js, size_t js_sz)
 {
 	const char *ts = NULL;
-	size_t ts_sz = 0;
-	if (!re_capture("signatureTimestamp:([0-9]+)", js, sz, &ts, &ts_sz)) {
-		warn_then_return_negative_1("Cannot find timestamp in base.js");
+	size_t tsz = 0;
+	if (!re_capture("signatureTimestamp:([0-9]+)", js, js_sz, &ts, &tsz)) {
+		info("Cannot find timestamp in base.js");
+		return -1;
 	}
 
 	/*
@@ -173,13 +174,10 @@ find_js_timestamp(const char *js, size_t sz)
 
 	long long int res = strtoll(ts, NULL, 10);
 	if (errno != 0) {
-		warn_then_return_negative_1("strtoll() error on %.*s: %s",
-		                            (int)ts_sz,
-		                            ts,
-		                            strerror(errno));
+		warn_m_then_return(-1, "strtoll() error on %.*s", (int)tsz, ts);
 	}
 
-	debug("Parsed signatureTimestamp %.*s into %lld", (int)ts_sz, ts, res);
+	debug("Parsed signatureTimestamp %.*s into %lld", (int)tsz, ts, res);
 	return res;
 }
 
@@ -233,7 +231,7 @@ find_js_deobfuscator(const char *js,
 
 	char *p2 __attribute__((cleanup(asprintf_free))) = NULL;
 	rc = asprintf(&p2, "var \\Q%.*s\\E=\\[([^\\]]+)\\]", (int)nsz, name);
-	error_if(rc < 0, "Cannot allocate asprintf buffer");
+	error_m_if(rc < 0, "Cannot allocate asprintf buffer");
 
 	if (!re_capture(p2, js, js_sz, &name, &nsz)) {
 		warn_then_return("Cannot find %.*s in base.js", (int)nsz, name);
@@ -247,7 +245,7 @@ find_js_deobfuscator(const char *js,
 	              ")",
 	              (int)nsz,
 	              name);
-	error_if(rc < 0, "Cannot allocate asprintf buffer");
+	error_m_if(rc < 0, "Cannot allocate asprintf buffer");
 
 	if (!re_capture(p3, js, js_sz, deobfuscator, deobfuscator_sz)) {
 		warn_then_return("Cannot find %.*s in base.js", (int)nsz, name);
@@ -307,7 +305,7 @@ call_js_foreach(const char *code,
 {
 	duk_context *ctx __attribute__((cleanup(destroy_heap))) =
 		duk_create_heap_default(); /* may return NULL! */
-	error_if(ctx == NULL, "Cannot allocate Duktape heap");
+	error_m_if(ctx == NULL, "Cannot allocate Duktape heap");
 
 	duk_push_lstring(ctx, code, sz);
 	assert(duk_get_type(ctx, -1) == DUK_TYPE_STRING);

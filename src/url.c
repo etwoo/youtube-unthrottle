@@ -31,7 +31,7 @@ write_to_tmpfile(char *ptr, size_t size, size_t nmemb, void *userdata)
 
 	for (size_t remaining_bytes = real_size; remaining_bytes > 0;) {
 		const ssize_t written = write(*fd, ptr, remaining_bytes);
-		error_if(written < 0, "Cannot write to tmpfile");
+		error_m_if(written < 0, "Cannot write to tmpfile");
 		ptr += written;
 		remaining_bytes -= written;
 	}
@@ -63,7 +63,7 @@ get_easy_handle(void)
 	 *
 	 * ... so there isn't much we can do here to get details.
 	 */
-	error_if(!GLOBAL_CURL_EASY_HANDLE, "Cannot allocate easy handle");
+	error_m_if(!GLOBAL_CURL_EASY_HANDLE, "Cannot allocate easy handle");
 
 	curl_easy_reset(GLOBAL_CURL_EASY_HANDLE);
 	return GLOBAL_CURL_EASY_HANDLE;
@@ -118,7 +118,7 @@ url_prepare(const char *hostp, const char *pathp)
 	CURLUcode uc = CURLUE_OK;
 
 	CURLU *url = curl_url();
-	error_if(url == NULL, "Cannot allocate URL handle");
+	error_m_if(url == NULL, "Cannot allocate URL handle");
 
 	uc = curl_url_set(url, CURLUPART_SCHEME, "https", 0);
 	error_if_uc(uc, CURLUPART_SCHEME);

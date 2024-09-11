@@ -38,7 +38,7 @@ struct youtube_stream *
 youtube_stream_init(void)
 {
 	struct youtube_stream *p = malloc(sizeof(*p));
-	error_if(p == NULL, "Cannot allocate youtube_stream struct");
+	error_m_if(p == NULL, "Cannot allocate youtube_stream struct");
 
 	p->basejs = NULL;
 	p->pos = 0;
@@ -46,7 +46,7 @@ youtube_stream_init(void)
 
 	for (size_t i = 0; i < ARRAY_SIZE(p->url); ++i) {
 		p->url[i] = curl_url(); /* may return NULL! */
-		error_if(p->url[i] == NULL, "Cannot allocate URL handle");
+		error_m_if(p->url[i] == NULL, "Cannot allocate URL handle");
 	}
 
 	return p;
@@ -151,7 +151,7 @@ pop_n_param_one(CURLU *url, char **result)
 	}
 
 	*result = malloc((ciphertext_sz + 1) * sizeof(*result));
-	error_if(*result == NULL, "Cannot allocate ciphertext buffer");
+	error_m_if(*result == NULL, "Cannot allocate ciphertext buffer");
 
 	/*
 	 * Copy n-parameter value out of storage owned by CURLU <url>.
@@ -223,7 +223,7 @@ append_n_param(const char *plaintext, size_t sz, void *userdata)
 	const size_t kv_sz = sz + 3;
 	/* magic number 3: two chars for "n=", one char for NUL terminator */
 	char *kv = malloc(kv_sz * sizeof(*kv));
-	error_if(kv == NULL, "Cannot allocate kv-pair buffer");
+	error_m_if(kv == NULL, "Cannot allocate kv-pair buffer");
 
 	kv[0] = 'n';
 	kv[1] = '=';
@@ -297,10 +297,12 @@ format_innertube_post(const char *target,
 	                strlen(target),
 	                &id,
 	                &sz)) {
-		warn_then_return_false("Cannot find ID in URL: %s", target);
+		info("Cannot find ID in URL: %s", target);
+		return false;
 	}
 	debug("Parsed ID: %.*s", (int)sz, id);
 
+	// TODO: remove below, replace with asprintf
 	const int printed =
 		snprintf(body, capacity, INNERTUBE_POST_FMT, (int)sz, id, ts);
 	if (printed >= capacity || body[printed] != '\0') {
@@ -332,9 +334,9 @@ static void
 downloaded_cleanup(struct downloaded *d)
 {
 	tmpunmap(d->buf, d->sz);
-	info_if(d->fd > 0 && close(d->fd) < 0,
-	        "Ignoring error close()-ing %s",
-	        d->description);
+	info_m_if(d->fd > 0 && close(d->fd) < 0,
+	          "Ignoring error close()-ing %s",
+	          d->description);
 }
 
 static void
@@ -365,13 +367,13 @@ youtube_stream_setup(struct youtube_stream *p,
 	}
 
 	json.fd = tmpfd();
-	error_if(json.fd < 0, "Cannot get JSON tmpfile");
+	error_m_if(json.fd < 0, "Cannot get JSON tmpfile");
 
 	html.fd = tmpfd();
-	error_if(html.fd < 0, "Cannot get HTML tmpfile");
+	error_m_if(html.fd < 0, "Cannot get HTML tmpfile");
 
 	js.fd = tmpfd();
-	error_if(js.fd < 0, "Cannot get JavaScript tmpfile");
+	error_m_if(js.fd < 0, "Cannot get JavaScript tmpfile");
 
 	if (ops && ops->before_inet) {
 		ops->before_inet(p);
@@ -396,7 +398,7 @@ youtube_stream_setup(struct youtube_stream *p,
 
 	debug("Setting base.js URL: %.*s", (int)basejs_sz, basejs);
 	p->basejs = strndup(basejs, basejs_sz);
-	error_if(p->basejs == NULL, "Cannot strndup() base.js URL");
+	error_m_if(p->basejs == NULL, "Cannot strndup() base.js URL");
 
 	if (!download_and_mmap_tmpfd(NULL,
 	                             "www.youtube.com",

@@ -48,18 +48,18 @@ coverage_open(void)
 {
 	char *profile = getenv("COVERAGE_PROFILE_DIR");
 	if (profile == NULL) {
-		warn_then_return_negative_1("COVERAGE_PROFILE_DIR is not set");
+		warn_m_then_return(-1, "COVERAGE_PROFILE_DIR is not set");
 	}
 
 	bool rc = mkdir(profile, S_IRWXU) == 0 || errno == EEXIST;
-	error_if(rc == false, "Cannot create coverage profile directory");
+	error_m_if(rc == false, "Cannot create coverage profile directory");
 
 	int dirfd = open(profile, O_DIRECTORY | O_PATH);
-	error_if(dirfd < 0, "Cannot open coverage profile directory fd");
+	error_m_if(dirfd < 0, "Cannot open coverage profile directory fd");
 
 	char random_bytes[4];
 	ssize_t got_bytes = getrandom(random_bytes, sizeof(random_bytes), 0);
-	error_if(got_bytes < 0, "Cannot obtain random bytes");
+	error_m_if(got_bytes < 0, "Cannot obtain random bytes");
 
 	char p[(2 * sizeof(random_bytes)) + 1];
 	memset(p, '\0', sizeof(p));
@@ -70,7 +70,7 @@ coverage_open(void)
 
 	int fd = -1;
 	fd = openat(dirfd, p, O_CREAT | O_EXCL | O_WRONLY, S_IRUSR | S_IWUSR);
-	error_if(fd < 0, "Cannot open coverage profile file");
+	error_m_if(fd < 0, "Cannot open coverage profile file");
 
 	debug("Opened coverage file with dir=%s, filename=%s", profile, p);
 	return fd;
@@ -84,18 +84,18 @@ coverage_write_and_close(int fd)
 	}
 
 	uint64_t sz = __llvm_profile_get_size_for_buffer();
-	error_if(sz == 0, "Got invalid size zero for coverage buffer");
+	error_m_if(sz == 0, "Got invalid size zero for coverage buffer");
 
 	void *buf = malloc(sz);
-	error_if(buf == NULL, "Cannot malloc() buffer for coverage data");
+	error_m_if(buf == NULL, "Cannot malloc() buffer for coverage data");
 
 	int copied = __llvm_profile_write_buffer(buf);
-	error_if(copied < 0, "Cannot copy coverage data to in-memory buffer");
+	error_m_if(copied < 0, "Cannot copy coverage data to in-memory buffer");
 
 	void *to_write = buf;
 	for (size_t remaining_bytes = sz; remaining_bytes > 0;) {
 		const ssize_t written = write(fd, to_write, remaining_bytes);
-		error_if(written < 0, "Cannot write to coverage profile file");
+		error_m_if(written < 0, "Cannot write to coverage fd");
 		to_write += written;
 		remaining_bytes -= written;
 	}
@@ -103,7 +103,7 @@ coverage_write_and_close(int fd)
 	debug("Wrote %zd bytes to coverage fd=%d", sz, fd);
 
 	free(buf);
-	info_if(close(fd) < 0, "Ignoring error close()-ing coverage fd");
+	info_m_if(close(fd) < 0, "Ignoring error close()-ing coverage fd");
 }
 
 #endif
