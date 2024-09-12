@@ -61,7 +61,7 @@ info_at_line(const char *fname, unsigned int lineno, const char *pattern, ...)
 /*
  * Log a message at WARN level, then return from the caller's current function.
  *
- * In direct constrast with info_if(), this macro should be used when a change
+ * In direct contrast with info_if(), this macro should be used when a change
  * in control flow (e.g. early return) is desired.
  *
  * In other words, info_if() and warn_then_return*() create a relationship
@@ -93,7 +93,7 @@ warn_at_line(const char *fname, unsigned int lineno, const char *pattern, ...)
 	__attribute__((format(printf, 3, 4)));
 
 /*
- * Log a message at ERROR level, if <cond> is true, then exit() the program.
+ * Log a message at ERROR level and then exit(), if <cond> is true.
  *
  * This macro is suitable for severe errors, like malloc() failure for a key
  * datastructure or error returned by a syscall like landlock_add_rule() or
