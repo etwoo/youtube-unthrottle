@@ -1,8 +1,8 @@
 #include "debug.h"
 
 #include <stdarg.h>
-#include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h> /* for exit() */
 
 static void
 vlog(const char *level,
@@ -53,4 +53,19 @@ warn_at_line(const char *fname, unsigned int lineno, const char *pattern, ...)
 	va_start(ap, pattern);
 	vlog("WARN", fname, lineno, pattern, ap);
 	va_end(ap);
+}
+
+void
+error_at_line(int status,
+              const char *fname,
+              unsigned int lineno,
+              const char *pattern,
+              ...)
+{
+	va_list ap;
+	va_start(ap, pattern);
+	vlog("ERROR", fname, lineno, pattern, ap);
+	va_end(ap);
+
+	exit(status);
 }

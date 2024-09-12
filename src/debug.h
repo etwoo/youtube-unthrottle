@@ -2,7 +2,8 @@
 #define DEBUG_H
 
 #include <errno.h>
-#include <string.h> /* for strerror() */
+#include <string.h>   /* for strerror() */
+#include <sysexits.h> /* for EX_* exit status codes */
 
 /*
  * Log a message at DEBUG level via printf-style format string, along with the
@@ -38,10 +39,18 @@ debug_at_line(const char *fname, unsigned int lineno, const char *pattern, ...)
  */
 #define info_if(cond, pattern, ...)                                            \
 	while (cond) {                                                         \
-		info(pattern ": %s", ##__VA_ARGS__, strerror(errno));          \
+		info(pattern, ##__VA_ARGS__);                                  \
 		break;                                                         \
 	}
-
+/*
+ * Like info_if(), with "%m" equivalent appended to <pattern>.
+ */
+#define info_m_if(cond, pattern, ...)                                          \
+	info_if(cond, pattern ": %s", ##__VA_ARGS__, strerror(errno))
+/*
+ * Log a message at INFO level via printf-style format string, along with the
+ * callsite's filename and line number.
+ */
 #define info(pattern, ...)                                                     \
 	info_at_line(__FILE_NAME__, __LINE__, pattern, ##__VA_ARGS__)
 
@@ -65,17 +74,19 @@ info_at_line(const char *fname, unsigned int lineno, const char *pattern, ...)
 		warn_at_line(__FILE_NAME__, __LINE__, pattern, ##__VA_ARGS__); \
 		return;                                                        \
 	} while (0)
-#define warn_then_return_val(val, pattern, ...)                                \
+/*
+ * Like warn_then_return(), with "%m" equivalent appended to <pattern> and
+ * <val> as the non-void return value.
+ */
+#define warn_m_then_return(val, pattern, ...)                                  \
 	do {                                                                   \
-		warn_at_line(__FILE_NAME__, __LINE__, pattern, ##__VA_ARGS__); \
+		warn_at_line(__FILE_NAME__,                                    \
+		             __LINE__,                                         \
+		             pattern ": %s",                                   \
+		             ##__VA_ARGS__,                                    \
+		             strerror(errno));                                 \
 		return val;                                                    \
 	} while (0)
-#define warn_then_return_false(pattern, ...)                                   \
-	warn_then_return_val(false, pattern, ##__VA_ARGS__)
-#define warn_then_return_1(pattern, ...)                                       \
-	warn_then_return_val(1, pattern, ##__VA_ARGS__)
-#define warn_then_return_negative_1(pattern, ...)                              \
-	warn_then_return_val(-1, pattern, ##__VA_ARGS__)
 
 void
 warn_at_line(const char *fname, unsigned int lineno, const char *pattern, ...)
@@ -88,25 +99,33 @@ warn_at_line(const char *fname, unsigned int lineno, const char *pattern, ...)
  * datastructure or error returned by a syscall like landlock_add_rule() or
  * seccomp_load().
  */
-#if defined(__linux__)
-#include <error.h>
 #define error_if(cond, pattern, ...)                                           \
 	while (cond) {                                                         \
-		error_at_line(1,                                               \
-		              errno,                                           \
+		error_at_line(EX_SOFTWARE,                                     \
 		              __FILE_NAME__,                                   \
 		              __LINE__,                                        \
-		              "ERROR: " pattern,                               \
+		              pattern,                                         \
 		              ##__VA_ARGS__);                                  \
 		break;                                                         \
 	}
-#elif defined(__OpenBSD__)
-#include <err.h>
-#define error_if(cond, pattern, ...)                                           \
+/*
+ * Like error_if(), with "%m" equivalent appended to <pattern>.
+ */
+#define error_m_if(cond, pattern, ...)                                         \
 	while (cond) {                                                         \
-		err(1, pattern, ##__VA_ARGS__);                                \
+		error_at_line(EX_OSERR,                                        \
+		              __FILE_NAME__,                                   \
+		              __LINE__,                                        \
+		              pattern ": %s",                                  \
+		              ##__VA_ARGS__,                                   \
+		              strerror(errno));                                \
 		break;                                                         \
 	}
-#endif
+
+void error_at_line(int status,
+                   const char *fname,
+                   unsigned int lineno,
+                   const char *pattern,
+                   ...) __attribute__((format(printf, 4, 5)));
 
 #endif

@@ -300,7 +300,7 @@ seccomp_allow(scmp_filter_ctx ctx, const char **syscalls, size_t sz)
 		}
 		info_seccomp_rule_add_if(rc, syscalls[i]);
 	}
-	return true;
+	return rc == 0;
 }
 
 static bool
@@ -312,7 +312,7 @@ seccomp_allow_tmpfile(scmp_filter_ctx ctx,
 
 	struct statfs fs;
 	memset(&fs, 0, sizeof(fs));
-	error_if(statfs(P_tmpdir, &fs) < 0, "Error in statfs()");
+	error_m_if(statfs(P_tmpdir, &fs) < 0, "Error in statfs()");
 
 	if (fs.f_type == OVERLAYFS_SUPER_MAGIC) {
 		info("%s is overlayfs, which does not support O_TMPFILE; "
@@ -404,10 +404,9 @@ static struct seccomp_apply_handler {
 static bool
 seccomp_apply_common(scmp_filter_ctx ctx, unsigned flags)
 {
-	error_if(!seccomp_allow(ctx,
-	                        SYSCALLS_SANDBOX_BASIS,
-	                        ARRAY_SIZE(SYSCALLS_SANDBOX_BASIS)),
-	         "Cannot add SYSCALLS_SANDBOX_BASIS seccomp filter rules");
+	bool result = seccomp_allow(ctx,
+	                            SYSCALLS_SANDBOX_BASIS,
+	                            ARRAY_SIZE(SYSCALLS_SANDBOX_BASIS));
 
 	for (size_t i = 0; i < ARRAY_SIZE(SECCOMP_APPLY_HANDLERS); ++i) {
 		struct seccomp_apply_handler *h = SECCOMP_APPLY_HANDLERS + i;
@@ -417,25 +416,22 @@ seccomp_apply_common(scmp_filter_ctx ctx, unsigned flags)
 			continue;
 		}
 
-		const bool result = h->handle(ctx, h->syscalls, h->sz);
-		if (!result) {
-			return false;
-		}
+		result = h->handle(ctx, h->syscalls, h->sz) && result;
 	}
 
-	return true;
+	return result;
 }
 
 void
 seccomp_apply(unsigned flags)
 {
 	scmp_filter_ctx ctx = seccomp_init(SCMP_ACT_ERRNO(EACCES));
-	error_if(ctx == NULL, "Cannot seccomp_init()");
+	error_m_if(ctx == NULL, "Cannot seccomp_init()");
 
 	const bool applied = seccomp_apply_common(ctx, flags);
 	info_if(!applied, "Cannot add expected seccomp filter rules");
 
-	error_if(seccomp_load(ctx) < 0, "Cannot seccomp_load()");
+	error_m_if(seccomp_load(ctx) < 0, "Cannot seccomp_load()");
 	seccomp_release(ctx);
 
 	if (applied) {

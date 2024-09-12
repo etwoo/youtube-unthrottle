@@ -7,6 +7,9 @@
 
 #include <arpa/inet.h>
 #include <assert.h>
+#if defined(__OpenBSD__)
+#include <err.h> /* for err() */
+#endif
 #include <fcntl.h>
 #include <netdb.h>
 #include <signal.h>
