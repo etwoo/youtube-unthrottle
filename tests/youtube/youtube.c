@@ -4,6 +4,7 @@
 #include "debug.h"
 #include "greatest.h"
 #include "url.h"
+#include "write.h"
 
 #include <unistd.h>
 
@@ -33,18 +34,12 @@ test_fixture_request_handler(void *request, const char *path, int fd)
 		to_write = FAKE_JSON_RESPONSE;
 	} else if (strstr(path, "/base.js")) {
 		to_write = FAKE_JS_RESPONSE;
-	} else {
-		warn_then_return_1("No test fixture for URL path: %s", path);
 	}
 
-	for (size_t remaining_bytes = strlen(to_write); remaining_bytes > 0;) {
-		const ssize_t written = write(fd, to_write, remaining_bytes);
-		if (written < 0) {
-			warn_then_return_1("Error writing to tmpfile");
-		}
-		to_write += written;
-		remaining_bytes -= written;
-	}
+	error_if(to_write == NULL, "No test fixture for URL path: %s", path);
+
+	ssize_t written = write_with_retry(fd, to_write, strlen(to_write));
+	error_m_if(written < 0, "Cannot write to tmpfile");
 
 	return 0;
 }

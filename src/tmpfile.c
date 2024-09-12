@@ -12,7 +12,7 @@
 static void
 checked_fclose(FILE **fs)
 {
-	info_if(*fs && fclose(*fs), "Ignoring error fclose()-ing stream");
+	info_m_if(*fs && fclose(*fs), "Ignoring error fclose()-ing stream");
 }
 
 int
@@ -25,7 +25,7 @@ tmpfd(void)
 	 */
 	FILE *fs __attribute__((cleanup(checked_fclose))) = tmpfile();
 	if (fs == NULL) {
-		warn_then_return_negative_1("Error in tmpfile()");
+		warn_m_then_return(-1, "Error in tmpfile()");
 	}
 
 	/*
@@ -36,12 +36,12 @@ tmpfd(void)
 
 	int inner_fd = fileno(fs);
 	if (inner_fd < 0) {
-		warn_then_return_negative_1("Error in fileno()");
+		warn_m_then_return(-1, "Error in fileno()");
 	}
 
 	int fd = dup(inner_fd);
 	if (fd < 0) {
-		warn_then_return_negative_1("Error in dup()");
+		warn_m_then_return(-1, "Error in dup()");
 	}
 
 	debug("Got tmpfile with fd=%d", fd);
@@ -55,13 +55,13 @@ tmpmap(int fd, void **addr, unsigned int *sz)
 		.st_size = 0,
 	};
 	if (fstat(fd, &st) < 0) {
-		warn_then_return_false("Error fstat()-ing tmpfile");
+		warn_m_then_return(false, "Error fstat()-ing tmpfile");
 	}
 	*sz = st.st_size;
 
 	*addr = mmap(NULL, *sz, PROT_READ, MAP_PRIVATE, fd, 0);
 	if (*addr == MAP_FAILED) {
-		warn_then_return_false("Error mmap()-ing tmpfile");
+		warn_m_then_return(false, "Error mmap()-ing tmpfile");
 	}
 
 	/*
@@ -84,5 +84,5 @@ tmpunmap(void *addr, unsigned int sz)
 	}
 
 	const int rc = munmap(addr, sz);
-	info_if(rc < 0, "Ignoring error munmap()-ing tmpfile");
+	info_m_if(rc < 0, "Ignoring error munmap()-ing tmpfile");
 }

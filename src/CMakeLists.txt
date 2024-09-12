@@ -7,6 +7,7 @@ target_sources(youtube PRIVATE
 	sandbox.c
 	tmpfile.c
 	url.c
+	write.c
 	youtube.c
 )
 target_include_directories(youtube PUBLIC ${PROJECT_SOURCE_DIR}/include)
