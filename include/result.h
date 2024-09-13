@@ -16,6 +16,10 @@ struct result_t {
 		ERR_JS_BASEJS_URL_ALLOC,
 		ERR_JS_TIMESTAMP_FIND,
 		ERR_JS_TIMESTAMP_PARSE_TO_LONGLONG,
+		ERR_JS_DEOBFUSCATOR_ALLOC,
+		ERR_JS_DEOBFUSCATOR_FIND_FUNCTION_ONE,
+		ERR_JS_DEOBFUSCATOR_FIND_FUNCTION_TWO,
+		ERR_JS_DEOBFUSCATOR_FIND_FUNCTION_BODY,
 		ERR_TMPFILE,
 		ERR_TMPFILE_FILENO,
 		ERR_TMPFILE_DUP,
@@ -77,6 +81,12 @@ const result_t RESULT_OK;
  * Copy <src> into <r>, backed by automatic storage managed by result.c module.
  */
 void result_strcpy(result_t *dst, const char *src);
+
+/*
+ * Like result_strcpy(), with an explicit span. Use this with strings that are
+ * not guaranteed to be NUL-terminated.
+ */
+void result_strcpy_span(result_t *dst, const char *src, size_t sz);
 
 /*
  * Convert a result_t into a human-readable error message.

@@ -232,14 +232,12 @@ static const char *RE_FUNC_NAME[] = {
  * 4) eval JavaScript fragment like: function(a){...}([$n_param])
  * 5) use return value from step 4 as decoded n-parameter
  */
-void
+result_t
 find_js_deobfuscator(const char *js,
                      size_t js_sz,
                      const char **deobfuscator,
                      size_t *deobfuscator_sz)
 {
-	*deobfuscator = NULL;
-	*deobfuscator_sz = 0;
 	int rc = 0;
 
 	const char *name = NULL;
@@ -251,16 +249,23 @@ find_js_deobfuscator(const char *js,
 		info("Cannot find '%s' in base.js", RE_FUNC_NAME[i]);
 	}
 	if (name == NULL || nsz == 0) {
-		return;
+		result_t err = {
+			.err = ERR_JS_DEOBFUSCATOR_FIND_FUNCTION_ONE,
+		};
+		return err;
 	}
 	debug("Got function name 1: %.*s", (int)nsz, name);
 
 	char *p2 __attribute__((cleanup(asprintf_free))) = NULL;
 	rc = asprintf(&p2, "var \\Q%.*s\\E=\\[([^\\]]+)\\]", (int)nsz, name);
-	error_m_if(rc < 0, "Cannot allocate asprintf buffer");
+	check_if(rc < 0, ERR_JS_DEOBFUSCATOR_ALLOC);
 
 	if (!re_capture(p2, js, js_sz, &name, &nsz)) {
-		warn_then_return("Cannot find %.*s in base.js", (int)nsz, name);
+		result_t err = {
+			.err = ERR_JS_DEOBFUSCATOR_FIND_FUNCTION_TWO,
+		};
+		result_strcpy_span(&err, name, nsz);
+		return err;
 	}
 	debug("Got function name 2: %.*s", (int)nsz, name);
 
@@ -271,13 +276,19 @@ find_js_deobfuscator(const char *js,
 	              ")",
 	              (int)nsz,
 	              name);
-	error_m_if(rc < 0, "Cannot allocate asprintf buffer");
+	check_if(rc < 0, ERR_JS_DEOBFUSCATOR_ALLOC);
 
 	if (!re_capture(p3, js, js_sz, deobfuscator, deobfuscator_sz)) {
-		warn_then_return("Cannot find %.*s in base.js", (int)nsz, name);
+		result_t err = {
+			.err = ERR_JS_DEOBFUSCATOR_FIND_FUNCTION_BODY,
+		};
+		result_strcpy_span(&err, name, nsz);
+		return err;
 	}
+
 	// debug("Got function body: %.*s", *deobfuscator_sz, *deobfuscator);
 	debug("Got function body of size %zd", *deobfuscator_sz);
+	return RESULT_OK;
 }
 
 static void

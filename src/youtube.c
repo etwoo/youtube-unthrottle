@@ -432,7 +432,7 @@ youtube_stream_setup(struct youtube_stream *p,
 		.got_video = youtube_stream_set_video,
 		.got_audio = youtube_stream_set_audio,
 	};
-	parse_json(json.buf, json.sz, &pops, p);
+	check(parse_json(json.buf, json.sz, &pops, p));
 
 	if (ops && ops->after_parse) {
 		ops->after_parse(p);
@@ -443,11 +443,8 @@ youtube_stream_setup(struct youtube_stream *p,
 	}
 
 	const char *deobfuscator = NULL;
-	size_t deobfuscator_sz = 0;
-	find_js_deobfuscator(js.buf, js.sz, &deobfuscator, &deobfuscator_sz);
-	if (deobfuscator == NULL || deobfuscator_sz == 0) {
-		return false;
-	}
+	size_t deob_sz = 0;
+	check(find_js_deobfuscator(js.buf, js.sz, &deobfuscator, &deob_sz));
 
 	char *ciphertexts[ARRAY_SIZE(p->url)]
 		__attribute__((cleanup(ciphertexts_cleanup))) = {NULL};
@@ -462,7 +459,7 @@ youtube_stream_setup(struct youtube_stream *p,
 		.got_result = append_n_param,
 	};
 	call_js_foreach(deobfuscator,
-	                deobfuscator_sz,
+	                deob_sz,
 	                ciphertexts,
 	                ARRAY_SIZE(ciphertexts),
 	                &cops,

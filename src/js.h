@@ -17,10 +17,10 @@ result_t find_base_js_url(const char *html,
                           const char **basejs,
                           size_t *basejs_sz);
 result_t find_js_timestamp(const char *js, size_t sz, long long int *ts);
-void find_js_deobfuscator(const char *js,
-                          size_t sz,
-                          const char **deobfuscator,
-                          size_t *deobfuscator_sz);
+result_t find_js_deobfuscator(const char *js,
+                              size_t sz,
+                              const char **deobfuscator,
+                              size_t *deobfuscator_sz);
 
 struct call_ops {
 	void (*got_result)(const char *, size_t, void *);

@@ -104,6 +104,18 @@ result_to_strerror(result_t r)
 	case ERR_JS_TIMESTAMP_PARSE_TO_LONGLONG:
 		my_snprintf("Error in strtoll(): %s", my_strerror(r));
 		break;
+	case ERR_JS_DEOBFUSCATOR_ALLOC:
+		s = "Cannot allocate asprintf buffer";
+		break;
+	case ERR_JS_DEOBFUSCATOR_FIND_FUNCTION_ONE:
+		s = "Cannot find deobfuscation function in base.js";
+		break;
+	case ERR_JS_DEOBFUSCATOR_FIND_FUNCTION_TWO:
+		my_snprintf("Cannot find reference to %s in base.js", r.msg);
+		break;
+	case ERR_JS_DEOBFUSCATOR_FIND_FUNCTION_BODY:
+		my_snprintf("Cannot find body of %s in base.js", r.msg);
+		break;
 	case ERR_TMPFILE:
 		my_snprintf("Error in tmpfile(): %s", my_strerror(r));
 		break;
