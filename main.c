@@ -12,6 +12,7 @@
 #include "sandbox.h"
 #include "youtube.h"
 
+#include <assert.h>
 #include <stdio.h>
 #include <string.h>
 #include <sysexits.h>
@@ -76,10 +77,16 @@ main(int argc, const char *argv[])
 		return EX_OK;
 	}
 
-	youtube_global_init();
+	result_t err = youtube_global_init();
+	if (err.err) {
+		// TODO: print result_to_strerror() to stderr
+		return EX_SOFTWARE;
+	}
+
 	sandbox_only_io_inet_tmpfile();
 
 	youtube_handle_t stream = youtube_stream_init();
+	assert(stream); // TODO: maybe do something like result_to_strerror?
 
 	struct youtube_setup_ops sops = {
 		.before = NULL,

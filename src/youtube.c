@@ -38,7 +38,9 @@ struct youtube_stream *
 youtube_stream_init(void)
 {
 	struct youtube_stream *p = malloc(sizeof(*p));
-	error_m_if(p == NULL, "Cannot allocate youtube_stream struct");
+	if (p == NULL) {
+		goto oom;
+	}
 
 	p->basejs = NULL;
 	p->pos = 0;
@@ -46,10 +48,18 @@ youtube_stream_init(void)
 
 	for (size_t i = 0; i < ARRAY_SIZE(p->url); ++i) {
 		p->url[i] = curl_url(); /* may return NULL! */
-		error_m_if(p->url[i] == NULL, "Cannot allocate URL handle");
+		if (p->url[i] == NULL) {
+			goto oom;
+		}
 	}
 
 	return p;
+
+oom:
+	if (p) {
+		youtube_stream_cleanup(p);
+	}
+	return NULL;
 }
 
 void
