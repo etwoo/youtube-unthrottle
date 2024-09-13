@@ -46,6 +46,12 @@ result_to_strerror(result_t r)
 	case ERR_URL_DOWNLOAD_SET_OPT_URL_OBJECT:
 		rc = asprintf(&s, "Cannot set URL via object: %s", curl_easy_strerror(r.curl_code));
 		break;
+	case ERR_URL_DOWNLOAD_SET_OPT_HTTP_HEADER:
+		rc = asprintf(&s, "Cannot set HTTP headers: %s", curl_easy_strerror(r.curl_code));
+		break;
+	case ERR_URL_DOWNLOAD_SET_OPT_POST_BODY:
+		rc = asprintf(&s, "Cannot set POST body: %s", curl_easy_strerror(r.curl_code));
+		break;
 	case ERR_URL_DOWNLOAD_PERFORM:
 		rc = asprintf(&s, "Error performing HTTP request: %s", curl_easy_strerror(r.curl_code));
 		break;
