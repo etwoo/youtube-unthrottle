@@ -394,17 +394,20 @@ youtube_stream_setup(struct youtube_stream *p,
 
 	debug("Setting base.js URL: %.*s", (int)basejs_sz, basejs);
 	p->basejs = strndup(basejs, basejs_sz);
-	error_m_if(p->basejs == NULL, "Cannot strndup() base.js URL");
-
-	if (!download_and_mmap_tmpfd(NULL,
-	                             "www.youtube.com",
-	                             p->basejs,
-	                             NULL,
-	                             js.fd,
-	                             &js.buf,
-	                             &js.sz)) {
-		return false;
+	if (p->basejs == NULL) {
+		result_t err = {
+			.err = ERR_JS_ALLOC_BASEJS_URL,
+		};
+		return err;
 	}
+
+	check(download_and_mmap_tmpfd(NULL,
+	                              "www.youtube.com",
+	                              p->basejs,
+	                              NULL,
+	                              js.fd,
+	                              &js.buf,
+	                              &js.sz));
 
 	long long int timestamp = find_js_timestamp(js.buf, js.sz);
 	if (timestamp < 0) {

@@ -16,6 +16,9 @@ result_to_strerror(result_t r)
 	case ERR_JS_FIND_BASEJS_URL:
 		rc = asprintf(&s, "Cannot find base.js URL in HTML document");
 		break;
+	case ERR_JS_ALLOC_BASEJS_URL:
+		rc = asprintf(&s, "Cannot strndup() base.js URL");
+		break;
 	case ERR_TMPFILE:
 		rc = asprintf(&s, "Error in tmpfile(): %s", strerror(r.errno));
 		break;
