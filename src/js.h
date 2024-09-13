@@ -10,7 +10,7 @@ struct parse_ops {
 	void (*got_audio)(const char *, size_t, void *);
 };
 
-void parse_json(const char *json, size_t sz, struct parse_ops *ops, void *ud);
+result_t parse_json(const char *json, size_t sz, struct parse_ops *o, void *ud);
 
 result_t find_base_js_url(const char *html,
                           size_t sz,

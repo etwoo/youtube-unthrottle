@@ -47,7 +47,7 @@ try_decode(duk_context *ctx, void *udata __attribute__((unused)))
 static const char MTVIDEO[] = "video/";
 static const char MTAUDIO[] = "audio/";
 
-void
+result_t
 parse_json(const char *json,
            size_t json_sz,
            struct parse_ops *ops,
@@ -145,16 +145,12 @@ find_base_js_url(const char *html,
                  const char **basejs,
                  size_t *basejs_sz)
 {
-	if (!re_capture("\"(/s/player/[^\"]+/base.js)\"",
-	                html,
-	                sz,
-	                basejs,
-	                basejs_sz)) {
-		result_t err = {
-			.err = ERR_JS_BASEJS_URL_FIND,
-		};
-		return err;
-	}
+	check_if(!re_capture("\"(/s/player/[^\"]+/base.js)\"",
+	                     html,
+	                     sz,
+	                     basejs,
+	                     basejs_sz),
+	         ERR_JS_BASEJS_URL_FIND);
 
 	debug("Parsed base.js URI: %.*s", (int)*basejs_sz, *basejs);
 	return RESULT_OK;
@@ -165,12 +161,12 @@ find_js_timestamp(const char *js, size_t js_sz, long long int *value)
 {
 	const char *ts = NULL;
 	size_t tsz = 0;
-	if (!re_capture("signatureTimestamp:([0-9]+)", js, js_sz, &ts, &tsz)) {
-		result_t err = {
-			.err = ERR_JS_TIMESTAMP_FIND,
-		};
-		return err;
-	}
+	check_if(!re_capture("signatureTimestamp:([0-9]+)",
+	                     js,
+	                     js_sz,
+	                     &ts,
+	                     &tsz),
+	         ERR_JS_TIMESTAMP_FIND);
 
 	/*
 	 * strtoll() does not modify errno on success, so we must clear it

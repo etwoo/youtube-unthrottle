@@ -290,14 +290,6 @@ static const char INNERTUBE_POST_FMT[] =
 	"  \"racyCheckOk\": true\n"
 	"}";
 
-#define error_if_cond(res, op)                                                 \
-	while (res) {                                                          \
-		result_t err = {                                               \
-			.err = op,                                             \
-		};                                                             \
-		return err;                                                    \
-	}
-
 static result_t
 format_innertube_post(const char *target, long long int ts, char **body)
 {
@@ -305,22 +297,20 @@ format_innertube_post(const char *target, long long int ts, char **body)
 	size_t sz = 0;
 
 	/* Note use of non-capturing group: (?:...) */
-	error_if_cond(!re_capture("(?:&|\\?)v=([^&]+)(?:&|$)",
-	                          target,
-	                          strlen(target),
-	                          &id,
-	                          &sz),
-	              ERR_YOUTUBE_INNERTUBE_POST_ID);
+	check_if(!re_capture("(?:&|\\?)v=([^&]+)(?:&|$)",
+	                     target,
+	                     strlen(target),
+	                     &id,
+	                     &sz),
+	         ERR_YOUTUBE_INNERTUBE_POST_ID);
 	debug("Parsed ID: %.*s", (int)sz, id);
 
 	const int rc = asprintf(body, INNERTUBE_POST_FMT, (int)sz, id, ts);
-	error_if_cond(rc < 0, ERR_YOUTUBE_INNERTUBE_POST_ALLOC);
+	check_if(rc < 0, ERR_YOUTUBE_INNERTUBE_POST_ALLOC);
 
 	debug("Formatted InnerTube POST body:\n%s", *body);
 	return RESULT_OK;
 }
-
-#undef error_if_cond
 
 struct downloaded {
 	const char *description; /* does not own */

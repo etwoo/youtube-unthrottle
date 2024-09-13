@@ -51,6 +51,20 @@ const result_t RESULT_OK;
 	} while (0)
 
 /*
+ * Convenience macro for returning a result_t if a given condition is true.
+ *
+ * Note: this currently only works well for zero-arg result_t values that do
+ * not need to set extra values like errno, curl_code, curlu_code.
+ */
+#define check_if(cond, err_type)                                               \
+	while (cond) {                                                         \
+		result_t err = {                                               \
+			.err = err_type,                                       \
+		};                                                             \
+		return err;                                                    \
+	}
+
+/*
  * Convert a result_t into a human-readable error message.
  *
  * Note: the caller must free() the returned NUL-terminated string.
