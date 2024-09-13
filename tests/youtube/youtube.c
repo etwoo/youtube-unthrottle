@@ -8,8 +8,6 @@
 
 #include <unistd.h>
 
-GREATEST_MAIN_DEFS();
-
 static const char FAKE_YT_URL[] = "https://www.youtube.com/watch?v=FOOBAR";
 static const char FAKE_HTML_RESPONSE[] = "\"/s/player/foobar/base.js\"";
 static const char FAKE_JSON_RESPONSE[] =
@@ -76,6 +74,14 @@ check_url(const char *url)
 }
 
 TEST
+global_setup(void)
+{
+	result_t err = youtube_global_init();
+	ASSERT_EQ(err.err, OK);
+	PASS();
+}
+
+TEST
 stream_setup_with_redirected_network_io(void)
 {
 	youtube_handle_t stream = youtube_stream_init();
@@ -115,12 +121,23 @@ stream_setup_with_null_ops(void)
 	PASS();
 }
 
+TEST
+global_cleanup(void)
+{
+	youtube_global_cleanup();
+	PASS();
+}
+
 SUITE(stream_setup)
 {
 	url_global_set_request_handler(test_fixture_request_handler);
+	RUN_TEST(global_setup);
 	RUN_TEST(stream_setup_with_redirected_network_io);
 	RUN_TEST(stream_setup_with_null_ops);
+	RUN_TEST(global_cleanup);
 }
+
+GREATEST_MAIN_DEFS();
 
 int
 main(int argc, char **argv)
@@ -129,14 +146,7 @@ main(int argc, char **argv)
 
 	GREATEST_MAIN_BEGIN();
 
-	/*
-	 * Note: youtube_global_init() and youtube_global_cleanup() are treated
-	 * as test fixtures, not TEST() cases, in case we ever want to run the
-	 * individual suites and testcases above in shuffled order.
-	 */
-	youtube_global_init();
 	RUN_SUITE(stream_setup);
-	youtube_global_cleanup();
 
 	GREATEST_MAIN_END();
 }
