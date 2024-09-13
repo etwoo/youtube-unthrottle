@@ -247,7 +247,7 @@ append_n_param(const char *plaintext, size_t sz, void *userdata)
 	free(kv);
 }
 
-static bool
+static result_t
 download_and_mmap_tmpfd(const char *url,
                         const char *host,
                         const char *path,
@@ -258,13 +258,11 @@ download_and_mmap_tmpfd(const char *url,
 {
 	assert(fd >= 0);
 
-	const bool downloaded_and_mapped =
-		url_download(url, host, path, post_body, fd) &&
-		tmpmap(fd, addr, sz);
-	if (downloaded_and_mapped) {
-		debug("Downloaded %s to fd=%d", url ? url : path, fd);
-	}
-	return downloaded_and_mapped;
+	check(url_download(url, host, path, post_body, fd));
+	check(tmpmap(fd, addr, sz));
+
+	debug("Downloaded %s to fd=%d", url ? url : path, fd);
+	return RESULT_OK;
 }
 
 static const char INNERTUBE_URI[] =
@@ -337,7 +335,7 @@ downloaded_cleanup(struct downloaded *d)
 {
 	tmpunmap(d->buf, d->sz);
 	info_m_if(d->fd > 0 && close(d->fd) < 0,
-	          "Ignoring error close()-ing %s",
+		  "Ignoring error close()-ing %s",
 	          d->description);
 }
 
@@ -357,7 +355,7 @@ asprintf_free(char **strp)
 	free(*strp);
 }
 
-bool
+result_t
 youtube_stream_setup(struct youtube_stream *p,
                      struct youtube_setup_ops *ops,
                      const char *target)
@@ -374,36 +372,25 @@ youtube_stream_setup(struct youtube_stream *p,
 		ops->before(p);
 	}
 
-	json.fd = tmpfd();
-	error_m_if(json.fd < 0, "Cannot get JSON tmpfile"); // TODO: consider changing return value from bool to richer Result type that captures details from helper functions, libraries like curl/duktape/pcre, syscalls, etc -- and allows caller in main.c to switch() on error type and print error-specific details, like name of failing syscall plus resulting errno, operation that failed to malloc() and associated datastructure, etc
-	// TODO: is above is done, can probably convert warn_then_return() usage similarly, make them into error types that contain details about bad JSON data shape (for example) instead of only logging details to disk
-
-	html.fd = tmpfd();
-	error_m_if(html.fd < 0, "Cannot get HTML tmpfile");
-
-	js.fd = tmpfd();
-	error_m_if(js.fd < 0, "Cannot get JavaScript tmpfile");
+	check(tmpfd(&json.fd));
+	check(tmpfd(&html.fd));
+	check(tmpfd(&js.fd));
 
 	if (ops && ops->before_inet) {
 		ops->before_inet(p);
 	}
 
-	if (!download_and_mmap_tmpfd(target,
-	                             NULL,
-	                             NULL,
-	                             NULL,
-	                             html.fd,
-	                             &html.buf,
-	                             &html.sz)) {
-		return false;
-	}
+	check(download_and_mmap_tmpfd(target,
+	                              NULL,
+	                              NULL,
+	                              NULL,
+	                              html.fd,
+	                              &html.buf,
+	                              &html.sz));
 
 	const char *basejs = NULL;
 	size_t basejs_sz = 0;
-	find_base_js_url(html.buf, html.sz, &basejs, &basejs_sz);
-	if (basejs == NULL || basejs_sz == 0) {
-		return false;
-	}
+	check(find_base_js_url(html.buf, html.sz, &basejs, &basejs_sz));
 
 	debug("Setting base.js URL: %.*s", (int)basejs_sz, basejs);
 	p->basejs = strndup(basejs, basejs_sz);

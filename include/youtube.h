@@ -1,6 +1,8 @@
 #ifndef YOUTUBE_H
 #define YOUTUBE_H
 
+#include "result.h"
+
 result_t youtube_global_init(void);
 void youtube_global_cleanup(void);
 
@@ -21,8 +23,8 @@ struct youtube_setup_ops {
 	void (*after)(youtube_handle_t);
 };
 
-bool youtube_stream_setup(youtube_handle_t h,
-                          struct youtube_setup_ops *ops,
-                          const char *target);
+result_t youtube_stream_setup(youtube_handle_t h,
+                              struct youtube_setup_ops *ops,
+                              const char *target);
 
 #endif

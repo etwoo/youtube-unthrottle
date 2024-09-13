@@ -1,7 +1,7 @@
 #include "result.h"
 
 extern const result_t RESULT_OK = {
-	.typ = OK,
+	.err = OK,
 };
 
 const char *
@@ -9,9 +9,27 @@ result_to_strerror(result_t r)
 {
 	int rc = 0;
 	char *s = NULL;
-	switch (r.typ) {
+	switch (r.err) {
 	case OK:
 		rc = asprintf(&s, "Success");
+		break;
+	case ERR_JS_FIND_BASE_JS_URL:
+		rc = asprintf(&s, "Cannot find base.js URL in HTML document");
+		break;
+	case ERR_TMPFILE:
+		rc = asprintf(&s, "Error in tmpfile(): %s", strerror(r.errno));
+		break;
+	case ERR_TMPFILE_FILENO:
+		rc = asprintf(&s, "Error fileno()-ing tmpfile: %s", strerror(r.errno));
+		break;
+	case ERR_TMPFILE_DUP:
+		rc = asprintf(&s, "Error dup()-ing tmpfile: %s", strerror(r.errno));
+		break;
+	case ERR_TMPFILE_FSTAT:
+		rc = asprintf(&s, "Error fstat()-ing tmpfile: %s", strerror(r.errno));
+		break;
+	case ERR_TMPFILE_MMAP:
+		rc = asprintf(&s, "Error mmap()-ing tmpfile: %s", strerror(r.errno));
 		break;
 	case ERR_URL_GLOBAL_INIT:
 		rc = asprintf(&s, "Cannot use URL functions");

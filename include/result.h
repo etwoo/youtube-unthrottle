@@ -4,6 +4,12 @@
 struct result_t {
 	enum {
 		OK = 0,
+		ERR_JS_FIND_BASE_JS_URL,
+		ERR_TMPFILE,
+		ERR_TMPFILE_FILENO,
+		ERR_TMPFILE_DUP,
+		ERR_TMPFILE_FSTAT,
+		ERR_TMPFILE_MMAP,
 		ERR_URL_GLOBAL_INIT,
 		ERR_URL_PREPARE_ALLOC,
 		ERR_URL_PREPARE_SET_PART_SCHEME,
@@ -20,6 +26,7 @@ struct result_t {
 		ERR_URL_DOWNLOAD_PERFORM,
 	} err;
 	union {
+		int errno;
 		int curl_code;
 		int curlu_code;
 	};
@@ -30,10 +37,13 @@ const result_t RESULT_OK;
 /*
  * Convenience macro for checking (and returning) if x is a non-OK result_t.
  */
-#define check(x)                                                               \
-	if (x.err) {                                                           \
-		return x;                                                      \
-	}
+#define check(expr)                                                            \
+	do {                                                                   \
+		result_t x = expr;                                             \
+		if (x.err) {                                                   \
+			return x;                                              \
+		}                                                              \
+	} while (0)
 
 /*
  * Convert a result_t into a human-readable error message.

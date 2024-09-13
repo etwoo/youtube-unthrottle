@@ -139,7 +139,7 @@ parse_json(const char *json,
 	duk_pop_2(ctx); /* for .streamingData.adaptiveFormats */
 }
 
-void
+result_t
 find_base_js_url(const char *html,
                  size_t sz,
                  const char **basejs,
@@ -150,10 +150,14 @@ find_base_js_url(const char *html,
 	                sz,
 	                basejs,
 	                basejs_sz)) {
-		info("Cannot find base.js URL in HTML document");
-	} else {
-		debug("Parsed base.js URI: %.*s", (int)*basejs_sz, *basejs);
+		result_t err = {
+			.err = ERR_JS_FIND_BASE_JS_URL,
+		};
+		return err;
 	}
+
+	debug("Parsed base.js URI: %.*s", (int)*basejs_sz, *basejs);
+	return RESULT_OK;
 }
 
 long long int

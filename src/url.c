@@ -63,7 +63,7 @@ url_global_init(void)
 	CURLcode res = curl_global_init(CURL_GLOBAL_DEFAULT);
 	if (res) {
 		result_t err = {
-			.typ = ERR_URL_GLOBAL_INIT,
+			.err = ERR_URL_GLOBAL_INIT,
 			.curl_code = res,
 		};
 		return err;
@@ -109,7 +109,7 @@ url_global_set_request_handler(int (*handler)(void *, const char *, int))
 #define error_if_uc(uc, part)                                                  \
 	while (uc) {                                                           \
 		result_t err = {                                               \
-			.typ = part,                                           \
+			.err = part,                                           \
 			.curlu_code = uc,                                      \
 		};                                                             \
 		return err;                                                    \
@@ -145,7 +145,7 @@ static const char DEFAULT_HOST_STR[] = "www.youtube.com";
 #define error_if_res(res, opt)                                                 \
 	while (res) {                                                          \
 		result_t err = {                                               \
-			.typ = opt,                                            \
+			.err = opt,                                            \
 			.curl_code = res,                                      \
 		};                                                             \
 		return err;                                                    \
