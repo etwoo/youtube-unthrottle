@@ -4,6 +4,8 @@ extern const result_t RESULT_OK = {
 	.err = OK,
 };
 
+// TODO: does it make sense to use asprintf() in result_to_strerror() when we're handling errors like ERR_JS_PARSE_JSON_ALLOC_HEAP, ERR_JS_BASEJS_URL_ALLOC, ERR_URL_PREPARE_ALLOC, ERR_URL_DOWNLOAD_ALLOC, ERR_YOUTUBE_INNERTUBE_POST_ALLOC -- i.e. failures to allocate memory? seems kinda circular? maybe change this interface so that either static literal OR dynamic string can be returned, with some signal to the caller about how to free() only the latter?
+// TODO: ... or maybe, instead of returning a `const char *`, accept a callback that gets called on the string we choose, such that the caller doesn't need to worry about allocation?
 const char *
 result_to_strerror(result_t r)
 {
@@ -12,6 +14,9 @@ result_to_strerror(result_t r)
 	switch (r.err) {
 	case OK:
 		rc = asprintf(&s, "Success");
+		break;
+	case ERR_JS_PARSE_JSON_ALLOC_HEAP:
+		rc = asprintf(&s, "Cannot allocate JavaScript interpreter heap");
 		break;
 	case ERR_JS_BASEJS_URL_FIND:
 		rc = asprintf(&s, "Cannot find base.js URL in HTML document");

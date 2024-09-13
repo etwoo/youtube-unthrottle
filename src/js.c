@@ -56,15 +56,14 @@ parse_json(const char *json,
 	// debug("Got JSON blob: %.*s", json_sz, json);
 	debug("Got JSON blob of size %zd", json_sz);
 
-	duk_ret_t res = DUK_EXEC_ERROR;
-
 	duk_context *ctx __attribute__((cleanup(destroy_heap))) =
 		duk_create_heap_default(); /* may return NULL! */
-	error_m_if(ctx == NULL, "Cannot allocate Duktape heap");
+	check_if(ctx == NULL, ERR_JS_PARSE_JSON_ALLOC_HEAP);
 
 	duk_push_lstring(ctx, json, json_sz);
-	res = duk_safe_call(ctx, try_decode, NULL, 1, 1);
+	duk_ret_t res = duk_safe_call(ctx, try_decode, NULL, 1, 1);
 	if (res != DUK_EXEC_SUCCESS) {
+		// TODO: how should we capture peek(ctx) -- aka duk_safe_to_string() value -- in result_t?
 		warn_then_return("Error in duk_json_decode(): %s", peek(ctx));
 	}
 
