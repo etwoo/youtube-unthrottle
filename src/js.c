@@ -151,7 +151,7 @@ find_base_js_url(const char *html,
 	                basejs,
 	                basejs_sz)) {
 		result_t err = {
-			.err = ERR_JS_FIND_BASE_JS_URL,
+			.err = ERR_JS_FIND_BASEJS_URL,
 		};
 		return err;
 	}

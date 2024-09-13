@@ -13,7 +13,7 @@ result_to_strerror(result_t r)
 	case OK:
 		rc = asprintf(&s, "Success");
 		break;
-	case ERR_JS_FIND_BASE_JS_URL:
+	case ERR_JS_FIND_BASEJS_URL:
 		rc = asprintf(&s, "Cannot find base.js URL in HTML document");
 		break;
 	case ERR_TMPFILE:

@@ -4,7 +4,7 @@
 struct result_t {
 	enum {
 		OK = 0,
-		ERR_JS_FIND_BASE_JS_URL,
+		ERR_JS_FIND_BASEJS_URL,
 		ERR_TMPFILE,
 		ERR_TMPFILE_FILENO,
 		ERR_TMPFILE_DUP,
