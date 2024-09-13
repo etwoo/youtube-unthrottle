@@ -290,29 +290,37 @@ static const char INNERTUBE_POST_FMT[] =
 	"  \"racyCheckOk\": true\n"
 	"}";
 
-static bool
+#define error_if_cond(res, op)                                                 \
+	while (res) {                                                          \
+		result_t err = {                                               \
+			.err = op,                                             \
+		};                                                             \
+		return err;                                                    \
+	}
+
+static result_t
 format_innertube_post(const char *target, long long int ts, char **body)
 {
 	const char *id = NULL;
 	size_t sz = 0;
 
 	/* Note use of non-capturing group: (?:...) */
-	if (!re_capture("(?:&|\\?)v=([^&]+)(?:&|$)",
-	                target,
-	                strlen(target),
-	                &id,
-	                &sz)) {
-		info("Cannot find ID in URL: %s", target);
-		return false;
-	}
+	error_if_cond(!re_capture("(?:&|\\?)v=([^&]+)(?:&|$)",
+	                          target,
+	                          strlen(target),
+	                          &id,
+	                          &sz),
+	              ERR_YOUTUBE_INNERTUBE_POST_ID);
 	debug("Parsed ID: %.*s", (int)sz, id);
 
 	const int rc = asprintf(body, INNERTUBE_POST_FMT, (int)sz, id, ts);
-	error_m_if(rc < 0, "Cannot allocate asprintf buffer");
+	error_if_cond(rc < 0, ERR_YOUTUBE_INNERTUBE_POST_ALLOC);
 
 	debug("Formatted InnerTube POST body:\n%s", *body);
-	return true;
+	return RESULT_OK;
 }
+
+#undef error_if_cond
 
 struct downloaded {
 	const char *description; /* does not own */
@@ -413,16 +421,14 @@ youtube_stream_setup(struct youtube_stream *p,
 	check(find_js_timestamp(js.buf, js.sz, &timestamp));
 
 	char *innertube_post __attribute__((cleanup(asprintf_free))) = NULL;
-	if (!format_innertube_post(target, timestamp, &innertube_post) ||
-	    !download_and_mmap_tmpfd(INNERTUBE_URI,
-	                             NULL,
-	                             NULL,
-	                             innertube_post,
-	                             json.fd,
-	                             &json.buf,
-	                             &json.sz)) {
-		return false;
-	}
+	check(format_innertube_post(target, timestamp, &innertube_post));
+	check(download_and_mmap_tmpfd(INNERTUBE_URI,
+	                              NULL,
+	                              NULL,
+	                              innertube_post,
+	                              json.fd,
+	                              &json.buf,
+	                              &json.sz));
 
 	if (ops && ops->after_inet) {
 		ops->after_inet(p);

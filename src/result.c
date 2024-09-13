@@ -82,6 +82,12 @@ result_to_strerror(result_t r)
 	case ERR_URL_DOWNLOAD_PERFORM:
 		rc = asprintf(&s, "Error performing HTTP request: %s", curl_easy_strerror(r.curl_code));
 		break;
+	case ERR_YOUTUBE_INNERTUBE_POST_ID:
+		rc = asprintf(&s, "Cannot find video ID for InnerTube POST");
+		break;
+	case ERR_YOUTUBE_INNERTUBE_POST_ALLOC:
+		rc = asprintf(&s, "Cannot allocate buffer for InnerTube POST");
+		break;
 	}
 	if (rc < 0) {
 		s = NULL;
