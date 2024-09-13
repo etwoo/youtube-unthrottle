@@ -22,10 +22,10 @@ struct youtube_stream {
 	CURLU *url[2];
 };
 
-void
+result_t
 youtube_global_init(void)
 {
-	url_global_init();
+	return url_global_init();
 }
 
 void
