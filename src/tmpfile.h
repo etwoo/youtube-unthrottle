@@ -1,10 +1,10 @@
 #ifndef TMPFILE_H
 #define TMPFILE_H
 
-#include <stdbool.h>
+#include "result.h"
 
-int tmpfd(void);
-bool tmpmap(int fd, void **addr, unsigned int *sz);
+result_t tmpfd(int *fd);
+result_t tmpmap(int fd, void **addr, unsigned int *sz);
 void tmpunmap(void *addr, unsigned int sz);
 
 #endif

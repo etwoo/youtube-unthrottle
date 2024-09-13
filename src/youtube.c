@@ -14,18 +14,16 @@
 #include <string.h>
 #include <unistd.h>
 
-#define error_if_uc_msg(uc, msg) error_if(uc, msg ": %s", curl_url_strerror(uc))
-
 struct youtube_stream {
 	char *basejs;
 	size_t pos;
 	CURLU *url[2];
 };
 
-void
+result_t
 youtube_global_init(void)
 {
-	url_global_init();
+	return url_global_init();
 }
 
 void
@@ -38,7 +36,9 @@ struct youtube_stream *
 youtube_stream_init(void)
 {
 	struct youtube_stream *p = malloc(sizeof(*p));
-	error_m_if(p == NULL, "Cannot allocate youtube_stream struct");
+	if (p == NULL) {
+		goto oom;
+	}
 
 	p->basejs = NULL;
 	p->pos = 0;
@@ -46,10 +46,18 @@ youtube_stream_init(void)
 
 	for (size_t i = 0; i < ARRAY_SIZE(p->url); ++i) {
 		p->url[i] = curl_url(); /* may return NULL! */
-		error_m_if(p->url[i] == NULL, "Cannot allocate URL handle");
+		if (p->url[i] == NULL) {
+			goto oom;
+		}
 	}
 
 	return p;
+
+oom:
+	if (p) {
+		youtube_stream_cleanup(p);
+	}
+	return NULL;
 }
 
 void
@@ -74,44 +82,46 @@ youtube_stream_valid(struct youtube_stream *p)
 	}
 }
 
-void
+result_t
 youtube_stream_visitor(struct youtube_stream *p, void (*visit)(const char *))
 {
 	youtube_stream_valid(p);
 	for (size_t i = 0; i < ARRAY_SIZE(p->url); ++i) {
 		char *s = NULL;
 		CURLUcode uc = curl_url_get(p->url[i], CURLUPART_URL, &s, 0);
-		error_if_uc_msg(uc, "Cannot get CURLUPART_URL");
+		check_if_num(uc, ERR_YOUTUBE_STREAM_VISITOR_GET_URL);
 		assert(s);
 		visit(s);
 		curl_free(s);
 	}
+	return RESULT_OK;
 }
 
-static void
+static result_t
 youtube_stream_set_one(struct youtube_stream *p,
                        int idx,
                        const char *val,
                        size_t sz __attribute__((unused)))
 {
 	CURLUcode uc = curl_url_set(p->url[idx], CURLUPART_URL, val, 0);
-	error_if_uc_msg(uc, "Cannot set CURLUPART_URL");
+	check_if_num(uc, ERR_JS_PARSE_JSON_CALLBACK_GOT_PLAINTEXT_URL);
+	return RESULT_OK;
 }
 
-static void
+static result_t
 youtube_stream_set_video(const char *val, size_t sz, void *userdata)
 {
 	struct youtube_stream *p = (struct youtube_stream *)userdata;
 	debug("Setting video stream: %.*s", (int)sz, val);
-	youtube_stream_set_one(p, 1, val, sz);
+	return youtube_stream_set_one(p, 1, val, sz);
 }
 
-static void
+static result_t
 youtube_stream_set_audio(const char *val, size_t sz, void *userdata)
 {
 	struct youtube_stream *p = (struct youtube_stream *)userdata;
 	debug("Setting audio stream: %.*s", (int)sz, val);
-	youtube_stream_set_one(p, 0, val, sz);
+	return youtube_stream_set_one(p, 0, val, sz);
 }
 
 static void
@@ -125,7 +135,7 @@ curl_free_getargs(char **getargs)
  *
  * Caller is responsible for free()-ing the pointer returned in <result>.
  */
-static void
+static result_t
 pop_n_param_one(CURLU *url, char **result)
 {
 	*result = NULL; /* NULL out early, just in case */
@@ -133,7 +143,7 @@ pop_n_param_one(CURLU *url, char **result)
 	char *getargs __attribute__((cleanup(curl_free_getargs))) = NULL;
 
 	CURLUcode uc = curl_url_get(url, CURLUPART_QUERY, &getargs, 0);
-	error_if_uc_msg(uc, "Cannot get CURLUPART_QUERY");
+	check_if_num(uc, ERR_YOUTUBE_N_PARAM_QUERY_GET);
 	assert(getargs);
 
 	const size_t getargs_sz = strlen(getargs);
@@ -147,11 +157,15 @@ pop_n_param_one(CURLU *url, char **result)
 	                getargs_sz,
 	                &ciphertext_within_getargs,
 	                &ciphertext_sz)) {
-		warn_then_return("No n-parameter in query: %s", getargs);
+		result_t err = {
+			.err = ERR_YOUTUBE_N_PARAM_FIND_IN_QUERY,
+		};
+		result_strcpy_span(&err, getargs, getargs_sz);
+		return err;
 	}
 
 	*result = malloc((ciphertext_sz + 1) * sizeof(*result));
-	error_m_if(*result == NULL, "Cannot allocate ciphertext buffer");
+	check_if(*result == NULL, ERR_YOUTUBE_N_PARAM_QUERY_ALLOC);
 
 	/*
 	 * Copy n-parameter value out of storage owned by CURLU <url>.
@@ -198,7 +212,9 @@ pop_n_param_one(CURLU *url, char **result)
 	debug("After n-param ciphertext removal:  %s", getargs);
 
 	uc = curl_url_set(url, CURLUPART_QUERY, getargs, 0);
-	error_if_uc_msg(uc, "Cannot clear ciphertext n-parameter");
+	check_if_num(uc, ERR_YOUTUBE_N_PARAM_QUERY_SET);
+
+	return RESULT_OK;
 }
 
 /*
@@ -206,24 +222,32 @@ pop_n_param_one(CURLU *url, char **result)
  *
  * Caller is responsible for free()-ing the pointers returned in <results>.
  */
-static void
+static result_t
 pop_n_param_all(struct youtube_stream *p, char **results, size_t capacity)
 {
 	assert(capacity >= ARRAY_SIZE(p->url));
 	for (size_t i = 0; i < ARRAY_SIZE(p->url); ++i) {
-		pop_n_param_one(p->url[i], results + i);
+		check(pop_n_param_one(p->url[i], results + i));
 	}
+	return RESULT_OK;
 }
 
 static void
+kv_free(char **strp)
+{
+	free(*strp);
+}
+
+static result_t
 append_n_param(const char *plaintext, size_t sz, void *userdata)
 {
 	struct youtube_stream *p = (struct youtube_stream *)userdata;
 
 	const size_t kv_sz = sz + 3;
 	/* magic number 3: two chars for "n=", one char for NUL terminator */
-	char *kv = malloc(kv_sz * sizeof(*kv));
-	error_m_if(kv == NULL, "Cannot allocate kv-pair buffer");
+	char *kv __attribute__((cleanup(kv_free))) =
+		malloc(kv_sz * sizeof(*kv));
+	check_if(kv == NULL, ERR_YOUTUBE_N_PARAM_KVPAIR_ALLOC);
 
 	kv[0] = 'n';
 	kv[1] = '=';
@@ -232,12 +256,12 @@ append_n_param(const char *plaintext, size_t sz, void *userdata)
 
 	CURLU *u = p->url[p->pos++];
 	CURLUcode uc = curl_url_set(u, CURLUPART_QUERY, kv, CURLU_APPENDQUERY);
-	error_if_uc_msg(uc, "Cannot append plaintext n-parameter");
+	check_if_num(uc, ERR_YOUTUBE_N_PARAM_QUERY_APPEND_PLAINTEXT);
 
-	free(kv);
+	return RESULT_OK;
 }
 
-static bool
+static result_t
 download_and_mmap_tmpfd(const char *url,
                         const char *host,
                         const char *path,
@@ -248,13 +272,11 @@ download_and_mmap_tmpfd(const char *url,
 {
 	assert(fd >= 0);
 
-	const bool downloaded_and_mapped =
-		url_download(url, host, path, post_body, fd) &&
-		tmpmap(fd, addr, sz);
-	if (downloaded_and_mapped) {
-		debug("Downloaded %s to fd=%d", url ? url : path, fd);
-	}
-	return downloaded_and_mapped;
+	check(url_download(url, host, path, post_body, fd));
+	check(tmpmap(fd, addr, sz));
+
+	debug("Downloaded %s to fd=%d", url ? url : path, fd);
+	return RESULT_OK;
 }
 
 static const char INNERTUBE_URI[] =
@@ -282,28 +304,26 @@ static const char INNERTUBE_POST_FMT[] =
 	"  \"racyCheckOk\": true\n"
 	"}";
 
-static bool
+static result_t
 format_innertube_post(const char *target, long long int ts, char **body)
 {
 	const char *id = NULL;
 	size_t sz = 0;
 
 	/* Note use of non-capturing group: (?:...) */
-	if (!re_capture("(?:&|\\?)v=([^&]+)(?:&|$)",
-	                target,
-	                strlen(target),
-	                &id,
-	                &sz)) {
-		info("Cannot find ID in URL: %s", target);
-		return false;
-	}
+	check_if(!re_capture("(?:&|\\?)v=([^&]+)(?:&|$)",
+	                     target,
+	                     strlen(target),
+	                     &id,
+	                     &sz),
+	         ERR_YOUTUBE_INNERTUBE_POST_ID);
 	debug("Parsed ID: %.*s", (int)sz, id);
 
 	const int rc = asprintf(body, INNERTUBE_POST_FMT, (int)sz, id, ts);
-	error_m_if(rc < 0, "Cannot allocate asprintf buffer");
+	check_if(rc < 0, ERR_YOUTUBE_INNERTUBE_POST_ALLOC);
 
 	debug("Formatted InnerTube POST body:\n%s", *body);
-	return true;
+	return RESULT_OK;
 }
 
 struct downloaded {
@@ -347,7 +367,7 @@ asprintf_free(char **strp)
 	free(*strp);
 }
 
-bool
+result_t
 youtube_stream_setup(struct youtube_stream *p,
                      struct youtube_setup_ops *ops,
                      const char *target)
@@ -361,127 +381,101 @@ youtube_stream_setup(struct youtube_stream *p,
 	downloaded_init(&js, "JavaScript tmpfile");
 
 	if (ops && ops->before) {
-		ops->before(p);
+		check(ops->before(p));
 	}
 
-	json.fd = tmpfd();
-	error_m_if(json.fd < 0, "Cannot get JSON tmpfile");
-
-	html.fd = tmpfd();
-	error_m_if(html.fd < 0, "Cannot get HTML tmpfile");
-
-	js.fd = tmpfd();
-	error_m_if(js.fd < 0, "Cannot get JavaScript tmpfile");
+	check(tmpfd(&json.fd));
+	check(tmpfd(&html.fd));
+	check(tmpfd(&js.fd));
 
 	if (ops && ops->before_inet) {
-		ops->before_inet(p);
+		check(ops->before_inet(p));
 	}
 
-	if (!download_and_mmap_tmpfd(target,
-	                             NULL,
-	                             NULL,
-	                             NULL,
-	                             html.fd,
-	                             &html.buf,
-	                             &html.sz)) {
-		return false;
-	}
+	check(download_and_mmap_tmpfd(target,
+	                              NULL,
+	                              NULL,
+	                              NULL,
+	                              html.fd,
+	                              &html.buf,
+	                              &html.sz));
 
 	const char *basejs = NULL;
 	size_t basejs_sz = 0;
-	find_base_js_url(html.buf, html.sz, &basejs, &basejs_sz);
-	if (basejs == NULL || basejs_sz == 0) {
-		return false;
-	}
+	check(find_base_js_url(html.buf, html.sz, &basejs, &basejs_sz));
 
 	debug("Setting base.js URL: %.*s", (int)basejs_sz, basejs);
 	p->basejs = strndup(basejs, basejs_sz);
-	error_m_if(p->basejs == NULL, "Cannot strndup() base.js URL");
+	check_if(p->basejs == NULL, ERR_JS_BASEJS_URL_ALLOC);
 
-	if (!download_and_mmap_tmpfd(NULL,
-	                             "www.youtube.com",
-	                             p->basejs,
-	                             NULL,
-	                             js.fd,
-	                             &js.buf,
-	                             &js.sz)) {
-		return false;
-	}
+	check(download_and_mmap_tmpfd(NULL,
+	                              "www.youtube.com",
+	                              p->basejs,
+	                              NULL,
+	                              js.fd,
+	                              &js.buf,
+	                              &js.sz));
 
-	long long int timestamp = find_js_timestamp(js.buf, js.sz);
-	if (timestamp < 0) {
-		return false;
-	}
+	long long int timestamp = 0;
+	check(find_js_timestamp(js.buf, js.sz, &timestamp));
 
 	char *innertube_post __attribute__((cleanup(asprintf_free))) = NULL;
-	if (!format_innertube_post(target, timestamp, &innertube_post) ||
-	    !download_and_mmap_tmpfd(INNERTUBE_URI,
-	                             NULL,
-	                             NULL,
-	                             innertube_post,
-	                             json.fd,
-	                             &json.buf,
-	                             &json.sz)) {
-		return false;
-	}
+	check(format_innertube_post(target, timestamp, &innertube_post));
+	check(download_and_mmap_tmpfd(INNERTUBE_URI,
+	                              NULL,
+	                              NULL,
+	                              innertube_post,
+	                              json.fd,
+	                              &json.buf,
+	                              &json.sz));
 
 	if (ops && ops->after_inet) {
-		ops->after_inet(p);
+		check(ops->after_inet(p));
 	}
 
 	if (ops && ops->before_parse) {
-		ops->before_parse(p);
+		check(ops->before_parse(p));
 	}
 
 	struct parse_ops pops = {
 		.got_video = youtube_stream_set_video,
 		.got_audio = youtube_stream_set_audio,
 	};
-	parse_json(json.buf, json.sz, &pops, p);
+	check(parse_json(json.buf, json.sz, &pops, p));
 
 	if (ops && ops->after_parse) {
-		ops->after_parse(p);
+		check(ops->after_parse(p));
 	}
 
 	if (ops && ops->before_eval) {
-		ops->before_eval(p);
+		check(ops->before_eval(p));
 	}
 
 	const char *deobfuscator = NULL;
-	size_t deobfuscator_sz = 0;
-	find_js_deobfuscator(js.buf, js.sz, &deobfuscator, &deobfuscator_sz);
-	if (deobfuscator == NULL || deobfuscator_sz == 0) {
-		return false;
-	}
+	size_t deob_sz = 0;
+	check(find_js_deobfuscator(js.buf, js.sz, &deobfuscator, &deob_sz));
 
 	char *ciphertexts[ARRAY_SIZE(p->url)]
 		__attribute__((cleanup(ciphertexts_cleanup))) = {NULL};
-	pop_n_param_all(p, ciphertexts, ARRAY_SIZE(ciphertexts));
-	for (size_t i = 0; i < ARRAY_SIZE(ciphertexts); ++i) {
-		if (ciphertexts[i] == NULL) {
-			return false;
-		}
-	}
+	check(pop_n_param_all(p, ciphertexts, ARRAY_SIZE(ciphertexts)));
 
 	struct call_ops cops = {
 		.got_result = append_n_param,
 	};
-	call_js_foreach(deobfuscator,
-	                deobfuscator_sz,
-	                ciphertexts,
-	                ARRAY_SIZE(ciphertexts),
-	                &cops,
-	                p);
+	check(call_js_foreach(deobfuscator,
+	                      deob_sz,
+	                      ciphertexts,
+	                      ARRAY_SIZE(ciphertexts),
+	                      &cops,
+	                      p));
 
 	if (ops && ops->after_eval) {
-		ops->after_eval(p);
+		check(ops->after_eval(p));
 	}
 
 	if (ops && ops->after) {
-		ops->after(p);
+		check(ops->after(p));
 	}
 
-	return true;
+	return RESULT_OK;
 }
-
-#undef error_if_uc_msg

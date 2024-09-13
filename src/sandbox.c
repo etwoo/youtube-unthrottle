@@ -112,14 +112,15 @@ static const char *ALLOWED_PATHS[] = {
 #endif
 };
 
-static void
+static result_t
 sandbox_with(unsigned flags, const char *promises)
 {
 	const size_t sz = ARRAY_SIZE(ALLOWED_PATHS);
 #if defined(__linux__)
 	(void)promises; /* unused */
-	landlock_apply(ALLOWED_PATHS, sz, 443);
-	seccomp_apply(SECCOMP_STDIO | SECCOMP_INET | SECCOMP_SANDBOX | flags);
+	check(landlock_apply(ALLOWED_PATHS, sz, 443));
+	check(seccomp_apply(SECCOMP_STDIO | SECCOMP_INET | SECCOMP_SANDBOX |
+	                    flags));
 #elif defined(__OpenBSD__)
 	(void)flags; /* unused */
 	for (size_t i = 0; i < sz; ++i) {
@@ -132,28 +133,33 @@ sandbox_with(unsigned flags, const char *promises)
 	}
 #endif
 	sandbox_verify(ALLOWED_PATHS, sz, sz, true);
+	return RESULT_OK;
 }
 
-void
+result_t
 sandbox_only_io_inet_tmpfile(void)
 {
-	sandbox_with(SECCOMP_TMPFILE, "dns inet rpath stdio tmppath unveil");
+	const char *promises = "dns inet rpath stdio tmppath unveil";
+	check(sandbox_with(SECCOMP_TMPFILE, promises));
 	debug("%s() succeeded", __FUNCTION__);
+	return RESULT_OK;
 }
 
-void
+result_t
 sandbox_only_io_inet_rpath(void)
 {
-	sandbox_with(SECCOMP_RPATH, "dns inet rpath stdio unveil");
+	const char *promises = "dns inet rpath stdio unveil";
+	check(sandbox_with(SECCOMP_RPATH, promises));
 	debug("%s() succeeded", __FUNCTION__);
+	return RESULT_OK;
 }
 
-void
+result_t
 sandbox_only_io(void)
 {
 #if defined(__linux__)
-	landlock_apply(NULL, 0, 0);
-	seccomp_apply(SECCOMP_STDIO);
+	check(landlock_apply(NULL, 0, 0));
+	check(seccomp_apply(SECCOMP_STDIO));
 	sandbox_verify(ALLOWED_PATHS, 0, ARRAY_SIZE(ALLOWED_PATHS), false);
 #elif defined(__OpenBSD__)
 	if (unveil(NULL, NULL) < 0) {
@@ -165,4 +171,5 @@ sandbox_only_io(void)
 	/* sandbox_verify() would abort() here due to pledge() restrictions */
 #endif
 	debug("%s() succeeded", __FUNCTION__);
+	return RESULT_OK;
 }

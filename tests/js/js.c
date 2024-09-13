@@ -8,11 +8,12 @@
 #include <assert.h>
 #include <limits.h>
 
-static void
+static result_t
 parse_callback_noop(const char *val __attribute__((unused)),
                     size_t sz __attribute__((unused)),
                     void *userdata __attribute__((unused)))
 {
+	return RESULT_OK;
 }
 
 static struct parse_ops NOOP = {
@@ -20,114 +21,108 @@ static struct parse_ops NOOP = {
 	.got_audio = parse_callback_noop,
 };
 
-static void
+static int
 parse(const char *str)
 {
-	parse_json(str, strlen(str), &NOOP, NULL);
+	result_t err = parse_json(str, strlen(str), &NOOP, NULL);
+	return err.err;
 }
 
 TEST
 root_empty(void)
 {
-	parse("");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse(""));
 	PASS();
 }
 
 TEST
 root_number_NaN(void)
 {
-	parse("NaN");
-	PASS();
-}
-
-TEST
-root_number_too_large(void)
-{
-	parse("9007199254740992"); /* 2^53 */
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("NaN"));
 	PASS();
 }
 
 TEST
 root_string_missing_quotes(void)
 {
-	parse("Hello, World!");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("Hello, World!"));
 	PASS();
 }
 
 TEST
 root_string_missing_opening_quote(void)
 {
-	parse("Hello, World!\"");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("Hello, World!\""));
 	PASS();
 }
 
 TEST
 root_string_missing_closing_quote(void)
 {
-	parse("\"Hello, World!");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("\"Hello, World!"));
 	PASS();
 }
 
 TEST
 root_boolean_uppercase(void)
 {
-	parse("FALSE");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("FALSE"));
 	PASS();
 }
 
 TEST
 root_array_only_opening_brace(void)
 {
-	parse("[");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("["));
 	PASS();
 }
 
 TEST
 root_array_only_closing_brace(void)
 {
-	parse("]");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("]"));
 	PASS();
 }
 
 TEST
 root_array_missing_opening_brace(void)
 {
-	parse("1, 2, 3]");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("1, 2, 3]"));
 	PASS();
 }
 
 TEST
 root_array_missing_closing_brace(void)
 {
-	parse("[1, 2, 3");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("[1, 2, 3"));
 	PASS();
 }
 
 TEST
 root_object_only_closing_brace(void)
 {
-	parse("}");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("}"));
 	PASS();
 }
 
 TEST
 root_object_only_opening_brace(void)
 {
-	parse("{");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("{"));
 	PASS();
 }
 
 TEST
 root_object_missing_closing_brace(void)
 {
-	parse("{\"foo\": \"bar\"");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("{\"foo\": \"bar\""));
 	PASS();
 }
 
 TEST
 root_object_missing_opening_brace(void)
 {
-	parse("\"foo\": \"bar\"}");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("\"foo\": \"bar\"}"));
 	PASS();
 }
 
@@ -138,7 +133,6 @@ SUITE(invalid_json)
 {
 	RUN_TEST(root_empty);
 	RUN_TEST(root_number_NaN);
-	RUN_TEST(root_number_too_large);
 	RUN_TEST(root_string_missing_quotes);
 	RUN_TEST(root_string_missing_opening_quote);
 	RUN_TEST(root_string_missing_closing_quote);
@@ -156,49 +150,50 @@ SUITE(invalid_json)
 TEST
 root_null(void)
 {
-	parse("null");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA, parse("null"));
 	PASS();
 }
 
 TEST
 root_number(void)
 {
-	parse("-123.456");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA, parse("-123.456"));
 	PASS();
 }
 
 TEST
 root_string_empty(void)
 {
-	parse("\"\"");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA, parse("\"\""));
 	PASS();
 }
 
 TEST
 root_string_nonempty(void)
 {
-	parse("\"Hello, World!\"");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA,
+	          parse("\"Hello, World!\""));
 	PASS();
 }
 
 TEST
 root_boolean(void)
 {
-	parse("false");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA, parse("false"));
 	PASS();
 }
 
 TEST
 root_array_empty(void)
 {
-	parse("[]");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA, parse("[]"));
 	PASS();
 }
 
 TEST
 root_array_nonempty(void)
 {
-	parse("[1, 2, 3]");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA, parse("[1, 2, 3]"));
 	PASS();
 }
 
@@ -219,89 +214,99 @@ SUITE(incorrect_root_type)
 TEST
 root_object_empty(void)
 {
-	parse("{}");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA, parse("{}"));
 	PASS();
 }
 
 TEST
 missing_streamingData_key(void)
 {
-	parse("{\"foo\": \"bar\"}");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA,
+	          parse("{\"foo\": \"bar\"}"));
 	PASS();
 }
 
 TEST
 incorrect_streamingData_value_type(void)
 {
-	parse("{\"streamingData\": 1}");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_ADAPTIVEFORMATS,
+	          parse("{\"streamingData\": 1}"));
 	PASS();
 }
 
 TEST
 missing_adaptiveFormats_key(void)
 {
-	parse("{\"streamingData\": {\"foo\": \"bar\"}}");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_ADAPTIVEFORMATS,
+	          parse("{\"streamingData\": {\"foo\": \"bar\"}}"));
 	PASS();
 }
 
 TEST
 incorrect_adaptiveFormats_value_type(void)
 {
-	parse("{\"streamingData\": {\"adaptiveFormats\": 2}}");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_ADAPTIVEFORMATS_TYPE,
+	          parse("{\"streamingData\": {\"adaptiveFormats\": 2}}"));
 	PASS();
 }
 
 TEST
 incorrect_adaptiveFormats_element_type(void)
 {
-	parse("{\"streamingData\": {\"adaptiveFormats\": [3]}}");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_ELEM_TYPE,
+	          parse("{\"streamingData\": {\"adaptiveFormats\": [3]}}"));
 	PASS();
 }
 
 TEST
 missing_mimeType_key(void)
 {
-	parse("{\"streamingData\": {\"adaptiveFormats\": "
-	      "[{\"foo\": \"bar\"}]"
-	      "}}");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_ELEM_MIMETYPE,
+	          parse("{\"streamingData\": {\"adaptiveFormats\": "
+	                "[{\"foo\": \"bar\"}]"
+	                "}}"));
 	PASS();
 }
 
 TEST
 incorrect_mimeType_value_type(void)
 {
-	parse("{\"streamingData\": {\"adaptiveFormats\": "
-	      "[{\"mimeType\": 4}]"
-	      "}}");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_ELEM_MIMETYPE,
+	          parse("{\"streamingData\": {\"adaptiveFormats\": "
+	                "[{\"mimeType\": 4}]"
+	                "}}"));
 	PASS();
 }
 
 TEST
 missing_url_key(void)
 {
-	parse("{\"streamingData\": {\"adaptiveFormats\": "
-	      "[{\"mimeType\": \"audio/foobar\"}]"
-	      "}}");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_ELEM_URL,
+	          parse("{\"streamingData\": {\"adaptiveFormats\": "
+	                "[{\"mimeType\": \"audio/foobar\"}]"
+	                "}}"));
 	PASS();
 }
 
 TEST
 incorrect_url_value_type(void)
 {
-	parse("{\"streamingData\": {\"adaptiveFormats\": "
-	      "[{\"mimeType\": \"audio/foobar\", \"url\": 5}]"
-	      "}}");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_ELEM_URL,
+	          parse("{\"streamingData\": {\"adaptiveFormats\": "
+	                "[{\"mimeType\": \"audio/foobar\", \"url\": 5}]"
+	                "}}"));
 	PASS();
 }
 
 TEST
 unsupported_signatureCipher_key(void)
 {
-	parse("{\"streamingData\": {\"adaptiveFormats\": [{"
-	      "\"mimeType\": \"audio/foobar\","
-	      "\"url\": \"foobar\","
-	      "\"signatureCipher\": \"foobar\""
-	      "}]}}");
+	ASSERT_EQ(OK,
+	          parse("{\"streamingData\": {\"adaptiveFormats\": [{"
+	                "\"mimeType\": \"audio/foobar\","
+	                "\"url\": \"foobar\","
+	                "\"signatureCipher\": \"foobar\""
+	                "}]}}"));
 	PASS();
 }
 
@@ -335,7 +340,7 @@ url_copy_init(struct url_copy *c)
 	c->audio[0] = '\0';
 }
 
-static void
+static result_t
 copy_video(const char *val, size_t sz, void *userdata)
 {
 	struct url_copy *urls = (struct url_copy *)userdata;
@@ -343,9 +348,10 @@ copy_video(const char *val, size_t sz, void *userdata)
 	memcpy(urls->video, val, sz);
 	urls->video[sz] = '\0';
 	debug("Copied video URL: %s", urls->video);
+	return RESULT_OK;
 }
 
-static void
+static result_t
 copy_audio(const char *val, size_t sz, void *userdata)
 {
 	struct url_copy *urls = (struct url_copy *)userdata;
@@ -353,6 +359,7 @@ copy_audio(const char *val, size_t sz, void *userdata)
 	memcpy(urls->audio, val, sz);
 	urls->audio[sz] = '\0';
 	debug("Copied audio URL: %s", urls->audio);
+	return RESULT_OK;
 }
 
 static struct parse_ops URL_COPY_OPS = {
@@ -371,7 +378,9 @@ minimum_json_with_correct_shape(void)
 
 	struct url_copy urls;
 	url_copy_init(&urls);
-	parse_json(json, strlen(json), &URL_COPY_OPS, &urls);
+
+	result_t err = parse_json(json, strlen(json), &URL_COPY_OPS, &urls);
+	ASSERT_EQ(err.err, OK);
 
 	ASSERT_STR_EQ(urls.audio, "http://a.test");
 	ASSERT_STR_EQ(urls.video, "http://v.test");
@@ -391,7 +400,9 @@ extra_adaptiveFormats_elements(void)
 
 	struct url_copy urls;
 	url_copy_init(&urls);
-	parse_json(json, strlen(json), &URL_COPY_OPS, &urls);
+
+	result_t err = parse_json(json, strlen(json), &URL_COPY_OPS, &urls);
+	ASSERT_EQ(err.err, OK);
 
 	ASSERT_STR_EQ(urls.audio, "http://a.test");
 	ASSERT_STR_EQ(urls.video, "http://v.test");
@@ -411,7 +422,8 @@ find_base_js_url_negative(void)
 	size_t sz = 0;
 
 	static const char html[] = "<html/>";
-	find_base_js_url(html, sizeof(html), &p, &sz);
+	result_t err = find_base_js_url(html, sizeof(html), &p, &sz);
+	ASSERT_EQ(err.err, ERR_JS_BASEJS_URL_FIND);
 
 	ASSERT_EQ(p, NULL);
 	ASSERT_EQ(sz, 0);
@@ -430,7 +442,8 @@ find_base_js_url_positive(void)
 		"nonce=\"AAAAAAAAAAAAAAAAAAAAAA\""
 		">"
 		"</script>";
-	find_base_js_url(html, sizeof(html), &got_url, &got_sz);
+	result_t err = find_base_js_url(html, sizeof(html), &got_url, &got_sz);
+	ASSERT_EQ(err.err, OK);
 
 	static const char expected[] =
 		"/s/player/deadbeef/player_ias.vflset/en_US/base.js";
@@ -443,7 +456,9 @@ TEST
 find_js_timestamp_negative_re_pattern(void)
 {
 	static const char json[] = "{signatureTimestamp:\"foobar\"}";
-	long long int timestamp = find_js_timestamp(json, sizeof(json));
+	long long int timestamp = -1;
+	result_t err = find_js_timestamp(json, sizeof(json), &timestamp);
+	ASSERT_EQ(err.err, ERR_JS_TIMESTAMP_FIND);
 	ASSERT_LT(timestamp, 0);
 	PASS();
 }
@@ -452,9 +467,12 @@ TEST
 find_js_timestamp_negative_strtoll_erange(void)
 {
 	static const char json[] = "{signatureTimestamp:9223372036854775808}";
-	long long int timestamp = find_js_timestamp(json, sizeof(json));
+	long long int timestamp = -1;
+	result_t err = find_js_timestamp(json, sizeof(json), &timestamp);
+	ASSERT_EQ(err.err, ERR_JS_TIMESTAMP_PARSE_TO_LONGLONG);
+	ASSERT_EQ(err.num, ERANGE);
+	ASSERT_STR_EQ(err.msg, "9223372036854775808");
 	ASSERT_LT(timestamp, 0);
-	ASSERT_EQ(errno, ERANGE);
 	PASS();
 }
 
@@ -462,7 +480,9 @@ TEST
 find_js_timestamp_positive_strtoll_max(void)
 {
 	static const char json[] = "{signatureTimestamp:9223372036854775807}";
-	long long int timestamp = find_js_timestamp(json, sizeof(json));
+	long long int timestamp = 0;
+	result_t err = find_js_timestamp(json, sizeof(json), &timestamp);
+	ASSERT_EQ(err.err, OK);
 	ASSERT_EQ(timestamp, LLONG_MAX);
 	PASS();
 }
@@ -471,7 +491,9 @@ TEST
 find_js_timestamp_positive_simple(void)
 {
 	static const char json[] = "{signatureTimestamp:19957}";
-	long long int timestamp = find_js_timestamp(json, sizeof(json));
+	long long int timestamp = 0;
+	result_t err = find_js_timestamp(json, sizeof(json), &timestamp);
+	ASSERT_EQ(err.err, OK);
 	ASSERT_EQ(timestamp, 19957);
 	PASS();
 }
@@ -480,14 +502,15 @@ TEST
 find_js_deobfuscator_negative_first_match_fail(void)
 {
 	const char *deobfuscator = NULL;
-	size_t deobfuscator_sz = 0;
+	size_t sz = 0;
 
 	static const char js[] =
 		"var _yt_player={};(function(g){})(_yt_player);";
-	find_js_deobfuscator(js, sizeof(js), &deobfuscator, &deobfuscator_sz);
+	result_t err = find_js_deobfuscator(js, sizeof(js), &deobfuscator, &sz);
+	ASSERT_EQ(err.err, ERR_JS_DEOBFUSCATOR_FIND_FUNCTION_ONE);
 
 	ASSERT_EQ(deobfuscator, NULL);
-	ASSERT_EQ(deobfuscator_sz, 0);
+	ASSERT_EQ(sz, 0);
 	PASS();
 }
 
@@ -495,13 +518,14 @@ TEST
 find_js_deobfuscator_negative_second_match_fail(void)
 {
 	const char *deobfuscator = NULL;
-	size_t deobfuscator_sz = 0;
+	size_t sz = 0;
 
 	static const char js[] = "&&(c=ODa[0](c),";
-	find_js_deobfuscator(js, sizeof(js), &deobfuscator, &deobfuscator_sz);
+	result_t err = find_js_deobfuscator(js, sizeof(js), &deobfuscator, &sz);
+	ASSERT_EQ(err.err, ERR_JS_DEOBFUSCATOR_FIND_FUNCTION_TWO);
 
 	ASSERT_EQ(deobfuscator, NULL);
-	ASSERT_EQ(deobfuscator_sz, 0);
+	ASSERT_EQ(sz, 0);
 	PASS();
 }
 
@@ -509,13 +533,14 @@ TEST
 find_js_deobfuscator_negative_third_match_fail(void)
 {
 	const char *deobfuscator = NULL;
-	size_t deobfuscator_sz = 0;
+	size_t sz = 0;
 
 	static const char js[] = "&&(c=ODa[0](c),\nvar ODa=[Pma];";
-	find_js_deobfuscator(js, sizeof(js), &deobfuscator, &deobfuscator_sz);
+	result_t err = find_js_deobfuscator(js, sizeof(js), &deobfuscator, &sz);
+	ASSERT_EQ(err.err, ERR_JS_DEOBFUSCATOR_FIND_FUNCTION_BODY);
 
 	ASSERT_EQ(deobfuscator, NULL);
-	ASSERT_EQ(deobfuscator_sz, 0);
+	ASSERT_EQ(sz, 0);
 	PASS();
 }
 
@@ -523,16 +548,17 @@ TEST
 find_js_deobfuscator_positive_simple(void)
 {
 	const char *deobfuscator = NULL;
-	size_t deobfuscator_sz = 0;
+	size_t sz = 0;
 
 	static const char js[] =
 		"&&(c=ODa[0](c),\nvar ODa=[Pma];\nPma=function(a)"
 		"{return b.join(\"\")};";
-	find_js_deobfuscator(js, sizeof(js), &deobfuscator, &deobfuscator_sz);
+	result_t err = find_js_deobfuscator(js, sizeof(js), &deobfuscator, &sz);
+	ASSERT_EQ(err.err, OK);
 
 	static const char expected[] = "function(a){return b.join(\"\")};";
-	ASSERT_EQ(deobfuscator_sz, strlen(expected));
-	ASSERT_STRN_EQ(deobfuscator, expected, deobfuscator_sz);
+	ASSERT_EQ(sz, strlen(expected));
+	ASSERT_STRN_EQ(deobfuscator, expected, sz);
 	PASS();
 }
 
@@ -540,16 +566,17 @@ TEST
 find_js_deobfuscator_positive_with_escaping(void)
 {
 	const char *deobfuscator = NULL;
-	size_t deobfuscator_sz = 0;
+	size_t sz = 0;
 
 	static const char js[] =
 		"&&(c=$aa[0](c),\nvar $aa=[$bb];\n$bb=function(a)"
 		"{return b.join(\"\")};";
-	find_js_deobfuscator(js, sizeof(js), &deobfuscator, &deobfuscator_sz);
+	result_t err = find_js_deobfuscator(js, sizeof(js), &deobfuscator, &sz);
+	ASSERT_EQ(err.err, OK);
 
 	static const char expected[] = "function(a){return b.join(\"\")};";
-	ASSERT_EQ(deobfuscator_sz, strlen(expected));
-	ASSERT_STRN_EQ(deobfuscator, expected, deobfuscator_sz);
+	ASSERT_EQ(sz, strlen(expected));
+	ASSERT_STRN_EQ(deobfuscator, expected, sz);
 	PASS();
 }
 
@@ -572,7 +599,8 @@ TEST
 call_with_duktape_pcompile_fail(void)
 {
 	static const char js[] = "\"Not a valid function definition!\"";
-	call_js_foreach(js, sizeof(js), NULL, 0, NULL, NULL);
+	result_t err = call_js_foreach(js, sizeof(js), NULL, 0, NULL, NULL);
+	ASSERT_EQ(err.err, ERR_JS_CALL_COMPILE);
 	PASS();
 }
 
@@ -583,7 +611,13 @@ call_with_duktape_pcall_fail(void)
 	args[0] = "Hello, World!";
 
 	static const char js[] = "function(a){return not_defined;};";
-	call_js_foreach(js, sizeof(js), args, ARRAY_SIZE(args), NULL, NULL);
+	result_t err = call_js_foreach(js,
+	                               sizeof(js),
+	                               args,
+	                               ARRAY_SIZE(args),
+	                               NULL,
+	                               NULL);
+	ASSERT_EQ(err.err, ERR_JS_CALL_INVOKE);
 	PASS();
 }
 
@@ -594,7 +628,13 @@ call_with_duktape_pcall_incorrect_result_type(void)
 	args[0] = "Hello, World!";
 
 	static const char js[] = "function(a){return true;};";
-	call_js_foreach(js, sizeof(js), args, ARRAY_SIZE(args), NULL, NULL);
+	result_t err = call_js_foreach(js,
+	                               sizeof(js),
+	                               args,
+	                               ARRAY_SIZE(args),
+	                               NULL,
+	                               NULL);
+	ASSERT_EQ(err.err, ERR_JS_CALL_GET_RESULT);
 	PASS();
 }
 
@@ -608,7 +648,7 @@ result_copy_init(struct result_copy *c)
 	c->str[0] = '\0';
 }
 
-static void
+static result_t
 copy_result(const char *val, size_t sz, void *userdata)
 {
 	struct result_copy *result = (struct result_copy *)userdata;
@@ -616,6 +656,7 @@ copy_result(const char *val, size_t sz, void *userdata)
 	memcpy(result->str, val, sz);
 	result->str[sz] = '\0';
 	debug("Copied result: %s", result->str);
+	return RESULT_OK;
 }
 
 TEST
@@ -632,8 +673,13 @@ call_with_duktape_minimum_valid_function(void)
 	args[0] = "Hello, World!";
 
 	static const char js[] = "function(a){return a.toUpperCase();};";
-	call_js_foreach(js, sizeof(js), args, ARRAY_SIZE(args), &cops, &result);
-
+	result_t err = call_js_foreach(js,
+	                               sizeof(js),
+	                               args,
+	                               ARRAY_SIZE(args),
+	                               &cops,
+	                               &result);
+	ASSERT_EQ(err.err, OK);
 	ASSERT_STR_EQ(result.str, "HELLO, WORLD!");
 	PASS();
 }

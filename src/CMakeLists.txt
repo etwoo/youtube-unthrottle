@@ -4,6 +4,7 @@ target_sources(youtube PRIVATE
 	debug.c
 	js.c
 	re.c
+	result.c
 	sandbox.c
 	tmpfile.c
 	url.c

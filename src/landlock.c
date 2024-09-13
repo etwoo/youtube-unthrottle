@@ -59,23 +59,39 @@ landlock_restrict_self(const int ruleset_fd, const __u32 flags)
 #include <linux/prctl.h>
 #include <sys/prctl.h>
 
-static void
+static result_t
 ruleset_add_one(int fd, const char *path, struct landlock_path_beneath_attr *pb)
 {
 	int rc = -1;
 
 	pb->parent_fd = open(path, O_PATH);
-	error_m_if(pb->parent_fd < 0, "Cannot open %s for landlock", path);
+	if (pb->parent_fd < 0) {
+		result_t err = {
+			.err = ERR_SANDBOX_LANDLOCK_OPEN_O_PATH,
+			.num = errno,
+		};
+		result_strcpy(&err, path);
+		return err;
+	}
 
 	rc = landlock_add_rule(fd, LANDLOCK_RULE_PATH_BENEATH, pb, 0);
-	error_m_if(rc < 0, "Cannot add rule with LANDLOCK_RULE_PATH_BENEATH");
+	if (rc < 0) {
+		result_t err = {
+			.err = ERR_SANDBOX_LANDLOCK_ADD_RULE_PATH,
+			.num = errno,
+		};
+		result_strcpy(&err, path);
+		return err;
+	}
 
 	rc = close(pb->parent_fd);
 	info_m_if(rc < 0, "Ignoring error close()-ing Landlock paths fd");
 	pb->parent_fd = -1;
+
+	return RESULT_OK;
 }
 
-static void
+static result_t
 ruleset_add_rule_paths(int fd, const char **paths, size_t sz)
 {
 	struct landlock_path_beneath_attr pb = {
@@ -84,11 +100,13 @@ ruleset_add_rule_paths(int fd, const char **paths, size_t sz)
 	};
 
 	for (size_t i = 0; i < sz; ++i) {
-		ruleset_add_one(fd, paths[i], &pb);
+		check(ruleset_add_one(fd, paths[i], &pb));
 	}
+
+	return RESULT_OK;
 }
 
-static void
+static result_t
 ruleset_add_rule_port(int fd, int port)
 {
 	struct landlock_net_port_attr np = {
@@ -96,10 +114,11 @@ ruleset_add_rule_port(int fd, int port)
 		.port = port,
 	};
 	const int rc = landlock_add_rule(fd, LANDLOCK_RULE_NET_PORT, &np, 0);
-	error_m_if(rc < 0, "Cannot add rule with LANDLOCK_RULE_NET_PORT");
+	check_if_cond_with_errno(rc < 0, ERR_SANDBOX_LANDLOCK_ADD_RULE_PORT);
+	return RESULT_OK;
 }
 
-void
+result_t
 landlock_apply(const char **paths, int sz, int port)
 {
 	int rc = -1;
@@ -109,24 +128,26 @@ landlock_apply(const char **paths, int sz, int port)
 		.handled_access_net = LANDLOCK_ACCESS_NET_CONNECT_TCP,
 	};
 	int fd = landlock_create_ruleset(&ra, sizeof(ra), 0);
-	error_m_if(fd < 0, "Cannot landlock_create_ruleset()");
+	check_if_cond_with_errno(fd < 0, ERR_SANDBOX_LANDLOCK_CREATE_RULESET);
 
 	if (paths) {
-		ruleset_add_rule_paths(fd, paths, sz);
+		check(ruleset_add_rule_paths(fd, paths, sz));
 	}
 
 	if (port > 0) {
-		ruleset_add_rule_port(fd, port);
+		check(ruleset_add_rule_port(fd, port));
 	}
 
 	rc = prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0);
-	error_m_if(rc < 0, "Cannot prctl(PR_SET_NO_NEW_PRIVS, ...)");
+	check_if_cond_with_errno(rc < 0, ERR_SANDBOX_LANDLOCK_SET_NO_NEW_PRIVS);
 
 	rc = landlock_restrict_self(fd, 0);
-	error_m_if(rc < 0, "Cannot landlock_restrict_self()");
+	check_if_cond_with_errno(rc < 0, ERR_SANDBOX_LANDLOCK_RESTRICT_SELF);
 
 	debug("landlock_apply() succeeded");
 
 	rc = close(fd);
 	info_m_if(rc < 0, "Ignoring error close()-ing Landlock ruleset fd");
+
+	return RESULT_OK;
 }
