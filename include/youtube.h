@@ -1,9 +1,7 @@
 #ifndef YOUTUBE_H
 #define YOUTUBE_H
 
-#include <stdbool.h>
-
-void youtube_global_init(void);
+result_t youtube_global_init(void);
 void youtube_global_cleanup(void);
 
 typedef struct youtube_stream *youtube_handle_t;

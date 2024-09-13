@@ -365,7 +365,8 @@ youtube_stream_setup(struct youtube_stream *p,
 	}
 
 	json.fd = tmpfd();
-	error_m_if(json.fd < 0, "Cannot get JSON tmpfile");
+	error_m_if(json.fd < 0, "Cannot get JSON tmpfile"); // TODO: consider changing return value from bool to richer Result type that captures details from helper functions, libraries like curl/duktape/pcre, syscalls, etc -- and allows caller in main.c to switch() on error type and print error-specific details, like name of failing syscall plus resulting errno, operation that failed to malloc() and associated datastructure, etc
+	// TODO: is above is done, can probably convert warn_then_return() usage similarly, make them into error types that contain details about bad JSON data shape (for example) instead of only logging details to disk
 
 	html.fd = tmpfd();
 	error_m_if(html.fd < 0, "Cannot get HTML tmpfile");

@@ -52,24 +52,22 @@ get_easy_handle(void)
 	if (!GLOBAL_CURL_EASY_HANDLE) {
 		GLOBAL_CURL_EASY_HANDLE = curl_easy_init();
 	}
-	/*
-	 * From the libcurl manpages for curl_easy_init():
-	 *
-	 *   If this function returns NULL, something went wrong
-	 *   and you cannot use the other curl functions.
-	 *
-	 * ... so there isn't much we can do here to get details.
-	 */
-	error_m_if(!GLOBAL_CURL_EASY_HANDLE, "Cannot allocate easy handle");
 
 	curl_easy_reset(GLOBAL_CURL_EASY_HANDLE);
 	return GLOBAL_CURL_EASY_HANDLE;
 }
 
-void
+result_t
 url_global_init(void)
 {
-	curl_global_init(CURL_GLOBAL_DEFAULT);
+	CURLcode res = curl_global_init(CURL_GLOBAL_DEFAULT);
+	if (res) {
+		result_t err = {
+			.typ = ERR_URL_GLOBAL_INIT,
+			.curl_code = res,
+		};
+		return err;
+	}
 
 	/*
 	 * Nudge curl into creating its DNS resolver thread(s) now, before the
@@ -81,6 +79,8 @@ url_global_init(void)
 	                      NULL,
 	                      FD_DISCARD),
 	        "Error creating early URL worker threads");
+
+	return RESULT_OK;
 }
 
 void
@@ -107,26 +107,31 @@ url_global_set_request_handler(int (*handler)(void *, const char *, int))
 }
 
 #define error_if_uc(uc, part)                                                  \
-	error_if(uc, "Cannot set " #part ": %s", curl_url_strerror(uc))
+	while (uc) {                                                           \
+		result_t err = {                                               \
+			.typ = part,                                           \
+			.curlu_code = uc,                                      \
+		};                                                             \
+		return err;                                                    \
+	}
 
-static CURLU *
-url_prepare(const char *hostp, const char *pathp)
+static result_t
+url_prepare(const char *hostp, const char *pathp, CURLU **url)
 {
-	CURLUcode uc = CURLUE_OK;
+	*url = curl_url();
+	CURLUcode uc = (*url == NULL) ? CURLUE_OUT_OF_MEMORY : CURLUE_OK;
+	error_if_uc(uc, ERR_URL_PREPARE_ALLOC);
 
-	CURLU *url = curl_url();
-	error_m_if(url == NULL, "Cannot allocate URL handle");
+	uc = curl_url_set(*url, CURLUPART_SCHEME, "https", 0);
+	error_if_uc(uc, ERR_URL_PREPARE_SET_PART_SCHEME);
 
-	uc = curl_url_set(url, CURLUPART_SCHEME, "https", 0);
-	error_if_uc(uc, CURLUPART_SCHEME);
+	uc = curl_url_set(*url, CURLUPART_HOST, hostp, 0);
+	error_if_uc(uc, ERR_URL_PREPARE_SET_PART_HOST);
 
-	uc = curl_url_set(url, CURLUPART_HOST, hostp, 0);
-	error_if_uc(uc, CURLUPART_HOST);
+	uc = curl_url_set(*url, CURLUPART_PATH, pathp, 0);
+	error_if_uc(uc, ERR_URL_PREPARE_SET_PART_PATH);
 
-	uc = curl_url_set(url, CURLUPART_PATH, pathp, 0);
-	error_if_uc(uc, CURLUPART_PATH);
-
-	return url;
+	return RESULT_OK;
 }
 
 #undef error_if_uc
@@ -137,36 +142,42 @@ static const char BROWSER_USERAGENT[] =
 static const char CONTENT_TYPE_JSON[] = "Content-Type: application/json";
 static const char DEFAULT_HOST_STR[] = "www.youtube.com";
 
-#define error_if_res(uc, opt)                                                  \
-	error_if(res, "Cannot set " #opt ": %s", curl_easy_strerror(uc))
+#define error_if_res(res, opt)                                                 \
+	while (res) {                                                          \
+		result_t err = {                                               \
+			.typ = opt,                                            \
+			.curl_code = res,                                      \
+		};                                                             \
+		return err;                                                    \
+	}
 
-bool
+result_t
 url_download(const char *url_str,   /* may be NULL */
              const char *host_str,  /* may be NULL */
              const char *path_str,  /* may be NULL */
              const char *post_body, /* may be NULL */
              int fd)
 {
-	CURLcode res = CURLE_OK;
 	CURLU *url = NULL;
 	struct curl_slist *headers = NULL;
 
 	CURLU *curl = get_easy_handle();
-	assert(curl);
+	CURLcode res = curl == NULL ? CURLE_OUT_OF_MEMORY : CURLE_OK;
+	error_if_res(res, ERR_URL_DOWNLOAD_ALLOC);
 
 	res = curl_easy_setopt(curl, CURLOPT_WRITEDATA, &fd);
-	error_if_res(res, CURLOPT_WRITEDATA);
+	error_if_res(res, ERR_URL_DOWNLOAD_SET_OPT_WRITEDATA);
 
 	res = curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_to_tmpfile);
-	error_if_res(res, CURLOPT_WRITEFUNCTION);
+	error_if_res(res, ERR_URL_DOWNLOAD_SET_OPT_WRITEFUNCTION);
 
 	res = curl_easy_setopt(curl, CURLOPT_USERAGENT, BROWSER_USERAGENT);
-	error_if_res(res, CURLOPT_USERAGENT);
+	error_if_res(res, ERR_URL_DOWNLOAD_SET_OPT_USERAGENT);
 
 	const char *url_fragment_or_path_str = NULL;
 	if (url_str) {
 		res = curl_easy_setopt(curl, CURLOPT_URL, url_str);
-		error_if_res(res, CURLOPT_URL);
+		error_if_res(res, ERR_URL_DOWNLOAD_SET_OPT_URL_STRING);
 
 		url_fragment_or_path_str = strstr(url_str, DEFAULT_HOST_STR);
 		if (url_fragment_or_path_str) {
@@ -175,11 +186,10 @@ url_download(const char *url_str,   /* may be NULL */
 	} else {
 		assert(host_str != NULL && path_str != NULL);
 
-		url = url_prepare(host_str, path_str);
-		assert(url);
+		check(url_prepare(host_str, path_str, &url));
 
 		res = curl_easy_setopt(curl, CURLOPT_CURLU, url);
-		error_if_res(res, CURLOPT_CURLU);
+		error_if_res(res, ERR_URL_DOWNLOAD_SET_OPT_URL_OBJECT);
 
 		url_fragment_or_path_str = path_str;
 	}
@@ -187,19 +197,19 @@ url_download(const char *url_str,   /* may be NULL */
 	if (post_body) {
 		headers = curl_slist_append(headers, CONTENT_TYPE_JSON);
 		res = curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-		error_if_res(res, CURLOPT_HTTPHEADER);
+		error_if_res(res, ERR_URL_DOWNLOAD_SET_OPT_HTTP_HEADER);
 
 		res = curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_body);
 		/* Note: libcurl does not copy <post_body> */
-		error_if_res(res, CURLOPT_POSTFIELDS);
+		error_if_res(res, ERR_URL_DOWNLOAD_SET_OPT_POST_BODY);
 	}
 
 	res = CURL_EASY_PERFORM(curl, url_fragment_or_path_str, fd);
-	error_if(res, "curl_easy_perform(): %s", curl_easy_strerror(res));
+	error_if_res(res, ERR_URL_DOWNLOAD_PERFORM);
 
 	curl_slist_free_all(headers); /* handles NULL gracefully */
 	curl_url_cleanup(url);        /* handles NULL gracefully */
-	return (res == CURLE_OK);
+	return RESULT_OK;
 }
 
 #undef error_if_res
