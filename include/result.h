@@ -5,6 +5,13 @@ struct result_t {
 	enum {
 		OK = 0,
 		ERR_JS_PARSE_JSON_ALLOC_HEAP,
+		ERR_JS_PARSE_JSON_DECODE,
+		ERR_JS_PARSE_JSON_GET_STREAMINGDATA,
+		ERR_JS_PARSE_JSON_GET_ADAPTIVEFORMATS,
+		ERR_JS_PARSE_JSON_ADAPTIVEFORMATS_TYPE,
+		ERR_JS_PARSE_JSON_ELEM_TYPE,
+		ERR_JS_PARSE_JSON_ELEM_MIMETYPE,
+		ERR_JS_PARSE_JSON_ELEM_URL,
 		ERR_JS_BASEJS_URL_FIND,
 		ERR_JS_BASEJS_URL_ALLOC,
 		ERR_JS_TIMESTAMP_FIND,
@@ -35,6 +42,7 @@ struct result_t {
 		int errno;
 		int curl_code;
 		int curlu_code;
+		const char *msg;
 	};
 };
 
@@ -66,11 +74,14 @@ const result_t RESULT_OK;
 	}
 
 /*
+ * Copy <src> into <r>, backed by automatic storage managed by result.c module.
+ */
+void result_strcpy(result_t *dst, const char *src);
+
+/*
  * Convert a result_t into a human-readable error message.
  *
- * Note: the caller must free() the returned NUL-terminated string.
- *
- * Note: this function may return NULL.
+ * Note: the caller does not own the returned buffer.
  */
 char *result_to_strerror(result_t r);
 

@@ -63,20 +63,32 @@ parse_json(const char *json,
 	duk_push_lstring(ctx, json, json_sz);
 	duk_ret_t res = duk_safe_call(ctx, try_decode, NULL, 1, 1);
 	if (res != DUK_EXEC_SUCCESS) {
-		// TODO: how should we capture peek(ctx) -- aka duk_safe_to_string() value -- in result_t?
-		warn_then_return("Error in duk_json_decode(): %s", peek(ctx));
+		result_t err = {
+			.err = ERR_JS_PARSE_JSON_DECODE,
+		};
+		result_strcpy(&err, peek(ctx));
+		return err;
 	}
 
 	if (DUK_TYPE_OBJECT != duk_get_type(ctx, -1) ||
 	    0 == duk_get_prop_literal(ctx, -1, "streamingData")) {
-		warn_then_return("Cannot get .streamingData");
+		result_t err = {
+			.err = ERR_JS_PARSE_JSON_GET_STREAMINGDATA,
+		};
+		return err;
 	}
 	if (DUK_TYPE_OBJECT != duk_get_type(ctx, -1) ||
 	    0 == duk_get_prop_literal(ctx, -1, "adaptiveFormats")) {
-		warn_then_return("Cannot get .adaptiveFormats");
+		result_t err = {
+			.err = ERR_JS_PARSE_JSON_GET_ADAPTIVEFORMATS,
+		};
+		return err;
 	}
 	if (DUK_TYPE_OBJECT != duk_get_type(ctx, -1)) {
-		warn_then_return("Cannot iterate over .adaptiveFormats");
+		result_t err = {
+			.err = ERR_JS_PARSE_JSON_ADAPTIVEFORMATS_TYPE,
+		};
+		return err;
 	}
 
 	bool got_video = false;
@@ -88,17 +100,26 @@ parse_json(const char *json,
 		duk_get_prop_index(ctx, -1, i);
 
 		if (DUK_TYPE_OBJECT != duk_get_type(ctx, -1)) {
-			warn_then_return(".[%zd] is not object-coercible", i);
+			result_t err = {
+				.err = ERR_JS_PARSE_JSON_ELEM_TYPE,
+			};
+			return err;
 		}
 
 		if (0 == duk_get_prop_literal(ctx, -1, "mimeType") ||
 		    DUK_TYPE_STRING != duk_get_type(ctx, -1)) {
-			warn_then_return("Cannot get .[%zd].mimeType", i);
+			result_t err = {
+				.err = ERR_JS_PARSE_JSON_ELEM_MIMETYPE,
+			};
+			return err;
 		}
 
 		if (0 == duk_get_prop_literal(ctx, -2, "url") ||
 		    DUK_TYPE_STRING != duk_get_type(ctx, -1)) {
-			warn_then_return("Cannot get .[%zd].url", i);
+			result_t err = {
+				.err = ERR_JS_PARSE_JSON_ELEM_URL,
+			};
+			return err;
 		}
 
 		const char *url = duk_get_string(ctx, -1);
@@ -136,6 +157,7 @@ parse_json(const char *json,
 	}
 
 	duk_pop_2(ctx); /* for .streamingData.adaptiveFormats */
+	return RESULT_OK;
 }
 
 result_t

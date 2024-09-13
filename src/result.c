@@ -1,101 +1,173 @@
 #include "result.h"
 
+#include <curl/curl.h>
+
 extern const result_t RESULT_OK = {
 	.err = OK,
 };
 
-// TODO: does it make sense to use asprintf() in result_to_strerror() when we're handling errors like ERR_JS_PARSE_JSON_ALLOC_HEAP, ERR_JS_BASEJS_URL_ALLOC, ERR_URL_PREPARE_ALLOC, ERR_URL_DOWNLOAD_ALLOC, ERR_YOUTUBE_INNERTUBE_POST_ALLOC -- i.e. failures to allocate memory? seems kinda circular? maybe change this interface so that either static literal OR dynamic string can be returned, with some signal to the caller about how to free() only the latter?
-// TODO: ... or maybe, instead of returning a `const char *`, accept a callback that gets called on the string we choose, such that the caller doesn't need to worry about allocation?
+/*
+ * Bump-style allocator for dynamic strings in result_t structs
+ */
+static char RESULT_HEAP[4096] = {0};
+static char *RESULT_HEAP_POS = RESULT_HEAP;
+
+static void
+my_vsnprintf(const char *pattern, va_list ap)
+{
+	size_t capacity = sizeof(RESULT_HEAP) - (RESULT_HEAP_POS - RESULT_HEAP);
+
+	int written = vsnprintf(RESULT_HEAP_POS, capacity, pattern, ap);
+	assert(written > 0 && written < capacity);
+
+	RESULT_HEAP_POS += written;
+	++RESULT_HEAP_POS; /* seek past NUL byte */
+}
+
+static void
+my_snprintf(const char *pattern, ...)
+	__attribute__((format(printf, 1, 2)))
+{
+	va_list ap;
+	va_start(ap, pattern);
+	my_vsnprintf(pattern, ap);
+	va_end(ap);
+}
+
+void
+result_strcpy(result_t *dst, const char *src);
+{
+	dst->msg = RESULT_HEAP_POS;
+	my_snprintf("%s", src);
+}
+
+static const char *
+my_strerror(result_t r)
+{
+	return strerror(r.errno);
+}
+
+static const char *
+easy_error(result_t r)
+{
+	return curl_easy_strerror(r.curl_code);
+}
+
+static const char *
+url_error(result_t r)
+{
+	return curl_url_strerror(r.curlu_code);
+}
+
 const char *
 result_to_strerror(result_t r)
 {
-	int rc = 0;
-	char *s = NULL;
+	const char *s = RESULT_HEAP_POS;
+
 	switch (r.err) {
 	case OK:
-		rc = asprintf(&s, "Success");
+		s = "Success";
 		break;
 	case ERR_JS_PARSE_JSON_ALLOC_HEAP:
-		rc = asprintf(&s, "Cannot allocate JavaScript interpreter heap");
+		s = "Cannot allocate JavaScript interpreter heap";
+		break;
+	case ERR_JS_PARSE_JSON_DECODE:
+		my_snprintf("Error in duk_json_decode(): %s", r.msg);
+		break;
+	case ERR_JS_PARSE_JSON_GET_STREAMINGDATA:
+		s = "Cannot get .streamingData";
+		break;
+	case ERR_JS_PARSE_JSON_GET_ADAPTIVEFORMATS:
+		s = "Cannot get .adaptiveFormats";
+		break;
+	case ERR_JS_PARSE_JSON_ADAPTIVEFORMATS_TYPE:
+		s = "Cannot iterate over .adaptiveFormats";
+		break;
+	case ERR_JS_PARSE_JSON_ELEM_TYPE:
+		s = "adaptiveFormats element is not object-coercible";
+		break;
+	case ERR_JS_PARSE_JSON_ELEM_MIMETYPE:
+		s = "Cannot get mimeType of adaptiveFormats element";
+		break;
+	case ERR_JS_PARSE_JSON_ELEM_URL:
+		s = "Cannot get url of adaptiveFormats element";
 		break;
 	case ERR_JS_BASEJS_URL_FIND:
-		rc = asprintf(&s, "Cannot find base.js URL in HTML document");
+		s = "Cannot find base.js URL in HTML document";
 		break;
 	case ERR_JS_BASEJS_URL_ALLOC:
-		rc = asprintf(&s, "Cannot strndup() base.js URL");
+		s = "Cannot strndup() base.js URL";
 		break;
 	case ERR_JS_TIMESTAMP_FIND:
-		rc = asprintf(&s, "Cannot find timestamp in base.js");
+		s = "Cannot find timestamp in base.js";
 		break;
 	case ERR_JS_TIMESTAMP_PARSE_TO_LONGLONG:
-		rc = asprintf(&s, "Error in strtoll() on timestamp string: %s", strerror(r.errno));
+		my_snprintf("Error in strtoll(): %s", my_strerror(r));
 		break;
 	case ERR_TMPFILE:
-		rc = asprintf(&s, "Error in tmpfile(): %s", strerror(r.errno));
+		my_snprintf("Error in tmpfile(): %s", my_strerror(r));
 		break;
 	case ERR_TMPFILE_FILENO:
-		rc = asprintf(&s, "Error fileno()-ing tmpfile: %s", strerror(r.errno));
+		my_snprintf("Error fileno()-ing tmpfile: %s", my_strerror(r));
 		break;
 	case ERR_TMPFILE_DUP:
-		rc = asprintf(&s, "Error dup()-ing tmpfile: %s", strerror(r.errno));
+		my_snprintf("Error dup()-ing tmpfile: %s", my_strerror(r));
 		break;
 	case ERR_TMPFILE_FSTAT:
-		rc = asprintf(&s, "Error fstat()-ing tmpfile: %s", strerror(r.errno));
+		my_snprintf("Error fstat()-ing tmpfile: %s", my_strerror(r));
 		break;
 	case ERR_TMPFILE_MMAP:
-		rc = asprintf(&s, "Error mmap()-ing tmpfile: %s", strerror(r.errno));
+		my_snprintf("Error mmap()-ing tmpfile: %s", my_strerror(r));
 		break;
 	case ERR_URL_GLOBAL_INIT:
-		rc = asprintf(&s, "Cannot use URL functions");
+		s = "Cannot use URL functions";
 		break;
 	case ERR_URL_PREPARE_ALLOC:
-		rc = asprintf(&s, "Cannot allocate URL handle");
+		s = "Cannot allocate URL handle";
 		break;
 	case ERR_URL_PREPARE_SET_PART_SCHEME:
-		rc = asprintf(&s, "Cannot set URL scheme: %s", curl_url_strerror(r.curlu_code));
+		my_snprintf("Cannot set URL scheme: %s", url_error(r));
 		break;
 	case ERR_URL_PREPARE_SET_PART_HOST:
-		rc = asprintf(&s, "Cannot set URL host: %s", curl_url_strerror(r.curlu_code));
+		my_snprintf("Cannot set URL host: %s", url_error(r));
 		break;
 	case ERR_URL_PREPARE_SET_PART_PATH:
-		rc = asprintf(&s, "Cannot set URL path: %s", curl_url_strerror(r.curlu_code));
+		my_snprintf("Cannot set URL path: %s", url_error(r));
 		break;
 	case ERR_URL_DOWNLOAD_ALLOC:
-		rc = asprintf(&s, "Cannot allocate easy handle");
+		s = "Cannot allocate easy handle";
 		break;
 	case ERR_URL_DOWNLOAD_SET_OPT_WRITEDATA:
-		rc = asprintf(&s, "Cannot set WRITEDATA: %s", curl_easy_strerror(r.curl_code));
+		my_snprintf("Cannot set WRITEDATA: %s", easy_error(r));
 		break;
 	case ERR_URL_DOWNLOAD_SET_OPT_WRITEFUNCTION:
-		rc = asprintf(&s, "Cannot set WRITEFUNCTION: %s", curl_easy_strerror(r.curl_code));
+		my_snprintf("Cannot set WRITEFUNCTION: %s", easy_error(r));
 		break;
 	case ERR_URL_DOWNLOAD_SET_OPT_USERAGENT:
-		rc = asprintf(&s, "Cannot set User-Agent: %s", curl_easy_strerror(r.curl_code));
+		my_snprintf("Cannot set User-Agent: %s", easy_error(r));
 		break;
 	case ERR_URL_DOWNLOAD_SET_OPT_URL_STRING:
-		rc = asprintf(&s, "Cannot set URL via string: %s", curl_easy_strerror(r.curl_code));
+		my_snprintf("Cannot set URL via string: %s", easy_error(r));
 		break;
 	case ERR_URL_DOWNLOAD_SET_OPT_URL_OBJECT:
-		rc = asprintf(&s, "Cannot set URL via object: %s", curl_easy_strerror(r.curl_code));
+		my_snprintf("Cannot set URL via object: %s", easy_error(r));
 		break;
 	case ERR_URL_DOWNLOAD_SET_OPT_HTTP_HEADER:
-		rc = asprintf(&s, "Cannot set HTTP headers: %s", curl_easy_strerror(r.curl_code));
+		my_snprintf("Cannot set HTTP headers: %s", easy_error(r));
 		break;
 	case ERR_URL_DOWNLOAD_SET_OPT_POST_BODY:
-		rc = asprintf(&s, "Cannot set POST body: %s", curl_easy_strerror(r.curl_code));
+		my_snprintf("Cannot set POST body: %s", easy_error(r));
 		break;
 	case ERR_URL_DOWNLOAD_PERFORM:
-		rc = asprintf(&s, "Error performing HTTP request: %s", curl_easy_strerror(r.curl_code));
+		my_snprintf("Error performing HTTP request: %s", easy_error(r));
 		break;
 	case ERR_YOUTUBE_INNERTUBE_POST_ID:
-		rc = asprintf(&s, "Cannot find video ID for InnerTube POST");
+		s = "Cannot find video ID for InnerTube POST";
 		break;
 	case ERR_YOUTUBE_INNERTUBE_POST_ALLOC:
-		rc = asprintf(&s, "Cannot allocate buffer for InnerTube POST");
+		s = "Cannot allocate buffer for InnerTube POST";
 		break;
 	}
-	if (rc < 0) {
-		s = NULL;
-	}
+
 	return s;
 }
