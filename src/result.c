@@ -13,11 +13,17 @@ result_to_strerror(result_t r)
 	case OK:
 		rc = asprintf(&s, "Success");
 		break;
-	case ERR_JS_FIND_BASEJS_URL:
+	case ERR_JS_BASEJS_URL_FIND:
 		rc = asprintf(&s, "Cannot find base.js URL in HTML document");
 		break;
-	case ERR_JS_ALLOC_BASEJS_URL:
+	case ERR_JS_BASEJS_URL_ALLOC:
 		rc = asprintf(&s, "Cannot strndup() base.js URL");
+		break;
+	case ERR_JS_TIMESTAMP_FIND:
+		rc = asprintf(&s, "Cannot find timestamp in base.js");
+		break;
+	case ERR_JS_TIMESTAMP_PARSE_TO_LONGLONG:
+		rc = asprintf(&s, "Error in strtoll() on timestamp string: %s", strerror(r.errno));
 		break;
 	case ERR_TMPFILE:
 		rc = asprintf(&s, "Error in tmpfile(): %s", strerror(r.errno));

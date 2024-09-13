@@ -16,7 +16,7 @@ result_t find_base_js_url(const char *html,
                           size_t sz,
                           const char **basejs,
                           size_t *basejs_sz);
-long long int find_js_timestamp(const char *js, size_t sz);
+result_t find_js_timestamp(const char *js, size_t sz, long long int *ts);
 void find_js_deobfuscator(const char *js,
                           size_t sz,
                           const char **deobfuscator,

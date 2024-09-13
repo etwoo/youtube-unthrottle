@@ -396,7 +396,7 @@ youtube_stream_setup(struct youtube_stream *p,
 	p->basejs = strndup(basejs, basejs_sz);
 	if (p->basejs == NULL) {
 		result_t err = {
-			.err = ERR_JS_ALLOC_BASEJS_URL,
+			.err = ERR_JS_BASEJS_URL_ALLOC,
 		};
 		return err;
 	}
@@ -409,10 +409,8 @@ youtube_stream_setup(struct youtube_stream *p,
 	                              &js.buf,
 	                              &js.sz));
 
-	long long int timestamp = find_js_timestamp(js.buf, js.sz);
-	if (timestamp < 0) {
-		return false;
-	}
+	long long int timestamp = 0;
+	check(find_js_timestamp(js.buf, js.sz, &timestamp));
 
 	char *innertube_post __attribute__((cleanup(asprintf_free))) = NULL;
 	if (!format_innertube_post(target, timestamp, &innertube_post) ||

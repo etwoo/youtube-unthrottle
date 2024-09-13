@@ -151,7 +151,7 @@ find_base_js_url(const char *html,
 	                basejs,
 	                basejs_sz)) {
 		result_t err = {
-			.err = ERR_JS_FIND_BASEJS_URL,
+			.err = ERR_JS_BASEJS_URL_FIND,
 		};
 		return err;
 	}
@@ -160,14 +160,16 @@ find_base_js_url(const char *html,
 	return RESULT_OK;
 }
 
-long long int
-find_js_timestamp(const char *js, size_t js_sz)
+result_t
+find_js_timestamp(const char *js, size_t js_sz, long long int *value)
 {
 	const char *ts = NULL;
 	size_t tsz = 0;
 	if (!re_capture("signatureTimestamp:([0-9]+)", js, js_sz, &ts, &tsz)) {
-		info("Cannot find timestamp in base.js");
-		return -1;
+		result_t err = {
+			.err = ERR_JS_TIMESTAMP_FIND,
+		};
+		return err;
 	}
 
 	/*
@@ -178,7 +180,10 @@ find_js_timestamp(const char *js, size_t js_sz)
 
 	long long int res = strtoll(ts, NULL, 10);
 	if (errno != 0) {
-		warn_m_then_return(-1, "strtoll() error on %.*s", (int)tsz, ts);
+		result_t err = {
+			.err = ERR_JS_TIMESTAMP_PARSE_TO_LONGLONG,
+			.errno = errno,
+		};
 	}
 
 	debug("Parsed signatureTimestamp %.*s into %lld", (int)tsz, ts, res);
