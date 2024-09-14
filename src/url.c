@@ -106,7 +106,7 @@ url_global_set_request_handler(int (*handler)(void *, const char *, int))
 	CURL_EASY_PERFORM = handler;
 }
 
-#define error_if_uc(uc, part)                                                  \
+#define check_if_uc(uc, part)                                                  \
 	while (uc) {                                                           \
 		result_t err = {                                               \
 			.err = part,                                           \
@@ -120,21 +120,21 @@ url_prepare(const char *hostp, const char *pathp, CURLU **url)
 {
 	*url = curl_url();
 	CURLUcode uc = (*url == NULL) ? CURLUE_OUT_OF_MEMORY : CURLUE_OK;
-	error_if_uc(uc, ERR_URL_PREPARE_ALLOC);
+	check_if_uc(uc, ERR_URL_PREPARE_ALLOC);
 
 	uc = curl_url_set(*url, CURLUPART_SCHEME, "https", 0);
-	error_if_uc(uc, ERR_URL_PREPARE_SET_PART_SCHEME);
+	check_if_uc(uc, ERR_URL_PREPARE_SET_PART_SCHEME);
 
 	uc = curl_url_set(*url, CURLUPART_HOST, hostp, 0);
-	error_if_uc(uc, ERR_URL_PREPARE_SET_PART_HOST);
+	check_if_uc(uc, ERR_URL_PREPARE_SET_PART_HOST);
 
 	uc = curl_url_set(*url, CURLUPART_PATH, pathp, 0);
-	error_if_uc(uc, ERR_URL_PREPARE_SET_PART_PATH);
+	check_if_uc(uc, ERR_URL_PREPARE_SET_PART_PATH);
 
 	return RESULT_OK;
 }
 
-#undef error_if_uc
+#undef check_if_uc
 
 static const char BROWSER_USERAGENT[] =
 	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, "
@@ -142,7 +142,7 @@ static const char BROWSER_USERAGENT[] =
 static const char CONTENT_TYPE_JSON[] = "Content-Type: application/json";
 static const char DEFAULT_HOST_STR[] = "www.youtube.com";
 
-#define error_if_res(res, opt)                                                 \
+#define check_if_res(res, opt)                                                 \
 	while (res) {                                                          \
 		result_t err = {                                               \
 			.err = opt,                                            \
@@ -163,21 +163,21 @@ url_download(const char *url_str,   /* may be NULL */
 
 	CURLU *curl = get_easy_handle();
 	CURLcode res = curl == NULL ? CURLE_OUT_OF_MEMORY : CURLE_OK;
-	error_if_res(res, ERR_URL_DOWNLOAD_ALLOC);
+	check_if_res(res, ERR_URL_DOWNLOAD_ALLOC);
 
 	res = curl_easy_setopt(curl, CURLOPT_WRITEDATA, &fd);
-	error_if_res(res, ERR_URL_DOWNLOAD_SET_OPT_WRITEDATA);
+	check_if_res(res, ERR_URL_DOWNLOAD_SET_OPT_WRITEDATA);
 
 	res = curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_to_tmpfile);
-	error_if_res(res, ERR_URL_DOWNLOAD_SET_OPT_WRITEFUNCTION);
+	check_if_res(res, ERR_URL_DOWNLOAD_SET_OPT_WRITEFUNCTION);
 
 	res = curl_easy_setopt(curl, CURLOPT_USERAGENT, BROWSER_USERAGENT);
-	error_if_res(res, ERR_URL_DOWNLOAD_SET_OPT_USERAGENT);
+	check_if_res(res, ERR_URL_DOWNLOAD_SET_OPT_USERAGENT);
 
 	const char *url_fragment_or_path_str = NULL;
 	if (url_str) {
 		res = curl_easy_setopt(curl, CURLOPT_URL, url_str);
-		error_if_res(res, ERR_URL_DOWNLOAD_SET_OPT_URL_STRING);
+		check_if_res(res, ERR_URL_DOWNLOAD_SET_OPT_URL_STRING);
 
 		url_fragment_or_path_str = strstr(url_str, DEFAULT_HOST_STR);
 		if (url_fragment_or_path_str) {
@@ -189,7 +189,7 @@ url_download(const char *url_str,   /* may be NULL */
 		check(url_prepare(host_str, path_str, &url));
 
 		res = curl_easy_setopt(curl, CURLOPT_CURLU, url);
-		error_if_res(res, ERR_URL_DOWNLOAD_SET_OPT_URL_OBJECT);
+		check_if_res(res, ERR_URL_DOWNLOAD_SET_OPT_URL_OBJECT);
 
 		url_fragment_or_path_str = path_str;
 	}
@@ -197,19 +197,19 @@ url_download(const char *url_str,   /* may be NULL */
 	if (post_body) {
 		headers = curl_slist_append(headers, CONTENT_TYPE_JSON);
 		res = curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-		error_if_res(res, ERR_URL_DOWNLOAD_SET_OPT_HTTP_HEADER);
+		check_if_res(res, ERR_URL_DOWNLOAD_SET_OPT_HTTP_HEADER);
 
 		res = curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_body);
 		/* Note: libcurl does not copy <post_body> */
-		error_if_res(res, ERR_URL_DOWNLOAD_SET_OPT_POST_BODY);
+		check_if_res(res, ERR_URL_DOWNLOAD_SET_OPT_POST_BODY);
 	}
 
 	res = CURL_EASY_PERFORM(curl, url_fragment_or_path_str, fd);
-	error_if_res(res, ERR_URL_DOWNLOAD_PERFORM);
+	check_if_res(res, ERR_URL_DOWNLOAD_PERFORM);
 
 	curl_slist_free_all(headers); /* handles NULL gracefully */
 	curl_url_cleanup(url);        /* handles NULL gracefully */
 	return RESULT_OK;
 }
 
-#undef error_if_res
+#undef check_if_res

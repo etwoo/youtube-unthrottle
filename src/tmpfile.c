@@ -15,7 +15,7 @@ checked_fclose(FILE **fs)
 	info_m_if(*fs && fclose(*fs), "Ignoring error fclose()-ing stream");
 }
 
-#define error_if_cond_with_errno(cond, op, errno)                              \
+#define check_if_cond_with_errno(cond, op, errno)                              \
 	while (cond) {                                                         \
 		result_t err = {                                               \
 			.err = op,                                             \
@@ -33,7 +33,7 @@ tmpfd(int *fd)
 	 * to call open() with O_TMPFILE|O_EXCL ourselves.
 	 */
 	FILE *fs __attribute__((cleanup(checked_fclose))) = tmpfile();
-	error_if_cond_with_errno(fs == NULL, ERR_TMPFILE, errno);
+	check_if_cond_with_errno(fs == NULL, ERR_TMPFILE, errno);
 
 	/*
 	 * dup the underlying file descriptor behind the tmpfile stream, and
@@ -42,10 +42,10 @@ tmpfd(int *fd)
 	 */
 
 	int inner_fd = fileno(fs);
-	error_if_cond_with_errno(inner_fd < 0, ERR_TMPFILE_FILENO, errno);
+	check_if_cond_with_errno(inner_fd < 0, ERR_TMPFILE_FILENO, errno);
 
 	int dup_fd = dup(inner_fd);
-	error_if_cond_with_errno(dup_fd < 0, ERR_TMPFILE_DUP, errno);
+	check_if_cond_with_errno(dup_fd < 0, ERR_TMPFILE_DUP, errno);
 
 	*fd = dup_fd;
 	debug("Got tmpfile with fd=%d", *fd);
@@ -58,11 +58,11 @@ tmpmap(int fd, void **addr, unsigned int *sz)
 	struct stat st = {
 		.st_size = 0,
 	};
-	error_if_cond_with_errno(fstat(fd, &st) < 0, ERR_TMPFILE_FSTAT, errno);
+	check_if_cond_with_errno(fstat(fd, &st) < 0, ERR_TMPFILE_FSTAT, errno);
 	*sz = st.st_size;
 
 	*addr = mmap(NULL, *sz, PROT_READ, MAP_PRIVATE, fd, 0);
-	error_if_cond_with_errno(*addr == MAP_FAILED, ERR_TMPFILE_MMAP, errno);
+	check_if_cond_with_errno(*addr == MAP_FAILED, ERR_TMPFILE_MMAP, errno);
 
 	/*
 	 * mmap() can technically return NULL on some platforms, but our
@@ -87,4 +87,4 @@ tmpunmap(void *addr, unsigned int sz)
 	info_m_if(rc < 0, "Ignoring error munmap()-ing tmpfile");
 }
 
-#undef error_if_cond_with_errno
+#undef check_if_cond_with_errno
