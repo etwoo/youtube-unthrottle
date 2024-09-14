@@ -133,7 +133,7 @@ extern const result_t RESULT_OK;
 	} while (0)
 
 /*
- * Copy <src> into <r>, backed by automatic storage managed by result.c module.
+ * Copy <src> into <dst> using automatic storage managed by result.c module.
  */
 void result_strcpy(result_t *dst, const char *src);
 
