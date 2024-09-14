@@ -14,8 +14,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#define error_if_uc_msg(uc, msg) error_if(uc, msg ": %s", curl_url_strerror(uc))
-
 struct youtube_stream {
 	char *basejs;
 	size_t pos;
@@ -135,7 +133,7 @@ curl_free_getargs(char **getargs)
  *
  * Caller is responsible for free()-ing the pointer returned in <result>.
  */
-static void
+static result_t
 pop_n_param_one(CURLU *url, char **result)
 {
 	*result = NULL; /* NULL out early, just in case */
@@ -143,7 +141,13 @@ pop_n_param_one(CURLU *url, char **result)
 	char *getargs __attribute__((cleanup(curl_free_getargs))) = NULL;
 
 	CURLUcode uc = curl_url_get(url, CURLUPART_QUERY, &getargs, 0);
-	error_if_uc_msg(uc, "Cannot get CURLUPART_QUERY");
+	if (uc) {
+		result_t err = {
+			.err = ERR_YOUTUBE_N_PARAM_QUERY_GET,
+			.curlu_code = uc,
+		};
+		return err;
+	}
 	assert(getargs);
 
 	const size_t getargs_sz = strlen(getargs);
@@ -157,11 +161,15 @@ pop_n_param_one(CURLU *url, char **result)
 	                getargs_sz,
 	                &ciphertext_within_getargs,
 	                &ciphertext_sz)) {
-		warn_then_return("No n-parameter in query: %s", getargs);
+		result_t err = {
+			.err = ERR_YOUTUBE_N_PARAM_FIND_IN_QUERY,
+		};
+		result_strcpy_span(&err, getargs, getargs_sz);
+		return err;
 	}
 
 	*result = malloc((ciphertext_sz + 1) * sizeof(*result));
-	error_m_if(*result == NULL, "Cannot allocate ciphertext buffer");
+	check_if(*result == NULL, ERR_YOUTUBE_N_PARAM_QUERY_ALLOC);
 
 	/*
 	 * Copy n-parameter value out of storage owned by CURLU <url>.
@@ -208,7 +216,15 @@ pop_n_param_one(CURLU *url, char **result)
 	debug("After n-param ciphertext removal:  %s", getargs);
 
 	uc = curl_url_set(url, CURLUPART_QUERY, getargs, 0);
-	error_if_uc_msg(uc, "Cannot clear ciphertext n-parameter");
+	if (uc) {
+		result_t err = {
+			.err = ERR_YOUTUBE_N_PARAM_QUERY_GET,
+			.curlu_code = uc,
+		};
+		return err;
+	}
+
+	return RESULT_OK;
 }
 
 /*
@@ -216,13 +232,14 @@ pop_n_param_one(CURLU *url, char **result)
  *
  * Caller is responsible for free()-ing the pointers returned in <results>.
  */
-static void
+static result_t
 pop_n_param_all(struct youtube_stream *p, char **results, size_t capacity)
 {
 	assert(capacity >= ARRAY_SIZE(p->url));
 	for (size_t i = 0; i < ARRAY_SIZE(p->url); ++i) {
-		pop_n_param_one(p->url[i], results + i);
+		check(pop_n_param_one(p->url[i], results + i));
 	}
+	return RESULT_OK;
 }
 
 static void
@@ -448,12 +465,7 @@ youtube_stream_setup(struct youtube_stream *p,
 
 	char *ciphertexts[ARRAY_SIZE(p->url)]
 		__attribute__((cleanup(ciphertexts_cleanup))) = {NULL};
-	pop_n_param_all(p, ciphertexts, ARRAY_SIZE(ciphertexts));
-	for (size_t i = 0; i < ARRAY_SIZE(ciphertexts); ++i) {
-		if (ciphertexts[i] == NULL) {
-			return false;
-		}
-	}
+	check(pop_n_param_all(p, ciphertexts, ARRAY_SIZE(ciphertexts)));
 
 	struct call_ops cops = {
 		.got_result = append_n_param,

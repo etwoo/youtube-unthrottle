@@ -179,6 +179,18 @@ result_to_strerror(result_t r)
 	case ERR_YOUTUBE_INNERTUBE_POST_ALLOC:
 		s = "Cannot allocate buffer for InnerTube POST";
 		break;
+	case ERR_YOUTUBE_N_PARAM_QUERY_ALLOC:
+		s = "Cannot allocate ciphertext buffer";
+		break;
+	case ERR_YOUTUBE_N_PARAM_QUERY_GET:
+		my_snprintf("Cannot get URL query string: %s", url_error(r));
+		break;
+	case ERR_YOUTUBE_N_PARAM_QUERY_SET:
+		s = "Cannot clear ciphertext n-parameter";
+		break;
+	case ERR_YOUTUBE_N_PARAM_FIND_IN_QUERY:
+		my_snprintf("No n-parameter in query string: %s", r.msg);
+		break;
 	}
 
 	return s;
