@@ -68,7 +68,7 @@ url_error(result_t r)
 }
 
 const char *
-result_to_strerror(result_t r)
+result_to_str(result_t r)
 {
 	const char *s = RESULT_HEAP_POS;
 

@@ -148,6 +148,6 @@ void result_strcpy_span(result_t *dst, const char *src, size_t sz);
  *
  * Note: the caller does not own the returned buffer.
  */
-const char *result_to_strerror(result_t r);
+const char *result_to_str(result_t r);
 
 #endif

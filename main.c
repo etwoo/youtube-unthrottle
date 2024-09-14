@@ -45,7 +45,7 @@ usage(const char *cmd, int rc)
 static void
 to_stderr(result_t r)
 {
-	fprintf(stderr, "ERROR: %s\n", result_to_strerror(r));
+	fprintf(stderr, "ERROR: %s\n", result_to_str(r));
 }
 
 static int
