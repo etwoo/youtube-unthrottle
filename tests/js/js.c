@@ -510,14 +510,15 @@ TEST
 find_js_deobfuscator_negative_first_match_fail(void)
 {
 	const char *deobfuscator = NULL;
-	size_t deobfuscator_sz = 0;
+	size_t sz = 0;
 
 	static const char js[] =
 		"var _yt_player={};(function(g){})(_yt_player);";
-	find_js_deobfuscator(js, sizeof(js), &deobfuscator, &deobfuscator_sz);
+	result_t err = find_js_deobfuscator(js, sizeof(js), &deobfuscator, &sz);
+	ASSERT_EQ(err.err, ERR_JS_DEOBFUSCATOR_FIND_FUNCTION_ONE);
 
 	ASSERT_EQ(deobfuscator, NULL);
-	ASSERT_EQ(deobfuscator_sz, 0);
+	ASSERT_EQ(sz, 0);
 	PASS();
 }
 
@@ -525,13 +526,14 @@ TEST
 find_js_deobfuscator_negative_second_match_fail(void)
 {
 	const char *deobfuscator = NULL;
-	size_t deobfuscator_sz = 0;
+	size_t sz = 0;
 
 	static const char js[] = "&&(c=ODa[0](c),";
-	find_js_deobfuscator(js, sizeof(js), &deobfuscator, &deobfuscator_sz);
+	result_t err = find_js_deobfuscator(js, sizeof(js), &deobfuscator, &sz);
+	ASSERT_EQ(err.err, ERR_JS_DEOBFUSCATOR_FIND_FUNCTION_TWO);
 
 	ASSERT_EQ(deobfuscator, NULL);
-	ASSERT_EQ(deobfuscator_sz, 0);
+	ASSERT_EQ(sz, 0);
 	PASS();
 }
 
@@ -539,13 +541,14 @@ TEST
 find_js_deobfuscator_negative_third_match_fail(void)
 {
 	const char *deobfuscator = NULL;
-	size_t deobfuscator_sz = 0;
+	size_t sz = 0;
 
 	static const char js[] = "&&(c=ODa[0](c),\nvar ODa=[Pma];";
-	find_js_deobfuscator(js, sizeof(js), &deobfuscator, &deobfuscator_sz);
+	result_t err = find_js_deobfuscator(js, sizeof(js), &deobfuscator, &sz);
+	ASSERT_EQ(err.err, ERR_JS_DEOBFUSCATOR_FIND_FUNCTION_BODY);
 
 	ASSERT_EQ(deobfuscator, NULL);
-	ASSERT_EQ(deobfuscator_sz, 0);
+	ASSERT_EQ(sz, 0);
 	PASS();
 }
 
@@ -553,16 +556,17 @@ TEST
 find_js_deobfuscator_positive_simple(void)
 {
 	const char *deobfuscator = NULL;
-	size_t deobfuscator_sz = 0;
+	size_t sz = 0;
 
 	static const char js[] =
 		"&&(c=ODa[0](c),\nvar ODa=[Pma];\nPma=function(a)"
 		"{return b.join(\"\")};";
-	find_js_deobfuscator(js, sizeof(js), &deobfuscator, &deobfuscator_sz);
+	result_t err = find_js_deobfuscator(js, sizeof(js), &deobfuscator, &sz);
+	ASSERT_EQ(err.err, OK);
 
 	static const char expected[] = "function(a){return b.join(\"\")};";
-	ASSERT_EQ(deobfuscator_sz, strlen(expected));
-	ASSERT_STRN_EQ(deobfuscator, expected, deobfuscator_sz);
+	ASSERT_EQ(sz, strlen(expected));
+	ASSERT_STRN_EQ(deobfuscator, expected, sz);
 	PASS();
 }
 
@@ -570,16 +574,17 @@ TEST
 find_js_deobfuscator_positive_with_escaping(void)
 {
 	const char *deobfuscator = NULL;
-	size_t deobfuscator_sz = 0;
+	size_t sz = 0;
 
 	static const char js[] =
 		"&&(c=$aa[0](c),\nvar $aa=[$bb];\n$bb=function(a)"
 		"{return b.join(\"\")};";
-	find_js_deobfuscator(js, sizeof(js), &deobfuscator, &deobfuscator_sz);
+	result_t err = find_js_deobfuscator(js, sizeof(js), &deobfuscator, &sz);
+	ASSERT_EQ(err.err, OK);
 
 	static const char expected[] = "function(a){return b.join(\"\")};";
-	ASSERT_EQ(deobfuscator_sz, strlen(expected));
-	ASSERT_STRN_EQ(deobfuscator, expected, deobfuscator_sz);
+	ASSERT_EQ(sz, strlen(expected));
+	ASSERT_STRN_EQ(deobfuscator, expected, sz);
 	PASS();
 }
 
