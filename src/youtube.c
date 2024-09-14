@@ -82,18 +82,25 @@ youtube_stream_valid(struct youtube_stream *p)
 	}
 }
 
-void
+result_t
 youtube_stream_visitor(struct youtube_stream *p, void (*visit)(const char *))
 {
 	youtube_stream_valid(p);
 	for (size_t i = 0; i < ARRAY_SIZE(p->url); ++i) {
 		char *s = NULL;
 		CURLUcode uc = curl_url_get(p->url[i], CURLUPART_URL, &s, 0);
-		error_if_uc_msg(uc, "Cannot get CURLUPART_URL"); // TODO refactor to result_t
+		if (uc) {
+			result_t err = {
+				.err = ERR_YOUTUBE_STREAM_VISITOR_GET_URL,
+				.curlu_code = uc,
+			};
+			return err;
+		}
 		assert(s);
 		visit(s);
 		curl_free(s);
 	}
+	return RESULT_OK;
 }
 
 static result_t

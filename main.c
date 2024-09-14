@@ -9,6 +9,7 @@
  */
 
 #include "coverage.h"
+#include "result.h"
 #include "sandbox.h"
 #include "youtube.h"
 
@@ -99,13 +100,12 @@ main(int argc, const char *argv[])
 		.after = NULL,
 	};
 
-	int rc = EX_DATAERR;
-	if (youtube_stream_setup(stream, &sops, argv[1])) { // TODO: check for result_t instead of bool
-		youtube_stream_visitor(stream, print_url);
-		rc = EX_OK;
+	result_t r = youtube_stream_setup(stream, &sops, argv[1]);
+	if (r.err == OK) {
+		r = youtube_stream_visitor(stream, print_url);
 	}
 
 	youtube_stream_cleanup(stream);
 	youtube_global_cleanup();
-	return rc;
+	return r.err == OK ? EX_OK : EX_DATAERR;
 }

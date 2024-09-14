@@ -213,6 +213,9 @@ result_to_strerror(result_t r)
 		my_snprintf("Cannot append plaintext n-parameter: %s",
 		            url_error(r));
 		break;
+	case ERR_YOUTUBE_STREAM_VISITOR_GET_URL:
+		my_snprintf("Cannot get URL as string: %s", url_error(r));
+		break;
 	}
 
 	return s;
