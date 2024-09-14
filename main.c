@@ -42,6 +42,40 @@ usage(const char *cmd, int rc)
 	return rc;
 }
 
+static void
+to_stderr(result_t r)
+{
+	fprintf(stderr, "ERROR: %s\n", result_to_strerror(r));
+}
+
+static int
+try_sandbox(void)
+{
+	result_t err = RESULT_OK;
+
+	err = sandbox_only_io_inet_tmpfile();
+	if (err.err) {
+		goto cleanup;
+	}
+
+	err = sandbox_only_io_inet_rpath();
+	if (err.err) {
+		goto cleanup;
+	}
+
+	err = sandbox_only_io();
+	if (err.err) {
+		goto cleanup;
+	}
+
+cleanup:
+	if (err.err) {
+		to_stderr(err);
+		return EX_SOFTWARE;
+	}
+	return EX_OK;
+}
+
 static result_t
 before_inet(youtube_handle_t h __attribute__((unused)))
 {
@@ -60,10 +94,21 @@ print_url(const char *url)
 	puts(url);
 }
 
+#define check_stderr(expr, status)                                             \
+	do {                                                                   \
+		result_t x = expr;                                             \
+		if (x.err) {                                                   \
+			to_stderr(x);                                          \
+			rc = status;                                           \
+			goto cleanup;                                          \
+		}                                                              \
+	} while (0)
+
 int
 main(int argc, const char *argv[])
 {
 	int fd __attribute__((cleanup(coverage_cleanup))) = coverage_open();
+	int rc = EX_OK;
 
 	if (argc < 2) {
 		return usage(argv[0], EX_USAGE);
@@ -72,26 +117,18 @@ main(int argc, const char *argv[])
 	if (0 == strncmp(ARG_HELP, argv[1], strlen(ARG_HELP))) {
 		return usage(argv[0], EX_OK);
 	} else if (0 == strncmp(ARG_SANDBOX, argv[1], strlen(ARG_SANDBOX))) {
-		sandbox_only_io_inet_tmpfile(); // TODO: check return value
-		sandbox_only_io_inet_rpath(); // TODO: check return value
-		sandbox_only_io(); // TODO: check return value
-		return EX_OK;
+		return try_sandbox();
 	}
 
-	result_t err = youtube_global_init();
-	if (err.err) {
-		// TODO: print result_to_strerror() to stderr
-		return EX_SOFTWARE;
-	}
-
-	err = sandbox_only_io_inet_tmpfile();
-	if (err.err) {
-		// TODO: print result_to_strerror() to stderr
-		return EX_OSERR;
-	}
+	check_stderr(youtube_global_init(), EX_SOFTWARE);
+	check_stderr(sandbox_only_io_inet_tmpfile(), EX_OSERR);
 
 	youtube_handle_t stream = youtube_stream_init();
-	assert(stream); // TODO: maybe do something like result_to_strerror?
+	if (stream == NULL) {
+		fprintf(stderr, "Cannot allocate stream object\n");
+		rc = EX_OSERR;
+		goto cleanup;
+	}
 
 	struct youtube_setup_ops sops = {
 		.before = NULL,
@@ -104,12 +141,11 @@ main(int argc, const char *argv[])
 		.after = NULL,
 	};
 
-	result_t r = youtube_stream_setup(stream, &sops, argv[1]);
-	if (r.err == OK) {
-		r = youtube_stream_visitor(stream, print_url);
-	}
+	check_stderr(youtube_stream_setup(stream, &sops, argv[1]), EX_DATAERR);
+	check_stderr(youtube_stream_visitor(stream, print_url), EX_DATAERR);
 
+cleanup:
 	youtube_stream_cleanup(stream);
 	youtube_global_cleanup();
-	return r.err == OK ? EX_OK : EX_DATAERR;
+	return rc;
 }
