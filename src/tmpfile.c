@@ -15,15 +15,6 @@ checked_fclose(FILE **fs)
 	info_m_if(*fs && fclose(*fs), "Ignoring error fclose()-ing stream");
 }
 
-#define check_if_cond_with_errno(cond, op)                                     \
-	while (cond) {                                                         \
-		result_t err = {                                               \
-			.err = op,                                             \
-			.num = errno,                                          \
-		};                                                             \
-		return err;                                                    \
-	}
-
 result_t
 tmpfd(int *fd)
 {
@@ -86,5 +77,3 @@ tmpunmap(void *addr, unsigned int sz)
 	const int rc = munmap(addr, sz);
 	info_m_if(rc < 0, "Ignoring error munmap()-ing tmpfile");
 }
-
-#undef check_if_cond_with_errno

@@ -419,15 +419,6 @@ seccomp_apply_common(scmp_filter_ctx ctx, unsigned flags)
 	return result;
 }
 
-#define check_if_cond_with_errno(cond, op)                                     \
-	while (cond) {                                                         \
-		result_t err = {                                               \
-			.err = op,                                             \
-			.num = errno,                                          \
-		};                                                             \
-		return err;                                                    \
-	}
-
 result_t
 seccomp_apply(unsigned flags)
 {
@@ -449,5 +440,4 @@ seccomp_apply(unsigned flags)
 	return RESULT_OK;
 }
 
-#undef check_if_cond_with_errno
 #undef info_seccomp_rule_add_if

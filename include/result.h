@@ -104,6 +104,20 @@ extern const result_t RESULT_OK;
 	} while (0)
 
 /*
+ * Like check_if(), while also capturing <errno> in the result_t struct.
+ */
+#define check_if_cond_with_errno(cond, err_type)                               \
+	do {                                                                   \
+		if (cond) {                                                    \
+			result_t err = {                                       \
+				.err = err_type,                               \
+				.num = errno,                                  \
+			};                                                     \
+			return err;                                            \
+		}                                                              \
+	} while (0)
+
+/*
  * Copy <src> into <r>, backed by automatic storage managed by result.c module.
  */
 void result_strcpy(result_t *dst, const char *src);

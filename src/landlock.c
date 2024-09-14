@@ -59,15 +59,6 @@ landlock_restrict_self(const int ruleset_fd, const __u32 flags)
 #include <linux/prctl.h>
 #include <sys/prctl.h>
 
-#define check_if_cond_with_errno(cond, op)                                     \
-	while (cond) {                                                         \
-		result_t err = {                                               \
-			.err = op,                                             \
-			.num = errno,                                          \
-		};                                                             \
-		return err;                                                    \
-	}
-
 static result_t
 ruleset_add_one(int fd, const char *path, struct landlock_path_beneath_attr *pb)
 {
@@ -160,5 +151,3 @@ landlock_apply(const char **paths, int sz, int port)
 
 	return RESULT_OK;
 }
-
-#undef check_if_cond_with_errno
