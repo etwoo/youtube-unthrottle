@@ -39,7 +39,7 @@ write_to_tmpfile(char *ptr, size_t size, size_t nmemb, void *userdata)
 static CURL *
 get_easy_handle(void)
 {
-	static CURLU *GLOBAL_CURL_EASY_HANDLE = NULL;
+	static CURL *GLOBAL_CURL_EASY_HANDLE = NULL;
 	/*
 	 * Initialization of these static variables is not currently
 	 * thread-safe. Ditto for callers of get_easy_handle() who use the
@@ -135,7 +135,7 @@ url_download(const char *url_str,   /* may be NULL */
 	CURLU *url = NULL;
 	struct curl_slist *headers = NULL;
 
-	CURLU *curl = get_easy_handle();
+	CURL *curl = get_easy_handle();
 	CURLcode res = curl == NULL ? CURLE_OUT_OF_MEMORY : CURLE_OK;
 	check_if_num(res, ERR_URL_DOWNLOAD_ALLOC);
 
