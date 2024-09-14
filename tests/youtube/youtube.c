@@ -6,6 +6,8 @@
 #include "url.h"
 #include "write.h"
 
+#include <assert.h>
+#include <stdbool.h>
 #include <unistd.h>
 
 static const char FAKE_YT_URL[] = "https://www.youtube.com/watch?v=FOOBAR";
@@ -88,10 +90,11 @@ stream_setup_with_redirected_network_io(void)
 	youtube_handle_t stream = youtube_stream_init();
 	ASSERT(stream);
 
-	bool rc = youtube_stream_setup(stream, &NOOP, FAKE_YT_URL);
-	ASSERT(rc);
+	result_t err = youtube_stream_setup(stream, &NOOP, FAKE_YT_URL);
+	ASSERT_EQ(err.err, OK);
 
-	youtube_stream_visitor(stream, check_url);
+	err = youtube_stream_visitor(stream, check_url);
+	ASSERT_EQ(err.err, OK);
 	ASSERT(CHECK_URL_RESULT);
 
 	youtube_stream_cleanup(stream);
@@ -115,8 +118,8 @@ stream_setup_with_null_ops(void)
 	youtube_handle_t stream = youtube_stream_init();
 	ASSERT(stream);
 
-	bool rc = youtube_stream_setup(stream, &NULL_OPS, FAKE_YT_URL);
-	ASSERT(rc);
+	result_t err = youtube_stream_setup(stream, &NULL_OPS, FAKE_YT_URL);
+	ASSERT_EQ(err.err, OK);
 
 	youtube_stream_cleanup(stream);
 	PASS();
