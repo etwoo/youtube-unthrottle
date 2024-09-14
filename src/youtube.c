@@ -96,30 +96,37 @@ youtube_stream_visitor(struct youtube_stream *p, void (*visit)(const char *))
 	}
 }
 
-static void
+static result_t
 youtube_stream_set_one(struct youtube_stream *p,
                        int idx,
                        const char *val,
                        size_t sz __attribute__((unused)))
 {
 	CURLUcode uc = curl_url_set(p->url[idx], CURLUPART_URL, val, 0);
-	error_if_uc_msg(uc, "Cannot set CURLUPART_URL"); // TODO refactor to result_t
+	if (uc) {
+		result_t err = {
+			.err = ERR_JS_PARSE_JSON_CALLBACK_GOT_PLAINTEXT_URL,
+			.curlu_code = uc,
+		};
+		return err;
+	}
+	return RESULT_OK;
 }
 
-static void
+static result_t
 youtube_stream_set_video(const char *val, size_t sz, void *userdata)
 {
 	struct youtube_stream *p = (struct youtube_stream *)userdata;
 	debug("Setting video stream: %.*s", (int)sz, val);
-	youtube_stream_set_one(p, 1, val, sz);
+	return youtube_stream_set_one(p, 1, val, sz);
 }
 
-static void
+static result_t
 youtube_stream_set_audio(const char *val, size_t sz, void *userdata)
 {
 	struct youtube_stream *p = (struct youtube_stream *)userdata;
 	debug("Setting audio stream: %.*s", (int)sz, val);
-	youtube_stream_set_one(p, 0, val, sz);
+	return youtube_stream_set_one(p, 0, val, sz);
 }
 
 static void

@@ -128,12 +128,12 @@ parse_json(const char *json,
 
 		if (0 == strncmp(mimetype, MTVIDEO, strlen(MTVIDEO)) &&
 		    false == got_video) {
-			ops->got_video(url, strlen(url), userdata);
+			check(ops->got_video(url, strlen(url), userdata));
 			got_video = true;
 		}
 		if (0 == strncmp(mimetype, MTAUDIO, strlen(MTAUDIO)) &&
 		    false == got_audio) {
-			ops->got_audio(url, strlen(url), userdata);
+			check(ops->got_audio(url, strlen(url), userdata));
 			got_audio = true;
 		}
 

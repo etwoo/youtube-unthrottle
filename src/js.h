@@ -6,8 +6,8 @@
 #include <stddef.h> /* for size_t */
 
 struct parse_ops {
-	void (*got_video)(const char *, size_t, void *);
-	void (*got_audio)(const char *, size_t, void *);
+	result_t (*got_video)(const char *, size_t, void *);
+	result_t (*got_audio)(const char *, size_t, void *);
 };
 
 result_t parse_json(const char *json, size_t sz, struct parse_ops *o, void *ud);
