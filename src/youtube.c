@@ -89,7 +89,7 @@ youtube_stream_visitor(struct youtube_stream *p, void (*visit)(const char *))
 	for (size_t i = 0; i < ARRAY_SIZE(p->url); ++i) {
 		char *s = NULL;
 		CURLUcode uc = curl_url_get(p->url[i], CURLUPART_URL, &s, 0);
-		error_if_uc_msg(uc, "Cannot get CURLUPART_URL");
+		error_if_uc_msg(uc, "Cannot get CURLUPART_URL"); // TODO refactor to result_t
 		assert(s);
 		visit(s);
 		curl_free(s);
@@ -103,7 +103,7 @@ youtube_stream_set_one(struct youtube_stream *p,
                        size_t sz __attribute__((unused)))
 {
 	CURLUcode uc = curl_url_set(p->url[idx], CURLUPART_URL, val, 0);
-	error_if_uc_msg(uc, "Cannot set CURLUPART_URL");
+	error_if_uc_msg(uc, "Cannot set CURLUPART_URL"); // TODO refactor to result_t
 }
 
 static void
@@ -494,5 +494,3 @@ youtube_stream_setup(struct youtube_stream *p,
 
 	return RESULT_OK;
 }
-
-#undef error_if_uc_msg
