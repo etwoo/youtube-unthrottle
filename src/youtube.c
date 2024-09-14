@@ -89,13 +89,7 @@ youtube_stream_visitor(struct youtube_stream *p, void (*visit)(const char *))
 	for (size_t i = 0; i < ARRAY_SIZE(p->url); ++i) {
 		char *s = NULL;
 		CURLUcode uc = curl_url_get(p->url[i], CURLUPART_URL, &s, 0);
-		if (uc) {
-			result_t err = {
-				.err = ERR_YOUTUBE_STREAM_VISITOR_GET_URL,
-				.curlu_code = uc,
-			};
-			return err;
-		}
+		check_if_num(uc, ERR_YOUTUBE_STREAM_VISITOR_GET_URL);
 		assert(s);
 		visit(s);
 		curl_free(s);
@@ -110,13 +104,7 @@ youtube_stream_set_one(struct youtube_stream *p,
                        size_t sz __attribute__((unused)))
 {
 	CURLUcode uc = curl_url_set(p->url[idx], CURLUPART_URL, val, 0);
-	if (uc) {
-		result_t err = {
-			.err = ERR_JS_PARSE_JSON_CALLBACK_GOT_PLAINTEXT_URL,
-			.curlu_code = uc,
-		};
-		return err;
-	}
+	check_if_num(uc, ERR_JS_PARSE_JSON_CALLBACK_GOT_PLAINTEXT_URL);
 	return RESULT_OK;
 }
 
@@ -155,13 +143,7 @@ pop_n_param_one(CURLU *url, char **result)
 	char *getargs __attribute__((cleanup(curl_free_getargs))) = NULL;
 
 	CURLUcode uc = curl_url_get(url, CURLUPART_QUERY, &getargs, 0);
-	if (uc) {
-		result_t err = {
-			.err = ERR_YOUTUBE_N_PARAM_QUERY_GET,
-			.curlu_code = uc,
-		};
-		return err;
-	}
+	check_if_num(uc, ERR_YOUTUBE_N_PARAM_QUERY_GET);
 	assert(getargs);
 
 	const size_t getargs_sz = strlen(getargs);
@@ -230,13 +212,7 @@ pop_n_param_one(CURLU *url, char **result)
 	debug("After n-param ciphertext removal:  %s", getargs);
 
 	uc = curl_url_set(url, CURLUPART_QUERY, getargs, 0);
-	if (uc) {
-		result_t err = {
-			.err = ERR_YOUTUBE_N_PARAM_QUERY_GET,
-			.curlu_code = uc,
-		};
-		return err;
-	}
+	check_if_num(uc, ERR_YOUTUBE_N_PARAM_QUERY_GET);
 
 	return RESULT_OK;
 }
@@ -280,13 +256,7 @@ append_n_param(const char *plaintext, size_t sz, void *userdata)
 
 	CURLU *u = p->url[p->pos++];
 	CURLUcode uc = curl_url_set(u, CURLUPART_QUERY, kv, CURLU_APPENDQUERY);
-	if (uc) {
-		result_t err = {
-			.err = ERR_YOUTUBE_N_PARAM_QUERY_APPEND_PLAINTEXT,
-			.curlu_code = uc,
-		};
-		return err;
-	}
+	check_if_num(uc, ERR_YOUTUBE_N_PARAM_QUERY_APPEND_PLAINTEXT);
 
 	return RESULT_OK;
 }
@@ -436,12 +406,7 @@ youtube_stream_setup(struct youtube_stream *p,
 
 	debug("Setting base.js URL: %.*s", (int)basejs_sz, basejs);
 	p->basejs = strndup(basejs, basejs_sz);
-	if (p->basejs == NULL) {
-		result_t err = {
-			.err = ERR_JS_BASEJS_URL_ALLOC,
-		};
-		return err;
-	}
+	check_if(p->basejs == NULL, ERR_JS_BASEJS_URL_ALLOC);
 
 	check(download_and_mmap_tmpfd(NULL,
 	                              "www.youtube.com",

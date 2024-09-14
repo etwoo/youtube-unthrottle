@@ -425,18 +425,14 @@ seccomp_apply(unsigned flags)
 	scmp_filter_ctx ctx = seccomp_init(SCMP_ACT_ERRNO(EACCES));
 	check_if_cond_with_errno(ctx == NULL, ERR_SANDBOX_SECCOMP_INIT);
 
-	const bool applied = seccomp_apply_common(ctx, flags);
-	info_if(!applied, "Cannot add all seccomp rules; continuing ...");
+	const bool apply = seccomp_apply_common(ctx, flags);
+	info_if(!apply, "Cannot add all seccomp rules; continuing ...");
 
 	const int rc = seccomp_load(ctx);
 	check_if_cond_with_errno(rc < 0, ERR_SANDBOX_SECCOMP_LOAD);
 	seccomp_release(ctx);
 
-	if (applied) {
-		debug("seccomp_apply() succeeded");
-	} else {
-		debug("seccomp_apply() encountered some issues");
-	}
+	debug("seccomp_apply() %s", apply ? "succeeded" : "encountered issues");
 	return RESULT_OK;
 }
 

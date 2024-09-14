@@ -64,11 +64,7 @@ struct result {
 		ERR_YOUTUBE_N_PARAM_QUERY_APPEND_PLAINTEXT,
 		ERR_YOUTUBE_STREAM_VISITOR_GET_URL,
 	} err;
-	union {
-		int num;
-		int curl_code;
-		int curlu_code;
-	};
+	int num; /* may hold errno, CURLcode, CURLUcode, etc */
 	const char *msg;
 };
 
@@ -77,7 +73,7 @@ typedef struct result result_t;
 extern const result_t RESULT_OK;
 
 /*
- * Convenience macro for checking (and returning) if x is a non-OK result_t.
+ * Return if <expr> yields a non-OK result_t.
  */
 #define check(expr)                                                            \
 	do {                                                                   \
@@ -88,10 +84,10 @@ extern const result_t RESULT_OK;
 	} while (0)
 
 /*
- * Convenience macro for returning a result_t if a given condition is true.
+ * Return a result_t if a given (arbitrary) condition is true.
  *
  * Note: this currently only works well for zero-arg result_t values that do
- * not need to set extra values like errno, curl_code, curlu_code.
+ * not need to set extra values like an errno, CURLcode, or CURLUcode.
  */
 #define check_if(cond, err_type)                                               \
 	do {                                                                   \
@@ -104,7 +100,26 @@ extern const result_t RESULT_OK;
 	} while (0)
 
 /*
- * Like check_if(), while also capturing <errno> in the result_t struct.
+ * Return if <num> is non-zero, while also capturing <num> in the result_t.
+ *
+ * Note: <num> would typically be something like a CURLcode or CURLUcode.
+ */
+#define check_if_num(val, err_type)                                            \
+	do {                                                                   \
+		if (val) {                                                     \
+			result_t err = {                                       \
+				.err = err_type,                               \
+				.num = val,                                    \
+			};                                                     \
+			return err;                                            \
+		}                                                              \
+	} while (0)
+
+/*
+ * Like check_if(), while also capturing <errno> in the result_t.
+ *
+ * Note that while this captures <errno> in the result_t, the controlling
+ * <cond> need not depend on <errno> explicitly!
  */
 #define check_if_cond_with_errno(cond, err_type)                               \
 	do {                                                                   \

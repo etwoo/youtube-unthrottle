@@ -58,13 +58,13 @@ my_strerror(result_t r)
 static const char *
 easy_error(result_t r)
 {
-	return curl_easy_strerror(r.curl_code);
+	return curl_easy_strerror(r.num);
 }
 
 static const char *
 url_error(result_t r)
 {
-	return curl_url_strerror(r.curlu_code);
+	return curl_url_strerror(r.num);
 }
 
 const char *
