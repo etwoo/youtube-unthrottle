@@ -331,7 +331,7 @@ call_js_one(duk_context *ctx,
 	check_if(result == NULL, ERR_JS_CALL_GET_RESULT);
 
 	debug("Got JavaScript function result: %s", result);
-	ops->got_result(result, strlen(result), userdata);
+	check(ops->got_result(result, strlen(result), userdata));
 
 	return RESULT_OK;
 }

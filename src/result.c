@@ -203,6 +203,13 @@ result_to_strerror(result_t r)
 	case ERR_YOUTUBE_N_PARAM_FIND_IN_QUERY:
 		my_snprintf("No n-parameter in query string: %s", r.msg);
 		break;
+	case ERR_YOUTUBE_N_PARAM_KVPAIR_ALLOC:
+		s = "Cannot allocate kv-pair buffer";
+		break;
+	case ERR_YOUTUBE_N_PARAM_QUERY_APPEND_PLAINTEXT:
+		my_snprintf("Cannot append plaintext n-parameter: %s",
+		            url_error(r));
+		break;
 	}
 
 	return s;

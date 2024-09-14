@@ -23,7 +23,7 @@ result_t find_js_deobfuscator(const char *js,
                               size_t *deobfuscator_sz);
 
 struct call_ops {
-	void (*got_result)(const char *, size_t, void *);
+	result_t (*got_result)(const char *, size_t, void *);
 };
 
 result_t call_js_foreach(const char *code,

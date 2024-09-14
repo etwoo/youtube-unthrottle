@@ -608,7 +608,7 @@ result_copy_init(struct result_copy *c)
 	c->str[0] = '\0';
 }
 
-static void
+static result_t
 copy_result(const char *val, size_t sz, void *userdata)
 {
 	struct result_copy *result = (struct result_copy *)userdata;
@@ -616,6 +616,7 @@ copy_result(const char *val, size_t sz, void *userdata)
 	memcpy(result->str, val, sz);
 	result->str[sz] = '\0';
 	debug("Copied result: %s", result->str);
+	return RESULT_OK;
 }
 
 TEST

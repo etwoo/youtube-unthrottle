@@ -242,7 +242,7 @@ pop_n_param_all(struct youtube_stream *p, char **results, size_t capacity)
 	return RESULT_OK;
 }
 
-static void
+static result_t
 append_n_param(const char *plaintext, size_t sz, void *userdata)
 {
 	struct youtube_stream *p = (struct youtube_stream *)userdata;
@@ -250,7 +250,7 @@ append_n_param(const char *plaintext, size_t sz, void *userdata)
 	const size_t kv_sz = sz + 3;
 	/* magic number 3: two chars for "n=", one char for NUL terminator */
 	char *kv = malloc(kv_sz * sizeof(*kv));
-	error_m_if(kv == NULL, "Cannot allocate kv-pair buffer");
+	check_if(kv == NULL, ERR_YOUTUBE_N_PARAM_KVPAIR_ALLOC);
 
 	kv[0] = 'n';
 	kv[1] = '=';
@@ -259,9 +259,16 @@ append_n_param(const char *plaintext, size_t sz, void *userdata)
 
 	CURLU *u = p->url[p->pos++];
 	CURLUcode uc = curl_url_set(u, CURLUPART_QUERY, kv, CURLU_APPENDQUERY);
-	error_if_uc_msg(uc, "Cannot append plaintext n-parameter");
+	if (uc) {
+		result_t err = {
+			.err = ERR_YOUTUBE_N_PARAM_QUERY_APPEND_PLAINTEXT,
+			.curlu_code = uc,
+		};
+		return err;
+	}
 
 	free(kv);
+	return RESULT_OK;
 }
 
 static result_t
