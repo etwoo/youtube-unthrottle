@@ -212,7 +212,7 @@ pop_n_param_one(CURLU *url, char **result)
 	debug("After n-param ciphertext removal:  %s", getargs);
 
 	uc = curl_url_set(url, CURLUPART_QUERY, getargs, 0);
-	check_if_num(uc, ERR_YOUTUBE_N_PARAM_QUERY_GET);
+	check_if_num(uc, ERR_YOUTUBE_N_PARAM_QUERY_SET);
 
 	return RESULT_OK;
 }
