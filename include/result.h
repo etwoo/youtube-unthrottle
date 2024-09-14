@@ -1,7 +1,9 @@
 #ifndef RESULT_H
 #define RESULT_H
 
-struct result_t {
+#include <stddef.h> /* for size_t */
+
+struct result {
 	enum {
 		OK = 0,
 		ERR_JS_PARSE_JSON_ALLOC_HEAP,
@@ -63,14 +65,16 @@ struct result_t {
 		ERR_YOUTUBE_STREAM_VISITOR_GET_URL,
 	} err;
 	union {
-		int errno;
+		int num;
 		int curl_code;
 		int curlu_code;
 	};
 	const char *msg;
 };
 
-const result_t RESULT_OK;
+typedef struct result result_t;
+
+extern const result_t RESULT_OK;
 
 /*
  * Convenience macro for checking (and returning) if x is a non-OK result_t.
@@ -115,6 +119,6 @@ void result_strcpy_span(result_t *dst, const char *src, size_t sz);
  *
  * Note: the caller does not own the returned buffer.
  */
-char *result_to_strerror(result_t r);
+const char *result_to_strerror(result_t r);
 
 #endif

@@ -63,7 +63,7 @@ landlock_restrict_self(const int ruleset_fd, const __u32 flags)
 	while (cond) {                                                         \
 		result_t err = {                                               \
 			.err = op,                                             \
-			.errno = errno,                                        \
+			.num = errno,                                          \
 		};                                                             \
 		return err;                                                    \
 	}
@@ -77,7 +77,7 @@ ruleset_add_one(int fd, const char *path, struct landlock_path_beneath_attr *pb)
 	if (pb->parent_fd < 0) {
 		result_t err = {
 			.err = ERR_SANDBOX_LANDLOCK_OPEN_O_PATH,
-			.errno = errno,
+			.num = errno,
 		};
 		result_strcpy(&err, path);
 		return err;
@@ -87,7 +87,7 @@ ruleset_add_one(int fd, const char *path, struct landlock_path_beneath_attr *pb)
 	if (rc < 0) {
 		result_t err = {
 			.err = ERR_SANDBOX_LANDLOCK_ADD_RULE_PATH,
-			.errno = errno,
+			.num = errno,
 		};
 		result_strcpy(&err, path);
 		return err;

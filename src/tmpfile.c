@@ -19,7 +19,7 @@ checked_fclose(FILE **fs)
 	while (cond) {                                                         \
 		result_t err = {                                               \
 			.err = op,                                             \
-			.errno = errno,                                        \
+			.num = errno,                                          \
 		};                                                             \
 		return err;                                                    \
 	}
@@ -73,7 +73,7 @@ tmpmap(int fd, void **addr, unsigned int *sz)
 	 */
 	assert(*addr != NULL);
 
-	return true;
+	return RESULT_OK;
 }
 
 void

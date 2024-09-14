@@ -423,7 +423,7 @@ seccomp_apply_common(scmp_filter_ctx ctx, unsigned flags)
 	while (cond) {                                                         \
 		result_t err = {                                               \
 			.err = op,                                             \
-			.errno = errno,                                        \
+			.num = errno,                                          \
 		};                                                             \
 		return err;                                                    \
 	}

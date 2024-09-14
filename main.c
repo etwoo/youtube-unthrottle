@@ -108,7 +108,6 @@ int
 main(int argc, const char *argv[])
 {
 	int fd __attribute__((cleanup(coverage_cleanup))) = coverage_open();
-	int rc = EX_OK;
 
 	if (argc < 2) {
 		return usage(argv[0], EX_USAGE);
@@ -120,10 +119,13 @@ main(int argc, const char *argv[])
 		return try_sandbox();
 	}
 
+	int rc = EX_OK;
+	youtube_handle_t stream = NULL;
+
 	check_stderr(youtube_global_init(), EX_SOFTWARE);
 	check_stderr(sandbox_only_io_inet_tmpfile(), EX_OSERR);
 
-	youtube_handle_t stream = youtube_stream_init();
+	stream = youtube_stream_init();
 	if (stream == NULL) {
 		fprintf(stderr, "Cannot allocate stream object\n");
 		rc = EX_OSERR;

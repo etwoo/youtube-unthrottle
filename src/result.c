@@ -1,8 +1,10 @@
 #include "result.h"
 
+#include <assert.h>
 #include <curl/curl.h>
+#include <string.h> /* for strerror() */
 
-extern const result_t RESULT_OK = {
+const result_t RESULT_OK = {
 	.err = OK,
 };
 
@@ -15,8 +17,7 @@ static char *RESULT_HEAP_POS = RESULT_HEAP;
 static void
 my_vsnprintf(const char *pattern, va_list ap)
 {
-	size_t capacity = sizeof(RESULT_HEAP) - (RESULT_HEAP_POS - RESULT_HEAP);
-
+	int capacity = sizeof(RESULT_HEAP) - (RESULT_HEAP_POS - RESULT_HEAP);
 	int written = vsnprintf(RESULT_HEAP_POS, capacity, pattern, ap);
 	assert(written > 0 && written < capacity);
 
@@ -24,9 +25,9 @@ my_vsnprintf(const char *pattern, va_list ap)
 	++RESULT_HEAP_POS; /* seek past NUL byte */
 }
 
+__attribute__((format(printf, 1, 2)))
 static void
 my_snprintf(const char *pattern, ...)
-	__attribute__((format(printf, 1, 2)))
 {
 	va_list ap;
 	va_start(ap, pattern);
@@ -35,16 +36,23 @@ my_snprintf(const char *pattern, ...)
 }
 
 void
-result_strcpy(result_t *dst, const char *src);
+result_strcpy(result_t *dst, const char *src)
 {
 	dst->msg = RESULT_HEAP_POS;
 	my_snprintf("%s", src);
 }
 
+void
+result_strcpy_span(result_t *dst, const char *src, size_t sz)
+{
+	dst->msg = RESULT_HEAP_POS;
+	my_snprintf("%.*s", (int)sz, src);
+}
+
 static const char *
 my_strerror(result_t r)
 {
-	return strerror(r.errno);
+	return strerror(r.num);
 }
 
 static const char *
@@ -151,13 +159,14 @@ result_to_strerror(result_t r)
 		my_snprintf("Error in landlock_add_rule() for port: %s",
 		            my_strerror(r));
 		break;
-	case ERR_SANDBOX_LANDLOCK_PR_SET_NO_NEW_PRIVS:
+	case ERR_SANDBOX_LANDLOCK_SET_NO_NEW_PRIVS:
 		my_snprintf("Error in prctl(PR_SET_NO_NEW_PRIVS): %s",
 		            my_strerror(r));
 		break;
 	case ERR_SANDBOX_LANDLOCK_RESTRICT_SELF:
 		my_snprintf("Error in landlock_restrict_self(): %s",
 		            my_strerror(r));
+		break;
 	case ERR_SANDBOX_SECCOMP_INIT:
 		my_snprintf("Error in seccomp_init(): %s", my_strerror(r));
 		break;

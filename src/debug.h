@@ -2,7 +2,7 @@
 #define DEBUG_H
 
 #include <errno.h>
-#include <string.h>   /* for strerror() */
+#include <string.h> /* for strerror() */
 
 /*
  * Log a message at DEBUG level via printf-style format string, along with the

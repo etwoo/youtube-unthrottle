@@ -199,7 +199,7 @@ find_js_timestamp(const char *js, size_t js_sz, long long int *value)
 	if (errno != 0) {
 		result_t err = {
 			.err = ERR_JS_TIMESTAMP_PARSE_TO_LONGLONG,
-			.errno = errno,
+			.num = errno,
 		};
 		result_strcpy_span(&err, ts, tsz);
 		return err;
