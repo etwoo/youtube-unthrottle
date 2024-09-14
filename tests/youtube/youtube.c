@@ -28,7 +28,9 @@ test_fixture_request_handler(void *request, const char *path, int fd)
 	debug("Mocking request: CURL* %p, %s, fd=%d", request, path, fd);
 
 	const char *to_write = NULL;
-	if (strstr(path, "/watch?v=")) {
+	if (0 == strlen(path)) {
+		to_write = ""; /* handle thread warmup in url_global_init() */
+	} else if (strstr(path, "/watch?v=")) {
 		to_write = FAKE_HTML_RESPONSE;
 	} else if (strstr(path, "/youtubei/v1/player")) {
 		to_write = FAKE_JSON_RESPONSE;
@@ -36,7 +38,7 @@ test_fixture_request_handler(void *request, const char *path, int fd)
 		to_write = FAKE_JS_RESPONSE;
 	}
 
-	assert(to_write || "Test logic bug? No fixture for given path!");
+	assert(to_write && "Test logic bug? No fixture for given path!");
 
 	ssize_t written = write_with_retry(fd, to_write, strlen(to_write));
 	info_m_if(written < 0, "Cannot write to tmpfile");
