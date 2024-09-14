@@ -1,10 +1,14 @@
 #include "result.h"
 
 #include "coverage.h"
+#include "debug.h"
 #include "greatest.h"
 
 #define ASSERT_IN(haystack, needle)                                            \
-	ASSERT_NEQ(NULL, strstr(haystack, needle))
+	do {                                                                   \
+		debug("Checking for \"%s\" in \"%s\"", needle, haystack);      \
+		ASSERT_NEQ(NULL, strstr(haystack, needle));                    \
+	} while (0)
 
 static const char *
 make(int err_type)
