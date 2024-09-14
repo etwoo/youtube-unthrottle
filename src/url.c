@@ -31,7 +31,7 @@ write_to_tmpfile(char *ptr, size_t size, size_t nmemb, void *userdata)
 	}
 
 	const ssize_t written = write_with_retry(*fd, ptr, real_size);
-	error_m_if(written < 0, "Cannot write to tmpfile");
+	info_m_if(written < 0, "Cannot write to tmpfile");
 
 	return real_size; /* always consider buffer entirely consumed */
 }
