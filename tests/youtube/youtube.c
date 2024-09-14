@@ -34,7 +34,7 @@ test_fixture_request_handler(void *request, const char *path, int fd)
 		to_write = FAKE_JS_RESPONSE;
 	}
 
-	error_if(to_write == NULL, "No test fixture for URL path: %s", path);
+	assert(to_write && "Test logic bug? No fixture for given path!");
 
 	ssize_t written = write_with_retry(fd, to_write, strlen(to_write));
 	error_m_if(written < 0, "Cannot write to tmpfile");
@@ -69,7 +69,7 @@ check_url(const char *url)
 		debug("Got expected video URL: %s", url);
 	} else {
 		CHECK_URL_RESULT = false;
-		warn_then_return("check_url() fails: %s", url);
+		info("check_url() fails: %s", url);
 	}
 }
 
