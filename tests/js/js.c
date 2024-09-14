@@ -25,7 +25,7 @@ static int
 parse(const char *str)
 {
 	result_t err = parse_json(str, strlen(str), &NOOP, NULL);
-	return err.num;
+	return err.err;
 }
 
 TEST
