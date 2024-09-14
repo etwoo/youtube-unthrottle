@@ -602,7 +602,8 @@ TEST
 call_with_duktape_pcompile_fail(void)
 {
 	static const char js[] = "\"Not a valid function definition!\"";
-	call_js_foreach(js, sizeof(js), NULL, 0, NULL, NULL);
+	result_t err = call_js_foreach(js, sizeof(js), NULL, 0, NULL, NULL);
+	ASSERT_EQ(err.err, ERR_JS_CALL_COMPILE);
 	PASS();
 }
 
@@ -613,7 +614,13 @@ call_with_duktape_pcall_fail(void)
 	args[0] = "Hello, World!";
 
 	static const char js[] = "function(a){return not_defined;};";
-	call_js_foreach(js, sizeof(js), args, ARRAY_SIZE(args), NULL, NULL);
+	result_t err = call_js_foreach(js,
+	                               sizeof(js),
+	                               args,
+	                               ARRAY_SIZE(args),
+	                               NULL,
+	                               NULL);
+	ASSERT_EQ(err.err, ERR_JS_CALL_INVOKE);
 	PASS();
 }
 
@@ -624,7 +631,13 @@ call_with_duktape_pcall_incorrect_result_type(void)
 	args[0] = "Hello, World!";
 
 	static const char js[] = "function(a){return true;};";
-	call_js_foreach(js, sizeof(js), args, ARRAY_SIZE(args), NULL, NULL);
+	result_t err = call_js_foreach(js,
+	                               sizeof(js),
+	                               args,
+	                               ARRAY_SIZE(args),
+	                               NULL,
+	                               NULL);
+	ASSERT_EQ(err.err, ERR_JS_CALL_GET_RESULT);
 	PASS();
 }
 
@@ -663,8 +676,13 @@ call_with_duktape_minimum_valid_function(void)
 	args[0] = "Hello, World!";
 
 	static const char js[] = "function(a){return a.toUpperCase();};";
-	call_js_foreach(js, sizeof(js), args, ARRAY_SIZE(args), &cops, &result);
-
+	result_t err = call_js_foreach(js,
+	                               sizeof(js),
+	                               args,
+	                               ARRAY_SIZE(args),
+	                               &cops,
+	                               &result);
+	ASSERT_EQ(err.err, OK);
 	ASSERT_STR_EQ(result.str, "HELLO, WORLD!");
 	PASS();
 }
