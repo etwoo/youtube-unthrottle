@@ -430,7 +430,8 @@ find_base_js_url_negative(void)
 	size_t sz = 0;
 
 	static const char html[] = "<html/>";
-	find_base_js_url(html, sizeof(html), &p, &sz);
+	result_t err = find_base_js_url(html, sizeof(html), &p, &sz);
+	ASSERT_EQ(err.err, ERR_JS_BASEJS_URL_FIND);
 
 	ASSERT_EQ(p, NULL);
 	ASSERT_EQ(sz, 0);
@@ -449,7 +450,8 @@ find_base_js_url_positive(void)
 		"nonce=\"AAAAAAAAAAAAAAAAAAAAAA\""
 		">"
 		"</script>";
-	find_base_js_url(html, sizeof(html), &got_url, &got_sz);
+	result_t err = find_base_js_url(html, sizeof(html), &got_url, &got_sz);
+	ASSERT_EQ(err.err, OK);
 
 	static const char expected[] =
 		"/s/player/deadbeef/player_ias.vflset/en_US/base.js";
