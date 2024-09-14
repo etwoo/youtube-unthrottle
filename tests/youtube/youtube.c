@@ -36,7 +36,7 @@ test_fixture_request_handler(void *request, const char *path, int fd)
 		to_write = FAKE_JS_RESPONSE;
 	}
 
-	assert(to_write && "Test logic bug? No fixture for given path!");
+	assert(to_write || "Test logic bug? No fixture for given path!");
 
 	ssize_t written = write_with_retry(fd, to_write, strlen(to_write));
 	info_m_if(written < 0, "Cannot write to tmpfile");
