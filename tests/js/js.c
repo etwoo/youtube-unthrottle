@@ -21,114 +21,115 @@ static struct parse_ops NOOP = {
 	.got_audio = parse_callback_noop,
 };
 
-static void
+static result_t
 parse(const char *str)
 {
-	parse_json(str, strlen(str), &NOOP, NULL);
+	return parse_json(str, strlen(str), &NOOP, NULL);
 }
 
 TEST
 root_empty(void)
 {
-	parse("");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("").err);
 	PASS();
 }
 
 TEST
 root_number_NaN(void)
 {
-	parse("NaN");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("NaN").err);
 	PASS();
 }
 
 TEST
 root_number_too_large(void)
 {
-	parse("9007199254740992"); /* 2^53 */
+	/* Note: 9007199254740992 == 2^53 */
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("9007199254740992").err);
 	PASS();
 }
 
 TEST
 root_string_missing_quotes(void)
 {
-	parse("Hello, World!");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("Hello, World!").err);
 	PASS();
 }
 
 TEST
 root_string_missing_opening_quote(void)
 {
-	parse("Hello, World!\"");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("Hello, World!\"").err);
 	PASS();
 }
 
 TEST
 root_string_missing_closing_quote(void)
 {
-	parse("\"Hello, World!");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("\"Hello, World!").err);
 	PASS();
 }
 
 TEST
 root_boolean_uppercase(void)
 {
-	parse("FALSE");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("FALSE").err);
 	PASS();
 }
 
 TEST
 root_array_only_opening_brace(void)
 {
-	parse("[");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("[").err);
 	PASS();
 }
 
 TEST
 root_array_only_closing_brace(void)
 {
-	parse("]");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("]").err);
 	PASS();
 }
 
 TEST
 root_array_missing_opening_brace(void)
 {
-	parse("1, 2, 3]");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("1, 2, 3]").err);
 	PASS();
 }
 
 TEST
 root_array_missing_closing_brace(void)
 {
-	parse("[1, 2, 3");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("[1, 2, 3").err);
 	PASS();
 }
 
 TEST
 root_object_only_closing_brace(void)
 {
-	parse("}");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("}").err);
 	PASS();
 }
 
 TEST
 root_object_only_opening_brace(void)
 {
-	parse("{");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("{").err);
 	PASS();
 }
 
 TEST
 root_object_missing_closing_brace(void)
 {
-	parse("{\"foo\": \"bar\"");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("{\"foo\": \"bar\"").err);
 	PASS();
 }
 
 TEST
 root_object_missing_opening_brace(void)
 {
-	parse("\"foo\": \"bar\"}");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("\"foo\": \"bar\"}").err);
 	PASS();
 }
 
@@ -157,49 +158,50 @@ SUITE(invalid_json)
 TEST
 root_null(void)
 {
-	parse("null");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA, parse("null").err);
 	PASS();
 }
 
 TEST
 root_number(void)
 {
-	parse("-123.456");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA, parse("-123.456").err);
 	PASS();
 }
 
 TEST
 root_string_empty(void)
 {
-	parse("\"\"");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA, parse("\"\"").err);
 	PASS();
 }
 
 TEST
 root_string_nonempty(void)
 {
-	parse("\"Hello, World!\"");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA,
+	          parse("\"Hello, World!\"").err);
 	PASS();
 }
 
 TEST
 root_boolean(void)
 {
-	parse("false");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA, parse("false").err);
 	PASS();
 }
 
 TEST
 root_array_empty(void)
 {
-	parse("[]");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA, parse("[]").err);
 	PASS();
 }
 
 TEST
 root_array_nonempty(void)
 {
-	parse("[1, 2, 3]");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA, parse("[1, 2, 3]").err);
 	PASS();
 }
 
@@ -220,89 +222,99 @@ SUITE(incorrect_root_type)
 TEST
 root_object_empty(void)
 {
-	parse("{}");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA, parse("{}").err);
 	PASS();
 }
 
 TEST
 missing_streamingData_key(void)
 {
-	parse("{\"foo\": \"bar\"}");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA,
+	          parse("{\"foo\": \"bar\"}").err);
 	PASS();
 }
 
 TEST
 incorrect_streamingData_value_type(void)
 {
-	parse("{\"streamingData\": 1}");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA,
+	          parse("{\"streamingData\": 1}").err);
 	PASS();
 }
 
 TEST
 missing_adaptiveFormats_key(void)
 {
-	parse("{\"streamingData\": {\"foo\": \"bar\"}}");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_ADAPTIVEFORMATS,
+	          parse("{\"streamingData\": {\"foo\": \"bar\"}}").err);
 	PASS();
 }
 
 TEST
 incorrect_adaptiveFormats_value_type(void)
 {
-	parse("{\"streamingData\": {\"adaptiveFormats\": 2}}");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_ADAPTIVEFORMATS_TYPE,
+	          parse("{\"streamingData\": {\"adaptiveFormats\": 2}}").err);
 	PASS();
 }
 
 TEST
 incorrect_adaptiveFormats_element_type(void)
 {
-	parse("{\"streamingData\": {\"adaptiveFormats\": [3]}}");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_ELEM_TYPE,
+	          parse("{\"streamingData\": {\"adaptiveFormats\": [3]}}").err);
 	PASS();
 }
 
 TEST
 missing_mimeType_key(void)
 {
-	parse("{\"streamingData\": {\"adaptiveFormats\": "
-	      "[{\"foo\": \"bar\"}]"
-	      "}}");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_ELEM_MIMETYPE,
+	          parse("{\"streamingData\": {\"adaptiveFormats\": "
+	                "[{\"foo\": \"bar\"}]"
+	                "}}").err);
 	PASS();
 }
 
 TEST
 incorrect_mimeType_value_type(void)
 {
-	parse("{\"streamingData\": {\"adaptiveFormats\": "
-	      "[{\"mimeType\": 4}]"
-	      "}}");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_ELEM_MIMETYPE,
+	          parse("{\"streamingData\": {\"adaptiveFormats\": "
+	                "[{\"mimeType\": 4}]"
+	                "}}").err);
 	PASS();
 }
 
 TEST
 missing_url_key(void)
 {
-	parse("{\"streamingData\": {\"adaptiveFormats\": "
-	      "[{\"mimeType\": \"audio/foobar\"}]"
-	      "}}");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_ELEM_URL,
+	          parse("{\"streamingData\": {\"adaptiveFormats\": "
+	                "[{\"mimeType\": \"audio/foobar\"}]"
+	                "}}").err);
 	PASS();
 }
 
 TEST
 incorrect_url_value_type(void)
 {
-	parse("{\"streamingData\": {\"adaptiveFormats\": "
-	      "[{\"mimeType\": \"audio/foobar\", \"url\": 5}]"
-	      "}}");
+	ASSERT_EQ(ERR_JS_PARSE_JSON_ELEM_URL,
+	          parse("{\"streamingData\": {\"adaptiveFormats\": "
+	                "[{\"mimeType\": \"audio/foobar\", \"url\": 5}]"
+	                "}}").err);
 	PASS();
 }
 
 TEST
 unsupported_signatureCipher_key(void)
 {
-	parse("{\"streamingData\": {\"adaptiveFormats\": [{"
-	      "\"mimeType\": \"audio/foobar\","
-	      "\"url\": \"foobar\","
-	      "\"signatureCipher\": \"foobar\""
-	      "}]}}");
+	ASSERT_EQ(OK,
+	          parse("{\"streamingData\": {\"adaptiveFormats\": [{"
+	                "\"mimeType\": \"audio/foobar\","
+	                "\"url\": \"foobar\","
+	                "\"signatureCipher\": \"foobar\""
+	                "}]}}").err);
 	PASS();
 }
 
@@ -374,7 +386,9 @@ minimum_json_with_correct_shape(void)
 
 	struct url_copy urls;
 	url_copy_init(&urls);
-	parse_json(json, strlen(json), &URL_COPY_OPS, &urls);
+
+	result_t err = parse_json(json, strlen(json), &URL_COPY_OPS, &urls);
+	ASSERT_EQ(err.err, OK);
 
 	ASSERT_STR_EQ(urls.audio, "http://a.test");
 	ASSERT_STR_EQ(urls.video, "http://v.test");
@@ -394,7 +408,9 @@ extra_adaptiveFormats_elements(void)
 
 	struct url_copy urls;
 	url_copy_init(&urls);
-	parse_json(json, strlen(json), &URL_COPY_OPS, &urls);
+
+	result_t err = parse_json(json, strlen(json), &URL_COPY_OPS, &urls);
+	ASSERT_EQ(err.err, OK);
 
 	ASSERT_STR_EQ(urls.audio, "http://a.test");
 	ASSERT_STR_EQ(urls.video, "http://v.test");
