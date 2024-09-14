@@ -1,17 +1,19 @@
 #include "js.h"
 
-static void
+static result_t
 got_video(const char *val __attribute__((unused)),
           size_t sz __attribute__((unused)),
           void *userdata __attribute__((unused)))
 {
+	return RESULT_OK;
 }
 
-static void
+static result_t
 got_audio(const char *val __attribute__((unused)),
           size_t sz __attribute__((unused)),
           void *userdata __attribute__((unused)))
 {
+	return RESULT_OK;
 }
 
 int LLVMFuzzerTestOneInput(const char *data, size_t sz);

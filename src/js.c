@@ -47,7 +47,7 @@ try_decode(duk_context *ctx, void *udata __attribute__((unused)))
 static const char MTVIDEO[] = "video/";
 static const char MTAUDIO[] = "audio/";
 
-void
+result_t
 parse_json(const char *json,
            size_t json_sz,
            struct parse_ops *ops,
@@ -56,28 +56,39 @@ parse_json(const char *json,
 	// debug("Got JSON blob: %.*s", json_sz, json);
 	debug("Got JSON blob of size %zd", json_sz);
 
-	duk_ret_t res = DUK_EXEC_ERROR;
-
 	duk_context *ctx __attribute__((cleanup(destroy_heap))) =
 		duk_create_heap_default(); /* may return NULL! */
-	error_m_if(ctx == NULL, "Cannot allocate Duktape heap");
+	check_if(ctx == NULL, ERR_JS_PARSE_JSON_ALLOC_HEAP);
 
 	duk_push_lstring(ctx, json, json_sz);
-	res = duk_safe_call(ctx, try_decode, NULL, 1, 1);
+	duk_ret_t res = duk_safe_call(ctx, try_decode, NULL, 1, 1);
 	if (res != DUK_EXEC_SUCCESS) {
-		warn_then_return("Error in duk_json_decode(): %s", peek(ctx));
+		result_t err = {
+			.err = ERR_JS_PARSE_JSON_DECODE,
+		};
+		result_strcpy(&err, peek(ctx));
+		return err;
 	}
 
 	if (DUK_TYPE_OBJECT != duk_get_type(ctx, -1) ||
 	    0 == duk_get_prop_literal(ctx, -1, "streamingData")) {
-		warn_then_return("Cannot get .streamingData");
+		result_t err = {
+			.err = ERR_JS_PARSE_JSON_GET_STREAMINGDATA,
+		};
+		return err;
 	}
 	if (DUK_TYPE_OBJECT != duk_get_type(ctx, -1) ||
 	    0 == duk_get_prop_literal(ctx, -1, "adaptiveFormats")) {
-		warn_then_return("Cannot get .adaptiveFormats");
+		result_t err = {
+			.err = ERR_JS_PARSE_JSON_GET_ADAPTIVEFORMATS,
+		};
+		return err;
 	}
 	if (DUK_TYPE_OBJECT != duk_get_type(ctx, -1)) {
-		warn_then_return("Cannot iterate over .adaptiveFormats");
+		result_t err = {
+			.err = ERR_JS_PARSE_JSON_ADAPTIVEFORMATS_TYPE,
+		};
+		return err;
 	}
 
 	bool got_video = false;
@@ -89,17 +100,26 @@ parse_json(const char *json,
 		duk_get_prop_index(ctx, -1, i);
 
 		if (DUK_TYPE_OBJECT != duk_get_type(ctx, -1)) {
-			warn_then_return(".[%zd] is not object-coercible", i);
+			result_t err = {
+				.err = ERR_JS_PARSE_JSON_ELEM_TYPE,
+			};
+			return err;
 		}
 
 		if (0 == duk_get_prop_literal(ctx, -1, "mimeType") ||
 		    DUK_TYPE_STRING != duk_get_type(ctx, -1)) {
-			warn_then_return("Cannot get .[%zd].mimeType", i);
+			result_t err = {
+				.err = ERR_JS_PARSE_JSON_ELEM_MIMETYPE,
+			};
+			return err;
 		}
 
 		if (0 == duk_get_prop_literal(ctx, -2, "url") ||
 		    DUK_TYPE_STRING != duk_get_type(ctx, -1)) {
-			warn_then_return("Cannot get .[%zd].url", i);
+			result_t err = {
+				.err = ERR_JS_PARSE_JSON_ELEM_URL,
+			};
+			return err;
 		}
 
 		const char *url = duk_get_string(ctx, -1);
@@ -108,12 +128,12 @@ parse_json(const char *json,
 
 		if (0 == strncmp(mimetype, MTVIDEO, strlen(MTVIDEO)) &&
 		    false == got_video) {
-			ops->got_video(url, strlen(url), userdata);
+			check(ops->got_video(url, strlen(url), userdata));
 			got_video = true;
 		}
 		if (0 == strncmp(mimetype, MTAUDIO, strlen(MTAUDIO)) &&
 		    false == got_audio) {
-			ops->got_audio(url, strlen(url), userdata);
+			check(ops->got_audio(url, strlen(url), userdata));
 			got_audio = true;
 		}
 
@@ -137,34 +157,37 @@ parse_json(const char *json,
 	}
 
 	duk_pop_2(ctx); /* for .streamingData.adaptiveFormats */
+	return RESULT_OK;
 }
 
-void
+result_t
 find_base_js_url(const char *html,
                  size_t sz,
                  const char **basejs,
                  size_t *basejs_sz)
 {
-	if (!re_capture("\"(/s/player/[^\"]+/base.js)\"",
-	                html,
-	                sz,
-	                basejs,
-	                basejs_sz)) {
-		info("Cannot find base.js URL in HTML document");
-	} else {
-		debug("Parsed base.js URI: %.*s", (int)*basejs_sz, *basejs);
-	}
+	check_if(!re_capture("\"(/s/player/[^\"]+/base.js)\"",
+	                     html,
+	                     sz,
+	                     basejs,
+	                     basejs_sz),
+	         ERR_JS_BASEJS_URL_FIND);
+
+	debug("Parsed base.js URI: %.*s", (int)*basejs_sz, *basejs);
+	return RESULT_OK;
 }
 
-long long int
-find_js_timestamp(const char *js, size_t js_sz)
+result_t
+find_js_timestamp(const char *js, size_t js_sz, long long int *value)
 {
 	const char *ts = NULL;
 	size_t tsz = 0;
-	if (!re_capture("signatureTimestamp:([0-9]+)", js, js_sz, &ts, &tsz)) {
-		info("Cannot find timestamp in base.js");
-		return -1;
-	}
+	check_if(!re_capture("signatureTimestamp:([0-9]+)",
+	                     js,
+	                     js_sz,
+	                     &ts,
+	                     &tsz),
+	         ERR_JS_TIMESTAMP_FIND);
 
 	/*
 	 * strtoll() does not modify errno on success, so we must clear it
@@ -174,11 +197,17 @@ find_js_timestamp(const char *js, size_t js_sz)
 
 	long long int res = strtoll(ts, NULL, 10);
 	if (errno != 0) {
-		warn_m_then_return(-1, "strtoll() error on %.*s", (int)tsz, ts);
+		result_t err = {
+			.err = ERR_JS_TIMESTAMP_PARSE_TO_LONGLONG,
+			.num = errno,
+		};
+		result_strcpy_span(&err, ts, tsz);
+		return err;
 	}
 
 	debug("Parsed signatureTimestamp %.*s into %lld", (int)tsz, ts, res);
-	return res;
+	*value = res;
+	return RESULT_OK;
 }
 
 static void
@@ -206,14 +235,12 @@ static const char *RE_FUNC_NAME[] = {
  * 4) eval JavaScript fragment like: function(a){...}([$n_param])
  * 5) use return value from step 4 as decoded n-parameter
  */
-void
+result_t
 find_js_deobfuscator(const char *js,
                      size_t js_sz,
                      const char **deobfuscator,
                      size_t *deobfuscator_sz)
 {
-	*deobfuscator = NULL;
-	*deobfuscator_sz = 0;
 	int rc = 0;
 
 	const char *name = NULL;
@@ -225,16 +252,23 @@ find_js_deobfuscator(const char *js,
 		info("Cannot find '%s' in base.js", RE_FUNC_NAME[i]);
 	}
 	if (name == NULL || nsz == 0) {
-		return;
+		result_t err = {
+			.err = ERR_JS_DEOBFUSCATOR_FIND_FUNCTION_ONE,
+		};
+		return err;
 	}
 	debug("Got function name 1: %.*s", (int)nsz, name);
 
 	char *p2 __attribute__((cleanup(asprintf_free))) = NULL;
 	rc = asprintf(&p2, "var \\Q%.*s\\E=\\[([^\\]]+)\\]", (int)nsz, name);
-	error_m_if(rc < 0, "Cannot allocate asprintf buffer");
+	check_if(rc < 0, ERR_JS_DEOBFUSCATOR_ALLOC);
 
 	if (!re_capture(p2, js, js_sz, &name, &nsz)) {
-		warn_then_return("Cannot find %.*s in base.js", (int)nsz, name);
+		result_t err = {
+			.err = ERR_JS_DEOBFUSCATOR_FIND_FUNCTION_TWO,
+		};
+		result_strcpy_span(&err, name, nsz);
+		return err;
 	}
 	debug("Got function name 2: %.*s", (int)nsz, name);
 
@@ -245,16 +279,22 @@ find_js_deobfuscator(const char *js,
 	              ")",
 	              (int)nsz,
 	              name);
-	error_m_if(rc < 0, "Cannot allocate asprintf buffer");
+	check_if(rc < 0, ERR_JS_DEOBFUSCATOR_ALLOC);
 
 	if (!re_capture(p3, js, js_sz, deobfuscator, deobfuscator_sz)) {
-		warn_then_return("Cannot find %.*s in base.js", (int)nsz, name);
+		result_t err = {
+			.err = ERR_JS_DEOBFUSCATOR_FIND_FUNCTION_BODY,
+		};
+		result_strcpy_span(&err, name, nsz);
+		return err;
 	}
+
 	// debug("Got function body: %.*s", *deobfuscator_sz, *deobfuscator);
 	debug("Got function body of size %zd", *deobfuscator_sz);
+	return RESULT_OK;
 }
 
-static void
+static result_t
 call_js_one(duk_context *ctx,
             const char *js_arg,
             struct call_ops *ops,
@@ -283,19 +323,23 @@ call_js_one(duk_context *ctx,
 	 */
 	duk_push_lstring(ctx, js_arg, strlen(js_arg));
 	if (duk_pcall(ctx, 1) != DUK_EXEC_SUCCESS) {
-		warn_then_return("Error in duk_pcall(): %s", peek(ctx));
+		result_t err = {
+			.err = ERR_JS_CALL_INVOKE,
+		};
+		result_strcpy(&err, peek(ctx));
+		return err;
 	}
 
 	const char *result = duk_get_string(ctx, -1);
-	if (result == NULL) {
-		warn_then_return("Error fetching function result");
-	}
+	check_if(result == NULL, ERR_JS_CALL_GET_RESULT);
 
 	debug("Got JavaScript function result: %s", result);
-	ops->got_result(result, strlen(result), userdata);
+	check(ops->got_result(result, strlen(result), userdata));
+
+	return RESULT_OK;
 }
 
-void
+result_t
 call_js_foreach(const char *code,
                 size_t sz,
                 char **args,
@@ -305,17 +349,23 @@ call_js_foreach(const char *code,
 {
 	duk_context *ctx __attribute__((cleanup(destroy_heap))) =
 		duk_create_heap_default(); /* may return NULL! */
-	error_m_if(ctx == NULL, "Cannot allocate Duktape heap");
+	check_if(ctx == NULL, ERR_JS_CALL_ALLOC);
 
 	duk_push_lstring(ctx, code, sz);
 	assert(duk_get_type(ctx, -1) == DUK_TYPE_STRING);
 
 	duk_push_string(ctx, __FUNCTION__);
 	if (duk_pcompile(ctx, DUK_COMPILE_FUNCTION) != 0) {
-		warn_then_return("Error in duk_pcompile(): %s", peek(ctx));
+		result_t err = {
+			.err = ERR_JS_CALL_COMPILE,
+		};
+		result_strcpy(&err, peek(ctx));
+		return err;
 	}
 
 	for (size_t i = 0; i < argc; ++i) {
-		call_js_one(ctx, args[i], ops, userdata);
+		check(call_js_one(ctx, args[i], ops, userdata));
 	}
+
+	return RESULT_OK;
 }

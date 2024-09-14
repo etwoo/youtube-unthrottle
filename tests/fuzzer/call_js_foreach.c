@@ -1,11 +1,12 @@
 #include "array.h"
 #include "js.h"
 
-static void
+static result_t
 got_result(const char *val __attribute__((unused)),
            size_t sz __attribute__((unused)),
            void *userdata __attribute__((unused)))
 {
+	return RESULT_OK;
 }
 
 int LLVMFuzzerTestOneInput(const char *data, size_t sz);
