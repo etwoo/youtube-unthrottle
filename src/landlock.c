@@ -142,7 +142,7 @@ landlock_apply(const char **paths, int sz, int port)
 	check_if_cond_with_errno(rc < 0, ERR_SANDBOX_LANDLOCK_SET_NO_NEW_PRIVS);
 
 	rc = landlock_restrict_self(fd, 0);
-	check_if_cond_with_errno(fd < 0, ERR_SANDBOX_LANDLOCK_RESTRICT_SELF);
+	check_if_cond_with_errno(rc < 0, ERR_SANDBOX_LANDLOCK_RESTRICT_SELF);
 
 	debug("landlock_apply() succeeded");
 
