@@ -3,7 +3,6 @@
 
 #include <errno.h>
 #include <string.h>   /* for strerror() */
-#include <sysexits.h> /* for EX_* exit status codes */
 
 /*
  * Log a message at DEBUG level via printf-style format string, along with the
@@ -59,23 +58,8 @@ info_at_line(const char *fname, unsigned int lineno, const char *pattern, ...)
 	__attribute__((format(printf, 3, 4)));
 
 /*
- * Log a message at ERROR level and then exit(), if <cond> is true.
- *
- * This macro is suitable for severe errors, like malloc() failure for a key
- * datastructure or error returned by a syscall like landlock_add_rule() or
- * seccomp_load().
- */
-#define error_if(cond, pattern, ...)                                           \
-	while (cond) {                                                         \
-		error_at_line(EX_SOFTWARE,                                     \
-		              __FILE_NAME__,                                   \
-		              __LINE__,                                        \
-		              pattern,                                         \
-		              ##__VA_ARGS__);                                  \
-		break;                                                         \
-	}
-/*
  * Like error_if(), with "%m" equivalent appended to <pattern>.
+ * TODO: get rid of error_m_if(), refactor callers to use result_t/assert (?)
  */
 #define error_m_if(cond, pattern, ...)                                         \
 	while (cond) {                                                         \
@@ -87,11 +71,5 @@ info_at_line(const char *fname, unsigned int lineno, const char *pattern, ...)
 		              strerror(errno));                                \
 		break;                                                         \
 	}
-
-void error_at_line(int status,
-                   const char *fname,
-                   unsigned int lineno,
-                   const char *pattern,
-                   ...) __attribute__((format(printf, 4, 5)));
 
 #endif
