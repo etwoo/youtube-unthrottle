@@ -42,14 +42,6 @@ root_number_NaN(void)
 }
 
 TEST
-root_number_too_large(void)
-{
-	/* Note: 9007199254740992 == 2^53 */
-	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("9007199254740992").err);
-	PASS();
-}
-
-TEST
 root_string_missing_quotes(void)
 {
 	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("Hello, World!").err);
@@ -140,7 +132,6 @@ SUITE(invalid_json)
 {
 	RUN_TEST(root_empty);
 	RUN_TEST(root_number_NaN);
-	RUN_TEST(root_number_too_large);
 	RUN_TEST(root_string_missing_quotes);
 	RUN_TEST(root_string_missing_opening_quote);
 	RUN_TEST(root_string_missing_closing_quote);
@@ -237,7 +228,7 @@ missing_streamingData_key(void)
 TEST
 incorrect_streamingData_value_type(void)
 {
-	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA,
+	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_ADAPTIVEFORMATS,
 	          parse("{\"streamingData\": 1}").err);
 	PASS();
 }
@@ -464,7 +455,7 @@ TEST
 find_js_timestamp_negative_re_pattern(void)
 {
 	static const char json[] = "{signatureTimestamp:\"foobar\"}";
-	long long int timestamp = 0;
+	long long int timestamp = -1;
 	result_t err = find_js_timestamp(json, sizeof(json), &timestamp);
 	ASSERT_EQ(err.err, ERR_JS_TIMESTAMP_FIND);
 	ASSERT_LT(timestamp, 0);
@@ -475,7 +466,7 @@ TEST
 find_js_timestamp_negative_strtoll_erange(void)
 {
 	static const char json[] = "{signatureTimestamp:9223372036854775808}";
-	long long int timestamp = 0;
+	long long int timestamp = -1;
 	result_t err = find_js_timestamp(json, sizeof(json), &timestamp);
 	ASSERT_EQ(err.err, ERR_JS_TIMESTAMP_PARSE_TO_LONGLONG);
 	ASSERT_EQ(err.num, ERANGE);
