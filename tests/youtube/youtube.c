@@ -42,9 +42,10 @@ test_fixture_request_handler(void *request, const char *path, int fd)
 	return 0;
 }
 
-static void
+static result_t
 setup_callback_noop(youtube_handle_t h __attribute__((unused)))
 {
+	return RESULT_OK;
 }
 
 struct youtube_setup_ops NOOP = {

@@ -405,7 +405,7 @@ youtube_stream_setup(struct youtube_stream *p,
 	downloaded_init(&js, "JavaScript tmpfile");
 
 	if (ops && ops->before) {
-		ops->before(p);
+		check(ops->before(p));
 	}
 
 	check(tmpfd(&json.fd));
@@ -413,7 +413,7 @@ youtube_stream_setup(struct youtube_stream *p,
 	check(tmpfd(&js.fd));
 
 	if (ops && ops->before_inet) {
-		ops->before_inet(p);
+		check(ops->before_inet(p));
 	}
 
 	check(download_and_mmap_tmpfd(target,
@@ -459,11 +459,11 @@ youtube_stream_setup(struct youtube_stream *p,
 	                              &json.sz));
 
 	if (ops && ops->after_inet) {
-		ops->after_inet(p);
+		check(ops->after_inet(p));
 	}
 
 	if (ops && ops->before_parse) {
-		ops->before_parse(p);
+		check(ops->before_parse(p));
 	}
 
 	struct parse_ops pops = {
@@ -473,11 +473,11 @@ youtube_stream_setup(struct youtube_stream *p,
 	check(parse_json(json.buf, json.sz, &pops, p));
 
 	if (ops && ops->after_parse) {
-		ops->after_parse(p);
+		check(ops->after_parse(p));
 	}
 
 	if (ops && ops->before_eval) {
-		ops->before_eval(p);
+		check(ops->before_eval(p));
 	}
 
 	const char *deobfuscator = NULL;
@@ -499,11 +499,11 @@ youtube_stream_setup(struct youtube_stream *p,
 	                      p));
 
 	if (ops && ops->after_eval) {
-		ops->after_eval(p);
+		check(ops->after_eval(p));
 	}
 
 	if (ops && ops->after) {
-		ops->after(p);
+		check(ops->after(p));
 	}
 
 	return RESULT_OK;

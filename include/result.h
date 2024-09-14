@@ -25,6 +25,14 @@ struct result_t {
 		ERR_JS_CALL_COMPILE,
 		ERR_JS_CALL_INVOKE,
 		ERR_JS_CALL_GET_RESULT,
+		ERR_SANDBOX_LANDLOCK_CREATE_RULESET,
+		ERR_SANDBOX_LANDLOCK_OPEN_O_PATH,
+		ERR_SANDBOX_LANDLOCK_ADD_RULE_PATH,
+		ERR_SANDBOX_LANDLOCK_ADD_RULE_PORT,
+		ERR_SANDBOX_LANDLOCK_SET_NO_NEW_PRIVS,
+		ERR_SANDBOX_LANDLOCK_RESTRICT_SELF,
+		ERR_SANDBOX_SECCOMP_INIT,
+		ERR_SANDBOX_SECCOMP_LOAD,
 		ERR_TMPFILE,
 		ERR_TMPFILE_FILENO,
 		ERR_TMPFILE_DUP,
@@ -58,8 +66,8 @@ struct result_t {
 		int errno;
 		int curl_code;
 		int curlu_code;
-		const char *msg;
 	};
+	const char *msg;
 };
 
 const result_t RESULT_OK;
@@ -82,12 +90,14 @@ const result_t RESULT_OK;
  * not need to set extra values like errno, curl_code, curlu_code.
  */
 #define check_if(cond, err_type)                                               \
-	while (cond) {                                                         \
-		result_t err = {                                               \
-			.err = err_type,                                       \
-		};                                                             \
-		return err;                                                    \
-	}
+	do {                                                                   \
+		if (cond) {                                                    \
+			result_t err = {                                       \
+				.err = err_type,                               \
+			};                                                     \
+			return err;                                            \
+		}                                                              \
+	} while (0)
 
 /*
  * Copy <src> into <r>, backed by automatic storage managed by result.c module.

@@ -201,10 +201,13 @@ find_js_timestamp(const char *js, size_t js_sz, long long int *value)
 			.err = ERR_JS_TIMESTAMP_PARSE_TO_LONGLONG,
 			.errno = errno,
 		};
+		result_strcpy_span(&err, ts, tsz);
+		return err;
 	}
 
 	debug("Parsed signatureTimestamp %.*s into %lld", (int)tsz, ts, res);
-	return res;
+	*value = res;
+	return RESULT_OK;
 }
 
 static void

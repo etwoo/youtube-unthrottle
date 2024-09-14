@@ -12,14 +12,14 @@ youtube_handle_t youtube_stream_init(void);
 void youtube_stream_cleanup(youtube_handle_t h);
 
 struct youtube_setup_ops {
-	void (*before)(youtube_handle_t);
-	void (*before_inet)(youtube_handle_t);
-	void (*after_inet)(youtube_handle_t);
-	void (*before_parse)(youtube_handle_t);
-	void (*after_parse)(youtube_handle_t);
-	void (*before_eval)(youtube_handle_t);
-	void (*after_eval)(youtube_handle_t);
-	void (*after)(youtube_handle_t);
+	result_t (*before)(youtube_handle_t);
+	result_t (*before_inet)(youtube_handle_t);
+	result_t (*after_inet)(youtube_handle_t);
+	result_t (*before_parse)(youtube_handle_t);
+	result_t (*after_parse)(youtube_handle_t);
+	result_t (*before_eval)(youtube_handle_t);
+	result_t (*after_eval)(youtube_handle_t);
+	result_t (*after)(youtube_handle_t);
 };
 
 result_t youtube_stream_setup(youtube_handle_t h,

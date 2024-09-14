@@ -57,19 +57,4 @@ void
 info_at_line(const char *fname, unsigned int lineno, const char *pattern, ...)
 	__attribute__((format(printf, 3, 4)));
 
-/*
- * Like error_if(), with "%m" equivalent appended to <pattern>.
- * TODO: get rid of error_m_if(), refactor callers to use result_t/assert (?)
- */
-#define error_m_if(cond, pattern, ...)                                         \
-	while (cond) {                                                         \
-		error_at_line(EX_OSERR,                                        \
-		              __FILE_NAME__,                                   \
-		              __LINE__,                                        \
-		              pattern ": %s",                                  \
-		              ##__VA_ARGS__,                                   \
-		              strerror(errno));                                \
-		break;                                                         \
-	}
-
 #endif

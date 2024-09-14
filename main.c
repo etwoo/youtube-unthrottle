@@ -42,16 +42,16 @@ usage(const char *cmd, int rc)
 	return rc;
 }
 
-static void
+static result_t
 before_inet(youtube_handle_t h __attribute__((unused)))
 {
-	sandbox_only_io_inet_rpath();
+	return sandbox_only_io_inet_rpath();
 }
 
-static void
+static result_t
 after_inet(youtube_handle_t h __attribute__((unused)))
 {
-	sandbox_only_io();
+	return sandbox_only_io();
 }
 
 static void
@@ -72,9 +72,9 @@ main(int argc, const char *argv[])
 	if (0 == strncmp(ARG_HELP, argv[1], strlen(ARG_HELP))) {
 		return usage(argv[0], EX_OK);
 	} else if (0 == strncmp(ARG_SANDBOX, argv[1], strlen(ARG_SANDBOX))) {
-		sandbox_only_io_inet_tmpfile();
-		sandbox_only_io_inet_rpath();
-		sandbox_only_io();
+		sandbox_only_io_inet_tmpfile(); // TODO: check return value
+		sandbox_only_io_inet_rpath(); // TODO: check return value
+		sandbox_only_io(); // TODO: check return value
 		return EX_OK;
 	}
 
@@ -84,7 +84,11 @@ main(int argc, const char *argv[])
 		return EX_SOFTWARE;
 	}
 
-	sandbox_only_io_inet_tmpfile();
+	err = sandbox_only_io_inet_tmpfile();
+	if (err.err) {
+		// TODO: print result_to_strerror() to stderr
+		return EX_OSERR;
+	}
 
 	youtube_handle_t stream = youtube_stream_init();
 	assert(stream); // TODO: maybe do something like result_to_strerror?

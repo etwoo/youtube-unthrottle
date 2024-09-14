@@ -105,7 +105,9 @@ result_to_strerror(result_t r)
 		s = "Cannot find timestamp in base.js";
 		break;
 	case ERR_JS_TIMESTAMP_PARSE_TO_LONGLONG:
-		my_snprintf("Error in strtoll(): %s", my_strerror(r));
+		my_snprintf("Error in strtoll() on %s: %s",
+		            r.msg,
+		            my_strerror(r));
 		break;
 	case ERR_JS_DEOBFUSCATOR_ALLOC:
 		s = "Cannot allocate asprintf buffer";
@@ -130,6 +132,37 @@ result_to_strerror(result_t r)
 		break;
 	case ERR_JS_CALL_GET_RESULT:
 		s = "Error fetching function result";
+		break;
+	case ERR_SANDBOX_LANDLOCK_CREATE_RULESET:
+		my_snprintf("Error in landlock_create_ruleset(): %s",
+		            my_strerror(r));
+		break;
+	case ERR_SANDBOX_LANDLOCK_OPEN_O_PATH:
+		my_snprintf("Error opening %s with O_PATH for Landlock: %s",
+		            r.msg,
+		            my_strerror(r));
+		break;
+	case ERR_SANDBOX_LANDLOCK_ADD_RULE_PATH:
+		my_snprintf("Error in landlock_add_rule() for path %s: %s",
+		            r.msg,
+		            my_strerror(r));
+		break;
+	case ERR_SANDBOX_LANDLOCK_ADD_RULE_PORT:
+		my_snprintf("Error in landlock_add_rule() for port: %s",
+		            my_strerror(r));
+		break;
+	case ERR_SANDBOX_LANDLOCK_PR_SET_NO_NEW_PRIVS:
+		my_snprintf("Error in prctl(PR_SET_NO_NEW_PRIVS): %s",
+		            my_strerror(r));
+		break;
+	case ERR_SANDBOX_LANDLOCK_RESTRICT_SELF:
+		my_snprintf("Error in landlock_restrict_self(): %s",
+		            my_strerror(r));
+	case ERR_SANDBOX_SECCOMP_INIT:
+		my_snprintf("Error in seccomp_init(): %s", my_strerror(r));
+		break;
+	case ERR_SANDBOX_SECCOMP_LOAD:
+		my_snprintf("Error in seccomp_load(): %s", my_strerror(r));
 		break;
 	case ERR_TMPFILE:
 		my_snprintf("Error in tmpfile(): %s", my_strerror(r));
