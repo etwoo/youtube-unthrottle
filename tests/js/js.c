@@ -21,107 +21,108 @@ static struct parse_ops NOOP = {
 	.got_audio = parse_callback_noop,
 };
 
-static result_t
+static int
 parse(const char *str)
 {
-	return parse_json(str, strlen(str), &NOOP, NULL);
+	result_t err = parse_json(str, strlen(str), &NOOP, NULL);
+	return err.num;
 }
 
 TEST
 root_empty(void)
 {
-	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("").err);
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse(""));
 	PASS();
 }
 
 TEST
 root_number_NaN(void)
 {
-	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("NaN").err);
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("NaN"));
 	PASS();
 }
 
 TEST
 root_string_missing_quotes(void)
 {
-	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("Hello, World!").err);
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("Hello, World!"));
 	PASS();
 }
 
 TEST
 root_string_missing_opening_quote(void)
 {
-	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("Hello, World!\"").err);
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("Hello, World!\""));
 	PASS();
 }
 
 TEST
 root_string_missing_closing_quote(void)
 {
-	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("\"Hello, World!").err);
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("\"Hello, World!"));
 	PASS();
 }
 
 TEST
 root_boolean_uppercase(void)
 {
-	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("FALSE").err);
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("FALSE"));
 	PASS();
 }
 
 TEST
 root_array_only_opening_brace(void)
 {
-	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("[").err);
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("["));
 	PASS();
 }
 
 TEST
 root_array_only_closing_brace(void)
 {
-	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("]").err);
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("]"));
 	PASS();
 }
 
 TEST
 root_array_missing_opening_brace(void)
 {
-	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("1, 2, 3]").err);
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("1, 2, 3]"));
 	PASS();
 }
 
 TEST
 root_array_missing_closing_brace(void)
 {
-	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("[1, 2, 3").err);
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("[1, 2, 3"));
 	PASS();
 }
 
 TEST
 root_object_only_closing_brace(void)
 {
-	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("}").err);
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("}"));
 	PASS();
 }
 
 TEST
 root_object_only_opening_brace(void)
 {
-	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("{").err);
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("{"));
 	PASS();
 }
 
 TEST
 root_object_missing_closing_brace(void)
 {
-	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("{\"foo\": \"bar\"").err);
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("{\"foo\": \"bar\""));
 	PASS();
 }
 
 TEST
 root_object_missing_opening_brace(void)
 {
-	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("\"foo\": \"bar\"}").err);
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("\"foo\": \"bar\"}"));
 	PASS();
 }
 
@@ -149,21 +150,21 @@ SUITE(invalid_json)
 TEST
 root_null(void)
 {
-	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA, parse("null").err);
+	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA, parse("null"));
 	PASS();
 }
 
 TEST
 root_number(void)
 {
-	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA, parse("-123.456").err);
+	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA, parse("-123.456"));
 	PASS();
 }
 
 TEST
 root_string_empty(void)
 {
-	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA, parse("\"\"").err);
+	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA, parse("\"\""));
 	PASS();
 }
 
@@ -171,28 +172,28 @@ TEST
 root_string_nonempty(void)
 {
 	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA,
-	          parse("\"Hello, World!\"").err);
+	          parse("\"Hello, World!\""));
 	PASS();
 }
 
 TEST
 root_boolean(void)
 {
-	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA, parse("false").err);
+	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA, parse("false"));
 	PASS();
 }
 
 TEST
 root_array_empty(void)
 {
-	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA, parse("[]").err);
+	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA, parse("[]"));
 	PASS();
 }
 
 TEST
 root_array_nonempty(void)
 {
-	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA, parse("[1, 2, 3]").err);
+	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA, parse("[1, 2, 3]"));
 	PASS();
 }
 
@@ -213,7 +214,7 @@ SUITE(incorrect_root_type)
 TEST
 root_object_empty(void)
 {
-	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA, parse("{}").err);
+	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA, parse("{}"));
 	PASS();
 }
 
@@ -221,7 +222,7 @@ TEST
 missing_streamingData_key(void)
 {
 	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA,
-	          parse("{\"foo\": \"bar\"}").err);
+	          parse("{\"foo\": \"bar\"}"));
 	PASS();
 }
 
@@ -229,7 +230,7 @@ TEST
 incorrect_streamingData_value_type(void)
 {
 	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_ADAPTIVEFORMATS,
-	          parse("{\"streamingData\": 1}").err);
+	          parse("{\"streamingData\": 1}"));
 	PASS();
 }
 
@@ -237,7 +238,7 @@ TEST
 missing_adaptiveFormats_key(void)
 {
 	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_ADAPTIVEFORMATS,
-	          parse("{\"streamingData\": {\"foo\": \"bar\"}}").err);
+	          parse("{\"streamingData\": {\"foo\": \"bar\"}}"));
 	PASS();
 }
 
@@ -245,7 +246,7 @@ TEST
 incorrect_adaptiveFormats_value_type(void)
 {
 	ASSERT_EQ(ERR_JS_PARSE_JSON_ADAPTIVEFORMATS_TYPE,
-	          parse("{\"streamingData\": {\"adaptiveFormats\": 2}}").err);
+	          parse("{\"streamingData\": {\"adaptiveFormats\": 2}}"));
 	PASS();
 }
 
@@ -253,7 +254,7 @@ TEST
 incorrect_adaptiveFormats_element_type(void)
 {
 	ASSERT_EQ(ERR_JS_PARSE_JSON_ELEM_TYPE,
-	          parse("{\"streamingData\": {\"adaptiveFormats\": [3]}}").err);
+	          parse("{\"streamingData\": {\"adaptiveFormats\": [3]}}"));
 	PASS();
 }
 
@@ -263,7 +264,7 @@ missing_mimeType_key(void)
 	ASSERT_EQ(ERR_JS_PARSE_JSON_ELEM_MIMETYPE,
 	          parse("{\"streamingData\": {\"adaptiveFormats\": "
 	                "[{\"foo\": \"bar\"}]"
-	                "}}").err);
+	                "}}"));
 	PASS();
 }
 
@@ -273,7 +274,7 @@ incorrect_mimeType_value_type(void)
 	ASSERT_EQ(ERR_JS_PARSE_JSON_ELEM_MIMETYPE,
 	          parse("{\"streamingData\": {\"adaptiveFormats\": "
 	                "[{\"mimeType\": 4}]"
-	                "}}").err);
+	                "}}"));
 	PASS();
 }
 
@@ -283,7 +284,7 @@ missing_url_key(void)
 	ASSERT_EQ(ERR_JS_PARSE_JSON_ELEM_URL,
 	          parse("{\"streamingData\": {\"adaptiveFormats\": "
 	                "[{\"mimeType\": \"audio/foobar\"}]"
-	                "}}").err);
+	                "}}"));
 	PASS();
 }
 
@@ -293,7 +294,7 @@ incorrect_url_value_type(void)
 	ASSERT_EQ(ERR_JS_PARSE_JSON_ELEM_URL,
 	          parse("{\"streamingData\": {\"adaptiveFormats\": "
 	                "[{\"mimeType\": \"audio/foobar\", \"url\": 5}]"
-	                "}}").err);
+	                "}}"));
 	PASS();
 }
 
@@ -305,7 +306,7 @@ unsupported_signatureCipher_key(void)
 	                "\"mimeType\": \"audio/foobar\","
 	                "\"url\": \"foobar\","
 	                "\"signatureCipher\": \"foobar\""
-	                "}]}}").err);
+	                "}]}}"));
 	PASS();
 }
 

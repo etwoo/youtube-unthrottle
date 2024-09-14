@@ -119,7 +119,8 @@ sandbox_with(unsigned flags, const char *promises)
 #if defined(__linux__)
 	(void)promises; /* unused */
 	check(landlock_apply(ALLOWED_PATHS, sz, 443));
-	check(seccomp_apply(SECCOMP_STDIO|SECCOMP_INET|SECCOMP_SANDBOX|flags));
+	check(seccomp_apply(SECCOMP_STDIO | SECCOMP_INET | SECCOMP_SANDBOX |
+	                    flags));
 #elif defined(__OpenBSD__)
 	(void)flags; /* unused */
 	for (size_t i = 0; i < sz; ++i) {
