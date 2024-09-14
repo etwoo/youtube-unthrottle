@@ -470,12 +470,12 @@ youtube_stream_setup(struct youtube_stream *p,
 	struct call_ops cops = {
 		.got_result = append_n_param,
 	};
-	call_js_foreach(deobfuscator,
-	                deob_sz,
-	                ciphertexts,
-	                ARRAY_SIZE(ciphertexts),
-	                &cops,
-	                p);
+	check(call_js_foreach(deobfuscator,
+	                      deob_sz,
+	                      ciphertexts,
+	                      ARRAY_SIZE(ciphertexts),
+	                      &cops,
+	                      p));
 
 	if (ops && ops->after_eval) {
 		ops->after_eval(p);
@@ -485,7 +485,7 @@ youtube_stream_setup(struct youtube_stream *p,
 		ops->after(p);
 	}
 
-	return true;
+	return RESULT_OK;
 }
 
 #undef error_if_uc_msg

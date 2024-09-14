@@ -116,6 +116,18 @@ result_to_strerror(result_t r)
 	case ERR_JS_DEOBFUSCATOR_FIND_FUNCTION_BODY:
 		my_snprintf("Cannot find body of %s in base.js", r.msg);
 		break;
+	case ERR_JS_CALL_ALLOC:
+		s = "Cannot allocate JavaScript interpreter heap";
+		break;
+	case ERR_JS_CALL_COMPILE:
+		my_snprintf("Error in duk_pcompile(): %s", r.msg);
+		break;
+	case ERR_JS_CALL_INVOKE:
+		my_snprintf("Error in duk_pcall(): %s", r.msg);
+		break;
+	case ERR_JS_CALL_GET_RESULT:
+		s = "Error fetching function result";
+		break;
 	case ERR_TMPFILE:
 		my_snprintf("Error in tmpfile(): %s", my_strerror(r));
 		break;

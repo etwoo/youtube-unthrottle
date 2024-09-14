@@ -291,7 +291,7 @@ find_js_deobfuscator(const char *js,
 	return RESULT_OK;
 }
 
-static void
+static result_t
 call_js_one(duk_context *ctx,
             const char *js_arg,
             struct call_ops *ops,
@@ -320,19 +320,23 @@ call_js_one(duk_context *ctx,
 	 */
 	duk_push_lstring(ctx, js_arg, strlen(js_arg));
 	if (duk_pcall(ctx, 1) != DUK_EXEC_SUCCESS) {
-		warn_then_return("Error in duk_pcall(): %s", peek(ctx));
+		result_t err = {
+			.err = ERR_JS_CALL_INVOKE,
+		};
+		result_strcpy(&err, peek(ctx));
+		return err;
 	}
 
 	const char *result = duk_get_string(ctx, -1);
-	if (result == NULL) {
-		warn_then_return("Error fetching function result");
-	}
+	check_if(result == NULL, ERR_JS_CALL_GET_RESULT);
 
 	debug("Got JavaScript function result: %s", result);
 	ops->got_result(result, strlen(result), userdata);
+
+	return RESULT_OK;
 }
 
-void
+result_t
 call_js_foreach(const char *code,
                 size_t sz,
                 char **args,
@@ -342,17 +346,23 @@ call_js_foreach(const char *code,
 {
 	duk_context *ctx __attribute__((cleanup(destroy_heap))) =
 		duk_create_heap_default(); /* may return NULL! */
-	error_m_if(ctx == NULL, "Cannot allocate Duktape heap");
+	check_if(ctx == NULL, ERR_JS_CALL_ALLOC);
 
 	duk_push_lstring(ctx, code, sz);
 	assert(duk_get_type(ctx, -1) == DUK_TYPE_STRING);
 
 	duk_push_string(ctx, __FUNCTION__);
 	if (duk_pcompile(ctx, DUK_COMPILE_FUNCTION) != 0) {
-		warn_then_return("Error in duk_pcompile(): %s", peek(ctx));
+		result_t err = {
+			.err = ERR_JS_CALL_COMPILE,
+		};
+		result_strcpy(&err, peek(ctx));
+		return err;
 	}
 
 	for (size_t i = 0; i < argc; ++i) {
-		call_js_one(ctx, args[i], ops, userdata);
+		check(call_js_one(ctx, args[i], ops, userdata));
 	}
+
+	return RESULT_OK;
 }

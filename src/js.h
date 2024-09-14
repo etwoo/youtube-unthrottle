@@ -26,11 +26,11 @@ struct call_ops {
 	void (*got_result)(const char *, size_t, void *);
 };
 
-void call_js_foreach(const char *code,
-                     size_t sz,
-                     char **args,
-                     const size_t argc,
-                     struct call_ops *ops,
-                     void *userdata);
+result_t call_js_foreach(const char *code,
+                         size_t sz,
+                         char **args,
+                         const size_t argc,
+                         struct call_ops *ops,
+                         void *userdata);
 
 #endif
