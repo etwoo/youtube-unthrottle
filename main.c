@@ -100,7 +100,7 @@ main(int argc, const char *argv[])
 	};
 
 	int rc = EX_DATAERR;
-	if (youtube_stream_setup(stream, &sops, argv[1])) {
+	if (youtube_stream_setup(stream, &sops, argv[1])) { // TODO: check for result_t instead of bool
 		youtube_stream_visitor(stream, print_url);
 		rc = EX_OK;
 	}
