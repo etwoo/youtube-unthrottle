@@ -256,6 +256,12 @@ pop_n_param_all(struct youtube_stream *p, char **results, size_t capacity)
 	return RESULT_OK;
 }
 
+static void
+kv_free(char **strp)
+{
+	free(*strp);
+}
+
 static result_t
 append_n_param(const char *plaintext, size_t sz, void *userdata)
 {
@@ -263,7 +269,8 @@ append_n_param(const char *plaintext, size_t sz, void *userdata)
 
 	const size_t kv_sz = sz + 3;
 	/* magic number 3: two chars for "n=", one char for NUL terminator */
-	char *kv = malloc(kv_sz * sizeof(*kv));
+	char *kv __attribute__((cleanup(kv_free))) =
+		malloc(kv_sz * sizeof(*kv));
 	check_if(kv == NULL, ERR_YOUTUBE_N_PARAM_KVPAIR_ALLOC);
 
 	kv[0] = 'n';
@@ -281,7 +288,6 @@ append_n_param(const char *plaintext, size_t sz, void *userdata)
 		return err;
 	}
 
-	free(kv);
 	return RESULT_OK;
 }
 
