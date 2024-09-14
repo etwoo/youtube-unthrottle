@@ -336,7 +336,7 @@ url_copy_init(struct url_copy *c)
 	c->audio[0] = '\0';
 }
 
-static void
+static result_t
 copy_video(const char *val, size_t sz, void *userdata)
 {
 	struct url_copy *urls = (struct url_copy *)userdata;
@@ -344,9 +344,10 @@ copy_video(const char *val, size_t sz, void *userdata)
 	memcpy(urls->video, val, sz);
 	urls->video[sz] = '\0';
 	debug("Copied video URL: %s", urls->video);
+	return RESULT_OK;
 }
 
-static void
+static result_t
 copy_audio(const char *val, size_t sz, void *userdata)
 {
 	struct url_copy *urls = (struct url_copy *)userdata;
@@ -354,6 +355,7 @@ copy_audio(const char *val, size_t sz, void *userdata)
 	memcpy(urls->audio, val, sz);
 	urls->audio[sz] = '\0';
 	debug("Copied audio URL: %s", urls->audio);
+	return RESULT_OK;
 }
 
 static struct parse_ops URL_COPY_OPS = {
@@ -444,7 +446,9 @@ TEST
 find_js_timestamp_negative_re_pattern(void)
 {
 	static const char json[] = "{signatureTimestamp:\"foobar\"}";
-	long long int timestamp = find_js_timestamp(json, sizeof(json));
+	long long int timestamp = 0;
+	result_t err = find_js_timestamp(json, sizeof(json), &timestamp);
+	ASSERT_EQ(err.err, ERR_JS_TIMESTAMP_FIND);
 	ASSERT_LT(timestamp, 0);
 	PASS();
 }
@@ -453,9 +457,12 @@ TEST
 find_js_timestamp_negative_strtoll_erange(void)
 {
 	static const char json[] = "{signatureTimestamp:9223372036854775808}";
-	long long int timestamp = find_js_timestamp(json, sizeof(json));
+	long long int timestamp = 0;
+	result_t err = find_js_timestamp(json, sizeof(json), &timestamp);
+	ASSERT_EQ(err.err, ERR_JS_TIMESTAMP_PARSE_TO_LONGLONG);
+	ASSERT_EQ(err.num, ERANGE);
+	ASSERT_STR_EQ(err.msg, "9223372036854775808");
 	ASSERT_LT(timestamp, 0);
-	ASSERT_EQ(errno, ERANGE);
 	PASS();
 }
 
@@ -463,7 +470,9 @@ TEST
 find_js_timestamp_positive_strtoll_max(void)
 {
 	static const char json[] = "{signatureTimestamp:9223372036854775807}";
-	long long int timestamp = find_js_timestamp(json, sizeof(json));
+	long long int timestamp = 0;
+	result_t err = find_js_timestamp(json, sizeof(json), &timestamp);
+	ASSERT_EQ(err.err, OK);
 	ASSERT_EQ(timestamp, LLONG_MAX);
 	PASS();
 }
@@ -472,7 +481,9 @@ TEST
 find_js_timestamp_positive_simple(void)
 {
 	static const char json[] = "{signatureTimestamp:19957}";
-	long long int timestamp = find_js_timestamp(json, sizeof(json));
+	long long int timestamp = 0;
+	result_t err = find_js_timestamp(json, sizeof(json), &timestamp);
+	ASSERT_EQ(err.err, OK);
 	ASSERT_EQ(timestamp, 19957);
 	PASS();
 }
