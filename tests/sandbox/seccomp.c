@@ -53,7 +53,9 @@ open_rdonly_allowed(void)
 TEST
 open_tmpfile_allowed(void)
 {
-	int tmp = tmpfd();
+	int tmp = -1;
+	result_t err = tmpfd(&tmp);
+	ASSERT_EQ(err.err, OK);
 	ASSERT_GTE(tmp, 0);
 	int rc = close(tmp);
 	ASSERT_EQ(rc, 0);
@@ -114,7 +116,9 @@ SUITE(seccomp_io_inet_tmpfile)
 TEST
 open_tmpfile_blocked(void)
 {
-	int tmp = tmpfd();
+	int tmp = -1;
+	result_t err = tmpfd(&tmp);
+	ASSERT_EQ(err.err, ERR_TMPFILE);
 	ASSERT_LT(tmp, 0);
 	ASSERT_EQ(errno, EACCES);
 	PASS();
