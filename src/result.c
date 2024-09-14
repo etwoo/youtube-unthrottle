@@ -25,8 +25,7 @@ my_vsnprintf(const char *pattern, va_list ap)
 	++RESULT_HEAP_POS; /* seek past NUL byte */
 }
 
-__attribute__((format(printf, 1, 2)))
-static void
+static void __attribute__((format(printf, 1, 2)))
 my_snprintf(const char *pattern, ...)
 {
 	va_list ap;
