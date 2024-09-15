@@ -66,22 +66,20 @@ ruleset_add_one(int fd, const char *path, struct landlock_path_beneath_attr *pb)
 
 	pb->parent_fd = open(path, O_PATH);
 	if (pb->parent_fd < 0) {
-		result_t err = {
+		return (result_t){
 			.err = ERR_SANDBOX_LANDLOCK_OPEN_O_PATH,
 			.num = errno,
+			.msg = result_strdup(path),
 		};
-		result_strcpy(&err, path);
-		return err;
 	}
 
 	rc = landlock_add_rule(fd, LANDLOCK_RULE_PATH_BENEATH, pb, 0);
 	if (rc < 0) {
-		result_t err = {
+		return (result_t){
 			.err = ERR_SANDBOX_LANDLOCK_ADD_RULE_PATH,
 			.num = errno,
+			.msg = result_strdup(path),
 		};
-		result_strcpy(&err, path);
-		return err;
 	}
 
 	rc = close(pb->parent_fd);
