@@ -34,18 +34,20 @@ my_snprintf(const char *pattern, ...)
 	va_end(ap);
 }
 
-void
-result_strcpy(result_t *dst, const char *src)
+const char *
+result_strdup(const char *src)
 {
-	dst->msg = RESULT_HEAP_POS;
+	const char *s = RESULT_HEAP_POS;
 	my_snprintf("%s", src);
+	return s;
 }
 
-void
-result_strcpy_span(result_t *dst, const char *src, size_t sz)
+const char *
+result_strdup_span(const char *src, size_t sz)
 {
-	dst->msg = RESULT_HEAP_POS;
+	const char *s = RESULT_HEAP_POS;
 	my_snprintf("%.*s", (int)sz, src);
+	return s;
 }
 
 static const char *

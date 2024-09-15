@@ -63,32 +63,28 @@ parse_json(const char *json,
 	duk_push_lstring(ctx, json, json_sz);
 	duk_ret_t res = duk_safe_call(ctx, try_decode, NULL, 1, 1);
 	if (res != DUK_EXEC_SUCCESS) {
-		result_t err = {
+		return (result_t){
 			.err = ERR_JS_PARSE_JSON_DECODE,
+			.msg = result_strdup(peek(ctx)),
 		};
-		result_strcpy(&err, peek(ctx));
-		return err;
 	}
 
 	if (DUK_TYPE_OBJECT != duk_get_type(ctx, -1) ||
 	    0 == duk_get_prop_literal(ctx, -1, "streamingData")) {
-		result_t err = {
+		return (result_t){
 			.err = ERR_JS_PARSE_JSON_GET_STREAMINGDATA,
 		};
-		return err;
 	}
 	if (DUK_TYPE_OBJECT != duk_get_type(ctx, -1) ||
 	    0 == duk_get_prop_literal(ctx, -1, "adaptiveFormats")) {
-		result_t err = {
+		return (result_t){
 			.err = ERR_JS_PARSE_JSON_GET_ADAPTIVEFORMATS,
 		};
-		return err;
 	}
 	if (DUK_TYPE_OBJECT != duk_get_type(ctx, -1)) {
-		result_t err = {
+		return (result_t){
 			.err = ERR_JS_PARSE_JSON_ADAPTIVEFORMATS_TYPE,
 		};
-		return err;
 	}
 
 	bool got_video = false;
@@ -100,26 +96,23 @@ parse_json(const char *json,
 		duk_get_prop_index(ctx, -1, i);
 
 		if (DUK_TYPE_OBJECT != duk_get_type(ctx, -1)) {
-			result_t err = {
+			return (result_t){
 				.err = ERR_JS_PARSE_JSON_ELEM_TYPE,
 			};
-			return err;
 		}
 
 		if (0 == duk_get_prop_literal(ctx, -1, "mimeType") ||
 		    DUK_TYPE_STRING != duk_get_type(ctx, -1)) {
-			result_t err = {
+			return (result_t){
 				.err = ERR_JS_PARSE_JSON_ELEM_MIMETYPE,
 			};
-			return err;
 		}
 
 		if (0 == duk_get_prop_literal(ctx, -2, "url") ||
 		    DUK_TYPE_STRING != duk_get_type(ctx, -1)) {
-			result_t err = {
+			return (result_t){
 				.err = ERR_JS_PARSE_JSON_ELEM_URL,
 			};
-			return err;
 		}
 
 		const char *url = duk_get_string(ctx, -1);
@@ -197,12 +190,11 @@ find_js_timestamp(const char *js, size_t js_sz, long long int *value)
 
 	long long int res = strtoll(ts, NULL, 10);
 	if (errno != 0) {
-		result_t err = {
+		return (result_t){
 			.err = ERR_JS_TIMESTAMP_PARSE_TO_LONGLONG,
 			.num = errno,
+			.msg = result_strdup_span(ts, tsz),
 		};
-		result_strcpy_span(&err, ts, tsz);
-		return err;
 	}
 
 	debug("Parsed signatureTimestamp %.*s into %lld", (int)tsz, ts, res);
@@ -252,10 +244,9 @@ find_js_deobfuscator(const char *js,
 		info("Cannot find '%s' in base.js", RE_FUNC_NAME[i]);
 	}
 	if (name == NULL || nsz == 0) {
-		result_t err = {
+		return (result_t){
 			.err = ERR_JS_DEOBFUSCATOR_FIND_FUNCTION_ONE,
 		};
-		return err;
 	}
 	debug("Got function name 1: %.*s", (int)nsz, name);
 
@@ -264,11 +255,10 @@ find_js_deobfuscator(const char *js,
 	check_if(rc < 0, ERR_JS_DEOBFUSCATOR_ALLOC);
 
 	if (!re_capture(p2, js, js_sz, &name, &nsz)) {
-		result_t err = {
+		return (result_t){
 			.err = ERR_JS_DEOBFUSCATOR_FIND_FUNCTION_TWO,
+			.msg = result_strdup_span(name, nsz),
 		};
-		result_strcpy_span(&err, name, nsz);
-		return err;
 	}
 	debug("Got function name 2: %.*s", (int)nsz, name);
 
@@ -282,11 +272,10 @@ find_js_deobfuscator(const char *js,
 	check_if(rc < 0, ERR_JS_DEOBFUSCATOR_ALLOC);
 
 	if (!re_capture(p3, js, js_sz, deobfuscator, deobfuscator_sz)) {
-		result_t err = {
+		return (result_t){
 			.err = ERR_JS_DEOBFUSCATOR_FIND_FUNCTION_BODY,
+			.msg = result_strdup_span(name, nsz),
 		};
-		result_strcpy_span(&err, name, nsz);
-		return err;
 	}
 
 	// debug("Got function body: %.*s", *deobfuscator_sz, *deobfuscator);
@@ -323,11 +312,10 @@ call_js_one(duk_context *ctx,
 	 */
 	duk_push_lstring(ctx, js_arg, strlen(js_arg));
 	if (duk_pcall(ctx, 1) != DUK_EXEC_SUCCESS) {
-		result_t err = {
+		return (result_t){
 			.err = ERR_JS_CALL_INVOKE,
+			.msg = result_strdup(peek(ctx)),
 		};
-		result_strcpy(&err, peek(ctx));
-		return err;
 	}
 
 	const char *result = duk_get_string(ctx, -1);
@@ -356,11 +344,10 @@ call_js_foreach(const char *code,
 
 	duk_push_string(ctx, __FUNCTION__);
 	if (duk_pcompile(ctx, DUK_COMPILE_FUNCTION) != 0) {
-		result_t err = {
+		return (result_t){
 			.err = ERR_JS_CALL_COMPILE,
+			.msg = result_strdup(peek(ctx)),
 		};
-		result_strcpy(&err, peek(ctx));
-		return err;
 	}
 
 	for (size_t i = 0; i < argc; ++i) {
