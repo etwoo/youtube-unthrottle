@@ -157,11 +157,10 @@ pop_n_param_one(CURLU *url, char **result)
 	                getargs_sz,
 	                &ciphertext_within_getargs,
 	                &ciphertext_sz)) {
-		result_t err = {
+		return (result_t){
 			.err = ERR_YOUTUBE_N_PARAM_FIND_IN_QUERY,
+			.msg = result_strdup_span(getargs, getargs_sz),
 		};
-		result_strcpy_span(&err, getargs, getargs_sz);
-		return err;
 	}
 
 	*result = malloc((ciphertext_sz + 1) * sizeof(*result));

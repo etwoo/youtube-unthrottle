@@ -92,10 +92,9 @@ extern const result_t RESULT_OK;
 #define check_if(cond, err_type)                                               \
 	do {                                                                   \
 		if (cond) {                                                    \
-			result_t err = {                                       \
+			return (result_t){                                     \
 				.err = err_type,                               \
 			};                                                     \
-			return err;                                            \
 		}                                                              \
 	} while (0)
 
@@ -107,11 +106,10 @@ extern const result_t RESULT_OK;
 #define check_if_num(val, err_type)                                            \
 	do {                                                                   \
 		if (val) {                                                     \
-			result_t err = {                                       \
+			return (result_t){                                     \
 				.err = err_type,                               \
 				.num = val,                                    \
 			};                                                     \
-			return err;                                            \
 		}                                                              \
 	} while (0)
 
@@ -124,24 +122,23 @@ extern const result_t RESULT_OK;
 #define check_if_cond_with_errno(cond, err_type)                               \
 	do {                                                                   \
 		if (cond) {                                                    \
-			result_t err = {                                       \
+			return (result_t){                                     \
 				.err = err_type,                               \
 				.num = errno,                                  \
 			};                                                     \
-			return err;                                            \
 		}                                                              \
 	} while (0)
 
 /*
- * Copy <src> into <dst> using automatic storage managed by result.c module.
+ * Duplicate <src>, using automatic storage managed by result.c module.
  */
-void result_strcpy(result_t *dst, const char *src);
+const char *result_strdup(const char *src);
 
 /*
- * Like result_strcpy(), with an explicit span. Use this with strings that are
+ * Like result_strdup(), with an explicit span. Use this with strings that are
  * not guaranteed to be NUL-terminated.
  */
-void result_strcpy_span(result_t *dst, const char *src, size_t sz);
+const char *result_strdup_span(const char *src, size_t sz);
 
 /*
  * Convert a result_t into a human-readable error message.
