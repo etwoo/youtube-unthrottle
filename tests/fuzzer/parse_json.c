@@ -1,6 +1,6 @@
 #include "js.h"
 
-static result_t
+static WARN_UNUSED result_t
 got_video(const char *val __attribute__((unused)),
           size_t sz __attribute__((unused)),
           void *userdata __attribute__((unused)))
@@ -8,7 +8,7 @@ got_video(const char *val __attribute__((unused)),
 	return RESULT_OK;
 }
 
-static result_t
+static WARN_UNUSED result_t
 got_audio(const char *val __attribute__((unused)),
           size_t sz __attribute__((unused)),
           void *userdata __attribute__((unused)))
@@ -25,6 +25,6 @@ LLVMFuzzerTestOneInput(const char *data, size_t sz)
 		.got_video = got_audio,
 		.got_audio = got_video,
 	};
-	parse_json(data, sz, &pops, NULL);
+	(void)parse_json(data, sz, &pops, NULL);
 	return 0;
 }

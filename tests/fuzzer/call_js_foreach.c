@@ -1,7 +1,7 @@
 #include "array.h"
 #include "js.h"
 
-static result_t
+static WARN_UNUSED result_t
 got_result(const char *val __attribute__((unused)),
            size_t sz __attribute__((unused)),
            void *userdata __attribute__((unused)))
@@ -26,6 +26,6 @@ LLVMFuzzerTestOneInput(const char *data, size_t sz)
 	args[5] = "Kbpbx5yukKR-Px0dhLj";
 	args[6] = "t2yEuJMA6mZh68xBzwE";
 	args[7] = "6a4RySpPL8dKGrGFAqo";
-	call_js_foreach(data, sz, args, ARRAY_SIZE(args), &cops, NULL);
+	(void)call_js_foreach(data, sz, args, ARRAY_SIZE(args), &cops, NULL);
 	return 0;
 }

@@ -1,6 +1,8 @@
 #ifndef RESULT_H
 #define RESULT_H
 
+#include "compiler_features.h"
+
 #include <stddef.h> /* for size_t */
 
 struct result {
@@ -132,19 +134,19 @@ extern const result_t RESULT_OK;
 /*
  * Duplicate <src>, using automatic storage managed by result.c module.
  */
-const char *result_strdup(const char *src);
+const char *result_strdup(const char *src) WARN_UNUSED;
 
 /*
  * Like result_strdup(), with an explicit span. Use this with strings that are
  * not guaranteed to be NUL-terminated.
  */
-const char *result_strdup_span(const char *src, size_t sz);
+const char *result_strdup_span(const char *src, size_t sz) WARN_UNUSED;
 
 /*
  * Convert a result_t into a human-readable error message.
  *
  * Note: the caller does not own the returned buffer.
  */
-const char *result_to_str(result_t r);
+const char *result_to_str(result_t r) WARN_UNUSED;
 
 #endif

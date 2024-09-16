@@ -8,7 +8,7 @@
 #include <assert.h>
 #include <limits.h>
 
-static result_t
+static WARN_UNUSED result_t
 parse_callback_noop(const char *val __attribute__((unused)),
                     size_t sz __attribute__((unused)),
                     void *userdata __attribute__((unused)))
@@ -21,7 +21,7 @@ static struct parse_ops NOOP = {
 	.got_audio = parse_callback_noop,
 };
 
-static int
+static WARN_UNUSED int
 parse(const char *str)
 {
 	result_t err = parse_json(str, strlen(str), &NOOP, NULL);
@@ -340,7 +340,7 @@ url_copy_init(struct url_copy *c)
 	c->audio[0] = '\0';
 }
 
-static result_t
+static WARN_UNUSED result_t
 copy_video(const char *val, size_t sz, void *userdata)
 {
 	struct url_copy *urls = (struct url_copy *)userdata;
@@ -351,7 +351,7 @@ copy_video(const char *val, size_t sz, void *userdata)
 	return RESULT_OK;
 }
 
-static result_t
+static WARN_UNUSED result_t
 copy_audio(const char *val, size_t sz, void *userdata)
 {
 	struct url_copy *urls = (struct url_copy *)userdata;
@@ -648,7 +648,7 @@ result_copy_init(struct result_copy *c)
 	c->str[0] = '\0';
 }
 
-static result_t
+static WARN_UNUSED result_t
 copy_result(const char *val, size_t sz, void *userdata)
 {
 	struct result_copy *result = (struct result_copy *)userdata;

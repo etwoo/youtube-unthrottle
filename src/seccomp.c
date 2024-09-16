@@ -200,7 +200,7 @@ static const char *SYSCALLS_SANDBOX_BASIS[] = {
 /*
  * Add each syscall rule separately, producing an OR relationship (union).
  */
-static int
+static WARN_UNUSED int
 seccomp_allow_cmp_union(scmp_filter_ctx ctx,
                         int num,
                         const struct scmp_arg_cmp *op,
@@ -222,7 +222,7 @@ seccomp_allow_cmp_union(scmp_filter_ctx ctx,
  */
 #define SCMP_ARG_UNUSED 0
 
-static int
+static WARN_UNUSED int
 seccomp_allow_fcntl(scmp_filter_ctx ctx, int num)
 {
 	const struct scmp_arg_cmp op[] = {
@@ -236,7 +236,7 @@ seccomp_allow_fcntl(scmp_filter_ctx ctx, int num)
 	return seccomp_allow_cmp_union(ctx, num, op, ARRAY_SIZE(op));
 }
 
-static int
+static WARN_UNUSED int
 seccomp_allow_mprotect(scmp_filter_ctx ctx, int num)
 {
 	const struct scmp_arg_cmp op[] = {
@@ -245,7 +245,7 @@ seccomp_allow_mprotect(scmp_filter_ctx ctx, int num)
 	return seccomp_allow_cmp_union(ctx, num, op, ARRAY_SIZE(op));
 }
 
-static int
+static WARN_UNUSED int
 seccomp_allow_mmap(scmp_filter_ctx ctx, int num)
 {
 	/*
@@ -261,7 +261,7 @@ seccomp_allow_mmap(scmp_filter_ctx ctx, int num)
 	return seccomp_rule_add_array(ctx, SCMP_ACT_ALLOW, num, 2, arr);
 }
 
-static int
+static WARN_UNUSED int
 seccomp_allow_prctl(scmp_filter_ctx ctx, int num)
 {
 	const struct scmp_arg_cmp op[] = {
@@ -276,7 +276,7 @@ seccomp_allow_prctl(scmp_filter_ctx ctx, int num)
 	return seccomp_allow_cmp_union(ctx, num, op, ARRAY_SIZE(op));
 }
 
-static bool
+static WARN_UNUSED bool
 seccomp_allow(scmp_filter_ctx ctx, const char **syscalls, size_t sz)
 {
 	int rc = 0;
@@ -303,7 +303,7 @@ seccomp_allow(scmp_filter_ctx ctx, const char **syscalls, size_t sz)
 	return rc == 0;
 }
 
-static bool
+static WARN_UNUSED bool
 seccomp_allow_tmpfile(scmp_filter_ctx ctx,
                       const char **syscalls __attribute__((unused)),
                       size_t sz __attribute__((unused)))
@@ -334,7 +334,7 @@ seccomp_allow_tmpfile(scmp_filter_ctx ctx,
 	return rc == 0;
 }
 
-static bool
+static WARN_UNUSED bool
 seccomp_allow_rpath(scmp_filter_ctx ctx,
                     const char **syscalls __attribute__((unused)),
                     size_t sz __attribute__((unused)))
@@ -398,7 +398,7 @@ static struct seccomp_apply_handler {
 	},
 };
 
-static bool
+static WARN_UNUSED bool
 seccomp_apply_common(scmp_filter_ctx ctx, unsigned flags)
 {
 	bool result = seccomp_allow(ctx,

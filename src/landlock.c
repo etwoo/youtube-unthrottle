@@ -59,7 +59,7 @@ landlock_restrict_self(const int ruleset_fd, const __u32 flags)
 #include <linux/prctl.h>
 #include <sys/prctl.h>
 
-static result_t
+static WARN_UNUSED result_t
 ruleset_add_one(int fd, const char *path, struct landlock_path_beneath_attr *pb)
 {
 	int rc = -1;
@@ -89,7 +89,7 @@ ruleset_add_one(int fd, const char *path, struct landlock_path_beneath_attr *pb)
 	return RESULT_OK;
 }
 
-static result_t
+static WARN_UNUSED result_t
 ruleset_add_rule_paths(int fd, const char **paths, size_t sz)
 {
 	struct landlock_path_beneath_attr pb = {
@@ -104,7 +104,7 @@ ruleset_add_rule_paths(int fd, const char **paths, size_t sz)
 	return RESULT_OK;
 }
 
-static result_t
+static WARN_UNUSED result_t
 ruleset_add_rule_port(int fd, int port)
 {
 	struct landlock_net_port_attr np = {
