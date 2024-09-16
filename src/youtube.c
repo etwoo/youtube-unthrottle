@@ -198,12 +198,11 @@ pop_n_param_one(CURLU *url, char **result)
 	assert(ciphertext_within_getargs[-2] == 'n' &&
 	       ciphertext_within_getargs[-1] == '=');
 	char *dst = (char *)ciphertext_within_getargs - strlen("n=");
-	if (dst > getargs) {
-		assert(dst[-1] == '&');
-		--dst;
-	} /* else: dst == getargs, and n-parameter is the first GET argument */
 	char *after_ciphertext =
 		(char *)ciphertext_within_getargs + ciphertext_sz;
+	if (*after_ciphertext == '&') {
+		++after_ciphertext; /* omit duplicate '&' */
+	}
 	const size_t remaining = (getargs + getargs_sz) - after_ciphertext;
 	memmove(dst, after_ciphertext, remaining);
 	dst[remaining] = '\0';
