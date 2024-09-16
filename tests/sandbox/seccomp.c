@@ -99,11 +99,19 @@ mmap_read_allowed(void)
 	PASS();
 }
 
+TEST
+setup_seccomp_apply(int flags)
+{
+	result_t err = seccomp_apply(flags);
+	ASSERT_EQ(err.err, OK);
+	PASS();
+}
+
 SUITE(seccomp_io_inet_tmpfile)
 {
-	seccomp_apply(SECCOMP_SANDBOX | SECCOMP_STDIO | SECCOMP_INET |
-	              SECCOMP_TMPFILE);
-
+	const int flags = SECCOMP_SANDBOX | SECCOMP_STDIO | SECCOMP_INET |
+	                  SECCOMP_TMPFILE;
+	RUN_TESTp(setup_seccomp_apply, flags);
 	RUN_TEST(getpid_allowed);
 	RUN_TEST(mmap_exec_blocked);
 	RUN_TEST(mmap_read_allowed);
@@ -126,9 +134,9 @@ open_tmpfile_blocked(void)
 
 SUITE(seccomp_io_inet_rpath)
 {
-	seccomp_apply(SECCOMP_SANDBOX | SECCOMP_STDIO | SECCOMP_INET |
-	              SECCOMP_RPATH);
-
+	const int flags =
+		SECCOMP_SANDBOX | SECCOMP_STDIO | SECCOMP_INET | SECCOMP_RPATH;
+	RUN_TESTp(setup_seccomp_apply, flags);
 	RUN_TEST(getpid_allowed);
 	RUN_TEST(mmap_exec_blocked);
 	RUN_TEST(mmap_read_allowed);
@@ -149,8 +157,8 @@ open_rdonly_blocked(void)
 
 SUITE(seccomp_io_inet)
 {
-	seccomp_apply(SECCOMP_SANDBOX | SECCOMP_STDIO | SECCOMP_INET);
-
+	const int flags = SECCOMP_SANDBOX | SECCOMP_STDIO | SECCOMP_INET;
+	RUN_TESTp(setup_seccomp_apply, flags);
 	RUN_TEST(getpid_allowed);
 	RUN_TEST(mmap_exec_blocked);
 	RUN_TEST(mmap_read_allowed);
@@ -171,8 +179,8 @@ socket_blocked(void)
 
 SUITE(seccomp_io)
 {
-	seccomp_apply(SECCOMP_SANDBOX | SECCOMP_STDIO);
-
+	const int flags = SECCOMP_SANDBOX | SECCOMP_STDIO;
+	RUN_TESTp(setup_seccomp_apply, flags);
 	RUN_TEST(getpid_allowed);
 	RUN_TEST(mmap_exec_blocked);
 	RUN_TEST(mmap_read_allowed);
@@ -194,8 +202,8 @@ seccomp_change_blocked(void)
 
 SUITE(seccomp_io_sealed_sandbox)
 {
-	seccomp_apply(SECCOMP_STDIO);
-
+	const int flags = SECCOMP_STDIO;
+	RUN_TESTp(setup_seccomp_apply, flags);
 	RUN_TEST(getpid_allowed);
 	RUN_TEST(mmap_exec_blocked);
 	RUN_TEST(mmap_read_allowed);

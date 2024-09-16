@@ -1,14 +1,15 @@
 #ifndef YOUTUBE_H
 #define YOUTUBE_H
 
+#include "compiler_features.h"
 #include "result.h"
 
-result_t youtube_global_init(void);
+result_t youtube_global_init(void) WARN_UNUSED;
 void youtube_global_cleanup(void);
 
 typedef struct youtube_stream *youtube_handle_t;
 
-youtube_handle_t youtube_stream_init(void);
+youtube_handle_t youtube_stream_init(void) WARN_UNUSED;
 void youtube_stream_cleanup(youtube_handle_t h);
 
 struct youtube_setup_ops {
@@ -24,9 +25,9 @@ struct youtube_setup_ops {
 
 result_t youtube_stream_setup(youtube_handle_t h,
                               struct youtube_setup_ops *ops,
-                              const char *target);
+                              const char *target) WARN_UNUSED;
 
 result_t youtube_stream_visitor(youtube_handle_t h,
-                                void (*visit)(const char *));
+                                void (*visit)(const char *)) WARN_UNUSED;
 
 #endif

@@ -18,7 +18,7 @@
 
 static const int FD_DISCARD = -1;
 
-static size_t
+static WARN_UNUSED size_t
 write_to_tmpfile(char *ptr, size_t size, size_t nmemb, void *userdata)
 {
 	const size_t real_size = size * nmemb;
@@ -36,7 +36,7 @@ write_to_tmpfile(char *ptr, size_t size, size_t nmemb, void *userdata)
 	return real_size; /* always consider buffer entirely consumed */
 }
 
-static CURL *
+static WARN_UNUSED CURL *
 get_easy_handle(void)
 {
 	static CURL *GLOBAL_CURL_EASY_HANDLE = NULL;
@@ -84,7 +84,7 @@ url_global_cleanup(void)
 	curl_global_cleanup();
 }
 
-static int
+static WARN_UNUSED int
 wrap_curl_easy_perform(void *request,
                        const char *path __attribute__((unused)),
                        int fd __attribute__((unused)))
@@ -100,7 +100,7 @@ url_global_set_request_handler(int (*handler)(void *, const char *, int))
 	CURL_EASY_PERFORM = handler;
 }
 
-static result_t
+static WARN_UNUSED result_t
 url_prepare(const char *hostp, const char *pathp, CURLU **url)
 {
 	*url = curl_url();

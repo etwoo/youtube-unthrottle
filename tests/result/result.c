@@ -10,7 +10,7 @@
 		ASSERT_NEQ(NULL, strstr(haystack, needle));                    \
 	} while (0)
 
-static const char *
+static WARN_UNUSED const char *
 make(int err_type)
 {
 	result_t err = {
@@ -19,7 +19,7 @@ make(int err_type)
 	return result_to_str(err);
 }
 
-static const char *
+static WARN_UNUSED const char *
 make_n(int err_type)
 {
 	result_t err = {
@@ -29,7 +29,7 @@ make_n(int err_type)
 	return result_to_str(err);
 }
 
-static const char *
+static WARN_UNUSED const char *
 make_s(int err_type)
 {
 	result_t err = {
@@ -39,7 +39,7 @@ make_s(int err_type)
 	return result_to_str(err);
 }
 
-static const char *
+static WARN_UNUSED const char *
 make_ns(int err_type)
 {
 	result_t err = {

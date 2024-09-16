@@ -97,7 +97,7 @@ youtube_stream_visitor(struct youtube_stream *p, void (*visit)(const char *))
 	return RESULT_OK;
 }
 
-static result_t
+static WARN_UNUSED result_t
 youtube_stream_set_one(struct youtube_stream *p,
                        int idx,
                        const char *val,
@@ -108,7 +108,7 @@ youtube_stream_set_one(struct youtube_stream *p,
 	return RESULT_OK;
 }
 
-static result_t
+static WARN_UNUSED result_t
 youtube_stream_set_video(const char *val, size_t sz, void *userdata)
 {
 	struct youtube_stream *p = (struct youtube_stream *)userdata;
@@ -116,7 +116,7 @@ youtube_stream_set_video(const char *val, size_t sz, void *userdata)
 	return youtube_stream_set_one(p, 1, val, sz);
 }
 
-static result_t
+static WARN_UNUSED result_t
 youtube_stream_set_audio(const char *val, size_t sz, void *userdata)
 {
 	struct youtube_stream *p = (struct youtube_stream *)userdata;
@@ -135,7 +135,7 @@ curl_free_getargs(char **getargs)
  *
  * Caller is responsible for free()-ing the pointer returned in <result>.
  */
-static result_t
+static WARN_UNUSED result_t
 pop_n_param_one(CURLU *url, char **result)
 {
 	*result = NULL; /* NULL out early, just in case */
@@ -220,7 +220,7 @@ pop_n_param_one(CURLU *url, char **result)
  *
  * Caller is responsible for free()-ing the pointers returned in <results>.
  */
-static result_t
+static WARN_UNUSED result_t
 pop_n_param_all(struct youtube_stream *p, char **results, size_t capacity)
 {
 	assert(capacity >= ARRAY_SIZE(p->url));
@@ -236,7 +236,7 @@ kv_free(char **strp)
 	free(*strp);
 }
 
-static result_t
+static WARN_UNUSED result_t
 append_n_param(const char *plaintext, size_t sz, void *userdata)
 {
 	struct youtube_stream *p = (struct youtube_stream *)userdata;
@@ -259,7 +259,7 @@ append_n_param(const char *plaintext, size_t sz, void *userdata)
 	return RESULT_OK;
 }
 
-static result_t
+static WARN_UNUSED result_t
 download_and_mmap_tmpfd(const char *url,
                         const char *host,
                         const char *path,
@@ -302,7 +302,7 @@ static const char INNERTUBE_POST_FMT[] =
 	"  \"racyCheckOk\": true\n"
 	"}";
 
-static result_t
+static WARN_UNUSED result_t
 format_innertube_post(const char *target, long long int ts, char **body)
 {
 	const char *id = NULL;

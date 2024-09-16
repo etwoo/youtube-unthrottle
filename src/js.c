@@ -13,7 +13,7 @@
  */
 #include <duktape.h>
 
-static const char *
+static WARN_UNUSED const char *
 peek(duk_context *ctx)
 {
 	return duk_safe_to_string(ctx, -1);
@@ -37,7 +37,7 @@ destroy_heap(duk_context **ctx)
  *
  *   https://github.com/svaarala/duktape/issues/386#issuecomment-417087800
  */
-static duk_ret_t
+static WARN_UNUSED duk_ret_t
 try_decode(duk_context *ctx, void *udata __attribute__((unused)))
 {
 	duk_json_decode(ctx, -1);
@@ -283,7 +283,7 @@ find_js_deobfuscator(const char *js,
 	return RESULT_OK;
 }
 
-static result_t
+static WARN_UNUSED result_t
 call_js_one(duk_context *ctx,
             const char *js_arg,
             struct call_ops *ops,

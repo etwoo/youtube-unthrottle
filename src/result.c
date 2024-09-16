@@ -50,19 +50,19 @@ result_strdup_span(const char *src, size_t sz)
 	return s;
 }
 
-static const char *
+static WARN_UNUSED const char *
 my_strerror(result_t r)
 {
 	return strerror(r.num);
 }
 
-static const char *
+static WARN_UNUSED const char *
 easy_error(result_t r)
 {
 	return curl_easy_strerror(r.num);
 }
 
-static const char *
+static WARN_UNUSED const char *
 url_error(result_t r)
 {
 	return curl_url_strerror(r.num);

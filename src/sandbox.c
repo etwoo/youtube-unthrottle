@@ -112,7 +112,7 @@ static const char *ALLOWED_PATHS[] = {
 #endif
 };
 
-static result_t
+static WARN_UNUSED result_t
 sandbox_with(unsigned flags, const char *promises)
 {
 	const size_t sz = ARRAY_SIZE(ALLOWED_PATHS);

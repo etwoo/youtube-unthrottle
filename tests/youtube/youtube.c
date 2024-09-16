@@ -25,7 +25,7 @@ static const char FAKE_JS_RESPONSE[] =
 
 static const char *(*test_request_path_to_response)(const char *) = NULL;
 
-static int
+static WARN_UNUSED int
 test_fixture_request_handler(void *request, const char *path, int fd)
 {
 	debug("Mocking request: CURL* %p, %s, fd=%d", request, path, fd);
@@ -54,7 +54,7 @@ test_fixture_request_handler(void *request, const char *path, int fd)
 	return 0;
 }
 
-static result_t
+static WARN_UNUSED result_t
 setup_callback_noop(youtube_handle_t h __attribute__((unused)))
 {
 	return RESULT_OK;
@@ -183,7 +183,7 @@ SUITE(stream_setup_target_url_variations)
 	RUN_TEST(stream_setup_edge_cases_target_url_missing_stream_id);
 }
 
-static const char *
+static WARN_UNUSED const char *
 test_request_n_param_pos_middle(const char *path)
 {
 	if (NULL == strstr(path, PATH_WANTS_JSON_RESPONSE)) {
@@ -199,7 +199,7 @@ test_request_n_param_pos_middle(const char *path)
 	       "]}}";
 }
 
-static const char *
+static WARN_UNUSED const char *
 test_request_n_param_pos_first(const char *path)
 {
 	if (NULL == strstr(path, PATH_WANTS_JSON_RESPONSE)) {
@@ -215,7 +215,7 @@ test_request_n_param_pos_first(const char *path)
 	       "]}}";
 }
 
-static const char *
+static WARN_UNUSED const char *
 test_request_n_param_pos_last(const char *path)
 {
 	if (NULL == strstr(path, PATH_WANTS_JSON_RESPONSE)) {
@@ -231,7 +231,7 @@ test_request_n_param_pos_last(const char *path)
 	       "]}}";
 }
 
-static const char *
+static WARN_UNUSED const char *
 test_request_n_param_empty_or_missing(const char *path)
 {
 	if (NULL == strstr(path, PATH_WANTS_JSON_RESPONSE)) {
@@ -259,7 +259,7 @@ stream_setup_edge_cases_n_param_missing(void)
 	PASS();
 }
 
-static const char *
+static WARN_UNUSED const char *
 test_request_entire_url_missing(const char *path)
 {
 	if (NULL == strstr(path, PATH_WANTS_JSON_RESPONSE)) {
