@@ -1,5 +1,5 @@
-#ifndef CATTRS_H
-#define CATTRS_H
+#ifndef COMPILER_FEATURES_H
+#define COMPILER_FEATURES_H
 
 /*
  * Shorthand for oft-used compiler attributes
