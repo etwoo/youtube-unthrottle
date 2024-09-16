@@ -8,6 +8,7 @@
  * of an embedded JavaScript engine (in this case, Duktape).
  */
 
+#include "compiler_features.h"
 #include "coverage.h"
 #include "result.h"
 #include "sandbox.h"
@@ -35,7 +36,7 @@ __asan_default_options(void)
 	return "detect_leaks=0";
 }
 
-static int
+static WARN_UNUSED int
 usage(const char *cmd, int rc)
 {
 	fprintf(stderr, "Usage: %s [URL]\n", cmd);
@@ -48,7 +49,7 @@ to_stderr(result_t r)
 	fprintf(stderr, "ERROR: %s\n", result_to_str(r));
 }
 
-static int
+static WARN_UNUSED int
 try_sandbox(void)
 {
 	result_t err = RESULT_OK;
@@ -76,13 +77,13 @@ cleanup:
 	return EX_OK;
 }
 
-static result_t
+static WARN_UNUSED result_t
 before_inet(youtube_handle_t h __attribute__((unused)))
 {
 	return sandbox_only_io_inet_rpath();
 }
 
-static result_t
+static WARN_UNUSED result_t
 after_inet(youtube_handle_t h __attribute__((unused)))
 {
 	return sandbox_only_io();
