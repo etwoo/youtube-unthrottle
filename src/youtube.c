@@ -100,7 +100,7 @@ youtube_stream_set_one(struct youtube_stream *p,
                        size_t sz __attribute__((unused)))
 {
 	CURLUcode uc = curl_url_set(p->url[idx], CURLUPART_URL, val, 0);
-	check_if_num(uc, ERR_JS_PARSE_JSON_CALLBACK_GOT_PLAINTEXT_URL);
+	check_if_num(uc, ERR_JS_PARSE_JSON_CALLBACK_GOT_CIPHERTEXT_URL);
 	return RESULT_OK;
 }
 
@@ -227,7 +227,7 @@ pop_n_param_all(struct youtube_stream *p, char **results, size_t capacity)
 }
 
 static void
-kv_free(char **strp)
+asprintf_free(char **strp)
 {
 	free(*strp);
 }
@@ -237,16 +237,9 @@ append_n_param(const char *plaintext, size_t sz, void *userdata)
 {
 	struct youtube_stream *p = (struct youtube_stream *)userdata;
 
-	const size_t kv_sz = sz + 3;
-	/* magic number 3: two chars for "n=", one char for NUL terminator */
-	char *kv __attribute__((cleanup(kv_free))) =
-		malloc(kv_sz * sizeof(*kv));
-	check_if(kv == NULL, ERR_YOUTUBE_N_PARAM_KVPAIR_ALLOC);
-
-	kv[0] = 'n';
-	kv[1] = '=';
-	memcpy(kv + 2, plaintext, sz);
-	kv[kv_sz - 1] = '\0';
+	char *kv __attribute__((cleanup(asprintf_free))) = NULL;
+	const int rc = asprintf(&kv, "n=%.*s", (int)sz, plaintext);
+	check_if(rc < 0, ERR_YOUTUBE_N_PARAM_KVPAIR_ALLOC);
 
 	CURLU *u = p->url[p->pos++];
 	CURLUcode uc = curl_url_set(u, CURLUPART_QUERY, kv, CURLU_APPENDQUERY);
@@ -359,12 +352,6 @@ ciphertexts_cleanup(char *ciphertexts[][2])
 		(*ciphertexts)[i] = NULL;
 	}
 	debug("free()-d %zd n-param ciphertext bufs", ARRAY_SIZE(*ciphertexts));
-}
-
-static void
-asprintf_free(char **strp)
-{
-	free(*strp);
 }
 
 result_t
