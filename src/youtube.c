@@ -15,7 +15,6 @@
 #include <unistd.h>
 
 struct youtube_stream {
-	char *basejs;
 	size_t pos;
 	CURLU *url[2];
 };
@@ -40,7 +39,6 @@ youtube_stream_init(void)
 		goto oom;
 	}
 
-	p->basejs = NULL;
 	p->pos = 0;
 	memset(p->url, 0, sizeof(p->url)); /* zero early, just in case */
 
@@ -63,8 +61,6 @@ oom:
 void
 youtube_stream_cleanup(struct youtube_stream *p)
 {
-	free(p->basejs);
-	p->basejs = NULL;
 	p->pos = 0;
 	for (size_t i = 0; i < ARRAY_SIZE(p->url); ++i) {
 		curl_url_cleanup(p->url[i]); /* handles NULL gracefully */
@@ -350,6 +346,12 @@ downloaded_cleanup(struct downloaded *d)
 }
 
 static void
+strndup_free(char **strp)
+{
+	free(*strp);
+}
+
+static void
 ciphertexts_cleanup(char *ciphertexts[][2])
 {
 	for (size_t i = 0; i < ARRAY_SIZE(*ciphertexts); ++i) {
@@ -398,17 +400,20 @@ youtube_stream_setup(struct youtube_stream *p,
 	                              &html.buf,
 	                              &html.sz));
 
-	const char *basejs = NULL;
-	size_t basejs_sz = 0;
-	check(find_base_js_url(html.buf, html.sz, &basejs, &basejs_sz));
+	char *basejs __attribute__((cleanup(strndup_free))) = NULL;
+	{
+		const char *tmp = NULL;
+		size_t sz = 0;
+		check(find_base_js_url(html.buf, html.sz, &tmp, &sz));
 
-	debug("Setting base.js URL: %.*s", (int)basejs_sz, basejs);
-	p->basejs = strndup(basejs, basejs_sz);
-	check_if(p->basejs == NULL, ERR_JS_BASEJS_URL_ALLOC);
+		debug("Setting base.js URL: %.*s", (int)sz, tmp);
+		basejs = strndup(tmp, sz);
+	}
+	check_if(basejs == NULL, ERR_JS_BASEJS_URL_ALLOC);
 
 	check(download_and_mmap_tmpfd(NULL,
 	                              "www.youtube.com",
-	                              p->basejs,
+	                              basejs,
 	                              NULL,
 	                              js.fd,
 	                              &js.buf,

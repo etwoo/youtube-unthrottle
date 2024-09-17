@@ -67,8 +67,8 @@ print_to_str_each_enum_value(void)
 	ASSERT_IN(make(ERR_JS_PARSE_JSON_ELEM_TYPE), "not object-coercible");
 	ASSERT_IN(make(ERR_JS_PARSE_JSON_ELEM_MIMETYPE), CANNOT_GET);
 	ASSERT_IN(make(ERR_JS_PARSE_JSON_ELEM_URL), CANNOT_GET);
-	ASSERT_IN(make_n(ERR_JS_PARSE_JSON_CALLBACK_GOT_PLAINTEXT_URL),
-	          "Cannot set plaintext URL");
+	ASSERT_IN(make_n(ERR_JS_PARSE_JSON_CALLBACK_GOT_CIPHERTEXT_URL),
+	          "Cannot set ciphertext URL");
 	ASSERT_IN(make(ERR_JS_BASEJS_URL_FIND), CANNOT_FIND);
 	ASSERT_IN(make(ERR_JS_BASEJS_URL_ALLOC), "Cannot strndup");
 	ASSERT_IN(make(ERR_JS_TIMESTAMP_FIND), CANNOT_FIND);
