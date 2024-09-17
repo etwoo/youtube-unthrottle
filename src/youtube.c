@@ -159,17 +159,17 @@ pop_n_param_one(CURLU *url, char **result)
 		};
 	}
 
-	*result = malloc((ciphertext_sz + 1) * sizeof(*result));
-	check_if(*result == NULL, ERR_YOUTUBE_N_PARAM_QUERY_ALLOC);
-
 	/*
 	 * Copy n-parameter value out of storage owned by CURLU <url>.
 	 *
 	 * For now, assume <ciphertext> does not require URI-encoding. If that
 	 * ever becomes necessary, use curl_easy_escape().
 	 */
-	memcpy(*result, ciphertext_within_getargs, ciphertext_sz);
-	(*result)[ciphertext_sz] = '\0';
+	const int rc = asprintf(result,
+	                        "%.*s",
+	                        (int)ciphertext_sz,
+	                        ciphertext_within_getargs);
+	check_if(rc < 0, ERR_YOUTUBE_N_PARAM_QUERY_ALLOC);
 	debug("Copied n-param ciphertext: %s", *result);
 
 	debug("Before n-param ciphertext removal: %s", getargs);
