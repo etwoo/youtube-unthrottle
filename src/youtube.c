@@ -50,15 +50,16 @@ youtube_stream_init(void)
 	return p;
 
 oom:
-	if (p) {
-		youtube_stream_cleanup(p);
-	}
+	youtube_stream_cleanup(p);
 	return NULL;
 }
 
 void
 youtube_stream_cleanup(struct youtube_stream *p)
 {
+	if (p == NULL) {
+		return;
+	}
 	for (size_t i = 0; i < ARRAY_SIZE(p->url); ++i) {
 		curl_url_cleanup(p->url[i]); /* handles NULL gracefully */
 		p->url[i] = NULL;
