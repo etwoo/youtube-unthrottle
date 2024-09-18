@@ -395,8 +395,8 @@ youtube_stream_setup(struct youtube_stream *p,
 
 		debug("Setting base.js URL: %.*s", (int)sz, tmp);
 		basejs = strndup(tmp, sz);
+		check_if(basejs == NULL, ERR_JS_BASEJS_URL_ALLOC);
 	}
-	check_if(basejs == NULL, ERR_JS_BASEJS_URL_ALLOC);
 
 	check(download_and_mmap_tmpfd(NULL,
 	                              "www.youtube.com",
