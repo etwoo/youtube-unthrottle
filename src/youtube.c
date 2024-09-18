@@ -390,12 +390,12 @@ youtube_stream_setup(struct youtube_stream *p,
 	char *null_terminated_basejs __attribute__((cleanup(strndup_free))) =
 		NULL;
 	{
-		const char *tmp = NULL;
-		size_t sz = 0;
-		check(find_base_js_url(html.buf, html.sz, &tmp, &sz));
+		const char *basejs = NULL;
+		size_t basejs_sz = 0;
+		check(find_base_js_url(html.buf, html.sz, &basejs, &basejs_sz));
 
-		debug("Setting base.js URL: %.*s", (int)sz, tmp);
-		null_terminated_basejs = strndup(tmp, sz);
+		debug("Setting base.js URL: %.*s", (int)basejs_sz, basejs);
+		null_terminated_basejs = strndup(basejs, basejs_sz);
 	}
 	check_if(null_terminated_basejs == NULL, ERR_JS_BASEJS_URL_ALLOC);
 
