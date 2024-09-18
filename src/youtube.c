@@ -237,6 +237,7 @@ append_n_param(const char *plaintext, size_t sz, size_t pos, void *userdata)
 	const int rc = asprintf(&kv, "n=%.*s", (int)sz, plaintext);
 	check_if(rc < 0, ERR_YOUTUBE_N_PARAM_KVPAIR_ALLOC);
 
+	assert(pos < ARRAY_SIZE(p->url));
 	CURLU *u = p->url[pos];
 	CURLUcode uc = curl_url_set(u, CURLUPART_QUERY, kv, CURLU_APPENDQUERY);
 	check_if_num(uc, ERR_YOUTUBE_N_PARAM_QUERY_APPEND_PLAINTEXT);
