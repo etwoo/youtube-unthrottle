@@ -15,7 +15,6 @@
 #include <unistd.h>
 
 struct youtube_stream {
-	size_t pos;
 	CURLU *url[2];
 };
 
@@ -39,7 +38,6 @@ youtube_stream_init(void)
 		goto oom;
 	}
 
-	p->pos = 0;
 	memset(p->url, 0, sizeof(p->url)); /* zero early, just in case */
 
 	for (size_t i = 0; i < ARRAY_SIZE(p->url); ++i) {
@@ -61,7 +59,6 @@ oom:
 void
 youtube_stream_cleanup(struct youtube_stream *p)
 {
-	p->pos = 0;
 	for (size_t i = 0; i < ARRAY_SIZE(p->url); ++i) {
 		curl_url_cleanup(p->url[i]); /* handles NULL gracefully */
 		p->url[i] = NULL;
@@ -72,7 +69,6 @@ youtube_stream_cleanup(struct youtube_stream *p)
 static void
 youtube_stream_valid(struct youtube_stream *p)
 {
-	assert(p->pos <= ARRAY_SIZE(p->url));
 	for (size_t i = 0; i < ARRAY_SIZE(p->url); ++i) {
 		assert(p->url[i] != NULL);
 	}
@@ -233,7 +229,7 @@ asprintf_free(char **strp)
 }
 
 static WARN_UNUSED result_t
-append_n_param(const char *plaintext, size_t sz, void *userdata)
+append_n_param(const char *plaintext, size_t sz, size_t pos, void *userdata)
 {
 	struct youtube_stream *p = (struct youtube_stream *)userdata;
 
@@ -241,7 +237,7 @@ append_n_param(const char *plaintext, size_t sz, void *userdata)
 	const int rc = asprintf(&kv, "n=%.*s", (int)sz, plaintext);
 	check_if(rc < 0, ERR_YOUTUBE_N_PARAM_KVPAIR_ALLOC);
 
-	CURLU *u = p->url[p->pos++];
+	CURLU *u = p->url[pos];
 	CURLUcode uc = curl_url_set(u, CURLUPART_QUERY, kv, CURLU_APPENDQUERY);
 	check_if_num(uc, ERR_YOUTUBE_N_PARAM_QUERY_APPEND_PLAINTEXT);
 

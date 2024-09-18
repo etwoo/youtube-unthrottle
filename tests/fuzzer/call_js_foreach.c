@@ -4,6 +4,7 @@
 static WARN_UNUSED result_t
 got_result(const char *val __attribute__((unused)),
            size_t sz __attribute__((unused)),
+           size_t pos __attribute__((unused)),
            void *userdata __attribute__((unused)))
 {
 	return RESULT_OK;
