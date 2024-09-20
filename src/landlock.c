@@ -191,3 +191,10 @@ landlock_apply(const char **paths, int sz, int port)
 
 	return RESULT_OK;
 }
+
+#undef DO_CLEANUP
+#undef DO_INIT
+#undef ERROR_TABLE
+#undef GET_PATH
+#undef ERR
+#undef LITERAL

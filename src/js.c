@@ -404,9 +404,8 @@ call_js_foreach(const char *code,
 	return RESULT_OK;
 }
 
-#undef DEFINE_RESULT
-#undef INTO_SWITCH
-#undef INTO_ENUM
+#undef DO_CLEANUP
+#undef DO_INIT
 #undef ERROR_TABLE
 #undef GET_DETAILS
 #undef DETAILS_WITH_STRERROR

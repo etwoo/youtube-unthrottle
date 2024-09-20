@@ -8,6 +8,7 @@
 
 #include "array.h"
 #include "debug.h"
+#include "result_type.h"
 
 #include <assert.h>
 #include <linux/magic.h> /* for OVERLAYFS_SUPER_MAGIC */
@@ -421,6 +422,17 @@ seccomp_apply_common(scmp_filter_ctx ctx, unsigned flags)
 }
 
 /*
+ * Set up codegen macros for module-specific result_t.
+ */
+#define LITERAL(str) s = strdup(str)
+#define ERR(fmt) printed = asprintf(&s, fmt, strerror(p->num))
+
+#define ERROR_TABLE(X)                                                         \
+	X(OK, LITERAL("Success in " __FILE_NAME__))                            \
+	X(ERR_SECCOMP_INIT, ERR("Error in seccomp_init(): %s"))                \
+	X(ERR_SECCOMP_LOAD, ERR("Error in seccomp_load(): %s"))
+
+/*
  * Extend `struct result_base` to create a module-specific result_t.
  */
 struct result_seccomp {
@@ -433,81 +445,17 @@ struct result_seccomp {
 	int num;
 };
 
-static WARN_UNUSED bool
-result_ok(result_t r)
-{
-	struct result_seccomp *p = (struct result_seccomp *)r;
-	return p->err == OK;
-}
+#define DO_CLEANUP assert(p) /* noop */
+#define DO_INIT {.base = {.ops = &RESULT_OPS}, .err = err, .num = num}
 
-static WARN_UNUSED const char *
-my_result_to_str(result_t r)
-{
-	struct result_seccomp *p = (struct result_seccomp *)r;
-	int printed = 0;
-	char *s = NULL;
-
-	switch (p->err) {
-	case OK:
-		s = strdup("Success in " __FILE_NAME__);
-		break;
-	case ERR_SECCOMP_INIT:
-		printed = asprintf(&s,
-		                   "Error in seccomp_init(): %s",
-		                   strerror(p->num));
-		break;
-	case ERR_SECCOMP_LOAD:
-		printed = asprintf(&s,
-		                   "Error in seccomp_load(): %s",
-		                   strerror(p->num));
-		break;
-	}
-
-	if (printed < 0) {
-		return NULL;
-		// TODO: use RESULT_CANNOT_ALLOC instead?
-	}
-
-	return s;
-}
-
-static void
-my_result_cleanup(result_t r)
-{
-	if (r == NULL) {
-		return;
-	}
-
-	struct result_seccomp *p = (struct result_seccomp *)r;
-	free(p);
-}
-
-static struct result_ops RESULT_OPS = {
-	.result_ok = result_ok,
-	.result_to_str = my_result_to_str,
-	.result_cleanup = my_result_cleanup,
-};
-
-static result_t WARN_UNUSED
-make_result(int err_type, int my_errno)
-{
-	struct result_seccomp *r = malloc(sizeof(*r));
-	if (r == NULL) {
-		return RESULT_CANNOT_ALLOC;
-	}
-
-	r->base.ops = &RESULT_OPS;
-	r->err = err_type;
-	r->num = my_errno;
-	return (result_t)r;
-}
+DEFINE_RESULT(result_seccomp, DO_CLEANUP, DO_INIT, int err, int num)
 
 result_t
 seccomp_apply(unsigned flags)
 {
 	scmp_filter_ctx ctx = seccomp_init(SCMP_ACT_ERRNO(EACCES));
 	if (ctx == NULL) {
-		return make_result(ERR_SECCOMP_INIT, errno);
+		return make_result_seccomp(ERR_SECCOMP_INIT, errno);
 	}
 
 	const bool apply = seccomp_apply_common(ctx, flags);
@@ -515,7 +463,7 @@ seccomp_apply(unsigned flags)
 
 	const int rc = seccomp_load(ctx);
 	if (rc < 0) {
-		return make_result(ERR_SECCOMP_LOAD, errno);
+		return make_result_seccomp(ERR_SECCOMP_LOAD, errno);
 	}
 	seccomp_release(ctx);
 
@@ -523,5 +471,10 @@ seccomp_apply(unsigned flags)
 	return RESULT_OK;
 }
 
+#undef DO_CLEANUP
+#undef DO_INIT
+#undef ERROR_TABLE
+#undef ERR
+#undef LITERAL
 #undef SCMP_ARG_UNUSED
 #undef info_seccomp_rule_add_if
