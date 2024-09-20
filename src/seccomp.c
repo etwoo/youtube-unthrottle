@@ -31,6 +31,31 @@
 #include <seccomp.h>
 
 /*
+ * Set up codegen macros for module-specific result_t.
+ */
+#define LITERAL(str) s = strdup(str)
+#define ERR(fmt) printed = asprintf(&s, fmt, strerror(p->num))
+
+#define ERROR_TABLE(X)                                                         \
+	X(OK, LITERAL("Success in " __FILE_NAME__))                            \
+	X(ERR_SECCOMP_INIT, ERR("Error in seccomp_init(): %s"))                \
+	X(ERR_SECCOMP_LOAD, ERR("Error in seccomp_load(): %s"))
+
+/*
+ * Extend `struct result_base` to create a module-specific result_t.
+ */
+struct result_seccomp {
+	struct result_base base;
+	enum { ERROR_TABLE(INTO_ENUM) } err;
+	int num;
+};
+
+#define DO_CLEANUP assert(p) /* noop */
+#define DO_INIT {.base = {.ops = &RESULT_OPS}, .err = err, .num = num}
+
+DEFINE_RESULT(result_seccomp, DO_CLEANUP, DO_INIT, int err, int num)
+
+/*
  * Benign Linux syscalls loosely corresponding to OpenBSD pledge("stdio")
  *
  * Reference: Cosmopolitan Libc's pledge-linux.c implementation
@@ -420,35 +445,6 @@ seccomp_apply_common(scmp_filter_ctx ctx, unsigned flags)
 
 	return result;
 }
-
-/*
- * Set up codegen macros for module-specific result_t.
- */
-#define LITERAL(str) s = strdup(str)
-#define ERR(fmt) printed = asprintf(&s, fmt, strerror(p->num))
-
-#define ERROR_TABLE(X)                                                         \
-	X(OK, LITERAL("Success in " __FILE_NAME__))                            \
-	X(ERR_SECCOMP_INIT, ERR("Error in seccomp_init(): %s"))                \
-	X(ERR_SECCOMP_LOAD, ERR("Error in seccomp_load(): %s"))
-
-/*
- * Extend `struct result_base` to create a module-specific result_t.
- */
-struct result_seccomp {
-	struct result_base base;
-	enum {
-		OK = 0,
-		ERR_SECCOMP_INIT,
-		ERR_SECCOMP_LOAD,
-	} err;
-	int num;
-};
-
-#define DO_CLEANUP assert(p) /* noop */
-#define DO_INIT {.base = {.ops = &RESULT_OPS}, .err = err, .num = num}
-
-DEFINE_RESULT(result_seccomp, DO_CLEANUP, DO_INIT, int err, int num)
 
 result_t
 seccomp_apply(unsigned flags)
