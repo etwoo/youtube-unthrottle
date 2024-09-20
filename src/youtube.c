@@ -44,7 +44,7 @@
 	X(ERR_STREAM_VISITOR_GET_URL, ERR_URL("Cannot get URL as string"))
 
 #define DO_CLEANUP assert(p) /* noop */
-#define DO_INIT {.base = {.ops = &RESULT_OPS}, .err = err, .curlu_code = code}
+#define DO_INIT {.err = err, .curlu_code = code}
 
 /*
  * Extend `struct result_base` to create a module-specific result_t.

@@ -26,7 +26,7 @@
 	X(ERR_TMPFILE_MMAP, PERR("Error mmap()-ing tmpfile"))
 
 #define DO_CLEANUP assert(p) /* noop */
-#define DO_INIT {.base = {.ops = &RESULT_OPS}, .err = err, .num = num}
+#define DO_INIT {.err = err, .num = num}
 
 /*
  * Extend `struct result_base` to create a module-specific result_t.

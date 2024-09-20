@@ -81,8 +81,7 @@ landlock_restrict_self(const int ruleset_fd, const __u32 flags)
 	X(ERR_RESTRICT_SELF, PERR("Error in landlock_restrict_self()"))
 
 #define DO_CLEANUP free(p->path)
-#define DO_INIT                                                                \
-	{.base = {.ops = &RESULT_OPS}, .err = err, .num = num, .path = p}
+#define DO_INIT {.err = err, .num = num, .path = p}
 
 /*
  * Extend `struct result_base` to create a module-specific result_t.

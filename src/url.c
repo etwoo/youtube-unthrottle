@@ -52,7 +52,7 @@
 	X(ERR_URL_DOWNLOAD_PERFORM, ERR_EASY("Error performing HTTP request"))
 
 #define DO_CLEANUP assert(p) /* noop */
-#define DO_INIT {.base = {.ops = &RESULT_OPS}, .err = err, .code = code}
+#define DO_INIT {.err = err, .code = code}
 
 /*
  * Extend `struct result_base` to create a module-specific result_t.

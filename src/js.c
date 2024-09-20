@@ -59,8 +59,7 @@
 	X(ERR_CALL_GET_RESULT, LITERAL("Error fetching function result"))
 
 #define DO_CLEANUP free(p->details)
-#define DO_INIT                                                                \
-	{.base = {.ops = &RESULT_OPS}, .err = err, .num = num, .details = s}
+#define DO_INIT {.err = err, .num = num, .details = s}
 
 /*
  * Extend `struct result_base` to create a module-specific result_t.
