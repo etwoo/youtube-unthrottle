@@ -59,6 +59,123 @@ landlock_restrict_self(const int ruleset_fd, const __u32 flags)
 #include <linux/prctl.h>
 #include <sys/prctl.h>
 
+/*
+ * Extend `struct result_base` to create a module-specific result_t.
+ */
+struct result_landlock {
+	struct result_base base;
+	enum {
+		OK = 0,
+		ERR_CREATE_RULESET,
+		ERR_OPEN_O_PATH,
+		ERR_ADD_RULE_PATH,
+		ERR_ADD_RULE_PORT,
+		ERR_SET_NO_NEW_PRIVS,
+		ERR_RESTRICT_SELF,
+	} err;
+	int errno;
+	const char *path;
+};
+
+static WARN_UNUSED bool
+result_ok(result_t r)
+{
+	struct result_landlock *p = (struct result_landlock *)r;
+	return p->err == OK;
+}
+
+static WARN_UNUSED const char *
+result_to_str(result_t r)
+{
+	struct result_js *p = (struct result_js *)r;
+	int printed = 0;
+	const char *s = NULL;
+
+	switch (p->err) {
+	case OK:
+		s = strdup("Success in " __FILE_NAME__);
+		break;
+	case ERR_CREATE_RULESET:
+		printed = asprintf(&s,
+		                   "Error in landlock_create_ruleset(): %s",
+		                   strerror(p->errno));
+		break;
+	case ERR_OPEN_O_PATH:
+		printed = asprintf(&s,
+		                   "Error in open O_PATH for %s (Landlock): %s",
+		                   p->path,
+		                   strerror(p->errno));
+		break;
+	case ERR_ADD_RULE_PATH:
+		printed = asprintf(&s,
+		                   "Error in landlock_add_rule() for %s: %s",
+		                   p->path,
+		                   strerror(p->errno));
+		break;
+	case ERR_ADD_RULE_PORT:
+		printed = asprintf(&s,
+		                   "Error in landlock_add_rule() for port: %s",
+		                   strerror(p->errno));
+		break;
+	case ERR_SET_NO_NEW_PRIVS:
+		printed = asprintf(&s,
+		                   "Error in prctl(PR_SET_NO_NEW_PRIVS): %s",
+		                   strerror(p->errno));
+		break;
+	case ERR_RESTRICT_SELF:
+		printed = asprintf(&s,
+		                   "Error in landlock_restrict_self(): %s",
+		                   strerror(p->errno));
+		break;
+	}
+
+	if (printed < 0) {
+		return NULL;
+		// TODO: use RESULT_CANNOT_ALLOC instead?
+	}
+
+	return s;
+}
+
+static void
+result_cleanup(result_t r)
+{
+	if (r == NULL) {
+		return;
+	}
+
+	struct result_landlock *p = (struct result_landlock *)r;
+	free(p->path);
+	free(p);
+}
+
+struct result_ops RESULT_OPS = {
+	.result_ok = result_ok,
+	.result_to_str = result_to_str,
+	.result_cleanup = result_cleanup,
+};
+
+static result_t WARN_UNUSED
+make_result(int err_type, int my_errno)
+{
+	return make_result_p(err_type, my_errno, NULL);
+}
+
+static result_t WARN_UNUSED
+make_result_p(int err_type, int my_errno, const char *path)
+{
+	struct result_landlock *r = malloc(sizeof(*r));
+	if (r == NULL) {
+		return &RESULT_CANNOT_ALLOC;
+	}
+
+	r->base.ops = &RESULT_OPS;
+	r->err = err_type;
+	r->errno = my_errno;
+	r->path = path; /* take ownership, if non-NULL */
+	return r;
+}
+
 static WARN_UNUSED result_t
 ruleset_add_one(int fd, const char *path, struct landlock_path_beneath_attr *pb)
 {
@@ -66,20 +183,12 @@ ruleset_add_one(int fd, const char *path, struct landlock_path_beneath_attr *pb)
 
 	pb->parent_fd = open(path, O_PATH);
 	if (pb->parent_fd < 0) {
-		return (result_t){
-			.err = ERR_SANDBOX_LANDLOCK_OPEN_O_PATH,
-			.num = errno,
-			.msg = result_strdup(path),
-		};
+		return make_result_p(ERR_OPEN_O_PATH, errno, strdup(path));
 	}
 
 	rc = landlock_add_rule(fd, LANDLOCK_RULE_PATH_BENEATH, pb, 0);
 	if (rc < 0) {
-		return (result_t){
-			.err = ERR_SANDBOX_LANDLOCK_ADD_RULE_PATH,
-			.num = errno,
-			.msg = result_strdup(path),
-		};
+		return make_result_p(ERR_ADD_RULE_PATH, errno, strdup(path));
 	}
 
 	rc = close(pb->parent_fd);
@@ -112,7 +221,9 @@ ruleset_add_rule_port(int fd, int port)
 		.port = port,
 	};
 	const int rc = landlock_add_rule(fd, LANDLOCK_RULE_NET_PORT, &np, 0);
-	check_if_cond_with_errno(rc < 0, ERR_SANDBOX_LANDLOCK_ADD_RULE_PORT);
+	if (rc < 0) {
+		return make_result(ERR_ADD_RULE_PORT, errno);
+	}
 	return RESULT_OK;
 }
 
@@ -126,7 +237,9 @@ landlock_apply(const char **paths, int sz, int port)
 		.handled_access_net = LANDLOCK_ACCESS_NET_CONNECT_TCP,
 	};
 	int fd = landlock_create_ruleset(&ra, sizeof(ra), 0);
-	check_if_cond_with_errno(fd < 0, ERR_SANDBOX_LANDLOCK_CREATE_RULESET);
+	if (fd < 0) {
+		return make_result(ERR_CREATE_RULESET, errno);
+	}
 
 	if (paths) {
 		check(ruleset_add_rule_paths(fd, paths, sz));
@@ -137,10 +250,14 @@ landlock_apply(const char **paths, int sz, int port)
 	}
 
 	rc = prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0);
-	check_if_cond_with_errno(rc < 0, ERR_SANDBOX_LANDLOCK_SET_NO_NEW_PRIVS);
+	if (rc < 0) {
+		return make_result(ERR_SET_NO_NEW_PRIVS, errno);
+	}
 
 	rc = landlock_restrict_self(fd, 0);
-	check_if_cond_with_errno(rc < 0, ERR_SANDBOX_LANDLOCK_RESTRICT_SELF);
+	if (rc < 0) {
+		return make_result(ERR_RESTRICT_SELF, errno);
+	}
 
 	debug("landlock_apply() succeeded");
 

@@ -28,7 +28,6 @@ struct result_js {
 		ERR_PARSE_JSON_ELEM_TYPE,
 		ERR_PARSE_JSON_ELEM_MIMETYPE,
 		ERR_PARSE_JSON_ELEM_URL,
-		// ERR_PARSE_JSON_CALLBACK_GOT_CIPHERTEXT_URL,
 		ERR_BASEJS_URL_FIND,
 		ERR_BASEJS_URL_ALLOC,
 		ERR_TIMESTAMP_FIND,
@@ -72,7 +71,7 @@ result_to_str(result_t r)
 
 	switch (p->err) {
 	case OK:
-		literal = "parse_json() succeeded";
+		literal = "Success in " __FILE_NAME__;
 		break;
 	case ERR_PARSE_JSON_ALLOC_HEAP:
 		literal = "Cannot allocate JavaScript interpreter heap";
@@ -147,12 +146,6 @@ result_to_str(result_t r)
 	case ERR_CALL_GET_RESULT:
 		literal = "Error fetching function result";
 		break;
-
-#if 0
-	case ERR_PARSE_JSON_CALLBACK_GOT_CIPHERTEXT_URL:
-		my_snprintf("Cannot set ciphertext URL: %s", url_error(r));
-		break;
-#endif
 	}
 
 	if (printed < 0) {
@@ -180,7 +173,7 @@ result_cleanup(result_t r)
 	free(p);
 }
 
-struct result_ops PARSE_JSON_RESULT_OPS = {
+struct result_ops RESULT_OPS = {
 	.result_ok = result_ok,
 	.result_to_str = result_to_str,
 	.result_cleanup = result_cleanup,
@@ -200,7 +193,7 @@ make_result_with_errno(int err_type, int my_errno, const char *details)
 		return &RESULT_CANNOT_ALLOC;
 	}
 
-	r->base.ops = &PARSE_JSON_RESULT_OPS;
+	r->base.ops = &RESULT_OPS;
 	r->err = err_type;
 	r->errno = my_errno;
 	r->details = details; /* take ownership, if non-NULL */
