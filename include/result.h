@@ -105,7 +105,17 @@ extern const result_t RESULT_OK;
  */
 extern const result_t RESULT_CANNOT_ALLOC;
 
+/*
+ * Return true if <r> represents a successful result_t. Return false otherwise.
+ */
 bool is_ok(result_t r) WARN_UNUSED;
+
+/*
+ * Convenience helper for use with __attribute__((cleanup)) like:
+ *
+ *     result_t err __attribute__((cleanup(result_cleanup))) = [...]
+ */
+void result_cleanup(result_t *handle);
 
 /*
  * Return if <expr> yields a non-OK result_t.

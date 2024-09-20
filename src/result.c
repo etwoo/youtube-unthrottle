@@ -24,6 +24,15 @@ is_ok(result_t r)
 	return r->result_ok && r->result_ok(r);
 }
 
+void
+result_cleanup(result_t *handle);
+{
+	result_t r = *handle;
+	if (r && r->ops && r->ops.result_cleanup) {
+		r->ops.result_cleanup(r);
+	}
+}
+
 /*
  * Bump-style allocator for dynamic strings in result_t structs
  * TODO: replace this with flexible array as last struct member, plus __attribute__((element_count))
