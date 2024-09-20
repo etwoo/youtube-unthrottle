@@ -112,6 +112,8 @@ coverage_write_and_close(int fd)
 	info_m_if(close(fd) < 0, "Ignoring error close()-ing coverage fd");
 }
 
+#undef perror_if
+
 #endif
 
 void
