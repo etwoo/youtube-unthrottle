@@ -10,6 +10,7 @@ const result_t RESULT_OK = {
 
 /*
  * Bump-style allocator for dynamic strings in result_t structs
+ * TODO: replace this with flexible array as last struct member, plus __attribute__((element_count))
  */
 static char RESULT_HEAP[4096] = {0};
 static char *RESULT_HEAP_POS = RESULT_HEAP;

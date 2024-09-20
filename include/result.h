@@ -5,6 +5,14 @@
 
 #include <stddef.h> /* for size_t */
 
+// TODO change result_t to struct result *
+// then use type-punning to allow each module to extend result type
+// make callers responsible for free-ing with custom cleanup function that each module can override
+// make RESULT_OK a pointer for caller convenience
+// special-case RESULT_OK, don't free() it in cleanup function
+// add result_ok() macro that checks for pointer equality with RESULT_OK _or_ deep-equality with enum OK value
+// split big enum below into module-specific result_t "subclasses"
+
 struct result {
 	enum {
 		OK = 0,
