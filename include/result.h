@@ -3,6 +3,8 @@
 
 #include "compiler_features.h"
 
+#include <stdbool.h>
+
 /*
  * result_t: opaque type representing an arbitrary result
  */

@@ -4,6 +4,7 @@
 #include "write.h"
 
 #include <assert.h>
+#include <stdlib.h> /* for free() */
 #include <unistd.h>
 
 /*
@@ -93,11 +94,11 @@ result_ok(result_t r)
 }
 
 static WARN_UNUSED const char *
-result_to_str(result_t r)
+my_result_to_str(result_t r)
 {
 	struct result_url *p = (struct result_url *)r;
 	int printed = 0;
-	const char *s = NULL;
+	char *s = NULL;
 
 	switch (p->err) {
 	case OK:
@@ -178,7 +179,7 @@ result_to_str(result_t r)
 }
 
 static void
-result_cleanup(result_t r)
+my_result_cleanup(result_t r)
 {
 	if (r == NULL) {
 		return;
@@ -188,10 +189,10 @@ result_cleanup(result_t r)
 	free(p);
 }
 
-struct result_ops RESULT_OPS = {
+static struct result_ops RESULT_OPS = {
 	.result_ok = result_ok,
-	.result_to_str = result_to_str,
-	.result_cleanup = result_cleanup,
+	.result_to_str = my_result_to_str,
+	.result_cleanup = my_result_cleanup,
 };
 
 static result_t WARN_UNUSED
@@ -199,13 +200,13 @@ make_result_res(int err_type, CURLcode res)
 {
 	struct result_url *r = malloc(sizeof(*r));
 	if (r == NULL) {
-		return &RESULT_CANNOT_ALLOC;
+		return RESULT_CANNOT_ALLOC;
 	}
 
 	r->base.ops = &RESULT_OPS;
 	r->err = err_type;
 	r->curl_code = res;
-	return r;
+	return (result_t)r;
 }
 
 #define check_if_res(res, err_type)                                            \
@@ -220,13 +221,13 @@ make_result_uc(int err_type, CURLUcode uc)
 {
 	struct result_url *r = malloc(sizeof(*r));
 	if (r == NULL) {
-		return &RESULT_CANNOT_ALLOC;
+		return RESULT_CANNOT_ALLOC;
 	}
 
 	r->base.ops = &RESULT_OPS;
 	r->err = err_type;
 	r->curlu_code = uc;
-	return r;
+	return (result_t)r;
 }
 
 #define check_if_uc(uc, err_type)                                              \

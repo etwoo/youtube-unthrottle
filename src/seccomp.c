@@ -14,6 +14,7 @@
 #include <linux/prctl.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h> /* for free() */
 #include <sys/mman.h>
 #include <sys/statfs.h>
 
@@ -429,7 +430,7 @@ struct result_seccomp {
 		ERR_SECCOMP_INIT,
 		ERR_SECCOMP_LOAD,
 	} err;
-	int errno;
+	int num;
 };
 
 static WARN_UNUSED bool
@@ -440,11 +441,11 @@ result_ok(result_t r)
 }
 
 static WARN_UNUSED const char *
-result_to_str(result_t r)
+my_result_to_str(result_t r)
 {
 	struct result_seccomp *p = (struct result_seccomp *)r;
 	int printed = 0;
-	const char *s = NULL;
+	char *s = NULL;
 
 	switch (p->err) {
 	case OK:
@@ -453,12 +454,12 @@ result_to_str(result_t r)
 	case ERR_SECCOMP_INIT:
 		printed = asprintf(&s,
 		                   "Error in seccomp_init(): %s",
-		                   strerror(p->errno));
+		                   strerror(p->num));
 		break;
 	case ERR_SECCOMP_LOAD:
 		printed = asprintf(&s,
 		                   "Error in seccomp_load(): %s",
-		                   strerror(p->errno));
+		                   strerror(p->num));
 		break;
 	}
 
@@ -471,7 +472,7 @@ result_to_str(result_t r)
 }
 
 static void
-result_cleanup(result_t r)
+my_result_cleanup(result_t r)
 {
 	if (r == NULL) {
 		return;
@@ -481,10 +482,10 @@ result_cleanup(result_t r)
 	free(p);
 }
 
-struct result_ops RESULT_OPS = {
+static struct result_ops RESULT_OPS = {
 	.result_ok = result_ok,
-	.result_to_str = result_to_str,
-	.result_cleanup = result_cleanup,
+	.result_to_str = my_result_to_str,
+	.result_cleanup = my_result_cleanup,
 };
 
 static result_t WARN_UNUSED
@@ -492,13 +493,13 @@ make_result(int err_type, int my_errno)
 {
 	struct result_seccomp *r = malloc(sizeof(*r));
 	if (r == NULL) {
-		return &RESULT_CANNOT_ALLOC;
+		return RESULT_CANNOT_ALLOC;
 	}
 
 	r->base.ops = &RESULT_OPS;
 	r->err = err_type;
-	r->errno = my_errno;
-	return r;
+	r->num = my_errno;
+	return (result_t)r;
 }
 
 result_t

@@ -40,8 +40,8 @@ struct result_js {
 		ERR_CALL_INVOKE,
 		ERR_CALL_GET_RESULT,
 	} err;
-	int errno;
-	const char *details;
+	int num;
+	char *details;
 };
 
 static WARN_UNUSED bool
@@ -52,20 +52,20 @@ result_ok(result_t r)
 }
 
 static WARN_UNUSED const char *
-get_details(result_t r)
+get_details(struct result_js *p)
 {
-	if (r->details == NULL) {
+	if (p->details == NULL) {
 		return "[Cannot allocate details buffer]";
 	}
-	return r->details;
+	return p->details;
 }
 
 static WARN_UNUSED const char *
-result_to_str(result_t r)
+my_result_to_str(result_t r)
 {
 	struct result_js *p = (struct result_js *)r;
 	int printed = 0;
-	const char *dynamic = NULL;
+	char *dynamic = NULL;
 	const char *literal = NULL;
 
 	switch (p->err) {
@@ -108,7 +108,7 @@ result_to_str(result_t r)
 		printed = asprintf(&dynamic,
 		                   "Error in strtoll() on %s: %s",
 		                   get_details(p),
-		                   strerror(p->errno));
+		                   strerror(p->num));
 		break;
 	case ERR_DEOBFUSCATOR_ALLOC:
 		literal = "Cannot allocate asprintf buffer";
@@ -158,7 +158,7 @@ result_to_str(result_t r)
 }
 
 static void
-result_cleanup(result_t r)
+my_result_cleanup(result_t r)
 {
 	if (r == NULL) {
 		return;
@@ -169,31 +169,31 @@ result_cleanup(result_t r)
 	free(p);
 }
 
-struct result_ops RESULT_OPS = {
+static struct result_ops RESULT_OPS = {
 	.result_ok = result_ok,
-	.result_to_str = result_to_str,
-	.result_cleanup = result_cleanup,
+	.result_to_str = my_result_to_str,
+	.result_cleanup = my_result_cleanup,
 };
 
 static result_t WARN_UNUSED
-make_result(int err_type, const char *details)
-{
-	return make_result_with_errno(err_type, 0, details);
-}
-
-static result_t WARN_UNUSED
-make_result_with_errno(int err_type, int my_errno, const char *details)
+make_result_with_errno(int err_type, int my_errno, char *details)
 {
 	struct result_js *r = malloc(sizeof(*r));
 	if (r == NULL) {
-		return &RESULT_CANNOT_ALLOC;
+		return RESULT_CANNOT_ALLOC;
 	}
 
 	r->base.ops = &RESULT_OPS;
 	r->err = err_type;
-	r->errno = my_errno;
+	r->num = my_errno;
 	r->details = details; /* take ownership, if non-NULL */
-	return r;
+	return (result_t)r;
+}
+
+static result_t WARN_UNUSED
+make_result(int err_type, char *details)
+{
+	return make_result_with_errno(err_type, 0, details);
 }
 
 static WARN_UNUSED const char *

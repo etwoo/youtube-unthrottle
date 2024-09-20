@@ -52,29 +52,28 @@ to_stderr(result_t r)
 static WARN_UNUSED int
 try_sandbox(void)
 {
-	result_t err = RESULT_OK;
+	result_t err __attribute__((cleanup(result_cleanup))) = RESULT_OK;
 
 	err = sandbox_only_io_inet_tmpfile();
-	if (err.err) {
+	if (!is_ok(err)) {
 		goto cleanup;
 	}
 
 	err = sandbox_only_io_inet_rpath();
-	if (err.err) {
+	if (!is_ok(err)) {
 		goto cleanup;
 	}
 
 	err = sandbox_only_io();
-	if (err.err) {
+	if (!is_ok(err)) {
 		goto cleanup;
 	}
 
-cleanup:
-	if (err.err) {
-		to_stderr(err);
-		return EX_SOFTWARE;
-	}
 	return EX_OK;
+
+cleanup:
+	to_stderr(err);
+	return EX_SOFTWARE;
 }
 
 static WARN_UNUSED result_t
@@ -98,7 +97,7 @@ print_url(const char *url)
 #define check_stderr(expr, status)                                             \
 	do {                                                                   \
 		result_t x = expr;                                             \
-		if (x.err) {                                                   \
+		if (!is_ok(x)) {                                               \
 			to_stderr(x);                                          \
 			rc = status;                                           \
 			goto cleanup;                                          \

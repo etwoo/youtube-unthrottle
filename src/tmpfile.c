@@ -4,7 +4,8 @@
 
 #include <assert.h>
 #include <fcntl.h>
-#include <stdio.h> /* for P_tmpdir */
+#include <stdio.h>  /* for P_tmpdir */
+#include <stdlib.h> /* for free() */
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -22,7 +23,7 @@ struct result_tmpfile {
 		ERR_TMPFILE_FSTAT,
 		ERR_TMPFILE_MMAP,
 	} err;
-	int errno;
+	int num;
 };
 
 static WARN_UNUSED bool
@@ -33,11 +34,11 @@ result_ok(result_t r)
 }
 
 static WARN_UNUSED const char *
-result_to_str(result_t r)
+my_result_to_str(result_t r)
 {
 	struct result_tmpfile *p = (struct result_tmpfile *)r;
 	int printed = 0;
-	const char *s = NULL;
+	char *s = NULL;
 
 	switch (p->err) {
 	case OK:
@@ -46,27 +47,27 @@ result_to_str(result_t r)
 	case ERR_TMPFILE:
 		printed = asprintf(&s,
 		                   "Error in tmpfile(): %s",
-		                   strerror(p->errno));
+		                   strerror(p->num));
 		break;
 	case ERR_TMPFILE_FILENO:
 		printed = asprintf(&s,
 		                   "Error fileno()-ing tmpfile: %s",
-		                   strerror(p->errno));
+		                   strerror(p->num));
 		break;
 	case ERR_TMPFILE_DUP:
 		printed = asprintf(&s,
 		                   "Error dup()-ing tmpfile: %s",
-		                   strerror(p->errno));
+		                   strerror(p->num));
 		break;
 	case ERR_TMPFILE_FSTAT:
 		printed = asprintf(&s,
 		                   "Error fstat()-ing tmpfile: %s",
-		                   strerror(p->errno));
+		                   strerror(p->num));
 		break;
 	case ERR_TMPFILE_MMAP:
 		printed = asprintf(&s,
 		                   "Error mmap()-ing tmpfile: %s",
-		                   strerror(p->errno));
+		                   strerror(p->num));
 		break;
 	}
 
@@ -79,7 +80,7 @@ result_to_str(result_t r)
 }
 
 static void
-result_cleanup(result_t r)
+my_result_cleanup(result_t r)
 {
 	if (r == NULL) {
 		return;
@@ -89,10 +90,10 @@ result_cleanup(result_t r)
 	free(p);
 }
 
-struct result_ops RESULT_OPS = {
+static struct result_ops RESULT_OPS = {
 	.result_ok = result_ok,
-	.result_to_str = result_to_str,
-	.result_cleanup = result_cleanup,
+	.result_to_str = my_result_to_str,
+	.result_cleanup = my_result_cleanup,
 };
 
 static result_t WARN_UNUSED
@@ -100,13 +101,13 @@ make_result(int err_type, int my_errno)
 {
 	struct result_tmpfile *r = malloc(sizeof(*r));
 	if (r == NULL) {
-		return &RESULT_CANNOT_ALLOC;
+		return RESULT_CANNOT_ALLOC;
 	}
 
 	r->base.ops = &RESULT_OPS;
 	r->err = err_type;
-	r->errno = my_errno;
-	return r;
+	r->num = my_errno;
+	return (result_t)r;
 }
 
 static void

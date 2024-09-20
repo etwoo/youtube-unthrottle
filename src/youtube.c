@@ -44,11 +44,11 @@ result_ok(result_t r)
 }
 
 static WARN_UNUSED const char *
-result_to_str(result_t r)
+my_result_to_str(result_t r)
 {
 	struct result_youtube *p = (struct result_youtube *)r;
 	int printed = 0;
-	const char *dynamic = NULL;
+	char *dynamic = NULL;
 	const char *literal = NULL;
 
 	switch (p->err) {
@@ -113,7 +113,7 @@ result_to_str(result_t r)
 }
 
 static void
-result_cleanup(result_t r)
+my_result_cleanup(result_t r)
 {
 	if (r == NULL) {
 		return;
@@ -123,10 +123,10 @@ result_cleanup(result_t r)
 	free(p);
 }
 
-struct result_ops RESULT_OPS = {
+static struct result_ops RESULT_OPS = {
 	.result_ok = result_ok,
-	.result_to_str = result_to_str,
-	.result_cleanup = result_cleanup,
+	.result_to_str = my_result_to_str,
+	.result_cleanup = my_result_cleanup,
 };
 
 static result_t WARN_UNUSED
@@ -134,13 +134,13 @@ make_result_uc(int err_type, CURLUcode uc)
 {
 	struct result_youtube *r = malloc(sizeof(*r));
 	if (r == NULL) {
-		return &RESULT_CANNOT_ALLOC;
+		return RESULT_CANNOT_ALLOC;
 	}
 
 	r->base.ops = &RESULT_OPS;
 	r->err = err_type;
 	r->curlu_code = uc;
-	return r;
+	return (result_t)r;
 }
 
 #define check_if_uc(uc, err_type)                                              \
