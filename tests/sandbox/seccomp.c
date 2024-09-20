@@ -57,7 +57,7 @@ open_tmpfile_allowed(void)
 {
 	int tmp = -1;
 	result_t err RESULT_CLEANUP = tmpfd(&tmp);
-	ASSERT_TRUE(is_ok(err.err));
+	ASSERT(is_ok(err));
 	ASSERT_GTE(tmp, 0);
 	int rc = close(tmp);
 	ASSERT_EQ(rc, 0);
@@ -105,7 +105,7 @@ TEST
 setup_seccomp_apply(int flags)
 {
 	result_t err RESULT_CLEANUP = seccomp_apply(flags);
-	ASSERT_TRUE(is_ok(err));
+	ASSERT(is_ok(err));
 	PASS();
 }
 

@@ -94,7 +94,7 @@ TEST
 global_setup(void)
 {
 	result_t err RESULT_CLEANUP = youtube_global_init();
-	ASSERT_TRUE(is_ok(err));
+	ASSERT(is_ok(err));
 	PASS();
 }
 
@@ -111,7 +111,7 @@ stream_setup_with_redirected_network_io(const char *(*custom_fn)(const char *),
 		youtube_stream_setup(stream, &NOOP, FAKE_YT_URL);
 	test_request_path_to_response = NULL;
 
-	ASSERT_TRUE(is_ok(err));
+	ASSERT(is_ok(err));
 
 	GOT_CORRECT_URLS = true;
 	EXPECTED_AUDIO_URL = expected_audio_url;
@@ -122,7 +122,7 @@ stream_setup_with_redirected_network_io(const char *(*custom_fn)(const char *),
 	EXPECTED_AUDIO_URL = NULL;
 	EXPECTED_VIDEO_URL = NULL;
 
-	ASSERT_TRUE(is_ok(err));
+	ASSERT(is_ok(err));
 	ASSERT(GOT_CORRECT_URLS);
 
 	youtube_stream_cleanup(stream);
@@ -148,7 +148,7 @@ stream_setup_with_null_ops(void)
 
 	result_t err RESULT_CLEANUP =
 		youtube_stream_setup(stream, &NULL_OPS, FAKE_YT_URL);
-	ASSERT_TRUE(is_ok(err));
+	ASSERT(is_ok(err));
 
 	youtube_stream_cleanup(stream);
 	PASS();

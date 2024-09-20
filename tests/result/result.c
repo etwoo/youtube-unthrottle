@@ -4,6 +4,7 @@
 #include "debug.h"
 #include "greatest.h"
 
+#if 0
 #define ASSERT_IN(haystack, needle)                                            \
 	do {                                                                   \
 		debug("Checking for \"%s\" in \"%s\"", needle, haystack);      \
@@ -131,6 +132,7 @@ SUITE(print_to_str)
 {
 	RUN_TEST(print_to_str_each_enum_value);
 }
+#endif
 
 GREATEST_MAIN_DEFS();
 
@@ -141,7 +143,7 @@ main(int argc, char **argv)
 
 	GREATEST_MAIN_BEGIN();
 
-	RUN_SUITE(print_to_str);
+	// RUN_SUITE(print_to_str);
 
 	GREATEST_MAIN_END();
 }

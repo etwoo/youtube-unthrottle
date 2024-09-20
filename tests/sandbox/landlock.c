@@ -22,7 +22,7 @@ before_landlock_filesystem(void)
 
 	int tmp = -1;
 	result_t err RESULT_CLEANUP = tmpfd(&tmp);
-	ASSERT_TRUE(is_ok(err));
+	ASSERT(is_ok(err));
 	ASSERT_GTE(tmp, 0);
 	rc = close(tmp);
 	ASSERT_EQ(rc, 0);
@@ -63,7 +63,7 @@ setup_partial_landlock(void)
 		P_tmpdir,
 	};
 	result_t err RESULT_CLEANUP = landlock_apply(paths, 1, 443);
-	ASSERT_TRUE(is_ok(err));
+	ASSERT(is_ok(err));
 	PASS();
 }
 
@@ -75,7 +75,7 @@ partial_landlock_filesystem(void)
 
 	int tmp = -1;
 	result_t err RESULT_CLEANUP = tmpfd(&tmp);
-	ASSERT_TRUE(is_ok(err));
+	ASSERT(is_ok(err));
 	ASSERT_GTE(tmp, 0);
 	int rc = close(tmp);
 	ASSERT_EQ(rc, 0);
@@ -94,7 +94,7 @@ TEST
 setup_full_landlock(void)
 {
 	result_t err RESULT_CLEANUP = landlock_apply(NULL, 0, 0);
-	ASSERT_TRUE(is_ok(err));
+	ASSERT(is_ok(err));
 	PASS();
 }
 
