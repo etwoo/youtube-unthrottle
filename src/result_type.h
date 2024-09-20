@@ -32,7 +32,7 @@
 		if (r == NULL) {                                               \
 			return;                                                \
 		}                                                              \
-		struct typ *p = (struct typ *)r;                              \
+		struct typ *p = (struct typ *)r;                               \
 		do_cleanup;                                                    \
 		free(p);                                                       \
 	}                                                                      \
