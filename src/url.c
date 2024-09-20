@@ -1,6 +1,7 @@
 #include "url.h"
 
 #include "debug.h"
+#include "result_type.h"
 #include "write.h"
 
 #include <assert.h>
@@ -16,6 +17,91 @@
  *   https://curl.se/libcurl/c/parseurl.html
  */
 #include <curl/curl.h>
+
+/*
+ * Set up codegen macros for module-specific result_t.
+ */
+#define LITERAL(str) s = strdup(str)
+#define ERR_EASY(fmt)                                                          \
+	printed = asprintf(&s, fmt ": %s", curl_easy_strerror(p->curl_code))
+#define ERR_URL(fmt)                                                           \
+	printed = asprintf(&s, fmt ": %s", curl_url_strerror(p->curlu_code))
+
+#define ERROR_TABLE(X)                                                         \
+	X(OK, LITERAL("Success in " __FILE_NAME__))                            \
+	X(ERR_URL_GLOBAL_INIT, LITERAL("Cannot use URL functions"))            \
+	X(ERR_URL_PREPARE_ALLOC, LITERAL("Cannot allocate URL handle"))        \
+	X(ERR_URL_PREPARE_SET_PART_SCHEME, ERR_URL("Cannot set URL scheme"))   \
+	X(ERR_URL_PREPARE_SET_PART_HOST, ERR_URL("Cannot set URL host"))       \
+	X(ERR_URL_PREPARE_SET_PART_PATH, ERR_URL("Cannot set URL path"))       \
+	X(ERR_URL_DOWNLOAD_ALLOC, LITERAL("Cannot allocate easy handle"))      \
+	X(ERR_URL_DOWNLOAD_SET_OPT_WRITEDATA,                                  \
+	  ERR_EASY("Cannot set WRITEDATA"))                                    \
+	X(ERR_URL_DOWNLOAD_SET_OPT_WRITEFUNCTION,                              \
+	  ERR_EASY("Cannot set WRITEFUNCTION"))                                \
+	X(ERR_URL_DOWNLOAD_SET_OPT_USERAGENT,                                  \
+	  ERR_EASY("Cannot set User-Agent"))                                   \
+	X(ERR_URL_DOWNLOAD_SET_OPT_URL_STRING,                                 \
+	  ERR_EASY("Cannot set URL via string"))                               \
+	X(ERR_URL_DOWNLOAD_SET_OPT_URL_OBJECT,                                 \
+	  ERR_EASY("Cannot set URL via object"))                               \
+	X(ERR_URL_DOWNLOAD_SET_OPT_HTTP_HEADER,                                \
+	  ERR_EASY("Cannot set headers"))                                      \
+	X(ERR_URL_DOWNLOAD_SET_OPT_POST_BODY,                                  \
+	  ERR_EASY("Cannot set POST body"))                                    \
+	X(ERR_URL_DOWNLOAD_PERFORM, ERR_EASY("Error performing HTTP request"))
+
+#define DO_CLEANUP assert(p) /* noop */
+#define DO_INIT {.base = {.ops = &RESULT_OPS}, .err = err}
+
+/*
+ * Extend `struct result_base` to create a module-specific result_t.
+ */
+struct result_url {
+	struct result_base base;
+	enum { ERROR_TABLE(INTO_ENUM) } err;
+	union {
+		CURLcode curl_code;
+		CURLUcode curlu_code;
+	};
+};
+DEFINE_RESULT(result_url, DO_CLEANUP, DO_INIT, int err)
+
+static result_t WARN_UNUSED
+make_result_res(int err_type, CURLcode res)
+{
+	struct result_url *r = (struct result_url *)make_result_url(err_type);
+	if (r == NULL) {
+		return RESULT_CANNOT_ALLOC;
+	}
+	r->curl_code = res;
+	return (result_t)r;
+}
+
+#define check_if_res(res, err_type)                                            \
+	do {                                                                   \
+		if (res) {                                                     \
+			return make_result_res(err_type, res);                 \
+		}                                                              \
+	} while (0)
+
+static result_t WARN_UNUSED
+make_result_uc(int err_type, CURLUcode uc)
+{
+	struct result_url *r = (struct result_url *)make_result_url(err_type);
+	if (r == NULL) {
+		return RESULT_CANNOT_ALLOC;
+	}
+	r->curlu_code = uc;
+	return (result_t)r;
+}
+
+#define check_if_uc(uc, err_type)                                              \
+	do {                                                                   \
+		if (uc) {                                                      \
+			return make_result_uc(err_type, uc);                   \
+		}                                                              \
+	} while (0)
 
 static const int FD_DISCARD = -1;
 
@@ -57,185 +143,6 @@ get_easy_handle(void)
 	curl_easy_reset(GLOBAL_CURL_EASY_HANDLE);
 	return GLOBAL_CURL_EASY_HANDLE;
 }
-
-/*
- * Extend `struct result_base` to create a module-specific result_t.
- */
-struct result_url {
-	struct result_base base;
-	enum {
-		OK = 0,
-		ERR_URL_GLOBAL_INIT,
-		ERR_URL_PREPARE_ALLOC,
-		ERR_URL_PREPARE_SET_PART_SCHEME,
-		ERR_URL_PREPARE_SET_PART_HOST,
-		ERR_URL_PREPARE_SET_PART_PATH,
-		ERR_URL_DOWNLOAD_ALLOC,
-		ERR_URL_DOWNLOAD_SET_OPT_WRITEDATA,
-		ERR_URL_DOWNLOAD_SET_OPT_WRITEFUNCTION,
-		ERR_URL_DOWNLOAD_SET_OPT_USERAGENT,
-		ERR_URL_DOWNLOAD_SET_OPT_URL_STRING,
-		ERR_URL_DOWNLOAD_SET_OPT_URL_OBJECT,
-		ERR_URL_DOWNLOAD_SET_OPT_HTTP_HEADER,
-		ERR_URL_DOWNLOAD_SET_OPT_POST_BODY,
-		ERR_URL_DOWNLOAD_PERFORM,
-	} err;
-	union {
-		CURLcode curl_code;
-		CURLUcode curlu_code;
-	};
-};
-
-static WARN_UNUSED bool
-result_ok(result_t r)
-{
-	struct result_url *p = (struct result_url *)r;
-	return p->err == OK;
-}
-
-static WARN_UNUSED const char *
-my_result_to_str(result_t r)
-{
-	struct result_url *p = (struct result_url *)r;
-	int printed = 0;
-	char *s = NULL;
-
-	switch (p->err) {
-	case OK:
-		s = strdup("Success in " __FILE_NAME__);
-		break;
-	case ERR_URL_GLOBAL_INIT:
-		s = strdup("Cannot use URL functions");
-		break;
-	case ERR_URL_PREPARE_ALLOC:
-		s = strdup("Cannot allocate URL handle");
-		break;
-	case ERR_URL_PREPARE_SET_PART_SCHEME:
-		printed = asprintf(&s,
-		                   "Cannot set URL scheme: %s",
-		                   curl_url_strerror(p->curlu_code));
-		break;
-	case ERR_URL_PREPARE_SET_PART_HOST:
-		printed = asprintf(&s,
-		                   "Cannot set URL host: %s",
-		                   curl_url_strerror(p->curlu_code));
-		break;
-	case ERR_URL_PREPARE_SET_PART_PATH:
-		printed = asprintf(&s,
-		                   "Cannot set URL path: %s",
-		                   curl_url_strerror(p->curlu_code));
-		break;
-	case ERR_URL_DOWNLOAD_ALLOC:
-		s = strdup("Cannot allocate easy handle");
-		break;
-	case ERR_URL_DOWNLOAD_SET_OPT_WRITEDATA:
-		printed = asprintf(&s,
-		                   "Cannot set WRITEDATA: %s",
-		                   curl_easy_strerror(p->curl_code));
-		break;
-	case ERR_URL_DOWNLOAD_SET_OPT_WRITEFUNCTION:
-		printed = asprintf(&s,
-		                   "Cannot set WRITEFUNCTION: %s",
-		                   curl_easy_strerror(p->curl_code));
-		break;
-	case ERR_URL_DOWNLOAD_SET_OPT_USERAGENT:
-		printed = asprintf(&s,
-		                   "Cannot set User-Agent: %s",
-		                   curl_easy_strerror(p->curl_code));
-		break;
-	case ERR_URL_DOWNLOAD_SET_OPT_URL_STRING:
-		printed = asprintf(&s,
-		                   "Cannot set URL via string: %s",
-		                   curl_easy_strerror(p->curl_code));
-		break;
-	case ERR_URL_DOWNLOAD_SET_OPT_URL_OBJECT:
-		printed = asprintf(&s,
-		                   "Cannot set URL via object: %s",
-		                   curl_easy_strerror(p->curl_code));
-		break;
-	case ERR_URL_DOWNLOAD_SET_OPT_HTTP_HEADER:
-		printed = asprintf(&s,
-		                   "Cannot set HTTP headers: %s",
-		                   curl_easy_strerror(p->curl_code));
-		break;
-	case ERR_URL_DOWNLOAD_SET_OPT_POST_BODY:
-		printed = asprintf(&s,
-		                   "Cannot set POST body: %s",
-		                   curl_easy_strerror(p->curl_code));
-		break;
-	case ERR_URL_DOWNLOAD_PERFORM:
-		printed = asprintf(&s,
-		                   "Error performing HTTP request: %s",
-		                   curl_easy_strerror(p->curl_code));
-		break;
-	}
-
-	if (printed < 0) {
-		return NULL;
-		// TODO: use RESULT_CANNOT_ALLOC instead?
-	}
-
-	return s;
-}
-
-static void
-my_result_cleanup(result_t r)
-{
-	if (r == NULL) {
-		return;
-	}
-
-	struct result_url *p = (struct result_url *)r;
-	free(p);
-}
-
-static struct result_ops RESULT_OPS = {
-	.result_ok = result_ok,
-	.result_to_str = my_result_to_str,
-	.result_cleanup = my_result_cleanup,
-};
-
-static result_t WARN_UNUSED
-make_result_res(int err_type, CURLcode res)
-{
-	struct result_url *r = malloc(sizeof(*r));
-	if (r == NULL) {
-		return RESULT_CANNOT_ALLOC;
-	}
-
-	r->base.ops = &RESULT_OPS;
-	r->err = err_type;
-	r->curl_code = res;
-	return (result_t)r;
-}
-
-#define check_if_res(res, err_type)                                            \
-	do {                                                                   \
-		if (res) {                                                     \
-			return make_result_res(err_type, res);                 \
-		}                                                              \
-	} while (0)
-
-static result_t WARN_UNUSED
-make_result_uc(int err_type, CURLUcode uc)
-{
-	struct result_url *r = malloc(sizeof(*r));
-	if (r == NULL) {
-		return RESULT_CANNOT_ALLOC;
-	}
-
-	r->base.ops = &RESULT_OPS;
-	r->err = err_type;
-	r->curlu_code = uc;
-	return (result_t)r;
-}
-
-#define check_if_uc(uc, err_type)                                              \
-	do {                                                                   \
-		if (uc) {                                                      \
-			return make_result_uc(err_type, uc);                   \
-		}                                                              \
-	} while (0)
 
 result_t
 url_global_init(void)
@@ -369,3 +276,9 @@ url_download(const char *url_str,   /* may be NULL */
 
 #undef check_if_res
 #undef check_if_uc
+#undef DO_CLEANUP
+#undef DO_INIT
+#undef ERROR_TABLE
+#undef ERR_EASY
+#undef ERR_URL
+#undef LITERAL

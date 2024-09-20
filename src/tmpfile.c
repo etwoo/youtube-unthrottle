@@ -15,15 +15,18 @@
  * Set up codegen macros for module-specific result_t.
  */
 #define LITERAL(str) s = strdup(str)
-#define ERR(fmt) printed = asprintf(&s, fmt, strerror(p->num))
+#define PERR(fmt) printed = asprintf(&s, fmt ": %s", strerror(p->num))
 
 #define ERROR_TABLE(X)                                                         \
 	X(OK, LITERAL("Success in " __FILE_NAME__))                            \
-	X(ERR_TMPFILE, ERR("Error in tmpfile(): %s"))                          \
-	X(ERR_TMPFILE_FILENO, ERR("Error fileno()-ing tmpfile: %s"))           \
-	X(ERR_TMPFILE_DUP, ERR("Error dup()-ing tmpfile: %s"))                 \
-	X(ERR_TMPFILE_FSTAT, ERR("Error fstat()-ing tmpfile: %s"))             \
-	X(ERR_TMPFILE_MMAP, ERR("Error mmap()-ing tmpfile: %s"))
+	X(ERR_TMPFILE, PERR("Error in tmpfile()"))                             \
+	X(ERR_TMPFILE_FILENO, PERR("Error fileno()-ing tmpfile"))              \
+	X(ERR_TMPFILE_DUP, PERR("Error dup()-ing tmpfile"))                    \
+	X(ERR_TMPFILE_FSTAT, PERR("Error fstat()-ing tmpfile"))                \
+	X(ERR_TMPFILE_MMAP, PERR("Error mmap()-ing tmpfile"))
+
+#define DO_CLEANUP assert(p) /* noop */
+#define DO_INIT {.base = {.ops = &RESULT_OPS}, .err = err, .num = num}
 
 /*
  * Extend `struct result_base` to create a module-specific result_t.
@@ -33,10 +36,6 @@ struct result_tmpfile {
 	enum { ERROR_TABLE(INTO_ENUM) } err;
 	int num;
 };
-
-#define DO_CLEANUP assert(p) /* noop */
-#define DO_INIT {.base = {.ops = &RESULT_OPS}, .err = err, .num = num}
-
 DEFINE_RESULT(result_tmpfile, DO_CLEANUP, DO_INIT, int err, int num)
 
 static void
@@ -121,5 +120,5 @@ tmpunmap(void *addr, unsigned int sz)
 #undef DO_CLEANUP
 #undef DO_INIT
 #undef ERROR_TABLE
-#undef ERR
+#undef PERR
 #undef LITERAL

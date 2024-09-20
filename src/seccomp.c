@@ -34,12 +34,15 @@
  * Set up codegen macros for module-specific result_t.
  */
 #define LITERAL(str) s = strdup(str)
-#define ERR(fmt) printed = asprintf(&s, fmt, strerror(p->num))
+#define PERR(fmt) printed = asprintf(&s, fmt ": %s", strerror(p->num))
 
 #define ERROR_TABLE(X)                                                         \
 	X(OK, LITERAL("Success in " __FILE_NAME__))                            \
-	X(ERR_SECCOMP_INIT, ERR("Error in seccomp_init(): %s"))                \
-	X(ERR_SECCOMP_LOAD, ERR("Error in seccomp_load(): %s"))
+	X(ERR_SECCOMP_INIT, PERR("Error in seccomp_init()"))                   \
+	X(ERR_SECCOMP_LOAD, PERR("Error in seccomp_load()"))
+
+#define DO_CLEANUP assert(p) /* noop */
+#define DO_INIT {.base = {.ops = &RESULT_OPS}, .err = err, .num = num}
 
 /*
  * Extend `struct result_base` to create a module-specific result_t.
@@ -49,10 +52,6 @@ struct result_seccomp {
 	enum { ERROR_TABLE(INTO_ENUM) } err;
 	int num;
 };
-
-#define DO_CLEANUP assert(p) /* noop */
-#define DO_INIT {.base = {.ops = &RESULT_OPS}, .err = err, .num = num}
-
 DEFINE_RESULT(result_seccomp, DO_CLEANUP, DO_INIT, int err, int num)
 
 /*
@@ -470,7 +469,7 @@ seccomp_apply(unsigned flags)
 #undef DO_CLEANUP
 #undef DO_INIT
 #undef ERROR_TABLE
-#undef ERR
+#undef PERR
 #undef LITERAL
 #undef SCMP_ARG_UNUSED
 #undef info_seccomp_rule_add_if

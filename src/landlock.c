@@ -66,18 +66,23 @@ landlock_restrict_self(const int ruleset_fd, const __u32 flags)
  * Set up codegen macros for module-specific result_t.
  */
 #define LITERAL(str) s = strdup(str)
-#define ERR(fmt) printed = asprintf(&s, fmt, strerror(p->num))
+#define PERR(fmt) printed = asprintf(&s, fmt ": %s", strerror(p->num))
 #define GET_PATH(x) x->path ? x->path : "[Cannot allocate path]"
-#define PATH(fmt) printed = asprintf(&s, fmt, GET_PATH(p), strerror(p->num))
+#define PATH(fmt)                                                              \
+	printed = asprintf(&s, fmt ": %s", GET_PATH(p), strerror(p->num))
 
 #define ERROR_TABLE(X)                                                         \
 	X(OK, LITERAL("Success in " __FILE_NAME__))                            \
-	X(ERR_CREATE_RULESET, ERR("Error in landlock_create_ruleset(): %s"))   \
-	X(ERR_OPEN_O_PATH, PATH("Error in open O_PATH for %s (Landlock): %s")) \
-	X(ERR_ADD_RULE_PATH, PATH("Error in landlock_add_rule() for %s: %s"))  \
-	X(ERR_ADD_RULE_PORT, ERR("Error in landlock_add_rule() for port: %s")) \
-	X(ERR_SET_NO_NEW_PRIVS, ERR("Error in prctl(PR_SET_NO_NEW_PRIVS): %s"))\
-	X(ERR_RESTRICT_SELF, ERR("Error in landlock_restrict_self(): %s"))
+	X(ERR_CREATE_RULESET, PERR("Error in landlock_create_ruleset()"))      \
+	X(ERR_OPEN_O_PATH, PATH("Error in open O_PATH for %s (Landlock)"))     \
+	X(ERR_ADD_RULE_PATH, PATH("Error in landlock_add_rule() for %s"))      \
+	X(ERR_ADD_RULE_PORT, PERR("Error in landlock_add_rule() for port"))    \
+	X(ERR_SET_NO_NEW_PRIVS, PERR("Error in prctl(PR_SET_NO_NEW_PRIVS)"))   \
+	X(ERR_RESTRICT_SELF, PERR("Error in landlock_restrict_self()"))
+
+#define DO_CLEANUP free(p->path)
+#define DO_INIT                                                                \
+	{.base = {.ops = &RESULT_OPS}, .err = err, .num = num, .path = p}
 
 /*
  * Extend `struct result_base` to create a module-specific result_t.
@@ -88,11 +93,6 @@ struct result_ll {
 	int num;
 	char *path;
 };
-
-#define DO_CLEANUP free(p->path)
-#define DO_INIT                                                                \
-	{.base = {.ops = &RESULT_OPS}, .err = err, .num = num, .path = p}
-
 DEFINE_RESULT(result_ll, DO_CLEANUP, DO_INIT, int err, int num, char *p)
 
 static result_t WARN_UNUSED
@@ -195,6 +195,7 @@ landlock_apply(const char **paths, int sz, int port)
 #undef DO_CLEANUP
 #undef DO_INIT
 #undef ERROR_TABLE
+#undef PATH
 #undef GET_PATH
-#undef ERR
+#undef PERR
 #undef LITERAL

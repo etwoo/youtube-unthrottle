@@ -58,6 +58,10 @@
 	X(ERR_CALL_INVOKE, DETAILS("Error in duk_pcall(): %s"))                \
 	X(ERR_CALL_GET_RESULT, LITERAL("Error fetching function result"))
 
+#define DO_CLEANUP free(p->details)
+#define DO_INIT                                                                \
+	{.base = {.ops = &RESULT_OPS}, .err = err, .num = num, .details = s}
+
 /*
  * Extend `struct result_base` to create a module-specific result_t.
  */
@@ -67,11 +71,6 @@ struct result_js {
 	int num;
 	char *details;
 };
-
-#define DO_CLEANUP free(p->details)
-#define DO_INIT                                                                \
-	{.base = {.ops = &RESULT_OPS}, .err = err, .num = num, .details = s}
-
 DEFINE_RESULT(result_js, DO_CLEANUP, DO_INIT, int err, int num, char *s)
 
 static result_t WARN_UNUSED
