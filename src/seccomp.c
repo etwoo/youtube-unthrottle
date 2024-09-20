@@ -450,12 +450,12 @@ result_to_str(result_t r)
 	case OK:
 		s = strdup("Success in " __FILE_NAME__);
 		break;
-	case ERR_SANDBOX_SECCOMP_INIT:
+	case ERR_SECCOMP_INIT:
 		printed = asprintf(&s,
 		                   "Error in seccomp_init(): %s",
 		                   strerror(p->errno));
 		break;
-	case ERR_SANDBOX_SECCOMP_LOAD:
+	case ERR_SECCOMP_LOAD:
 		printed = asprintf(&s,
 		                   "Error in seccomp_load(): %s",
 		                   strerror(p->errno));
@@ -506,7 +506,7 @@ seccomp_apply(unsigned flags)
 {
 	scmp_filter_ctx ctx = seccomp_init(SCMP_ACT_ERRNO(EACCES));
 	if (ctx == NULL) {
-		return make_result(ERR_SANDBOX_SECCOMP_INIT, errno);
+		return make_result(ERR_SECCOMP_INIT, errno);
 	}
 
 	const bool apply = seccomp_apply_common(ctx, flags);
@@ -514,7 +514,7 @@ seccomp_apply(unsigned flags)
 
 	const int rc = seccomp_load(ctx);
 	if (rc < 0) {
-		return make_result(ERR_SANDBOX_SECCOMP_LOAD, errno);
+		return make_result(ERR_SECCOMP_LOAD, errno);
 	}
 	seccomp_release(ctx);
 

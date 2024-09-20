@@ -9,6 +9,106 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+/*
+ * Extend `struct result_base` to create a module-specific result_t.
+ */
+struct result_tmpfile {
+	struct result_base base;
+	enum {
+		OK = 0,
+		ERR_TMPFILE,
+		ERR_TMPFILE_FILENO,
+		ERR_TMPFILE_DUP,
+		ERR_TMPFILE_FSTAT,
+		ERR_TMPFILE_MMAP,
+	} err;
+	int errno;
+};
+
+static WARN_UNUSED bool
+result_ok(result_t r)
+{
+	struct result_tmpfile *p = (struct result_tmpfile *)r;
+	return p->err == OK;
+}
+
+static WARN_UNUSED const char *
+result_to_str(result_t r)
+{
+	struct result_tmpfile *p = (struct result_tmpfile *)r;
+	int printed = 0;
+	const char *s = NULL;
+
+	switch (p->err) {
+	case OK:
+		s = strdup("Success in " __FILE_NAME__);
+		break;
+	case ERR_TMPFILE:
+		printed = asprintf(&s,
+		                   "Error in tmpfile(): %s",
+		                   strerror(p->errno));
+		break;
+	case ERR_TMPFILE_FILENO:
+		printed = asprintf(&s,
+		                   "Error fileno()-ing tmpfile: %s",
+		                   strerror(p->errno));
+		break;
+	case ERR_TMPFILE_DUP:
+		printed = asprintf(&s,
+		                   "Error dup()-ing tmpfile: %s",
+		                   strerror(p->errno));
+		break;
+	case ERR_TMPFILE_FSTAT:
+		printed = asprintf(&s,
+		                   "Error fstat()-ing tmpfile: %s",
+		                   strerror(p->errno));
+		break;
+	case ERR_TMPFILE_MMAP:
+		printed = asprintf(&s,
+		                   "Error mmap()-ing tmpfile: %s",
+		                   strerror(p->errno));
+		break;
+	}
+
+	if (printed < 0) {
+		return NULL;
+		// TODO: use RESULT_CANNOT_ALLOC instead?
+	}
+
+	return s;
+}
+
+static void
+result_cleanup(result_t r)
+{
+	if (r == NULL) {
+		return;
+	}
+
+	struct result_tmpfile *p = (struct result_tmpfile *)r;
+	free(p);
+}
+
+struct result_ops RESULT_OPS = {
+	.result_ok = result_ok,
+	.result_to_str = result_to_str,
+	.result_cleanup = result_cleanup,
+};
+
+static result_t WARN_UNUSED
+make_result(int err_type, int my_errno)
+{
+	struct result_tmpfile *r = malloc(sizeof(*r));
+	if (r == NULL) {
+		return &RESULT_CANNOT_ALLOC;
+	}
+
+	r->base.ops = &RESULT_OPS;
+	r->err = err_type;
+	r->errno = my_errno;
+	return r;
+}
+
 static void
 checked_fclose(FILE **fs)
 {
@@ -24,7 +124,9 @@ tmpfd(int *fd)
 	 * to call open() with O_TMPFILE|O_EXCL ourselves.
 	 */
 	FILE *fs __attribute__((cleanup(checked_fclose))) = tmpfile();
-	check_if_cond_with_errno(fs == NULL, ERR_TMPFILE);
+	if (fs == NULL) {
+		return make_result(ERR_TMPFILE, errno);
+	}
 
 	/*
 	 * dup the underlying file descriptor behind the tmpfile stream, and
@@ -33,10 +135,14 @@ tmpfd(int *fd)
 	 */
 
 	int inner_fd = fileno(fs);
-	check_if_cond_with_errno(inner_fd < 0, ERR_TMPFILE_FILENO);
+	if (inner_fd < 0) {
+		return make_result(ERR_TMPFILE_FILENO, errno);
+	}
 
 	int dup_fd = dup(inner_fd);
-	check_if_cond_with_errno(dup_fd < 0, ERR_TMPFILE_DUP);
+	if (dup_fd < 0) {
+		return make_result(ERR_TMPFILE_DUP, errno);
+	}
 
 	*fd = dup_fd;
 	debug("Got tmpfile with fd=%d", *fd);
@@ -49,11 +155,15 @@ tmpmap(int fd, void **addr, unsigned int *sz)
 	struct stat st = {
 		.st_size = 0,
 	};
-	check_if_cond_with_errno(fstat(fd, &st) < 0, ERR_TMPFILE_FSTAT);
+	if (fstat(fd, &st) < 0) {
+		return make_result(ERR_TMPFILE_FSTAT, errno);
+	}
 	*sz = st.st_size;
 
 	*addr = mmap(NULL, *sz, PROT_READ, MAP_PRIVATE, fd, 0);
-	check_if_cond_with_errno(*addr == MAP_FAILED, ERR_TMPFILE_MMAP);
+	if (*addr == MAP_FAILED) {
+		return make_result(ERR_TMPFILE_MMAP, errno);
+	}
 
 	/*
 	 * mmap() can technically return NULL on some platforms, but our
