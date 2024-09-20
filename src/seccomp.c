@@ -419,17 +419,103 @@ seccomp_apply_common(scmp_filter_ctx ctx, unsigned flags)
 	return result;
 }
 
+/*
+ * Extend `struct result_base` to create a module-specific result_t.
+ */
+struct result_seccomp {
+	struct result_base base;
+	enum {
+		OK = 0,
+		ERR_SECCOMP_INIT,
+		ERR_SECCOMP_LOAD,
+	} err;
+	int errno;
+};
+
+static WARN_UNUSED bool
+result_ok(result_t r)
+{
+	struct result_seccomp *p = (struct result_seccomp *)r;
+	return p->err == OK;
+}
+
+static WARN_UNUSED const char *
+result_to_str(result_t r)
+{
+	struct result_seccomp *p = (struct result_seccomp *)r;
+	int printed = 0;
+	const char *s = NULL;
+
+	switch (p->err) {
+	case OK:
+		s = strdup("Success in " __FILE_NAME__);
+		break;
+	case ERR_SANDBOX_SECCOMP_INIT:
+		printed = asprintf(&s,
+		                   "Error in seccomp_init(): %s",
+		                   strerror(p->errno));
+		break;
+	case ERR_SANDBOX_SECCOMP_LOAD:
+		printed = asprintf(&s,
+		                   "Error in seccomp_load(): %s",
+		                   strerror(p->errno));
+		break;
+	}
+
+	if (printed < 0) {
+		return NULL;
+		// TODO: use RESULT_CANNOT_ALLOC instead?
+	}
+
+	return s;
+}
+
+static void
+result_cleanup(result_t r)
+{
+	if (r == NULL) {
+		return;
+	}
+
+	struct result_seccomp *p = (struct result_seccomp *)r;
+	free(p);
+}
+
+struct result_ops RESULT_OPS = {
+	.result_ok = result_ok,
+	.result_to_str = result_to_str,
+	.result_cleanup = result_cleanup,
+};
+
+static result_t WARN_UNUSED
+make_result(int err_type, int my_errno)
+{
+	struct result_seccomp *r = malloc(sizeof(*r));
+	if (r == NULL) {
+		return &RESULT_CANNOT_ALLOC;
+	}
+
+	r->base.ops = &RESULT_OPS;
+	r->err = err_type;
+	r->errno = my_errno;
+	return r;
+}
+
 result_t
 seccomp_apply(unsigned flags)
 {
 	scmp_filter_ctx ctx = seccomp_init(SCMP_ACT_ERRNO(EACCES));
-	check_if_cond_with_errno(ctx == NULL, ERR_SANDBOX_SECCOMP_INIT);
+	if (ctx == NULL) {
+		return make_result(ERR_SANDBOX_SECCOMP_INIT, errno);
+	}
 
 	const bool apply = seccomp_apply_common(ctx, flags);
 	info_if(!apply, "Cannot add all seccomp rules; continuing ...");
 
 	const int rc = seccomp_load(ctx);
-	check_if_cond_with_errno(rc < 0, ERR_SANDBOX_SECCOMP_LOAD);
+	if (rc < 0) {
+		return make_result(ERR_SANDBOX_SECCOMP_LOAD, errno);
+	}
 	seccomp_release(ctx);
 
 	debug("seccomp_apply() %s", apply ? "succeeded" : "encountered issues");

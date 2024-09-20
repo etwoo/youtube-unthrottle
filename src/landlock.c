@@ -87,7 +87,7 @@ result_ok(result_t r)
 static WARN_UNUSED const char *
 result_to_str(result_t r)
 {
-	struct result_js *p = (struct result_js *)r;
+	struct result_landlock *p = (struct result_landlock *)r;
 	int printed = 0;
 	const char *s = NULL;
 
