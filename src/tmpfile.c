@@ -1,6 +1,7 @@
 #include "tmpfile.h"
 
 #include "debug.h"
+#include "result_type.h"
 
 #include <assert.h>
 #include <fcntl.h>
@@ -11,104 +12,32 @@
 #include <unistd.h>
 
 /*
+ * Set up codegen macros for module-specific result_t.
+ */
+#define LITERAL(str) s = strdup(str)
+#define ERR(fmt) printed = asprintf(&s, fmt, strerror(p->num))
+
+#define ERROR_TABLE(X)                                                         \
+	X(OK, LITERAL("Success in " __FILE_NAME__))                            \
+	X(ERR_TMPFILE, ERR("Error in tmpfile(): %s"))                          \
+	X(ERR_TMPFILE_FILENO, ERR("Error fileno()-ing tmpfile: %s"))           \
+	X(ERR_TMPFILE_DUP, ERR("Error dup()-ing tmpfile: %s"))                 \
+	X(ERR_TMPFILE_FSTAT, ERR("Error fstat()-ing tmpfile: %s"))             \
+	X(ERR_TMPFILE_MMAP, ERR("Error mmap()-ing tmpfile: %s"))
+
+/*
  * Extend `struct result_base` to create a module-specific result_t.
  */
 struct result_tmpfile {
 	struct result_base base;
-	enum {
-		OK = 0,
-		ERR_TMPFILE,
-		ERR_TMPFILE_FILENO,
-		ERR_TMPFILE_DUP,
-		ERR_TMPFILE_FSTAT,
-		ERR_TMPFILE_MMAP,
-	} err;
+	enum { ERROR_TABLE(INTO_ENUM) } err;
 	int num;
 };
 
-static WARN_UNUSED bool
-result_ok(result_t r)
-{
-	struct result_tmpfile *p = (struct result_tmpfile *)r;
-	return p->err == OK;
-}
+#define DO_CLEANUP assert(p) /* noop */
+#define DO_INIT {.base = {.ops = &RESULT_OPS}, .err = err, .num = num}
 
-static WARN_UNUSED const char *
-my_result_to_str(result_t r)
-{
-	struct result_tmpfile *p = (struct result_tmpfile *)r;
-	int printed = 0;
-	char *s = NULL;
-
-	switch (p->err) {
-	case OK:
-		s = strdup("Success in " __FILE_NAME__);
-		break;
-	case ERR_TMPFILE:
-		printed = asprintf(&s,
-		                   "Error in tmpfile(): %s",
-		                   strerror(p->num));
-		break;
-	case ERR_TMPFILE_FILENO:
-		printed = asprintf(&s,
-		                   "Error fileno()-ing tmpfile: %s",
-		                   strerror(p->num));
-		break;
-	case ERR_TMPFILE_DUP:
-		printed = asprintf(&s,
-		                   "Error dup()-ing tmpfile: %s",
-		                   strerror(p->num));
-		break;
-	case ERR_TMPFILE_FSTAT:
-		printed = asprintf(&s,
-		                   "Error fstat()-ing tmpfile: %s",
-		                   strerror(p->num));
-		break;
-	case ERR_TMPFILE_MMAP:
-		printed = asprintf(&s,
-		                   "Error mmap()-ing tmpfile: %s",
-		                   strerror(p->num));
-		break;
-	}
-
-	if (printed < 0) {
-		return NULL;
-		// TODO: use RESULT_CANNOT_ALLOC instead?
-	}
-
-	return s;
-}
-
-static void
-my_result_cleanup(result_t r)
-{
-	if (r == NULL) {
-		return;
-	}
-
-	struct result_tmpfile *p = (struct result_tmpfile *)r;
-	free(p);
-}
-
-static struct result_ops RESULT_OPS = {
-	.result_ok = result_ok,
-	.result_to_str = my_result_to_str,
-	.result_cleanup = my_result_cleanup,
-};
-
-static result_t WARN_UNUSED
-make_result(int err_type, int my_errno)
-{
-	struct result_tmpfile *r = malloc(sizeof(*r));
-	if (r == NULL) {
-		return RESULT_CANNOT_ALLOC;
-	}
-
-	r->base.ops = &RESULT_OPS;
-	r->err = err_type;
-	r->num = my_errno;
-	return (result_t)r;
-}
+DEFINE_RESULT(result_tmpfile, DO_CLEANUP, DO_INIT, int err, int num)
 
 static void
 checked_fclose(FILE **fs)
@@ -126,7 +55,7 @@ tmpfd(int *fd)
 	 */
 	FILE *fs __attribute__((cleanup(checked_fclose))) = tmpfile();
 	if (fs == NULL) {
-		return make_result(ERR_TMPFILE, errno);
+		return make_result_tmpfile(ERR_TMPFILE, errno);
 	}
 
 	/*
@@ -137,12 +66,12 @@ tmpfd(int *fd)
 
 	int inner_fd = fileno(fs);
 	if (inner_fd < 0) {
-		return make_result(ERR_TMPFILE_FILENO, errno);
+		return make_result_tmpfile(ERR_TMPFILE_FILENO, errno);
 	}
 
 	int dup_fd = dup(inner_fd);
 	if (dup_fd < 0) {
-		return make_result(ERR_TMPFILE_DUP, errno);
+		return make_result_tmpfile(ERR_TMPFILE_DUP, errno);
 	}
 
 	*fd = dup_fd;
@@ -157,13 +86,13 @@ tmpmap(int fd, void **addr, unsigned int *sz)
 		.st_size = 0,
 	};
 	if (fstat(fd, &st) < 0) {
-		return make_result(ERR_TMPFILE_FSTAT, errno);
+		return make_result_tmpfile(ERR_TMPFILE_FSTAT, errno);
 	}
 	*sz = st.st_size;
 
 	*addr = mmap(NULL, *sz, PROT_READ, MAP_PRIVATE, fd, 0);
 	if (*addr == MAP_FAILED) {
-		return make_result(ERR_TMPFILE_MMAP, errno);
+		return make_result_tmpfile(ERR_TMPFILE_MMAP, errno);
 	}
 
 	/*
@@ -188,3 +117,9 @@ tmpunmap(void *addr, unsigned int sz)
 	const int rc = munmap(addr, sz);
 	info_m_if(rc < 0, "Ignoring error munmap()-ing tmpfile");
 }
+
+#undef DO_CLEANUP
+#undef DO_INIT
+#undef ERROR_TABLE
+#undef ERR
+#undef LITERAL
