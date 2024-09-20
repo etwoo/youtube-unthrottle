@@ -54,7 +54,7 @@ static void
 to_stderr(result_t r)
 {
 	char *msg __attribute__((cleanup(rs_free))) = result_to_str(r);
-	fprintf(stderr, "ERROR: %s\n", msg);
+	fprintf(stderr, "ERROR: %s\n", msg ? msg : "[cannot print result]");
 }
 
 static WARN_UNUSED int
