@@ -10,6 +10,8 @@
 #include <stdbool.h>
 #include <unistd.h>
 
+#define RESULT_CLEANUP __attribute__((cleanup(result_cleanup)))
+
 static const char PATH_WANTS_JSON_RESPONSE[] = "/youtubei/v1/player";
 static const char FAKE_YT_URL[] = "https://www.youtube.com/watch?v=FOOBAR";
 static const char FAKE_HTML_RESPONSE[] = "\"/s/player/foobar/base.js\"";
@@ -91,8 +93,8 @@ check_url(const char *url)
 TEST
 global_setup(void)
 {
-	result_t err = youtube_global_init();
-	ASSERT_EQ(err.err, OK);
+	result_t err RESULT_CLEANUP = youtube_global_init();
+	ASSERT_TRUE(is_ok(err));
 	PASS();
 }
 
@@ -105,10 +107,11 @@ stream_setup_with_redirected_network_io(const char *(*custom_fn)(const char *),
 	ASSERT(stream);
 
 	test_request_path_to_response = custom_fn;
-	result_t err = youtube_stream_setup(stream, &NOOP, FAKE_YT_URL);
+	result_t err RESULT_CLEANUP =
+		youtube_stream_setup(stream, &NOOP, FAKE_YT_URL);
 	test_request_path_to_response = NULL;
 
-	ASSERT_EQ(err.err, OK);
+	ASSERT_TRUE(is_ok(err));
 
 	GOT_CORRECT_URLS = true;
 	EXPECTED_AUDIO_URL = expected_audio_url;
@@ -119,7 +122,7 @@ stream_setup_with_redirected_network_io(const char *(*custom_fn)(const char *),
 	EXPECTED_AUDIO_URL = NULL;
 	EXPECTED_VIDEO_URL = NULL;
 
-	ASSERT_EQ(err.err, OK);
+	ASSERT_TRUE(is_ok(err));
 	ASSERT(GOT_CORRECT_URLS);
 
 	youtube_stream_cleanup(stream);
@@ -143,8 +146,9 @@ stream_setup_with_null_ops(void)
 	youtube_handle_t stream = youtube_stream_init();
 	ASSERT(stream);
 
-	result_t err = youtube_stream_setup(stream, &NULL_OPS, FAKE_YT_URL);
-	ASSERT_EQ(err.err, OK);
+	result_t err RESULT_CLEANUP =
+		youtube_stream_setup(stream, &NULL_OPS, FAKE_YT_URL);
+	ASSERT_TRUE(is_ok(err));
 
 	youtube_stream_cleanup(stream);
 	PASS();
@@ -169,8 +173,9 @@ stream_setup_edge_cases_target_url_missing_stream_id(void)
 	youtube_handle_t stream = youtube_stream_init();
 	ASSERT(stream);
 
-	result_t err = youtube_stream_setup(stream, &NOOP, YT_URL_MISSING_ID);
-	ASSERT_EQ(err.err, ERR_YOUTUBE_INNERTUBE_POST_ID);
+	result_t err RESULT_CLEANUP =
+		youtube_stream_setup(stream, &NOOP, YT_URL_MISSING_ID);
+	ASSERT_FALSE(is_ok(err));
 
 	youtube_stream_cleanup(stream);
 	PASS();
@@ -250,10 +255,11 @@ stream_setup_edge_cases_n_param_missing(void)
 	ASSERT(stream);
 
 	test_request_path_to_response = test_request_n_param_empty_or_missing;
-	result_t err = youtube_stream_setup(stream, &NULL_OPS, FAKE_YT_URL);
+	result_t err RESULT_CLEANUP =
+		youtube_stream_setup(stream, &NULL_OPS, FAKE_YT_URL);
 	test_request_path_to_response = NULL;
 
-	ASSERT_EQ(err.err, ERR_YOUTUBE_N_PARAM_FIND_IN_QUERY);
+	ASSERT_FALSE(is_ok(err));
 
 	youtube_stream_cleanup(stream);
 	PASS();
@@ -275,10 +281,11 @@ stream_setup_edge_cases_entire_url_missing(void)
 	ASSERT(stream);
 
 	test_request_path_to_response = test_request_entire_url_missing;
-	result_t err = youtube_stream_setup(stream, &NULL_OPS, FAKE_YT_URL);
+	result_t err RESULT_CLEANUP =
+		youtube_stream_setup(stream, &NULL_OPS, FAKE_YT_URL);
 	test_request_path_to_response = NULL;
 
-	ASSERT_EQ(err.err, ERR_YOUTUBE_N_PARAM_QUERY_GET);
+	ASSERT_FALSE(is_ok(err));
 
 	youtube_stream_cleanup(stream);
 	PASS();

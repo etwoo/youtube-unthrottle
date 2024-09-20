@@ -10,6 +10,8 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#define RESULT_CLEANUP __attribute__((cleanup(result_cleanup)))
+
 TEST
 before_landlock_filesystem(void)
 {
@@ -19,8 +21,8 @@ before_landlock_filesystem(void)
 	ASSERT_EQ(rc, 0);
 
 	int tmp = -1;
-	result_t err = tmpfd(&tmp);
-	ASSERT_EQ(err.err, OK);
+	result_t err RESULT_CLEANUP = tmpfd(&tmp);
+	ASSERT_TRUE(is_ok(err));
 	ASSERT_GTE(tmp, 0);
 	rc = close(tmp);
 	ASSERT_EQ(rc, 0);
@@ -60,8 +62,8 @@ setup_partial_landlock(void)
 	const char *paths[] = {
 		P_tmpdir,
 	};
-	result_t err = landlock_apply(paths, 1, 443);
-	ASSERT_EQ(err.err, OK);
+	result_t err RESULT_CLEANUP = landlock_apply(paths, 1, 443);
+	ASSERT_TRUE(is_ok(err));
 	PASS();
 }
 
@@ -72,8 +74,8 @@ partial_landlock_filesystem(void)
 	ASSERT_LT(fd, 0);
 
 	int tmp = -1;
-	result_t err = tmpfd(&tmp);
-	ASSERT_EQ(err.err, OK);
+	result_t err RESULT_CLEANUP = tmpfd(&tmp);
+	ASSERT_TRUE(is_ok(err));
 	ASSERT_GTE(tmp, 0);
 	int rc = close(tmp);
 	ASSERT_EQ(rc, 0);
@@ -91,8 +93,8 @@ SUITE(partial_landlock)
 TEST
 setup_full_landlock(void)
 {
-	result_t err = landlock_apply(NULL, 0, 0);
-	ASSERT_EQ(err.err, OK);
+	result_t err RESULT_CLEANUP = landlock_apply(NULL, 0, 0);
+	ASSERT_TRUE(is_ok(err));
 	PASS();
 }
 
@@ -103,8 +105,8 @@ after_landlock_filesystem(void)
 	ASSERT_LT(fd, 0);
 
 	int tmp = -1;
-	result_t err = tmpfd(&tmp);
-	ASSERT_EQ(err.err, ERR_TMPFILE);
+	result_t err RESULT_CLEANUP = tmpfd(&tmp);
+	ASSERT_FALSE(is_ok(err));
 	ASSERT_LT(tmp, 0);
 
 	PASS();

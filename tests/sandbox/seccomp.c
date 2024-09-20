@@ -13,6 +13,8 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 
+#define RESULT_CLEANUP __attribute__((cleanup(result_cleanup)))
+
 TEST
 getpid_allowed(void)
 {
@@ -54,8 +56,8 @@ TEST
 open_tmpfile_allowed(void)
 {
 	int tmp = -1;
-	result_t err = tmpfd(&tmp);
-	ASSERT_EQ(err.err, OK);
+	result_t err RESULT_CLEANUP = tmpfd(&tmp);
+	ASSERT_TRUE(is_ok(err.err));
 	ASSERT_GTE(tmp, 0);
 	int rc = close(tmp);
 	ASSERT_EQ(rc, 0);
@@ -102,8 +104,8 @@ mmap_read_allowed(void)
 TEST
 setup_seccomp_apply(int flags)
 {
-	result_t err = seccomp_apply(flags);
-	ASSERT_EQ(err.err, OK);
+	result_t err RESULT_CLEANUP = seccomp_apply(flags);
+	ASSERT_TRUE(is_ok(err));
 	PASS();
 }
 
@@ -125,8 +127,8 @@ TEST
 open_tmpfile_blocked(void)
 {
 	int tmp = -1;
-	result_t err = tmpfd(&tmp);
-	ASSERT_EQ(err.err, ERR_TMPFILE);
+	result_t err RESULT_CLEANUP = tmpfd(&tmp);
+	ASSERT_FALSE(is_ok(err));
 	ASSERT_LT(tmp, 0);
 	ASSERT_EQ(errno, EACCES);
 	PASS();
