@@ -16,7 +16,7 @@ typedef struct result_base *result_t;
  */
 struct result_ops {
 	bool (*result_ok)(result_t);
-	const char *(*result_to_str)(result_t);
+	char *(*result_to_str)(result_t);
 	void (*result_cleanup)(result_t);
 };
 struct result_base {
@@ -56,7 +56,7 @@ bool is_ok(result_t r) WARN_UNUSED;
  *
  * Note: the caller owns the returned buffer.
  */
-const char *result_to_str(result_t r) WARN_UNUSED;
+char *result_to_str(result_t r) WARN_UNUSED;
 
 /*
  * Convenience helper for use with __attribute__((cleanup)) like:

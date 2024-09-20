@@ -16,6 +16,7 @@
 
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h> /* for free() */
 #include <string.h>
 #include <sysexits.h>
 
@@ -44,9 +45,16 @@ usage(const char *cmd, int rc)
 }
 
 static void
+rs_free(char **strp)
+{
+	free(*strp);
+}
+
+static void
 to_stderr(result_t r)
 {
-	fprintf(stderr, "ERROR: %s\n", result_to_str(r)); // TODO: free buffer returned by result_to_str()
+	char *msg __attribute__((cleanup(rs_free))) = result_to_str(r);
+	fprintf(stderr, "ERROR: %s\n", msg);
 }
 
 static WARN_UNUSED int

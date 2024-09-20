@@ -22,7 +22,7 @@ is_ok(result_t r)
 	return r->ops->result_ok && r->ops->result_ok(r);
 }
 
-const char *
+char *
 result_to_str(result_t r)
 {
 	if (r == RESULT_OK) {

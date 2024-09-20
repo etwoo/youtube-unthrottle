@@ -14,7 +14,7 @@
 		struct typ *p = (struct typ *)r;                               \
 		return p->err == OK;                                           \
 	}                                                                      \
-	static WARN_UNUSED const char *typ##_to_str(result_t r)                \
+	static WARN_UNUSED char *typ##_to_str(result_t r)                      \
 	{                                                                      \
 		struct typ *p = (struct typ *)r;                               \
 		int printed = 0;                                               \
