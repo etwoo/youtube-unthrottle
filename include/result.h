@@ -5,14 +5,7 @@
 
 #include <stddef.h> /* for size_t */
 
-// TODO change result_t to struct result *
-// then use type-punning to allow each module to extend result type
-// make callers responsible for free-ing with custom cleanup function that each module can override
-// make RESULT_OK a pointer for caller convenience
-// special-case RESULT_OK, don't free() it in cleanup function
-// add result_ok() macro that checks for pointer equality with RESULT_OK _or_ deep-equality with enum OK value
-// split big enum below into module-specific result_t "subclasses"
-
+#if 0
 struct result {
 	enum {
 		OK = 0,
@@ -77,10 +70,42 @@ struct result {
 	int num; /* may hold errno, CURLcode, CURLUcode, etc */
 	const char *msg;
 };
+#endif
 
-typedef struct result result_t;
+// TODO change result_t to struct result *
+// then use type-punning to allow each module to extend result type
+// make callers responsible for free-ing with custom cleanup function that each module can override
+// make RESULT_OK a pointer for caller convenience
+// special-case RESULT_OK, don't free() it in cleanup function
+// add result_ok() macro that checks for pointer equality with RESULT_OK _or_ deep-equality with enum OK value
+// split big enum below into module-specific result_t "subclasses"
 
+struct result_ops;
+
+struct result_base {
+	struct result_ops *ops;
+};
+
+typedef struct result_base *result_t;
+
+struct result_ops {
+	bool (*result_ok)(result_t);
+	const char *(*result_to_str)(result_t);
+	void (*result_cleanup)(result_t);
+};
+
+/*
+ * Special result_t representing generic, non-module-specific success.
+ */
 extern const result_t RESULT_OK;
+
+/*
+ * Special result_t representing failure to allocate a more specific result_t,
+ * i.e. memory allocation failure within the result subsystem itself.
+ */
+extern const result_t RESULT_CANNOT_ALLOC;
+
+bool is_ok(result_t r) WARN_UNUSED;
 
 /*
  * Return if <expr> yields a non-OK result_t.

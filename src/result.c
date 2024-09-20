@@ -4,9 +4,25 @@
 #include <curl/curl.h>
 #include <string.h> /* for strerror() */
 
-const result_t RESULT_OK = {
-	.err = OK,
+const struct result RESULT_OK_SENTINEL = {
+	.ops = NULL,
 };
+const result_t RESULT_OK = &RESULT_OK_SENTINEL;
+
+const struct result RESULT_CANNOT_ALLOC_SENTINEL = {
+	.ops = NULL,
+};
+const result_t RESULT_CANNOT_ALLOC = &RESULT_CANNOT_ALLOC_SENTINEL;
+
+bool
+is_ok(result_t r)
+{
+	if (r == RESULT_OK) {
+		return true;
+	}
+
+	return r->result_ok && r->result_ok(r);
+}
 
 /*
  * Bump-style allocator for dynamic strings in result_t structs

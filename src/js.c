@@ -13,6 +13,133 @@
  */
 #include <duktape.h>
 
+/*
+ * Extend `struct result_base` to create a module-specific result_t.
+ */
+struct parse_json_result {
+	struct result_base base;
+	enum {
+		OK = 0,
+		ERR_PARSE_JSON_ALLOC_HEAP,
+		ERR_PARSE_JSON_DECODE,
+		ERR_PARSE_JSON_GET_STREAMINGDATA,
+		ERR_PARSE_JSON_GET_ADAPTIVEFORMATS,
+		ERR_PARSE_JSON_ADAPTIVEFORMATS_TYPE,
+		ERR_PARSE_JSON_ELEM_TYPE,
+		ERR_PARSE_JSON_ELEM_MIMETYPE,
+		ERR_PARSE_JSON_ELEM_URL,
+		// ERR_PARSE_JSON_CALLBACK_GOT_CIPHERTEXT_URL,
+	} err;
+	const char *details;
+};
+
+static WARN_UNUSED bool
+result_ok(result_t r)
+{
+	struct parse_json_result *p = (struct parse_json_result *)r;
+	return p->err == OK;
+}
+
+static WARN_UNUSED const char *
+result_to_str(result_t r)
+{
+	struct parse_json_result *p = (struct parse_json_result *)r;
+	int printed = 0;
+	const char *dynamic = NULL;
+	const char *literal = NULL;
+
+	switch (p->err) {
+	case OK:
+		literal = "parse_json() succeeded";
+		break;
+	case ERR_PARSE_JSON_ALLOC_HEAP:
+		literal = "Cannot allocate JavaScript interpreter heap";
+		break;
+	case ERR_PARSE_JSON_DECODE:
+		printed = asprintf(&dynamic,
+		                   "Error in duk_json_decode(): %s",
+		                   p->details);
+		break;
+	case ERR_PARSE_JSON_GET_STREAMINGDATA:
+		literal = "Cannot get .streamingData";
+		break;
+	case ERR_PARSE_JSON_GET_ADAPTIVEFORMATS:
+		literal = "Cannot get .adaptiveFormats";
+		break;
+	case ERR_PARSE_JSON_ADAPTIVEFORMATS_TYPE:
+		literal = "Cannot iterate over .adaptiveFormats";
+		break;
+	case ERR_PARSE_JSON_ELEM_TYPE:
+		literal = "adaptiveFormats element is not object-coercible";
+		break;
+	case ERR_PARSE_JSON_ELEM_MIMETYPE:
+		literal = "Cannot get mimeType of adaptiveFormats element";
+		break;
+	case ERR_PARSE_JSON_ELEM_URL:
+		literal = "Cannot get url of adaptiveFormats element";
+		break;
+#if 0
+	case ERR_PARSE_JSON_CALLBACK_GOT_CIPHERTEXT_URL:
+		my_snprintf("Cannot set ciphertext URL: %s", url_error(r));
+		break;
+#endif
+	}
+
+	if (printed < 0) {
+		return NULL;
+		// TODO: use RESULT_CANNOT_ALLOC instead?
+	}
+
+	if (dynamic) {
+		return dynamic; /* already allocated above */
+	}
+
+	assert(literal);
+	return strdup(literal);
+}
+
+static void
+result_cleanup(result_t r)
+{
+	if (r == NULL) {
+		return;
+	}
+
+	struct parse_json_result *p = (struct parse_json_result *)r;
+	free(p->details);
+	free(p);
+}
+
+struct result_ops PARSE_JSON_RESULT_OPS = {
+	.result_ok = result_ok,
+	.result_to_str = result_to_str,
+	.result_cleanup = result_cleanup,
+};
+
+static result_t WARN_UNUSED
+make_result(int err_type, const char *details)
+{
+	struct parse_json_result *r = malloc(sizeof(*r));
+	if (r == NULL) {
+		goto error;
+	}
+
+	r->base.ops = &PARSE_JSON_RESULT_OPS;
+	r->err = err_type;
+	if (details) {
+		r->details = strdup(details);
+		if (r->details == NULL) {
+			goto error;
+		}
+	}
+
+	return r;
+
+error:
+	free(r); /* handles NULL gracefully */
+	return &RESULT_CANNOT_ALLOC;
+}
+
 static WARN_UNUSED const char *
 peek(duk_context *ctx)
 {
@@ -58,33 +185,26 @@ parse_json(const char *json,
 
 	duk_context *ctx __attribute__((cleanup(destroy_heap))) =
 		duk_create_heap_default(); /* may return NULL! */
-	check_if(ctx == NULL, ERR_JS_PARSE_JSON_ALLOC_HEAP);
+	if (ctx == NULL) {
+		return make_result(ERR_PARSE_JSON_ALLOC_HEAP, NULL);
+	}
 
 	duk_push_lstring(ctx, json, json_sz);
 	duk_ret_t res = duk_safe_call(ctx, try_decode, NULL, 1, 1);
 	if (res != DUK_EXEC_SUCCESS) {
-		return (result_t){
-			.err = ERR_JS_PARSE_JSON_DECODE,
-			.msg = result_strdup(peek(ctx)),
-		};
+		return make_result(ERR_PARSE_JSON_DECODE, peek(ctx));
 	}
 
 	if (DUK_TYPE_OBJECT != duk_get_type(ctx, -1) ||
 	    0 == duk_get_prop_literal(ctx, -1, "streamingData")) {
-		return (result_t){
-			.err = ERR_JS_PARSE_JSON_GET_STREAMINGDATA,
-		};
+		return make_result(ERR_PARSE_JSON_GET_STREAMINGDATA, NULL);
 	}
 	if (DUK_TYPE_OBJECT != duk_get_type(ctx, -1) ||
 	    0 == duk_get_prop_literal(ctx, -1, "adaptiveFormats")) {
-		return (result_t){
-			.err = ERR_JS_PARSE_JSON_GET_ADAPTIVEFORMATS,
-		};
+		return make_result(ERR_PARSE_JSON_GET_ADAPTIVEFORMATS, NULL);
 	}
 	if (DUK_TYPE_OBJECT != duk_get_type(ctx, -1)) {
-		return (result_t){
-			.err = ERR_JS_PARSE_JSON_ADAPTIVEFORMATS_TYPE,
-		};
+		return make_result(ERR_PARSE_JSON_ADAPTIVEFORMATS_TYPE, NULL);
 	}
 
 	bool got_video = false;
@@ -96,23 +216,17 @@ parse_json(const char *json,
 		duk_get_prop_index(ctx, -1, i);
 
 		if (DUK_TYPE_OBJECT != duk_get_type(ctx, -1)) {
-			return (result_t){
-				.err = ERR_JS_PARSE_JSON_ELEM_TYPE,
-			};
+			return make_result(ERR_PARSE_JSON_ELEM_TYPE, NULL);
 		}
 
 		if (0 == duk_get_prop_literal(ctx, -1, "mimeType") ||
 		    DUK_TYPE_STRING != duk_get_type(ctx, -1)) {
-			return (result_t){
-				.err = ERR_JS_PARSE_JSON_ELEM_MIMETYPE,
-			};
+			return make_result(ERR_PARSE_JSON_ELEM_MIMETYPE, NULL);
 		}
 
 		if (0 == duk_get_prop_literal(ctx, -2, "url") ||
 		    DUK_TYPE_STRING != duk_get_type(ctx, -1)) {
-			return (result_t){
-				.err = ERR_JS_PARSE_JSON_ELEM_URL,
-			};
+			return make_result(ERR_PARSE_JSON_ELEM_URL, NULL);
 		}
 
 		const char *url = duk_get_string(ctx, -1);
