@@ -4,6 +4,7 @@
 #include "debug.h"
 #include "js.h"
 #include "re.h"
+#include "result_type.h"
 #include "tmpfile.h"
 #include "url.h"
 
@@ -15,145 +16,57 @@
 #include <unistd.h>
 
 /*
+ * Set up codegen macros for module-specific result_t.
+ */
+#define LITERAL(str) s = strdup(str)
+#define ERR_URL(fmt)                                                           \
+	printed = asprintf(&s, fmt ": %s", curl_url_strerror(p->curlu_code))
+
+#define ERROR_TABLE(X)                                                         \
+	X(OK, LITERAL("Success in " __FILE_NAME__))                            \
+	X(ERR_CALLBACK_GOT_CIPHERTEXT_URL,                                     \
+	  ERR_URL("Cannot set ciphertext URL"))                                \
+	X(ERR_BASEJS_URL_ALLOC, LITERAL("Cannot strndup() base.js URL"))       \
+	X(ERR_INNERTUBE_POST_ID,                                               \
+	  LITERAL("Cannot find video ID for InnerTube POST"))                  \
+	X(ERR_INNERTUBE_POST_ALLOC,                                            \
+	  LITERAL("Cannot allocate buffer for InnerTube POST"))                \
+	X(ERR_N_PARAM_QUERY_ALLOC,                                             \
+	  LITERAL("Cannot allocate ciphertext buffer"))                        \
+	X(ERR_N_PARAM_QUERY_GET, ERR_URL("Cannot get URL query string"))       \
+	X(ERR_N_PARAM_QUERY_SET,                                               \
+	  ERR_URL("Cannot clear ciphertext n-parameter"))                      \
+	X(ERR_N_PARAM_FIND_IN_QUERY,                                           \
+	  LITERAL("No n-parameter in query string"))                           \
+	X(ERR_N_PARAM_KVPAIR_ALLOC, LITERAL("Cannot allocate kv-pair buffer")) \
+	X(ERR_N_PARAM_QUERY_APPEND_PLAINTEXT,                                  \
+	  ERR_URL("Cannot append plaintext n-parameter"))                      \
+	X(ERR_STREAM_VISITOR_GET_URL, ERR_URL("Cannot get URL as string"))
+
+#define DO_CLEANUP assert(p) /* noop */
+#define DO_INIT                                                                \
+	{.base = {.ops = &RESULT_OPS}, .err = err, .curlu_code = code}
+/*
  * Extend `struct result_base` to create a module-specific result_t.
  */
 struct result_youtube {
 	struct result_base base;
-	enum {
-		OK = 0,
-		ERR_CALLBACK_GOT_CIPHERTEXT_URL,
-		ERR_BASEJS_URL_ALLOC,
-		ERR_INNERTUBE_POST_ID,
-		ERR_INNERTUBE_POST_ALLOC,
-		ERR_N_PARAM_QUERY_ALLOC,
-		ERR_N_PARAM_QUERY_GET,
-		ERR_N_PARAM_QUERY_SET,
-		ERR_N_PARAM_FIND_IN_QUERY,
-		ERR_N_PARAM_KVPAIR_ALLOC,
-		ERR_N_PARAM_QUERY_APPEND_PLAINTEXT,
-		ERR_STREAM_VISITOR_GET_URL,
-	} err;
+	enum { ERROR_TABLE(INTO_ENUM) } err;
 	CURLUcode curlu_code;
 };
-
-static WARN_UNUSED bool
-result_ok(result_t r)
-{
-	struct result_youtube *p = (struct result_youtube *)r;
-	return p->err == OK;
-}
-
-static WARN_UNUSED const char *
-my_result_to_str(result_t r)
-{
-	struct result_youtube *p = (struct result_youtube *)r;
-	int printed = 0;
-	char *dynamic = NULL;
-	const char *literal = NULL;
-
-	switch (p->err) {
-	case OK:
-		literal = "Success in " __FILE_NAME__;
-		break;
-	case ERR_CALLBACK_GOT_CIPHERTEXT_URL:
-		printed = asprintf(&dynamic,
-		                   "Cannot set ciphertext URL: %s",
-		                   curl_url_strerror(p->curlu_code));
-		break;
-	case ERR_BASEJS_URL_ALLOC:
-		literal = "Cannot strndup() base.js URL";
-		break;
-	case ERR_INNERTUBE_POST_ID:
-		literal = "Cannot find video ID for InnerTube POST";
-		break;
-	case ERR_INNERTUBE_POST_ALLOC:
-		literal = "Cannot allocate buffer for InnerTube POST";
-		break;
-	case ERR_N_PARAM_QUERY_ALLOC:
-		literal = "Cannot allocate ciphertext buffer";
-		break;
-	case ERR_N_PARAM_QUERY_GET:
-		printed = asprintf(&dynamic,
-		                   "Cannot get URL query string: %s",
-		                   curl_url_strerror(p->curlu_code));
-		break;
-	case ERR_N_PARAM_QUERY_SET:
-		literal = "Cannot clear ciphertext n-parameter";
-		break;
-	case ERR_N_PARAM_FIND_IN_QUERY:
-		literal = "No n-parameter in query string";
-		break;
-	case ERR_N_PARAM_KVPAIR_ALLOC:
-		literal = "Cannot allocate kv-pair buffer";
-		break;
-	case ERR_N_PARAM_QUERY_APPEND_PLAINTEXT:
-		printed = asprintf(&dynamic,
-		                   "Cannot append plaintext n-parameter: %s",
-		                   curl_url_strerror(p->curlu_code));
-
-		break;
-	case ERR_STREAM_VISITOR_GET_URL:
-		printed = asprintf(&dynamic,
-		                   "Cannot get URL as string: %s",
-		                   curl_url_strerror(p->curlu_code));
-		break;
-	}
-
-	if (printed < 0) {
-		return NULL;
-		// TODO: use RESULT_CANNOT_ALLOC instead?
-	}
-
-	if (dynamic) {
-		return dynamic; /* already allocated above */
-	}
-
-	assert(literal);
-	return strdup(literal);
-}
-
-static void
-my_result_cleanup(result_t r)
-{
-	if (r == NULL) {
-		return;
-	}
-
-	struct result_youtube *p = (struct result_youtube *)r;
-	free(p);
-}
-
-static struct result_ops RESULT_OPS = {
-	.result_ok = result_ok,
-	.result_to_str = my_result_to_str,
-	.result_cleanup = my_result_cleanup,
-};
-
-static result_t WARN_UNUSED
-make_result_uc(int err_type, CURLUcode uc)
-{
-	struct result_youtube *r = malloc(sizeof(*r));
-	if (r == NULL) {
-		return RESULT_CANNOT_ALLOC;
-	}
-
-	r->base.ops = &RESULT_OPS;
-	r->err = err_type;
-	r->curlu_code = uc;
-	return (result_t)r;
-}
+DEFINE_RESULT(result_youtube, DO_CLEANUP, DO_INIT, int err, int code)
 
 #define check_if_uc(uc, err_type)                                              \
 	do {                                                                   \
 		if (uc) {                                                      \
-			return make_result_uc(err_type, uc);                   \
+			return make_result_youtube(err_type, uc);              \
 		}                                                              \
 	} while (0)
 
 static result_t WARN_UNUSED
 make_result(int err_type)
 {
-	return make_result_uc(err_type, CURLUE_OK);
+	return make_result_youtube(err_type, CURLUE_OK);
 }
 
 struct youtube_stream {
@@ -616,3 +529,9 @@ youtube_stream_setup(struct youtube_stream *p,
 
 	return RESULT_OK;
 }
+
+#undef DO_CLEANUP
+#undef DO_INIT
+#undef ERROR_TABLE
+#undef ERR_URL
+#undef LITERAL
