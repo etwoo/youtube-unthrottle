@@ -3,6 +3,7 @@
 #include "array.h"
 #include "debug.h"
 #include "re.h"
+#include "result_type.h"
 
 #include <assert.h>
 
@@ -14,186 +15,69 @@
 #include <duktape.h>
 
 /*
+ * Set up codegen macros for module-specific result_t.
+ */
+#define LITERAL(str) s = strdup(str)
+#define GET_DETAILS(x) x->details ? x->details : "[Cannot allocate details]"
+#define DETAILS(fmt) printed = asprintf(&s, fmt, GET_DETAILS(p))
+#define DETAILS_WITH_STRERROR(fmt)                                             \
+	printed = asprintf(&s, fmt, GET_DETAILS(p), strerror(p->num))
+
+#define ERROR_TABLE(X)                                                         \
+	X(OK, LITERAL("Success in " __FILE_NAME__))                            \
+	X(ERR_PARSE_JSON_ALLOC_HEAP,                                           \
+	  LITERAL("Cannot allocate JavaScript interpreter heap"))              \
+	X(ERR_PARSE_JSON_DECODE, DETAILS("Error in duk_json_decode(): %s"))    \
+	X(ERR_PARSE_JSON_GET_STREAMINGDATA,                                    \
+	  LITERAL("Cannot get .streamingData"))                                \
+	X(ERR_PARSE_JSON_GET_ADAPTIVEFORMATS,                                  \
+	  LITERAL("Cannot get .adaptiveFormats"))                              \
+	X(ERR_PARSE_JSON_ADAPTIVEFORMATS_TYPE,                                 \
+	  LITERAL("Cannot iterate over .adaptiveFormats"))                     \
+	X(ERR_PARSE_JSON_ELEM_TYPE,                                            \
+	  LITERAL("adaptiveFormats element is not object-coercible"))          \
+	X(ERR_PARSE_JSON_ELEM_MIMETYPE,                                        \
+	  LITERAL("Cannot get mimeType of adaptiveFormats element"))           \
+	X(ERR_PARSE_JSON_ELEM_URL,                                             \
+	  LITERAL("Cannot get url of adaptiveFormats element"))                \
+	X(ERR_BASEJS_URL_FIND,                                                 \
+	  LITERAL("Cannot find base.js URL in HTML document"))                 \
+	X(ERR_TIMESTAMP_FIND, LITERAL("Cannot find timestamp in base.js"))     \
+	X(ERR_TIMESTAMP_PARSE_TO_LONGLONG,                                     \
+	  DETAILS_WITH_STRERROR("Error in strtoll() on %s: %s"))               \
+	X(ERR_DEOBFUSCATOR_ALLOC, LITERAL("Cannot allocate asprintf buffer"))  \
+	X(ERR_DEOBFUSCATOR_FIND_FUNCTION_ONE,                                  \
+	  LITERAL("Cannot find deobfuscation function in base.js"))            \
+	X(ERR_DEOBFUSCATOR_FIND_FUNCTION_TWO,                                  \
+	  DETAILS("Cannot find reference to %s in base.js"))                   \
+	X(ERR_DEOBFUSCATOR_FIND_FUNCTION_BODY,                                 \
+	  DETAILS("Cannot find body of %s in base.js"))                        \
+	X(ERR_CALL_ALLOC,                                                      \
+	  LITERAL("Cannot allocate JavaScript interpreter heap"))              \
+	X(ERR_CALL_COMPILE, DETAILS("Error in duk_pcompile(): %s"))            \
+	X(ERR_CALL_INVOKE, DETAILS("Error in duk_pcall(): %s"))                \
+	X(ERR_CALL_GET_RESULT, LITERAL("Error fetching function result"))
+
+/*
  * Extend `struct result_base` to create a module-specific result_t.
  */
 struct result_js {
 	struct result_base base;
-	enum {
-		OK = 0,
-		ERR_PARSE_JSON_ALLOC_HEAP,
-		ERR_PARSE_JSON_DECODE,
-		ERR_PARSE_JSON_GET_STREAMINGDATA,
-		ERR_PARSE_JSON_GET_ADAPTIVEFORMATS,
-		ERR_PARSE_JSON_ADAPTIVEFORMATS_TYPE,
-		ERR_PARSE_JSON_ELEM_TYPE,
-		ERR_PARSE_JSON_ELEM_MIMETYPE,
-		ERR_PARSE_JSON_ELEM_URL,
-		ERR_BASEJS_URL_FIND,
-		ERR_TIMESTAMP_FIND,
-		ERR_TIMESTAMP_PARSE_TO_LONGLONG,
-		ERR_DEOBFUSCATOR_ALLOC,
-		ERR_DEOBFUSCATOR_FIND_FUNCTION_ONE,
-		ERR_DEOBFUSCATOR_FIND_FUNCTION_TWO,
-		ERR_DEOBFUSCATOR_FIND_FUNCTION_BODY,
-		ERR_CALL_ALLOC,
-		ERR_CALL_COMPILE,
-		ERR_CALL_INVOKE,
-		ERR_CALL_GET_RESULT,
-	} err;
+	enum { ERROR_TABLE(INTO_ENUM) } err;
 	int num;
 	char *details;
 };
 
-static WARN_UNUSED bool
-result_ok(result_t r)
-{
-	struct result_js *p = (struct result_js *)r;
-	return p->err == OK;
-}
+#define DO_CLEANUP free(p->details)
+#define DO_INIT                                                                \
+	{.base = {.ops = &RESULT_OPS}, .err = err, .num = num, .details = s}
 
-static WARN_UNUSED const char *
-get_details(struct result_js *p)
-{
-	if (p->details == NULL) {
-		return "[Cannot allocate details buffer]";
-	}
-	return p->details;
-}
-
-static WARN_UNUSED const char *
-my_result_to_str(result_t r)
-{
-	struct result_js *p = (struct result_js *)r;
-	int printed = 0;
-	char *dynamic = NULL;
-	const char *literal = NULL;
-
-	switch (p->err) {
-	case OK:
-		literal = "Success in " __FILE_NAME__;
-		break;
-	case ERR_PARSE_JSON_ALLOC_HEAP:
-		literal = "Cannot allocate JavaScript interpreter heap";
-		break;
-	case ERR_PARSE_JSON_DECODE:
-		printed = asprintf(&dynamic,
-		                   "Error in duk_json_decode(): %s",
-		                   get_details(p));
-		break;
-	case ERR_PARSE_JSON_GET_STREAMINGDATA:
-		literal = "Cannot get .streamingData";
-		break;
-	case ERR_PARSE_JSON_GET_ADAPTIVEFORMATS:
-		literal = "Cannot get .adaptiveFormats";
-		break;
-	case ERR_PARSE_JSON_ADAPTIVEFORMATS_TYPE:
-		literal = "Cannot iterate over .adaptiveFormats";
-		break;
-	case ERR_PARSE_JSON_ELEM_TYPE:
-		literal = "adaptiveFormats element is not object-coercible";
-		break;
-	case ERR_PARSE_JSON_ELEM_MIMETYPE:
-		literal = "Cannot get mimeType of adaptiveFormats element";
-		break;
-	case ERR_PARSE_JSON_ELEM_URL:
-		literal = "Cannot get url of adaptiveFormats element";
-		break;
-	case ERR_BASEJS_URL_FIND:
-		literal = "Cannot find base.js URL in HTML document";
-		break;
-	case ERR_TIMESTAMP_FIND:
-		literal = "Cannot find timestamp in base.js";
-		break;
-	case ERR_TIMESTAMP_PARSE_TO_LONGLONG:
-		printed = asprintf(&dynamic,
-		                   "Error in strtoll() on %s: %s",
-		                   get_details(p),
-		                   strerror(p->num));
-		break;
-	case ERR_DEOBFUSCATOR_ALLOC:
-		literal = "Cannot allocate asprintf buffer";
-		break;
-	case ERR_DEOBFUSCATOR_FIND_FUNCTION_ONE:
-		literal = "Cannot find deobfuscation function in base.js";
-		break;
-	case ERR_DEOBFUSCATOR_FIND_FUNCTION_TWO:
-		printed = asprintf(&dynamic,
-		                   "Cannot find reference to %s in base.js",
-		                   get_details(p));
-		break;
-	case ERR_DEOBFUSCATOR_FIND_FUNCTION_BODY:
-		printed = asprintf(&dynamic,
-		                   "Cannot find body of %s in base.js",
-		                   get_details(p));
-		break;
-	case ERR_CALL_ALLOC:
-		literal = "Cannot allocate JavaScript interpreter heap";
-		break;
-	case ERR_CALL_COMPILE:
-		printed = asprintf(&dynamic,
-		                   "Error in duk_pcompile(): %s",
-		                   get_details(p));
-		break;
-	case ERR_CALL_INVOKE:
-		printed = asprintf(&dynamic,
-		                   "Error in duk_pcall(): %s",
-		                   get_details(p));
-		break;
-	case ERR_CALL_GET_RESULT:
-		literal = "Error fetching function result";
-		break;
-	}
-
-	if (printed < 0) {
-		return NULL;
-		// TODO: use RESULT_CANNOT_ALLOC instead?
-	}
-
-	if (dynamic) {
-		return dynamic; /* already allocated above */
-	}
-
-	assert(literal);
-	return strdup(literal);
-}
-
-static void
-my_result_cleanup(result_t r)
-{
-	if (r == NULL) {
-		return;
-	}
-
-	struct result_js *p = (struct result_js *)r;
-	free(p->details);
-	free(p);
-}
-
-static struct result_ops RESULT_OPS = {
-	.result_ok = result_ok,
-	.result_to_str = my_result_to_str,
-	.result_cleanup = my_result_cleanup,
-};
-
-static result_t WARN_UNUSED
-make_result_with_errno(int err_type, int my_errno, char *details)
-{
-	struct result_js *r = malloc(sizeof(*r));
-	if (r == NULL) {
-		return RESULT_CANNOT_ALLOC;
-	}
-
-	r->base.ops = &RESULT_OPS;
-	r->err = err_type;
-	r->num = my_errno;
-	r->details = details; /* take ownership, if non-NULL */
-	return (result_t)r;
-}
+DEFINE_RESULT(result_js, DO_CLEANUP, DO_INIT, int err, int num, char *s)
 
 static result_t WARN_UNUSED
 make_result(int err_type, char *details)
 {
-	return make_result_with_errno(err_type, 0, details);
+	return make_result_js(err_type, 0, details);
 }
 
 static WARN_UNUSED const char *
@@ -358,9 +242,9 @@ find_js_timestamp(const char *js, size_t js_sz, long long int *value)
 
 	long long int res = strtoll(ts, NULL, 10);
 	if (errno != 0) {
-		return make_result_with_errno(ERR_TIMESTAMP_PARSE_TO_LONGLONG,
-		                              errno,
-		                              strndup(ts, tsz));
+		return make_result_js(ERR_TIMESTAMP_PARSE_TO_LONGLONG,
+		                      errno,
+		                      strndup(ts, tsz));
 	}
 
 	debug("Parsed signatureTimestamp %.*s into %lld", (int)tsz, ts, res);
@@ -519,3 +403,12 @@ call_js_foreach(const char *code,
 
 	return RESULT_OK;
 }
+
+#undef DEFINE_RESULT
+#undef INTO_SWITCH
+#undef INTO_ENUM
+#undef ERROR_TABLE
+#undef GET_DETAILS
+#undef DETAILS_WITH_STRERROR
+#undef DETAILS
+#undef LITERAL

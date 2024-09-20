@@ -54,6 +54,7 @@ landlock_restrict_self(const int ruleset_fd, const __u32 flags)
 
 #include "debug.h"
 #include "landlock.h"
+#include "result_type.h"
 
 #include <fcntl.h>
 #include <linux/prctl.h>
@@ -62,129 +63,42 @@ landlock_restrict_self(const int ruleset_fd, const __u32 flags)
 #include <sys/prctl.h>
 
 /*
+ * Set up codegen macros for module-specific result_t.
+ */
+#define LITERAL(str) s = strdup(str)
+#define ERR(fmt) printed = asprintf(&s, fmt, strerror(p->num))
+#define GET_PATH(x) x->path ? x->path : "[Cannot allocate path]"
+#define PATH(fmt) printed = asprintf(&s, fmt, GET_PATH(p), strerror(p->num))
+
+#define ERROR_TABLE(X)                                                         \
+	X(OK, LITERAL("Success in " __FILE_NAME__))                            \
+	X(ERR_CREATE_RULESET, ERR("Error in landlock_create_ruleset(): %s"))   \
+	X(ERR_OPEN_O_PATH, PATH("Error in open O_PATH for %s (Landlock): %s")) \
+	X(ERR_ADD_RULE_PATH, PATH("Error in landlock_add_rule() for %s: %s"))  \
+	X(ERR_ADD_RULE_PORT, ERR("Error in landlock_add_rule() for port: %s")) \
+	X(ERR_SET_NO_NEW_PRIVS, ERR("Error in prctl(PR_SET_NO_NEW_PRIVS): %s"))\
+	X(ERR_RESTRICT_SELF, ERR("Error in landlock_restrict_self(): %s"))
+
+/*
  * Extend `struct result_base` to create a module-specific result_t.
  */
-struct result_landlock {
+struct result_ll {
 	struct result_base base;
-	enum {
-		OK = 0,
-		ERR_CREATE_RULESET,
-		ERR_OPEN_O_PATH,
-		ERR_ADD_RULE_PATH,
-		ERR_ADD_RULE_PORT,
-		ERR_SET_NO_NEW_PRIVS,
-		ERR_RESTRICT_SELF,
-	} err;
+	enum { ERROR_TABLE(INTO_ENUM) } err;
 	int num;
 	char *path;
 };
 
-static WARN_UNUSED bool
-result_ok(result_t r)
-{
-	struct result_landlock *p = (struct result_landlock *)r;
-	return p->err == OK;
-}
+#define DO_CLEANUP free(p->path)
+#define DO_INIT                                                                \
+	{.base = {.ops = &RESULT_OPS}, .err = err, .num = num, .path = p}
 
-static WARN_UNUSED const char *
-get_path(struct result_landlock *r)
-{
-	if (r->path == NULL) {
-		return "[Cannot allocate path buffer]";
-	}
-	return r->path;
-}
-
-static WARN_UNUSED const char *
-my_result_to_str(result_t r)
-{
-	struct result_landlock *p = (struct result_landlock *)r;
-	int printed = 0;
-	char *s = NULL;
-
-	switch (p->err) {
-	case OK:
-		s = strdup("Success in " __FILE_NAME__);
-		break;
-	case ERR_CREATE_RULESET:
-		printed = asprintf(&s,
-		                   "Error in landlock_create_ruleset(): %s",
-		                   strerror(p->num));
-		break;
-	case ERR_OPEN_O_PATH:
-		printed = asprintf(&s,
-		                   "Error in open O_PATH for %s (Landlock): %s",
-		                   get_path(p),
-		                   strerror(p->num));
-		break;
-	case ERR_ADD_RULE_PATH:
-		printed = asprintf(&s,
-		                   "Error in landlock_add_rule() for %s: %s",
-		                   get_path(p),
-		                   strerror(p->num));
-		break;
-	case ERR_ADD_RULE_PORT:
-		printed = asprintf(&s,
-		                   "Error in landlock_add_rule() for port: %s",
-		                   strerror(p->num));
-		break;
-	case ERR_SET_NO_NEW_PRIVS:
-		printed = asprintf(&s,
-		                   "Error in prctl(PR_SET_NO_NEW_PRIVS): %s",
-		                   strerror(p->num));
-		break;
-	case ERR_RESTRICT_SELF:
-		printed = asprintf(&s,
-		                   "Error in landlock_restrict_self(): %s",
-		                   strerror(p->num));
-		break;
-	}
-
-	if (printed < 0) {
-		return NULL;
-		// TODO: use RESULT_CANNOT_ALLOC instead?
-	}
-
-	return s;
-}
-
-static void
-my_result_cleanup(result_t r)
-{
-	if (r == NULL) {
-		return;
-	}
-
-	struct result_landlock *p = (struct result_landlock *)r;
-	free(p->path);
-	free(p);
-}
-
-static struct result_ops RESULT_OPS = {
-	.result_ok = result_ok,
-	.result_to_str = my_result_to_str,
-	.result_cleanup = my_result_cleanup,
-};
+DEFINE_RESULT(result_ll, DO_CLEANUP, DO_INIT, int err, int num, char *p)
 
 static result_t WARN_UNUSED
-make_result_p(int err_type, int my_errno, char *path)
+make_result(int err, int my_errno)
 {
-	struct result_landlock *r = malloc(sizeof(*r));
-	if (r == NULL) {
-		return RESULT_CANNOT_ALLOC;
-	}
-
-	r->base.ops = &RESULT_OPS;
-	r->err = err_type;
-	r->num = my_errno;
-	r->path = path; /* take ownership, if non-NULL */
-	return (result_t)r;
-}
-
-static result_t WARN_UNUSED
-make_result(int err_type, int my_errno)
-{
-	return make_result_p(err_type, my_errno, NULL);
+	return make_result_ll(err, my_errno, NULL);
 }
 
 static WARN_UNUSED result_t
@@ -194,12 +108,12 @@ ruleset_add_one(int fd, const char *path, struct landlock_path_beneath_attr *pb)
 
 	pb->parent_fd = open(path, O_PATH);
 	if (pb->parent_fd < 0) {
-		return make_result_p(ERR_OPEN_O_PATH, errno, strdup(path));
+		return make_result_ll(ERR_OPEN_O_PATH, errno, strdup(path));
 	}
 
 	rc = landlock_add_rule(fd, LANDLOCK_RULE_PATH_BENEATH, pb, 0);
 	if (rc < 0) {
-		return make_result_p(ERR_ADD_RULE_PATH, errno, strdup(path));
+		return make_result_ll(ERR_ADD_RULE_PATH, errno, strdup(path));
 	}
 
 	rc = close(pb->parent_fd);
