@@ -34,7 +34,7 @@ result_to_str(result_t r)
 }
 
 void
-result_cleanup(result_t *handle);
+result_cleanup(result_t *handle)
 {
 	result_t r = *handle;
 	if (r && r->ops && r->ops.result_cleanup) {
