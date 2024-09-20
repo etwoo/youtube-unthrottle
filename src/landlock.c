@@ -85,6 +85,15 @@ result_ok(result_t r)
 }
 
 static WARN_UNUSED const char *
+get_path(result_t r)
+{
+	if (r->details == NULL) {
+		return "[Cannot allocate path buffer]";
+	}
+	return r->details;
+}
+
+static WARN_UNUSED const char *
 result_to_str(result_t r)
 {
 	struct result_landlock *p = (struct result_landlock *)r;
@@ -103,13 +112,13 @@ result_to_str(result_t r)
 	case ERR_OPEN_O_PATH:
 		printed = asprintf(&s,
 		                   "Error in open O_PATH for %s (Landlock): %s",
-		                   p->path,
+		                   get_path(p),
 		                   strerror(p->errno));
 		break;
 	case ERR_ADD_RULE_PATH:
 		printed = asprintf(&s,
 		                   "Error in landlock_add_rule() for %s: %s",
-		                   p->path,
+		                   get_path(path),
 		                   strerror(p->errno));
 		break;
 	case ERR_ADD_RULE_PORT:

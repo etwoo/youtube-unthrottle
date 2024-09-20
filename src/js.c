@@ -29,7 +29,6 @@ struct result_js {
 		ERR_PARSE_JSON_ELEM_MIMETYPE,
 		ERR_PARSE_JSON_ELEM_URL,
 		ERR_BASEJS_URL_FIND,
-		ERR_BASEJS_URL_ALLOC,
 		ERR_TIMESTAMP_FIND,
 		ERR_TIMESTAMP_PARSE_TO_LONGLONG,
 		ERR_DEOBFUSCATOR_ALLOC,
@@ -101,9 +100,6 @@ result_to_str(result_t r)
 		break;
 	case ERR_BASEJS_URL_FIND:
 		literal = "Cannot find base.js URL in HTML document";
-		break;
-	case ERR_BASEJS_URL_ALLOC:
-		literal = "Cannot strndup() base.js URL";
 		break;
 	case ERR_TIMESTAMP_FIND:
 		literal = "Cannot find timestamp in base.js";
@@ -420,7 +416,9 @@ find_js_deobfuscator(const char *js,
 
 	char *p2 __attribute__((cleanup(asprintf_free))) = NULL;
 	rc = asprintf(&p2, "var \\Q%.*s\\E=\\[([^\\]]+)\\]", (int)nsz, name);
-	check_if(rc < 0, ERR_DEOBFUSCATOR_ALLOC);
+	if (rc < 0) {
+		return make_result(ERR_DEOBFUSCATOR_ALLOC, NULL);
+	}
 
 	if (!re_capture(p2, js, js_sz, &name, &nsz)) {
 		return make_result(ERR_DEOBFUSCATOR_FIND_FUNCTION_TWO,

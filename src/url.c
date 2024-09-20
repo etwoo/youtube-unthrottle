@@ -80,8 +80,8 @@ struct result_url {
 		ERR_URL_DOWNLOAD_PERFORM,
 	} err;
 	union {
-		int curl_code;
-		int curlu_code;
+		CURLcode curl_code;
+		CURLUcode curlu_code;
 	};
 };
 
@@ -225,7 +225,7 @@ make_result_uc(int err_type, CURLUcode uc)
 
 	r->base.ops = &RESULT_OPS;
 	r->err = err_type;
-	r->curlu_code = code;
+	r->curlu_code = uc;
 	return r;
 }
 
@@ -240,7 +240,7 @@ result_t
 url_global_init(void)
 {
 	CURLcode res = curl_global_init(CURL_GLOBAL_DEFAULT);
-	check_if_num(res, ERR_URL_GLOBAL_INIT);
+	check_if_res(res, ERR_URL_GLOBAL_INIT);
 
 	/*
 	 * Nudge curl into creating its DNS resolver thread(s) now, before the
