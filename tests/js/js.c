@@ -649,7 +649,10 @@ result_copy_init(struct result_copy *c)
 }
 
 static WARN_UNUSED result_t
-copy_result(const char *val, size_t sz, void *userdata)
+copy_result(const char *val,
+            size_t sz,
+            size_t pos __attribute__((unused)),
+            void *userdata)
 {
 	struct result_copy *result = (struct result_copy *)userdata;
 	assert(sizeof(result->str) >= sz);

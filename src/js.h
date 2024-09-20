@@ -29,7 +29,7 @@ result_t find_js_deobfuscator(const char *js,
                               size_t *deobfuscator_sz) WARN_UNUSED;
 
 struct call_ops {
-	result_t (*got_result)(const char *, size_t, void *);
+	result_t (*got_result)(const char *, size_t, size_t, void *);
 };
 
 result_t call_js_foreach(const char *code,

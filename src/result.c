@@ -101,8 +101,8 @@ result_to_str(result_t r)
 	case ERR_JS_PARSE_JSON_ELEM_URL:
 		s = "Cannot get url of adaptiveFormats element";
 		break;
-	case ERR_JS_PARSE_JSON_CALLBACK_GOT_PLAINTEXT_URL:
-		my_snprintf("Cannot set plaintext URL: %s", url_error(r));
+	case ERR_JS_PARSE_JSON_CALLBACK_GOT_CIPHERTEXT_URL:
+		my_snprintf("Cannot set ciphertext URL: %s", url_error(r));
 		break;
 	case ERR_JS_BASEJS_URL_FIND:
 		s = "Cannot find base.js URL in HTML document";

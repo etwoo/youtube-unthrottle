@@ -15,8 +15,6 @@
 #include <unistd.h>
 
 struct youtube_stream {
-	char *basejs;
-	size_t pos;
 	CURLU *url[2];
 };
 
@@ -40,8 +38,6 @@ youtube_stream_init(void)
 		goto oom;
 	}
 
-	p->basejs = NULL;
-	p->pos = 0;
 	memset(p->url, 0, sizeof(p->url)); /* zero early, just in case */
 
 	for (size_t i = 0; i < ARRAY_SIZE(p->url); ++i) {
@@ -54,18 +50,16 @@ youtube_stream_init(void)
 	return p;
 
 oom:
-	if (p) {
-		youtube_stream_cleanup(p);
-	}
+	youtube_stream_cleanup(p);
 	return NULL;
 }
 
 void
 youtube_stream_cleanup(struct youtube_stream *p)
 {
-	free(p->basejs);
-	p->basejs = NULL;
-	p->pos = 0;
+	if (p == NULL) {
+		return;
+	}
 	for (size_t i = 0; i < ARRAY_SIZE(p->url); ++i) {
 		curl_url_cleanup(p->url[i]); /* handles NULL gracefully */
 		p->url[i] = NULL;
@@ -76,7 +70,6 @@ youtube_stream_cleanup(struct youtube_stream *p)
 static void
 youtube_stream_valid(struct youtube_stream *p)
 {
-	assert(p->pos <= ARRAY_SIZE(p->url));
 	for (size_t i = 0; i < ARRAY_SIZE(p->url); ++i) {
 		assert(p->url[i] != NULL);
 	}
@@ -104,7 +97,7 @@ youtube_stream_set_one(struct youtube_stream *p,
                        size_t sz __attribute__((unused)))
 {
 	CURLUcode uc = curl_url_set(p->url[idx], CURLUPART_URL, val, 0);
-	check_if_num(uc, ERR_JS_PARSE_JSON_CALLBACK_GOT_PLAINTEXT_URL);
+	check_if_num(uc, ERR_JS_PARSE_JSON_CALLBACK_GOT_CIPHERTEXT_URL);
 	return RESULT_OK;
 }
 
@@ -163,17 +156,17 @@ pop_n_param_one(CURLU *url, char **result)
 		};
 	}
 
-	*result = malloc((ciphertext_sz + 1) * sizeof(*result));
-	check_if(*result == NULL, ERR_YOUTUBE_N_PARAM_QUERY_ALLOC);
-
 	/*
 	 * Copy n-parameter value out of storage owned by CURLU <url>.
 	 *
 	 * For now, assume <ciphertext> does not require URI-encoding. If that
 	 * ever becomes necessary, use curl_easy_escape().
 	 */
-	memcpy(*result, ciphertext_within_getargs, ciphertext_sz);
-	(*result)[ciphertext_sz] = '\0';
+	const int rc = asprintf(result,
+	                        "%.*s",
+	                        (int)ciphertext_sz,
+	                        ciphertext_within_getargs);
+	check_if(rc < 0, ERR_YOUTUBE_N_PARAM_QUERY_ALLOC);
 	debug("Copied n-param ciphertext: %s", *result);
 
 	debug("Before n-param ciphertext removal: %s", getargs);
@@ -231,28 +224,22 @@ pop_n_param_all(struct youtube_stream *p, char **results, size_t capacity)
 }
 
 static void
-kv_free(char **strp)
+asprintf_free(char **strp)
 {
 	free(*strp);
 }
 
 static WARN_UNUSED result_t
-append_n_param(const char *plaintext, size_t sz, void *userdata)
+append_n_param(const char *plaintext, size_t sz, size_t pos, void *userdata)
 {
 	struct youtube_stream *p = (struct youtube_stream *)userdata;
 
-	const size_t kv_sz = sz + 3;
-	/* magic number 3: two chars for "n=", one char for NUL terminator */
-	char *kv __attribute__((cleanup(kv_free))) =
-		malloc(kv_sz * sizeof(*kv));
-	check_if(kv == NULL, ERR_YOUTUBE_N_PARAM_KVPAIR_ALLOC);
+	char *kv __attribute__((cleanup(asprintf_free))) = NULL;
+	const int rc = asprintf(&kv, "n=%.*s", (int)sz, plaintext);
+	check_if(rc < 0, ERR_YOUTUBE_N_PARAM_KVPAIR_ALLOC);
 
-	kv[0] = 'n';
-	kv[1] = '=';
-	memcpy(kv + 2, plaintext, sz);
-	kv[kv_sz - 1] = '\0';
-
-	CURLU *u = p->url[p->pos++];
+	assert(pos < ARRAY_SIZE(p->url));
+	CURLU *u = p->url[pos];
 	CURLUcode uc = curl_url_set(u, CURLUPART_QUERY, kv, CURLU_APPENDQUERY);
 	check_if_num(uc, ERR_YOUTUBE_N_PARAM_QUERY_APPEND_PLAINTEXT);
 
@@ -350,6 +337,12 @@ downloaded_cleanup(struct downloaded *d)
 }
 
 static void
+strndup_free(char **strp)
+{
+	free(*strp);
+}
+
+static void
 ciphertexts_cleanup(char *ciphertexts[][2])
 {
 	for (size_t i = 0; i < ARRAY_SIZE(*ciphertexts); ++i) {
@@ -357,12 +350,6 @@ ciphertexts_cleanup(char *ciphertexts[][2])
 		(*ciphertexts)[i] = NULL;
 	}
 	debug("free()-d %zd n-param ciphertext bufs", ARRAY_SIZE(*ciphertexts));
-}
-
-static void
-asprintf_free(char **strp)
-{
-	free(*strp);
 }
 
 result_t
@@ -398,17 +385,21 @@ youtube_stream_setup(struct youtube_stream *p,
 	                              &html.buf,
 	                              &html.sz));
 
-	const char *basejs = NULL;
-	size_t basejs_sz = 0;
-	check(find_base_js_url(html.buf, html.sz, &basejs, &basejs_sz));
+	char *null_terminated_basejs __attribute__((cleanup(strndup_free))) =
+		NULL;
+	{
+		const char *basejs = NULL;
+		size_t basejs_sz = 0;
+		check(find_base_js_url(html.buf, html.sz, &basejs, &basejs_sz));
 
-	debug("Setting base.js URL: %.*s", (int)basejs_sz, basejs);
-	p->basejs = strndup(basejs, basejs_sz);
-	check_if(p->basejs == NULL, ERR_JS_BASEJS_URL_ALLOC);
+		debug("Setting base.js URL: %.*s", (int)basejs_sz, basejs);
+		null_terminated_basejs = strndup(basejs, basejs_sz);
+	}
+	check_if(null_terminated_basejs == NULL, ERR_JS_BASEJS_URL_ALLOC);
 
 	check(download_and_mmap_tmpfd(NULL,
 	                              "www.youtube.com",
-	                              p->basejs,
+	                              null_terminated_basejs,
 	                              NULL,
 	                              js.fd,
 	                              &js.buf,

@@ -286,6 +286,7 @@ find_js_deobfuscator(const char *js,
 static WARN_UNUSED result_t
 call_js_one(duk_context *ctx,
             const char *js_arg,
+            size_t js_pos,
             struct call_ops *ops,
             void *userdata)
 {
@@ -322,7 +323,7 @@ call_js_one(duk_context *ctx,
 	check_if(result == NULL, ERR_JS_CALL_GET_RESULT);
 
 	debug("Got JavaScript function result: %s", result);
-	check(ops->got_result(result, strlen(result), userdata));
+	check(ops->got_result(result, strlen(result), js_pos, userdata));
 
 	return RESULT_OK;
 }
@@ -351,7 +352,7 @@ call_js_foreach(const char *code,
 	}
 
 	for (size_t i = 0; i < argc; ++i) {
-		check(call_js_one(ctx, args[i], ops, userdata));
+		check(call_js_one(ctx, args[i], i, ops, userdata));
 	}
 
 	return RESULT_OK;
