@@ -16,7 +16,7 @@
 /*
  * Extend `struct result_base` to create a module-specific result_t.
  */
-struct parse_json_result {
+struct result_js {
 	struct result_base base;
 	enum {
 		OK = 0,
@@ -29,21 +29,43 @@ struct parse_json_result {
 		ERR_PARSE_JSON_ELEM_MIMETYPE,
 		ERR_PARSE_JSON_ELEM_URL,
 		// ERR_PARSE_JSON_CALLBACK_GOT_CIPHERTEXT_URL,
+		ERR_BASEJS_URL_FIND,
+		ERR_BASEJS_URL_ALLOC,
+		ERR_TIMESTAMP_FIND,
+		ERR_TIMESTAMP_PARSE_TO_LONGLONG,
+		ERR_DEOBFUSCATOR_ALLOC,
+		ERR_DEOBFUSCATOR_FIND_FUNCTION_ONE,
+		ERR_DEOBFUSCATOR_FIND_FUNCTION_TWO,
+		ERR_DEOBFUSCATOR_FIND_FUNCTION_BODY,
+		ERR_CALL_ALLOC,
+		ERR_CALL_COMPILE,
+		ERR_CALL_INVOKE,
+		ERR_CALL_GET_RESULT,
 	} err;
+	int errno;
 	const char *details;
 };
 
 static WARN_UNUSED bool
 result_ok(result_t r)
 {
-	struct parse_json_result *p = (struct parse_json_result *)r;
+	struct result_js *p = (struct result_js *)r;
 	return p->err == OK;
+}
+
+static WARN_UNUSED const char *
+get_details(result_t r)
+{
+	if (r->details == NULL) {
+		return "[Cannot allocate details buffer]";
+	}
+	return r->details;
 }
 
 static WARN_UNUSED const char *
 result_to_str(result_t r)
 {
-	struct parse_json_result *p = (struct parse_json_result *)r;
+	struct result_js *p = (struct result_js *)r;
 	int printed = 0;
 	const char *dynamic = NULL;
 	const char *literal = NULL;
@@ -58,7 +80,7 @@ result_to_str(result_t r)
 	case ERR_PARSE_JSON_DECODE:
 		printed = asprintf(&dynamic,
 		                   "Error in duk_json_decode(): %s",
-		                   p->details);
+		                   get_details(p));
 		break;
 	case ERR_PARSE_JSON_GET_STREAMINGDATA:
 		literal = "Cannot get .streamingData";
@@ -78,6 +100,54 @@ result_to_str(result_t r)
 	case ERR_PARSE_JSON_ELEM_URL:
 		literal = "Cannot get url of adaptiveFormats element";
 		break;
+	case ERR_BASEJS_URL_FIND:
+		literal = "Cannot find base.js URL in HTML document";
+		break;
+	case ERR_BASEJS_URL_ALLOC:
+		literal = "Cannot strndup() base.js URL";
+		break;
+	case ERR_TIMESTAMP_FIND:
+		literal = "Cannot find timestamp in base.js";
+		break;
+	case ERR_TIMESTAMP_PARSE_TO_LONGLONG:
+		printed = asprintf(&dynamic,
+		                   "Error in strtoll() on %s: %s",
+		                   get_details(p),
+		                   strerror(p->errno));
+		break;
+	case ERR_DEOBFUSCATOR_ALLOC:
+		literal = "Cannot allocate asprintf buffer";
+		break;
+	case ERR_DEOBFUSCATOR_FIND_FUNCTION_ONE:
+		literal = "Cannot find deobfuscation function in base.js";
+		break;
+	case ERR_DEOBFUSCATOR_FIND_FUNCTION_TWO:
+		printed = asprintf(&dynamic,
+		                   "Cannot find reference to %s in base.js",
+		                   get_details(p));
+		break;
+	case ERR_DEOBFUSCATOR_FIND_FUNCTION_BODY:
+		printed = asprintf(&dynamic,
+		                   "Cannot find body of %s in base.js",
+		                   get_details(p));
+		break;
+	case ERR_CALL_ALLOC:
+		literal = "Cannot allocate JavaScript interpreter heap";
+		break;
+	case ERR_CALL_COMPILE:
+		printed = asprintf(&dynamic,
+		                   "Error in duk_pcompile(): %s",
+		                   get_details(p));
+		break;
+	case ERR_CALL_INVOKE:
+		printed = asprintf(&dynamic,
+		                   "Error in duk_pcall(): %s",
+		                   get_details(p));
+		break;
+	case ERR_CALL_GET_RESULT:
+		literal = "Error fetching function result";
+		break;
+
 #if 0
 	case ERR_PARSE_JSON_CALLBACK_GOT_CIPHERTEXT_URL:
 		my_snprintf("Cannot set ciphertext URL: %s", url_error(r));
@@ -105,7 +175,7 @@ result_cleanup(result_t r)
 		return;
 	}
 
-	struct parse_json_result *p = (struct parse_json_result *)r;
+	struct result_js *p = (struct result_js *)r;
 	free(p->details);
 	free(p);
 }
@@ -119,25 +189,22 @@ struct result_ops PARSE_JSON_RESULT_OPS = {
 static result_t WARN_UNUSED
 make_result(int err_type, const char *details)
 {
-	struct parse_json_result *r = malloc(sizeof(*r));
+	return make_result_with_errno(err_type, 0, details);
+}
+
+static result_t WARN_UNUSED
+make_result_with_errno(int err_type, int my_errno, const char *details)
+{
+	struct result_js *r = malloc(sizeof(*r));
 	if (r == NULL) {
-		goto error;
+		return &RESULT_CANNOT_ALLOC;
 	}
 
 	r->base.ops = &PARSE_JSON_RESULT_OPS;
 	r->err = err_type;
-	if (details) {
-		r->details = strdup(details);
-		if (r->details == NULL) {
-			goto error;
-		}
-	}
-
+	r->errno = my_errno;
+	r->details = details; /* take ownership, if non-NULL */
 	return r;
-
-error:
-	free(r); /* handles NULL gracefully */
-	return &RESULT_CANNOT_ALLOC;
 }
 
 static WARN_UNUSED const char *
@@ -192,7 +259,7 @@ parse_json(const char *json,
 	duk_push_lstring(ctx, json, json_sz);
 	duk_ret_t res = duk_safe_call(ctx, try_decode, NULL, 1, 1);
 	if (res != DUK_EXEC_SUCCESS) {
-		return make_result(ERR_PARSE_JSON_DECODE, peek(ctx));
+		return make_result(ERR_PARSE_JSON_DECODE, strdup(peek(ctx)));
 	}
 
 	if (DUK_TYPE_OBJECT != duk_get_type(ctx, -1) ||
@@ -273,12 +340,13 @@ find_base_js_url(const char *html,
                  const char **basejs,
                  size_t *basejs_sz)
 {
-	check_if(!re_capture("\"(/s/player/[^\"]+/base.js)\"",
-	                     html,
-	                     sz,
-	                     basejs,
-	                     basejs_sz),
-	         ERR_JS_BASEJS_URL_FIND);
+	if (!re_capture("\"(/s/player/[^\"]+/base.js)\"",
+	                html,
+	                sz,
+	                basejs,
+	                basejs_sz)) {
+		return make_result(ERR_BASEJS_URL_FIND, NULL);
+	}
 
 	debug("Parsed base.js URI: %.*s", (int)*basejs_sz, *basejs);
 	return RESULT_OK;
@@ -289,12 +357,9 @@ find_js_timestamp(const char *js, size_t js_sz, long long int *value)
 {
 	const char *ts = NULL;
 	size_t tsz = 0;
-	check_if(!re_capture("signatureTimestamp:([0-9]+)",
-	                     js,
-	                     js_sz,
-	                     &ts,
-	                     &tsz),
-	         ERR_JS_TIMESTAMP_FIND);
+	if (!re_capture("signatureTimestamp:([0-9]+)", js, js_sz, &ts, &tsz)) {
+		return make_result(ERR_TIMESTAMP_FIND, NULL);
+	}
 
 	/*
 	 * strtoll() does not modify errno on success, so we must clear it
@@ -304,11 +369,9 @@ find_js_timestamp(const char *js, size_t js_sz, long long int *value)
 
 	long long int res = strtoll(ts, NULL, 10);
 	if (errno != 0) {
-		return (result_t){
-			.err = ERR_JS_TIMESTAMP_PARSE_TO_LONGLONG,
-			.num = errno,
-			.msg = result_strdup_span(ts, tsz),
-		};
+		return make_result_with_errno(ERR_TIMESTAMP_PARSE_TO_LONGLONG,
+		                              errno,
+		                              strndup(ts, tsz));
 	}
 
 	debug("Parsed signatureTimestamp %.*s into %lld", (int)tsz, ts, res);
@@ -358,21 +421,17 @@ find_js_deobfuscator(const char *js,
 		info("Cannot find '%s' in base.js", RE_FUNC_NAME[i]);
 	}
 	if (name == NULL || nsz == 0) {
-		return (result_t){
-			.err = ERR_JS_DEOBFUSCATOR_FIND_FUNCTION_ONE,
-		};
+		return make_result(ERR_DEOBFUSCATOR_FIND_FUNCTION_ONE, NULL);
 	}
 	debug("Got function name 1: %.*s", (int)nsz, name);
 
 	char *p2 __attribute__((cleanup(asprintf_free))) = NULL;
 	rc = asprintf(&p2, "var \\Q%.*s\\E=\\[([^\\]]+)\\]", (int)nsz, name);
-	check_if(rc < 0, ERR_JS_DEOBFUSCATOR_ALLOC);
+	check_if(rc < 0, ERR_DEOBFUSCATOR_ALLOC);
 
 	if (!re_capture(p2, js, js_sz, &name, &nsz)) {
-		return (result_t){
-			.err = ERR_JS_DEOBFUSCATOR_FIND_FUNCTION_TWO,
-			.msg = result_strdup_span(name, nsz),
-		};
+		return make_result(ERR_DEOBFUSCATOR_FIND_FUNCTION_TWO,
+		                   strndup(name, nsz));
 	}
 	debug("Got function name 2: %.*s", (int)nsz, name);
 
@@ -383,13 +442,13 @@ find_js_deobfuscator(const char *js,
 	              ")",
 	              (int)nsz,
 	              name);
-	check_if(rc < 0, ERR_JS_DEOBFUSCATOR_ALLOC);
+	if (rc < 0) {
+		return make_result(ERR_DEOBFUSCATOR_ALLOC, NULL);
+	}
 
 	if (!re_capture(p3, js, js_sz, deobfuscator, deobfuscator_sz)) {
-		return (result_t){
-			.err = ERR_JS_DEOBFUSCATOR_FIND_FUNCTION_BODY,
-			.msg = result_strdup_span(name, nsz),
-		};
+		return make_result(ERR_DEOBFUSCATOR_FIND_FUNCTION_BODY,
+		                   strndup(name, nsz));
 	}
 
 	// debug("Got function body: %.*s", *deobfuscator_sz, *deobfuscator);
@@ -427,14 +486,13 @@ call_js_one(duk_context *ctx,
 	 */
 	duk_push_lstring(ctx, js_arg, strlen(js_arg));
 	if (duk_pcall(ctx, 1) != DUK_EXEC_SUCCESS) {
-		return (result_t){
-			.err = ERR_JS_CALL_INVOKE,
-			.msg = result_strdup(peek(ctx)),
-		};
+		return make_result(ERR_CALL_INVOKE, strdup(peek(ctx)));
 	}
 
 	const char *result = duk_get_string(ctx, -1);
-	check_if(result == NULL, ERR_JS_CALL_GET_RESULT);
+	if (result == NULL) {
+		return make_result(ERR_CALL_GET_RESULT, NULL);
+	}
 
 	debug("Got JavaScript function result: %s", result);
 	check(ops->got_result(result, strlen(result), js_pos, userdata));
@@ -452,17 +510,16 @@ call_js_foreach(const char *code,
 {
 	duk_context *ctx __attribute__((cleanup(destroy_heap))) =
 		duk_create_heap_default(); /* may return NULL! */
-	check_if(ctx == NULL, ERR_JS_CALL_ALLOC);
+	if (ctx == NULL) {
+		return make_result(ERR_CALL_ALLOC, NULL);
+	}
 
 	duk_push_lstring(ctx, code, sz);
 	assert(duk_get_type(ctx, -1) == DUK_TYPE_STRING);
 
 	duk_push_string(ctx, __FUNCTION__);
 	if (duk_pcompile(ctx, DUK_COMPILE_FUNCTION) != 0) {
-		return (result_t){
-			.err = ERR_JS_CALL_COMPILE,
-			.msg = result_strdup(peek(ctx)),
-		};
+		return make_result(ERR_CALL_COMPILE, strdup(peek(ctx)));
 	}
 
 	for (size_t i = 0; i < argc; ++i) {
