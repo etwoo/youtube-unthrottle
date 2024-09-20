@@ -4,6 +4,8 @@
 #include "debug.h"
 #include "greatest.h"
 
+// TODO: add result enumeration method to each subsystem? then test here, or in each subsystem's test file?
+// TODO: ... or just hook all enumeration methods up to a CLI command like `./youtube-unthrottle --list-errors`, and exercise error codepaths by running that CLI command, sorta like --try-sandbox?
 #if 0
 #define ASSERT_IN(haystack, needle)                                            \
 	do {                                                                   \
