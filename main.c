@@ -46,7 +46,7 @@ usage(const char *cmd, int rc)
 static void
 to_stderr(result_t r)
 {
-	fprintf(stderr, "ERROR: %s\n", result_to_str(r));
+	fprintf(stderr, "ERROR: %s\n", result_to_str(r)); // TODO: free buffer returned by result_to_str()
 }
 
 static WARN_UNUSED int
