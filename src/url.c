@@ -22,10 +22,10 @@
  * Set up codegen macros for module-specific result_t.
  */
 #define LITERAL(str) s = strdup(str)
-#define ERR_EASY(fmt)                                                          \
-	printed = asprintf(&s, fmt ": %s", curl_easy_strerror(p->curl_code))
 #define ERR_URL(fmt)                                                           \
-	printed = asprintf(&s, fmt ": %s", curl_url_strerror(p->curlu_code))
+	printed = asprintf(&s, fmt ": %s", curl_url_strerror(p->code))
+#define ERR_EASY(fmt)                                                          \
+	printed = asprintf(&s, fmt ": %s", curl_easy_strerror(p->code))
 
 #define ERROR_TABLE(X)                                                         \
 	X(OK, LITERAL("Success in " __FILE_NAME__))                            \
@@ -52,7 +52,7 @@
 	X(ERR_URL_DOWNLOAD_PERFORM, ERR_EASY("Error performing HTTP request"))
 
 #define DO_CLEANUP assert(p) /* noop */
-#define DO_INIT {.base = {.ops = &RESULT_OPS}, .err = err}
+#define DO_INIT {.base = {.ops = &RESULT_OPS}, .err = err, .code = code}
 
 /*
  * Extend `struct result_base` to create a module-specific result_t.
@@ -60,46 +60,21 @@
 struct result_url {
 	struct result_base base;
 	enum { ERROR_TABLE(INTO_ENUM) } err;
-	union {
-		CURLcode curl_code;
-		CURLUcode curlu_code;
-	};
+	int code; /* either CURLcode or CURLUcode */
 };
-DEFINE_RESULT(result_url, DO_CLEANUP, DO_INIT, int err)
-
-static result_t WARN_UNUSED
-make_result_res(int err_type, CURLcode res)
-{
-	struct result_url *r = (struct result_url *)make_result_url(err_type);
-	if (r == NULL) {
-		return RESULT_CANNOT_ALLOC;
-	}
-	r->curl_code = res;
-	return (result_t)r;
-}
+DEFINE_RESULT(result_url, DO_CLEANUP, DO_INIT, int err, int code)
 
 #define check_if_res(res, err_type)                                            \
 	do {                                                                   \
 		if (res) {                                                     \
-			return make_result_res(err_type, res);                 \
+			return make_result_url(err_type, res);                 \
 		}                                                              \
 	} while (0)
-
-static result_t WARN_UNUSED
-make_result_uc(int err_type, CURLUcode uc)
-{
-	struct result_url *r = (struct result_url *)make_result_url(err_type);
-	if (r == NULL) {
-		return RESULT_CANNOT_ALLOC;
-	}
-	r->curlu_code = uc;
-	return (result_t)r;
-}
 
 #define check_if_uc(uc, err_type)                                              \
 	do {                                                                   \
 		if (uc) {                                                      \
-			return make_result_uc(err_type, uc);                   \
+			return make_result_url(err_type, uc);                  \
 		}                                                              \
 	} while (0)
 
