@@ -55,6 +55,7 @@ struct result_seccomp {
 	int num;
 };
 DEFINE_RESULT(result_seccomp, DO_CLEANUP, DO_INIT, int err, int num)
+#define make_result make_result_seccomp
 
 /*
  * Benign Linux syscalls loosely corresponding to OpenBSD pledge("stdio")
@@ -451,17 +452,13 @@ result_t
 seccomp_apply(unsigned flags)
 {
 	scmp_filter_ctx ctx = seccomp_init(SCMP_ACT_ERRNO(EACCES));
-	if (ctx == NULL) {
-		return make_result_seccomp(ERR_SECCOMP_INIT, errno);
-	}
+	check_if(ctx == NULL, ERR_SECCOMP_INIT, errno);
 
 	const bool apply = seccomp_apply_common(ctx, flags);
 	info_if(!apply, "Cannot add all seccomp rules; continuing ...");
 
 	const int rc = seccomp_load(ctx);
-	if (rc < 0) {
-		return make_result_seccomp(ERR_SECCOMP_LOAD, errno);
-	}
+	check_if(rc < 0, ERR_SECCOMP_LOAD, errno);
 	seccomp_release(ctx);
 
 	debug("seccomp_apply() %s", apply ? "succeeded" : "encountered issues");

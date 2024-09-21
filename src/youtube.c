@@ -220,9 +220,7 @@ pop_n_param_one(CURLU *url, char **result)
 	                        "%.*s",
 	                        (int)ciphertext_sz,
 	                        ciphertext_within_getargs);
-	if (rc < 0) {
-		return make_result(ERR_N_PARAM_QUERY_ALLOC);
-	}
+	check_if(rc < 0, ERR_N_PARAM_QUERY_ALLOC);
 	debug("Copied n-param ciphertext: %s", *result);
 
 	debug("Before n-param ciphertext removal: %s", getargs);
@@ -292,9 +290,7 @@ append_n_param(const char *plaintext, size_t sz, size_t pos, void *userdata)
 
 	char *kv __attribute__((cleanup(asprintf_free))) = NULL;
 	const int rc = asprintf(&kv, "n=%.*s", (int)sz, plaintext);
-	if (rc < 0) {
-		return make_result(ERR_N_PARAM_KVPAIR_ALLOC);
-	}
+	check_if(rc < 0, ERR_N_PARAM_KVPAIR_ALLOC);
 
 	assert(pos < ARRAY_SIZE(p->url));
 	CURLU *u = p->url[pos];
@@ -364,9 +360,7 @@ format_innertube_post(const char *target, long long int ts, char **body)
 	debug("Parsed ID: %.*s", (int)sz, id);
 
 	const int rc = asprintf(body, INNERTUBE_POST_FMT, (int)sz, id, ts);
-	if (rc < 0) {
-		return make_result(ERR_INNERTUBE_POST_ALLOC);
-	}
+	check_if(rc < 0, ERR_INNERTUBE_POST_ALLOC);
 
 	debug("Formatted InnerTube POST body:\n%s", *body);
 	return RESULT_OK;
@@ -456,9 +450,7 @@ youtube_stream_setup(struct youtube_stream *p,
 		debug("Setting base.js URL: %.*s", (int)basejs_sz, basejs);
 		null_terminated_basejs = strndup(basejs, basejs_sz);
 	}
-	if (null_terminated_basejs == NULL) {
-		return make_result(ERR_BASEJS_URL_ALLOC);
-	}
+	check_if(null_terminated_basejs == NULL, ERR_BASEJS_URL_ALLOC);
 
 	check(download_and_mmap_tmpfd(NULL,
 	                              "www.youtube.com",
