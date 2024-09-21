@@ -76,6 +76,6 @@
 		char *tmp = NULL;                                              \
 		return asprintf(&tmp, fmt, __VA_ARGS__) < 0 ? NULL : tmp;      \
 	} while (0)
-#define PERR(fmt) ASPRINTF(fmt ": %s", strerror(p->num))
+#define PERR(msg) ASPRINTF(msg ": %s", strerror(p->num))
 
 #endif
