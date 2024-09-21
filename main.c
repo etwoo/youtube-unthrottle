@@ -45,16 +45,11 @@ usage(const char *cmd, int rc)
 }
 
 static void
-rs_free(char **strp)
-{
-	free(*strp);
-}
-
-static void
 to_stderr(result_t r)
 {
-	char *msg __attribute__((cleanup(rs_free))) = result_to_str(r);
-	fprintf(stderr, "ERROR: %s\n", msg ? msg : "[cannot print result]");
+	char *msg = result_to_str(r);
+	fprintf(stderr, "ERROR %s\n", msg ? msg : "[cannot print result]");
+	free(msg);
 }
 
 static WARN_UNUSED int
