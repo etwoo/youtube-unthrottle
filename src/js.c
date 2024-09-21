@@ -125,9 +125,7 @@ parse_json(const char *json,
 
 	duk_context *ctx __attribute__((cleanup(destroy_heap))) =
 		duk_create_heap_default(); /* may return NULL! */
-	if (ctx == NULL) {
-		return make_result(ERR_PARSE_JSON_ALLOC_HEAP, NULL);
-	}
+	check_if(ctx == NULL, ERR_PARSE_JSON_ALLOC_HEAP, NULL);
 
 	duk_push_lstring(ctx, json, json_sz);
 	duk_ret_t res = duk_safe_call(ctx, try_decode, NULL, 1, 1);
@@ -300,9 +298,7 @@ find_js_deobfuscator(const char *js,
 
 	char *p2 __attribute__((cleanup(asprintf_free))) = NULL;
 	rc = asprintf(&p2, "var \\Q%.*s\\E=\\[([^\\]]+)\\]", (int)nsz, name);
-	if (rc < 0) {
-		return make_result(ERR_DEOBFUSCATOR_ALLOC, NULL);
-	}
+	check_if(rc < 0, ERR_DEOBFUSCATOR_ALLOC, NULL);
 
 	if (!re_capture(p2, js, js_sz, &name, &nsz)) {
 		return make_result(ERR_DEOBFUSCATOR_FIND_FUNCTION_TWO,
@@ -317,9 +313,7 @@ find_js_deobfuscator(const char *js,
 	              ")",
 	              (int)nsz,
 	              name);
-	if (rc < 0) {
-		return make_result(ERR_DEOBFUSCATOR_ALLOC, NULL);
-	}
+	check_if(rc < 0, ERR_DEOBFUSCATOR_ALLOC, NULL);
 
 	if (!re_capture(p3, js, js_sz, deobfuscator, deobfuscator_sz)) {
 		return make_result(ERR_DEOBFUSCATOR_FIND_FUNCTION_BODY,
@@ -385,9 +379,7 @@ call_js_foreach(const char *code,
 {
 	duk_context *ctx __attribute__((cleanup(destroy_heap))) =
 		duk_create_heap_default(); /* may return NULL! */
-	if (ctx == NULL) {
-		return make_result(ERR_CALL_ALLOC, NULL);
-	}
+	check_if(ctx == NULL, ERR_CALL_ALLOC, NULL);
 
 	duk_push_lstring(ctx, code, sz);
 	assert(duk_get_type(ctx, -1) == DUK_TYPE_STRING);

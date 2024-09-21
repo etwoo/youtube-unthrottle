@@ -147,9 +147,7 @@ ruleset_add_rule_port(int fd, int port)
 		.port = port,
 	};
 	const int rc = landlock_add_rule(fd, LANDLOCK_RULE_NET_PORT, &np, 0);
-	if (rc < 0) {
-		return make_result(ERR_ADD_RULE_PORT, errno);
-	}
+	check_if(rc < 0, ERR_ADD_RULE_PORT, errno);
 	return RESULT_OK;
 }
 
@@ -163,9 +161,7 @@ landlock_apply(const char **paths, int sz, int port)
 		.handled_access_net = LANDLOCK_ACCESS_NET_CONNECT_TCP,
 	};
 	int fd = landlock_create_ruleset(&ra, sizeof(ra), 0);
-	if (fd < 0) {
-		return make_result(ERR_CREATE_RULESET, errno);
-	}
+	check_if(fd < 0, ERR_CREATE_RULESET, errno);
 
 	if (paths) {
 		check(ruleset_add_rule_paths(fd, paths, sz));
@@ -176,14 +172,10 @@ landlock_apply(const char **paths, int sz, int port)
 	}
 
 	rc = prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0);
-	if (rc < 0) {
-		return make_result(ERR_SET_NO_NEW_PRIVS, errno);
-	}
+	check_if(rc < 0, ERR_SET_NO_NEW_PRIVS, errno);
 
 	rc = landlock_restrict_self(fd, 0);
-	if (rc < 0) {
-		return make_result(ERR_RESTRICT_SELF, errno);
-	}
+	check_if(rc < 0, ERR_RESTRICT_SELF, errno);
 
 	debug("landlock_apply() succeeded");
 

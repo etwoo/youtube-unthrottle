@@ -52,6 +52,18 @@ bool is_ok(result_t r) WARN_UNUSED;
 	} while (0)
 
 /*
+ * Return a result_t if a given (arbitrary) condition is true.
+ *
+ * Note: this macro assumes that a helper named make_result() is defined.
+ */
+#define check_if(cond, ...)                                                    \
+	do {                                                                   \
+		if (cond) {                                                    \
+			return make_result(__VA_ARGS__);                       \
+		}                                                              \
+	} while (0)
+
+/*
  * Convert a result into a human-readable error message.
  *
  * Note: the caller owns the returned buffer.
