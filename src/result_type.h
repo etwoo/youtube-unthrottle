@@ -9,7 +9,10 @@
 
 #define INTO_ENUM(x, y) x,
 #define INTO_ARRAY(x, y) x,
-#define INTO_SWITCH(x, y) case x: y; break;
+#define INTO_SWITCH(x, y)                                                      \
+	case x:                                                                \
+		y;                                                             \
+		break;
 
 /*
  * Prerequisite macros: ERROR_TABLE, ERROR_EXAMPLE_ARGS
@@ -61,9 +64,7 @@
 	void test_##typ##_foreach(void (*visit)(size_t, result_t));            \
 	void test_##typ##_foreach(void (*visit)(size_t, result_t))             \
 	{                                                                      \
-		int arr[] = {                                                  \
-			ERROR_TABLE(INTO_ARRAY)                                \
-		};                                                             \
+		int arr[] = {ERROR_TABLE(INTO_ARRAY)};                         \
 		for (size_t i = 0; i < ARRAY_SIZE(arr); ++i) {                 \
 			result_t r = make_##typ(arr[i], ERROR_EXAMPLE_ARGS);   \
 			visit(i, r);                                           \

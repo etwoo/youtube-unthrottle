@@ -26,8 +26,7 @@ static struct parse_ops NOOP = {
 static WARN_UNUSED bool
 parse(const char *str)
 {
-	result_t err RESULT_CLEANUP =
-		parse_json(str, strlen(str), &NOOP, NULL);
+	result_t err RESULT_CLEANUP = parse_json(str, strlen(str), &NOOP, NULL);
 	return is_ok(err);
 }
 
@@ -286,8 +285,8 @@ TEST
 incorrect_url_value_type(void)
 {
 	ASSERT_FALSE(parse("{\"streamingData\": {\"adaptiveFormats\": "
-	                  "[{\"mimeType\": \"audio/foobar\", \"url\": 5}]"
-	                  "}}"));
+	                   "[{\"mimeType\": \"audio/foobar\", \"url\": 5}]"
+	                   "}}"));
 	PASS();
 }
 
