@@ -43,9 +43,6 @@
 
 #define ERROR_EXAMPLE_ARGS CURLUE_OK
 
-#define DO_CLEANUP assert(p) /* noop */
-#define DO_INIT {.err = err, .curlu_code = code}
-
 /*
  * Extend `struct result_base` to create a module-specific result_t.
  */
@@ -54,7 +51,13 @@ struct result_youtube {
 	enum { ERROR_TABLE(INTO_ENUM) } err;
 	CURLUcode curlu_code;
 };
-DEFINE_RESULT(result_youtube, DO_CLEANUP, DO_INIT, int err, int code)
+
+static void
+result_youtube_cleanup_members(struct result_youtube *p __attribute__((unused)))
+{
+}
+
+DEFINE_RESULT(result_youtube, MEMBER(int, err), MEMBER(int, curlu_code))
 
 #define check_if_uc(uc, err_type)                                              \
 	do {                                                                   \
@@ -522,8 +525,6 @@ youtube_stream_setup(struct youtube_stream *p,
 	return RESULT_OK;
 }
 
-#undef DO_CLEANUP
-#undef DO_INIT
 #undef ERROR_EXAMPLE_ARGS
 #undef ERROR_TABLE
 #undef ERR_URL

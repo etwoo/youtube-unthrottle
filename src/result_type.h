@@ -2,6 +2,7 @@
 #define RESULT_TYPE_H
 
 #include "array.h"
+#include "macros.h"
 
 #define INTO_ENUM(x, y) x,
 #define INTO_ARRAY(x, y) x,
@@ -10,12 +11,25 @@
 		y;                                                             \
 		break;
 
+#define SEMICOLON ;
+#define INIT_MEMBERS(...)                                                      \
+	do {                                                                   \
+		JOIN_ODD_ARGS(SEMICOLON, __VA_ARGS__);                         \
+	} while (0)
+#define PARAMETER_LIST(...) CHOOSE_EVEN_ARGS(__VA_ARGS__)
+
+/*
+ * Use MEMBER() to pass member definition arguments to DEFINE_RESULT().
+ */
+#define MEMBER(typ, name) typ name, p->name = name
+
 /*
  * Generate glue code for a subsystem implementing the `struct result_ops` API.
  *
  * Prerequisite macros: ERROR_TABLE, ERROR_EXAMPLE_ARGS
+ * Prerequisite functions: typ##_cleanup_members
  */
-#define DEFINE_RESULT(typ, do_cleanup, do_init, ...)                           \
+#define DEFINE_RESULT(typ, ...)                                                \
 	static WARN_UNUSED bool typ##_ok(result_t r)                           \
 	{                                                                      \
 		struct typ *p = (struct typ *)r;                               \
@@ -34,7 +48,7 @@
 			return;                                                \
 		}                                                              \
 		struct typ *p = (struct typ *)r;                               \
-		do_cleanup;                                                    \
+		typ##_cleanup_members(p);                                      \
 		free(p);                                                       \
 	}                                                                      \
 	static struct result_ops RESULT_OPS = {                                \
@@ -42,16 +56,15 @@
 		.result_to_str = typ##_to_str,                                 \
 		.result_cleanup = typ##_cleanup,                               \
 	};                                                                     \
-	static result_t WARN_UNUSED make_##typ(__VA_ARGS__)                    \
+	static result_t WARN_UNUSED make_##typ(PARAMETER_LIST(__VA_ARGS__))    \
 	{                                                                      \
-		struct typ *on_heap = malloc(sizeof(*on_heap));                \
-		if (on_heap == NULL) {                                         \
+		struct typ *p = malloc(sizeof(*p));                            \
+		if (p == NULL) {                                               \
 			return RESULT_CANNOT_ALLOC;                            \
 		}                                                              \
-		struct typ on_stack = do_init;                                 \
-		on_stack.base.ops = &RESULT_OPS;                               \
-		memcpy(on_heap, &on_stack, sizeof(on_stack));                  \
-		return (result_t)on_heap;                                      \
+		p->base.ops = &RESULT_OPS;                                     \
+		INIT_MEMBERS(__VA_ARGS__);                                     \
+		return (result_t)p;                                            \
 	}                                                                      \
 	void test_##typ##_foreach(void (*visit)(size_t, result_t));            \
 	void test_##typ##_foreach(void (*visit)(size_t, result_t))             \

@@ -24,9 +24,6 @@
 
 #define ERROR_EXAMPLE_ARGS 0
 
-#define DO_CLEANUP assert(p) /* noop */
-#define DO_INIT {.err = err, .num = num}
-
 /*
  * Extend `struct result_base` to create a module-specific result_t.
  */
@@ -35,7 +32,13 @@ struct result_tmpfile {
 	enum { ERROR_TABLE(INTO_ENUM) } err;
 	int num;
 };
-DEFINE_RESULT(result_tmpfile, DO_CLEANUP, DO_INIT, int err, int num)
+
+static void
+result_tmpfile_cleanup_members(struct result_tmpfile *p __attribute__((unused)))
+{
+}
+
+DEFINE_RESULT(result_tmpfile, MEMBER(int, err), MEMBER(int, num))
 #define make_result make_result_tmpfile
 
 static void
@@ -107,7 +110,5 @@ tmpunmap(void *addr, unsigned int sz)
 	info_m_if(rc < 0, "Ignoring error munmap()-ing tmpfile");
 }
 
-#undef DO_CLEANUP
-#undef DO_INIT
 #undef ERROR_EXAMPLE_ARGS
 #undef ERROR_TABLE

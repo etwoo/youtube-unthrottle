@@ -58,9 +58,6 @@
 
 #define ERROR_EXAMPLE_ARGS 0, strdup("foobar")
 
-#define DO_CLEANUP free(p->details)
-#define DO_INIT {.err = err, .num = num, .details = s}
-
 /*
  * Extend `struct result_base` to create a module-specific result_t.
  */
@@ -70,7 +67,17 @@ struct result_js {
 	int num;
 	char *details;
 };
-DEFINE_RESULT(result_js, DO_CLEANUP, DO_INIT, int err, int num, char *s)
+
+static void
+result_js_cleanup_members(struct result_js *p)
+{
+	free(p->details);
+}
+
+DEFINE_RESULT(result_js,
+              MEMBER(int, err),
+              MEMBER(int, num),
+              MEMBER(char *, details))
 
 static result_t WARN_UNUSED
 make_result(int err_type, char *details)
@@ -394,8 +401,6 @@ call_js_foreach(const char *code,
 	return RESULT_OK;
 }
 
-#undef DO_CLEANUP
-#undef DO_INIT
 #undef ERROR_EXAMPLE_ARGS
 #undef ERROR_TABLE
 #undef GET_DETAILS

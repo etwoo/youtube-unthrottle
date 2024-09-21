@@ -40,9 +40,6 @@
 
 #define ERROR_EXAMPLE_ARGS 0
 
-#define DO_CLEANUP assert(p) /* noop */
-#define DO_INIT {.err = err, .num = num}
-
 /*
  * Extend `struct result_base` to create a module-specific result_t.
  */
@@ -51,7 +48,13 @@ struct result_seccomp {
 	enum { ERROR_TABLE(INTO_ENUM) } err;
 	int num;
 };
-DEFINE_RESULT(result_seccomp, DO_CLEANUP, DO_INIT, int err, int num)
+
+static void
+result_seccomp_cleanup_members(struct result_seccomp *p __attribute__((unused)))
+{
+}
+
+DEFINE_RESULT(result_seccomp, MEMBER(int, err), MEMBER(int, num))
 #define make_result make_result_seccomp
 
 /*
@@ -462,8 +465,6 @@ seccomp_apply(unsigned flags)
 	return RESULT_OK;
 }
 
-#undef DO_CLEANUP
-#undef DO_INIT
 #undef ERROR_EXAMPLE_ARGS
 #undef ERROR_TABLE
 #undef SCMP_ARG_UNUSED

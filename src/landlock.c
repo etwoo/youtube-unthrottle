@@ -79,9 +79,6 @@ landlock_restrict_self(const int ruleset_fd, const __u32 flags)
 
 #define ERROR_EXAMPLE_ARGS 0, strdup("/foo/bar")
 
-#define DO_CLEANUP free(p->path)
-#define DO_INIT {.err = err, .num = num, .path = p}
-
 /*
  * Extend `struct result_base` to create a module-specific result_t.
  */
@@ -91,7 +88,16 @@ struct result_ll {
 	int num;
 	char *path;
 };
-DEFINE_RESULT(result_ll, DO_CLEANUP, DO_INIT, int err, int num, char *p)
+
+static void
+result_ll_cleanup_members(struct result_ll *p __attribute__((unused)))
+{
+}
+
+DEFINE_RESULT(result_ll,
+              MEMBER(int, err),
+              MEMBER(int, num),
+              MEMBER(char *, path))
 
 static result_t WARN_UNUSED
 make_result(int err, int my_errno)
@@ -182,8 +188,6 @@ landlock_apply(const char **paths, int sz, int port)
 	return RESULT_OK;
 }
 
-#undef DO_CLEANUP
-#undef DO_INIT
 #undef ERROR_EXAMPLE_ARGS
 #undef ERROR_TABLE
 #undef PATH

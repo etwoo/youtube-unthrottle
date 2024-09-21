@@ -50,9 +50,6 @@
 
 #define ERROR_EXAMPLE_ARGS 0
 
-#define DO_CLEANUP assert(p) /* noop */
-#define DO_INIT {.err = err, .code = code}
-
 /*
  * Extend `struct result_base` to create a module-specific result_t.
  */
@@ -61,7 +58,13 @@ struct result_url {
 	enum { ERROR_TABLE(INTO_ENUM) } err;
 	int code; /* either CURLcode or CURLUcode */
 };
-DEFINE_RESULT(result_url, DO_CLEANUP, DO_INIT, int err, int code)
+
+static void
+result_url_cleanup_members(struct result_url *p __attribute__((unused)))
+{
+}
+
+DEFINE_RESULT(result_url, MEMBER(int, err), MEMBER(int, code))
 
 #define check_if_res(res, err_type)                                            \
 	do {                                                                   \
@@ -250,8 +253,6 @@ url_download(const char *url_str,   /* may be NULL */
 
 #undef check_if_res
 #undef check_if_uc
-#undef DO_CLEANUP
-#undef DO_INIT
 #undef ERROR_EXAMPLE_ARGS
 #undef ERROR_TABLE
 #undef ERR_EASY
