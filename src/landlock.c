@@ -80,7 +80,7 @@ landlock_restrict_self(const int ruleset_fd, const __u32 flags)
 	X(ERR_SET_NO_NEW_PRIVS, PERR("Error in prctl(PR_SET_NO_NEW_PRIVS)"))   \
 	X(ERR_RESTRICT_SELF, PERR("Error in landlock_restrict_self()"))
 
-#define ERROR_EXAMPLE_ARGS 0,"/foo/bar"
+#define ERROR_EXAMPLE_ARGS 0,strdup("/foo/bar")
 
 #define DO_CLEANUP free(p->path)
 #define DO_INIT {.err = err, .num = num, .path = p}
