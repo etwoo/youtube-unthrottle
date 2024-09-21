@@ -71,8 +71,4 @@
 		}                                                              \
 	}
 
-// TODO: create a globally-visible (non-static) function like test_typ##_foreach(...)
-// TODO: ... then make test/result/result.c `extern` all of these functions, and call them to get an example of each subsystem's result_t, then stringify, then strstr() like in existing print_to_str_each_enum_value() testcase
-// TODO: verify this causes the various ERROR_TABLE() macros to be covered; looks like clang is smart enough to mark those lines as code (not data) and to only mark them covered if the specific INTO_SWITCH()-generated block actually hits in a testcase!!!
-
 #endif
