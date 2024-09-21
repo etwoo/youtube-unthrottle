@@ -327,3 +327,5 @@ main(int argc, char **argv)
 	youtube_global_cleanup();
 	GREATEST_MAIN_END();
 }
+
+#undef RESULT_CLEANUP

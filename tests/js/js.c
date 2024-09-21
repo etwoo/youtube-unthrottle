@@ -699,8 +699,6 @@ SUITE(call_with_duktape)
 	RUN_TEST(call_with_duktape_minimum_valid_function);
 }
 
-#undef RESULT_CLEANUP
-
 GREATEST_MAIN_DEFS();
 
 int
@@ -719,3 +717,5 @@ main(int argc, char **argv)
 
 	GREATEST_MAIN_END();
 }
+
+#undef RESULT_CLEANUP

@@ -156,3 +156,5 @@ main(int argc, char **argv)
 
 	GREATEST_MAIN_END();
 }
+
+#undef RESULT_CLEANUP
