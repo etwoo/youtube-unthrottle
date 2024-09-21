@@ -3,10 +3,6 @@
 
 #include "array.h"
 
-/*
- * Codegen macros that help with implementing the `struct result_ops` interface
- */
-
 #define INTO_ENUM(x, y) x,
 #define INTO_ARRAY(x, y) x,
 #define INTO_SWITCH(x, y)                                                      \
@@ -15,6 +11,8 @@
 		break;
 
 /*
+ * Generate glue code for a subsystem implementing the `struct result_ops` API.
+ *
  * Prerequisite macros: ERROR_TABLE, ERROR_EXAMPLE_ARGS
  */
 #define DEFINE_RESULT(typ, do_cleanup, do_init, ...)                           \
