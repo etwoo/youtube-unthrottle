@@ -18,9 +18,7 @@
 /*
  * Set up codegen macros for module-specific result_t.
  */
-#define LITERAL(str) s = strdup(str)
-#define ERR_URL(fmt)                                                           \
-	printed = asprintf(&s, fmt ": %s", curl_url_strerror(p->curlu_code))
+#define ERR_URL(fmt) ASPRINTF(fmt ": %s", curl_url_strerror(p->curlu_code))
 
 #define ERROR_TABLE(X)                                                         \
 	X(OK, LITERAL("Success in " __FILE_NAME__))                            \
@@ -526,6 +524,6 @@ youtube_stream_setup(struct youtube_stream *p,
 
 #undef DO_CLEANUP
 #undef DO_INIT
+#undef ERROR_EXAMPLE_ARGS
 #undef ERROR_TABLE
 #undef ERR_URL
-#undef LITERAL

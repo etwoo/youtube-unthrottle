@@ -24,15 +24,9 @@
 	static WARN_UNUSED char *typ##_to_str(result_t r)                      \
 	{                                                                      \
 		struct typ *p = (struct typ *)r;                               \
-		int printed = 0;                                               \
-		char *s = NULL;                                                \
 		switch (p->err) {                                              \
 			ERROR_TABLE(INTO_SWITCH)                               \
 		}                                                              \
-		if (printed < 0) {                                             \
-			return NULL;                                           \
-		}                                                              \
-		return s;                                                      \
 	}                                                                      \
 	static void typ##_cleanup(result_t r)                                  \
 	{                                                                      \
@@ -69,5 +63,19 @@
 			typ##_cleanup(r);                                      \
 		}                                                              \
 	}
+
+/*
+ * Optional: use the helper macros below when writing ERROR_TABLE entries.
+ */
+#define LITERAL(str)                                                           \
+	do {                                                                   \
+		return strdup(str);                                            \
+	} while (0)
+#define ASPRINTF(fmt, ...)                                                     \
+	do {                                                                   \
+		char *tmp = NULL;                                              \
+		return asprintf(&tmp, fmt, __VA_ARGS__) < 0 ? NULL : tmp;      \
+	} while (0)
+#define PERR(fmt) ASPRINTF(fmt ": %s", strerror(p->num))
 
 #endif

@@ -17,11 +17,9 @@
 /*
  * Set up codegen macros for module-specific result_t.
  */
-#define LITERAL(str) s = strdup(str)
 #define GET_DETAILS(x) x->details ? x->details : "[Cannot allocate details]"
-#define DETAILS(fmt) printed = asprintf(&s, fmt, GET_DETAILS(p))
-#define DETAILS_WITH_STRERROR(fmt)                                             \
-	printed = asprintf(&s, fmt, GET_DETAILS(p), strerror(p->num))
+#define DETAILS(fmt) ASPRINTF(fmt, GET_DETAILS(p))
+#define DETAILS_STRERROR(fmt) ASPRINTF(fmt, GET_DETAILS(p), strerror(p->num))
 
 #define ERROR_TABLE(X)                                                         \
 	X(OK, LITERAL("Success in " __FILE_NAME__))                            \
@@ -44,7 +42,7 @@
 	  LITERAL("Cannot find base.js URL in HTML document"))                 \
 	X(ERR_TIMESTAMP_FIND, LITERAL("Cannot find timestamp in base.js"))     \
 	X(ERR_TIMESTAMP_PARSE_TO_LONGLONG,                                     \
-	  DETAILS_WITH_STRERROR("Error in strtoll() on %s: %s"))               \
+	  DETAILS_STRERROR("Error in strtoll() on %s: %s"))                    \
 	X(ERR_DEOBFUSCATOR_ALLOC, LITERAL("Cannot allocate asprintf buffer"))  \
 	X(ERR_DEOBFUSCATOR_FIND_FUNCTION_ONE,                                  \
 	  LITERAL("Cannot find deobfuscation function in base.js"))            \
@@ -398,8 +396,8 @@ call_js_foreach(const char *code,
 
 #undef DO_CLEANUP
 #undef DO_INIT
+#undef ERROR_EXAMPLE_ARGS
 #undef ERROR_TABLE
 #undef GET_DETAILS
-#undef DETAILS_WITH_STRERROR
+#undef DETAILS_STRERROR
 #undef DETAILS
-#undef LITERAL

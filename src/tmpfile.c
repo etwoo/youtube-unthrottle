@@ -14,9 +14,6 @@
 /*
  * Set up codegen macros for module-specific result_t.
  */
-#define LITERAL(str) s = strdup(str)
-#define PERR(fmt) printed = asprintf(&s, fmt ": %s", strerror(p->num))
-
 #define ERROR_TABLE(X)                                                         \
 	X(OK, LITERAL("Success in " __FILE_NAME__))                            \
 	X(ERR_TMPFILE, PERR("Error in tmpfile()"))                             \
@@ -112,6 +109,5 @@ tmpunmap(void *addr, unsigned int sz)
 
 #undef DO_CLEANUP
 #undef DO_INIT
+#undef ERROR_EXAMPLE_ARGS
 #undef ERROR_TABLE
-#undef PERR
-#undef LITERAL

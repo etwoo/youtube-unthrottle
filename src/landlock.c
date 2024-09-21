@@ -65,11 +65,8 @@ landlock_restrict_self(const int ruleset_fd, const __u32 flags)
 /*
  * Set up codegen macros for module-specific result_t.
  */
-#define LITERAL(str) s = strdup(str)
-#define PERR(fmt) printed = asprintf(&s, fmt ": %s", strerror(p->num))
 #define GET_PATH(x) x->path ? x->path : "[Cannot allocate path]"
-#define PATH(fmt)                                                              \
-	printed = asprintf(&s, fmt ": %s", GET_PATH(p), strerror(p->num))
+#define PATH(fmt) ASPRINTF(fmt ": %s", GET_PATH(p), strerror(p->num))
 
 #define ERROR_TABLE(X)                                                         \
 	X(OK, LITERAL("Success in " __FILE_NAME__))                            \
@@ -187,8 +184,7 @@ landlock_apply(const char **paths, int sz, int port)
 
 #undef DO_CLEANUP
 #undef DO_INIT
+#undef ERROR_EXAMPLE_ARGS
 #undef ERROR_TABLE
 #undef PATH
 #undef GET_PATH
-#undef PERR
-#undef LITERAL

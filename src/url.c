@@ -21,11 +21,8 @@
 /*
  * Set up codegen macros for module-specific result_t.
  */
-#define LITERAL(str) s = strdup(str)
-#define ERR_URL(fmt)                                                           \
-	printed = asprintf(&s, fmt ": %s", curl_url_strerror(p->code))
-#define ERR_EASY(fmt)                                                          \
-	printed = asprintf(&s, fmt ": %s", curl_easy_strerror(p->code))
+#define ERR_URL(fmt) ASPRINTF(fmt ": %s", curl_url_strerror(p->code))
+#define ERR_EASY(fmt) ASPRINTF(fmt ": %s", curl_easy_strerror(p->code))
 
 #define ERROR_TABLE(X)                                                         \
 	X(OK, LITERAL("Success in " __FILE_NAME__))                            \
@@ -255,7 +252,7 @@ url_download(const char *url_str,   /* may be NULL */
 #undef check_if_uc
 #undef DO_CLEANUP
 #undef DO_INIT
+#undef ERROR_EXAMPLE_ARGS
 #undef ERROR_TABLE
 #undef ERR_EASY
 #undef ERR_URL
-#undef LITERAL
