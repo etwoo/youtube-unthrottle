@@ -58,6 +58,8 @@
 	X(ERR_CALL_INVOKE, DETAILS("Error in duk_pcall(): %s"))                \
 	X(ERR_CALL_GET_RESULT, LITERAL("Error fetching function result"))
 
+#define ERROR_EXAMPLE_ARGS 0,"foobar"
+
 #define DO_CLEANUP free(p->details)
 #define DO_INIT {.err = err, .num = num, .details = s}
 

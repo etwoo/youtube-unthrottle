@@ -43,6 +43,8 @@
 	  ERR_URL("Cannot append plaintext n-parameter"))                      \
 	X(ERR_STREAM_VISITOR_GET_URL, ERR_URL("Cannot get URL as string"))
 
+#define ERROR_EXAMPLE_ARGS CURLUE_OK
+
 #define DO_CLEANUP assert(p) /* noop */
 #define DO_INIT {.err = err, .curlu_code = code}
 

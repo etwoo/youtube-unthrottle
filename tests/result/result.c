@@ -53,11 +53,6 @@ make_ns(int err_type)
 	return result_to_str(err);
 }
 
-static const char CANNOT_ALLOC[] = "Cannot allocate";
-static const char CANNOT_GET[] = "Cannot get";
-static const char CANNOT_FIND[] = "Cannot find";
-static const char CANNOT_SET[] = "Cannot set";
-
 TEST
 print_to_str_each_enum_value(void)
 {
@@ -130,11 +125,72 @@ print_to_str_each_enum_value(void)
 	PASS();
 }
 
+#endif
+
+#define STARTSWITH(s, prefix) (0 == strncmp(s, prefix, strlen(prefix)))
+
+static const char CANNOT_ALLOC[] = "Cannot allocate";
+static const char CANNOT_GET[] = "Cannot get";
+static const char CANNOT_FIND[] = "Cannot find";
+static const char CANNOT_SET[] = "Cannot set";
+
+static void
+rs_free(char **strp)
+{
+	free(*strp);
+}
+
+extern void test_result_js_foreach(void (*visit)(size_t, result_t));
+
+static bool RESULT_JS_MATCH = true;
+
+static void
+test_result_js_visit(size_t pos, result_t r)
+{
+	static const char *EXPECTED[] = {
+		"Success",
+		CANNOT_ALLOC,
+		"Error in duk_json_decode",
+		CANNOT_GET,
+		CANNOT_GET,
+		"Cannot iter",
+		"adaptiveFormats element is not object",
+		CANNOT_GET,
+		CANNOT_GET,
+		CANNOT_FIND,
+		CANNOT_FIND,
+		"Error in strtoll",
+		CANNOT_ALLOC,
+		CANNOT_FIND,
+		CANNOT_FIND,
+		CANNOT_FIND,
+		CANNOT_ALLOC,
+		"Error in duk_pcompile",
+		"Error in duk_pcall",
+		"Error fetching",
+	};
+
+	char *msg __attribute__((cleanup(rs_free))) = result_to_str(r);
+	const char *expected = EXPECTED[pos];
+
+	const bool cur = STARTSWITH(msg, expected);
+	const char *res = cur ? "PASS" : "FAIL";
+	debug("%s: \"%s\" starts with \"%s\"?", res, msg, expected);
+	RESULT_JS_MATCH = cur && RESULT_JS_MATCH;
+}
+
+TEST
+print_to_str_result_js(void)
+{
+	test_result_js_foreach(test_result_js_visit);
+	ASSERT(RESULT_JS_MATCH);
+	PASS();
+}
+
 SUITE(print_to_str)
 {
-	RUN_TEST(print_to_str_each_enum_value);
+	RUN_TEST(print_to_str_result_js);
 }
-#endif
 
 GREATEST_MAIN_DEFS();
 
@@ -145,7 +201,7 @@ main(int argc, char **argv)
 
 	GREATEST_MAIN_BEGIN();
 
-	// RUN_SUITE(print_to_str);
+	RUN_SUITE(print_to_str);
 
 	GREATEST_MAIN_END();
 }

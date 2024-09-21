@@ -25,6 +25,8 @@
 	X(ERR_TMPFILE_FSTAT, PERR("Error fstat()-ing tmpfile"))                \
 	X(ERR_TMPFILE_MMAP, PERR("Error mmap()-ing tmpfile"))
 
+#define ERROR_EXAMPLE_ARGS 0
+
 #define DO_CLEANUP assert(p) /* noop */
 #define DO_INIT {.err = err, .num = num}
 

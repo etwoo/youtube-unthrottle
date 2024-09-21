@@ -41,6 +41,8 @@
 	X(ERR_SECCOMP_INIT, PERR("Error in seccomp_init()"))                   \
 	X(ERR_SECCOMP_LOAD, PERR("Error in seccomp_load()"))
 
+#define ERROR_EXAMPLE_ARGS 0
+
 #define DO_CLEANUP assert(p) /* noop */
 #define DO_INIT {.err = err, .num = num}
 

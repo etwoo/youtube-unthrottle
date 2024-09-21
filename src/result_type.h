@@ -1,17 +1,19 @@
 #ifndef RESULT_TYPE_H
 #define RESULT_TYPE_H
 
+#include "array.h"
+
 /*
  * Codegen macros that help with implementing the `struct result_ops` interface
  */
 
 #define INTO_ENUM(x, y) x,
+#define INTO_ARRAY(x, y) x,
+#define INTO_SWITCH(x, y) case x: y; break;
 
-#define INTO_SWITCH(x, y)                                                      \
-	case x:                                                                \
-		y;                                                             \
-		break;
-
+/*
+ * Prerequisite macros: ERROR_TABLE, ERROR_EXAMPLE_ARGS
+ */
 #define DEFINE_RESULT(typ, do_cleanup, do_init, ...)                           \
 	static WARN_UNUSED bool typ##_ok(result_t r)                           \
 	{                                                                      \
@@ -55,6 +57,18 @@
 		on_stack.base.ops = &RESULT_OPS;                               \
 		memcpy(on_heap, &on_stack, sizeof(on_stack));                  \
 		return (result_t)on_heap;                                      \
+	}                                                                      \
+	void test_##typ##_foreach(void (*visit)(size_t, result_t));            \
+	void test_##typ##_foreach(void (*visit)(size_t, result_t))             \
+	{                                                                      \
+		int arr[] = {                                                  \
+			ERROR_TABLE(INTO_ARRAY)                                \
+		};                                                             \
+		for (size_t i = 0; i < ARRAY_SIZE(arr); ++i) {                 \
+			result_t r = make_##typ(arr[i], ERROR_EXAMPLE_ARGS);   \
+			visit(i, r);                                           \
+			typ##_cleanup(r);                                      \
+		}                                                              \
 	}
 
 // TODO: create a globally-visible (non-static) function like test_typ##_foreach(...)

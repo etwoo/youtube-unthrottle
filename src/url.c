@@ -51,6 +51,8 @@
 	  ERR_EASY("Cannot set POST body"))                                    \
 	X(ERR_URL_DOWNLOAD_PERFORM, ERR_EASY("Error performing HTTP request"))
 
+#define ERROR_EXAMPLE_ARGS 0
+
 #define DO_CLEANUP assert(p) /* noop */
 #define DO_INIT {.err = err, .code = code}
 
