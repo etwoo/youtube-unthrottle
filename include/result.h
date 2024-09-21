@@ -8,7 +8,7 @@
 /*
  * result_t: opaque type representing an arbitrary result
  */
-typedef struct result_base *result_t;
+typedef const struct result_base *result_t;
 
 /*
  * result_ops, result_base: each subsystem implements result_ops and extends
@@ -27,13 +27,13 @@ struct result_base {
  * RESULT_OK: sentinel that represents generic success, not specific to any
  * particular subsystem or function
  */
-extern const result_t RESULT_OK;
+extern result_t RESULT_OK;
 
 /*
  * RESULT_CANNOT_ALLOC: sentinel that represents a failure to allocate a more
  * specific result, i.e. allocation failure within the result subsystem itself
  */
-extern const result_t RESULT_CANNOT_ALLOC;
+extern result_t RESULT_CANNOT_ALLOC;
 
 /*
  * Return true if <r> represents a successful result. Return false otherwise.

@@ -2,15 +2,15 @@
 
 #include <string.h> /* for strdup() */
 
-struct result_base RESULT_OK_SENTINEL = { // TODO: make const?
+const struct result_base RESULT_OK_SENTINEL = {
 	.ops = NULL,
 };
-const result_t RESULT_OK = &RESULT_OK_SENTINEL;
+result_t RESULT_OK = &RESULT_OK_SENTINEL;
 
-struct result_base RESULT_CANNOT_ALLOC_SENTINEL = { // TODO: make const?
+struct result_base RESULT_CANNOT_ALLOC_SENTINEL = {
 	.ops = NULL,
 };
-const result_t RESULT_CANNOT_ALLOC = &RESULT_CANNOT_ALLOC_SENTINEL;
+result_t RESULT_CANNOT_ALLOC = &RESULT_CANNOT_ALLOC_SENTINEL;
 
 bool
 is_ok(result_t r)
