@@ -23,7 +23,6 @@
  */
 #define ERR_URL(fmt) ASPRINTF(fmt ": %s", curl_url_strerror(p->code))
 #define ERR_EASY(fmt) ASPRINTF(fmt ": %s", curl_easy_strerror(p->code))
-
 #define ERROR_TABLE(X)                                                         \
 	X(OK, LITERAL("Success in " __FILE_NAME__))                            \
 	X(ERR_URL_GLOBAL_INIT, LITERAL("Cannot use URL functions"))            \

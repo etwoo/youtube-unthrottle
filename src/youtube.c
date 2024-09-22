@@ -19,7 +19,6 @@
  * Set up codegen macros for module-specific result_t.
  */
 #define ERR_URL(fmt) ASPRINTF(fmt ": %s", curl_url_strerror(p->curlu_code))
-
 #define ERROR_TABLE(X)                                                         \
 	X(OK, LITERAL("Success in " __FILE_NAME__))                            \
 	X(ERR_CALLBACK_GOT_CIPHERTEXT_URL,                                     \

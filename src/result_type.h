@@ -96,5 +96,6 @@
 		return asprintf(&tmp, fmt, __VA_ARGS__) < 0 ? NULL : tmp;      \
 	} while (0)
 #define PERR(msg) ASPRINTF(msg ": %s", strerror(p->num))
+#define AS_STR(p, m) (p->m ? p->m : "[Cannot allocate" #m "]")
 
 #endif

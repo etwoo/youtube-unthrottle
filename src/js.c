@@ -17,15 +17,12 @@
 /*
  * Set up codegen macros for module-specific result_t.
  */
-#define GET_DETAILS(x) x->details ? x->details : "[Cannot allocate details]"
-#define DETAILS(fmt) ASPRINTF(fmt, GET_DETAILS(p))
-#define DETAILS_STRERROR(fmt) ASPRINTF(fmt, GET_DETAILS(p), strerror(p->num))
-
 #define ERROR_TABLE(X)                                                         \
 	X(OK, LITERAL("Success in " __FILE_NAME__))                            \
 	X(ERR_PARSE_JSON_ALLOC_HEAP,                                           \
 	  LITERAL("Cannot allocate JavaScript interpreter heap"))              \
-	X(ERR_PARSE_JSON_DECODE, DETAILS("Error in duk_json_decode(): %s"))    \
+	X(ERR_PARSE_JSON_DECODE,                                               \
+	  ASPRINTF("Error in duk_json_decode(): %s", AS_STR(p, details)))      \
 	X(ERR_PARSE_JSON_GET_STREAMINGDATA,                                    \
 	  LITERAL("Cannot get .streamingData"))                                \
 	X(ERR_PARSE_JSON_GET_ADAPTIVEFORMATS,                                  \
@@ -42,18 +39,22 @@
 	  LITERAL("Cannot find base.js URL in HTML document"))                 \
 	X(ERR_TIMESTAMP_FIND, LITERAL("Cannot find timestamp in base.js"))     \
 	X(ERR_TIMESTAMP_PARSE_TO_LONGLONG,                                     \
-	  DETAILS_STRERROR("Error in strtoll() on %s: %s"))                    \
+	  ASPRINTF("Error in strtoll() on %s: %s",                             \
+	           AS_STR(p, details),                                         \
+	           strerror(p->num)))                                          \
 	X(ERR_DEOBFUSCATOR_ALLOC, LITERAL("Cannot allocate asprintf buffer"))  \
 	X(ERR_DEOBFUSCATOR_FIND_FUNCTION_ONE,                                  \
 	  LITERAL("Cannot find deobfuscation function in base.js"))            \
 	X(ERR_DEOBFUSCATOR_FIND_FUNCTION_TWO,                                  \
-	  DETAILS("Cannot find reference to %s in base.js"))                   \
+	  ASPRINTF("Cannot find ref to %s in base.js", AS_STR(p, details)))    \
 	X(ERR_DEOBFUSCATOR_FIND_FUNCTION_BODY,                                 \
-	  DETAILS("Cannot find body of %s in base.js"))                        \
+	  ASPRINTF("Cannot find body of %s in base.js", AS_STR(p, details)))   \
 	X(ERR_CALL_ALLOC,                                                      \
 	  LITERAL("Cannot allocate JavaScript interpreter heap"))              \
-	X(ERR_CALL_COMPILE, DETAILS("Error in duk_pcompile(): %s"))            \
-	X(ERR_CALL_INVOKE, DETAILS("Error in duk_pcall(): %s"))                \
+	X(ERR_CALL_COMPILE,                                                    \
+	  ASPRINTF("Error in duk_pcompile(): %s", AS_STR(p, details)))         \
+	X(ERR_CALL_INVOKE,                                                     \
+	  ASPRINTF("Error in duk_pcall(): %s", AS_STR(p, details)))            \
 	X(ERR_CALL_GET_RESULT, LITERAL("Error fetching function result"))
 
 #define ERROR_EXAMPLE_ARGS 0, strdup("foobar")
@@ -398,6 +399,3 @@ call_js_foreach(const char *code,
 
 #undef ERROR_EXAMPLE_ARGS
 #undef ERROR_TABLE
-#undef GET_DETAILS
-#undef DETAILS_STRERROR
-#undef DETAILS

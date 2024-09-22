@@ -65,14 +65,17 @@ landlock_restrict_self(const int ruleset_fd, const __u32 flags)
 /*
  * Set up codegen macros for module-specific result_t.
  */
-#define GET_PATH(x) x->path ? x->path : "[Cannot allocate path]"
-#define PATH(fmt) ASPRINTF(fmt ": %s", GET_PATH(p), strerror(p->num))
-
 #define ERROR_TABLE(X)                                                         \
 	X(OK, LITERAL("Success in " __FILE_NAME__))                            \
 	X(ERR_CREATE_RULESET, PERR("Error in landlock_create_ruleset()"))      \
-	X(ERR_OPEN_O_PATH, PATH("Error in open O_PATH for %s (Landlock)"))     \
-	X(ERR_ADD_RULE_PATH, PATH("Error in landlock_add_rule() for %s"))      \
+	X(ERR_OPEN_O_PATH,                                                     \
+	  ASPRINTF("Error in open() with O_PATH for %s (Landlock): %s",        \
+	           AS_STR(p, path),                                            \
+	           strerror(p->num)))                                          \
+	X(ERR_ADD_RULE_PATH,                                                   \
+	  ASPRINTF("Error in landlock_add_rule() for %s: %s",                  \
+	           AS_STR(p, path),                                            \
+	           strerror(p->num)))                                          \
 	X(ERR_ADD_RULE_PORT, PERR("Error in landlock_add_rule() for port"))    \
 	X(ERR_SET_NO_NEW_PRIVS, PERR("Error in prctl(PR_SET_NO_NEW_PRIVS)"))   \
 	X(ERR_RESTRICT_SELF, PERR("Error in landlock_restrict_self()"))
@@ -185,5 +188,3 @@ landlock_apply(const char **paths, int sz, int port)
 
 #undef ERROR_EXAMPLE_ARGS
 #undef ERROR_TABLE
-#undef PATH
-#undef GET_PATH
