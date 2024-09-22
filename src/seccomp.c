@@ -38,14 +38,12 @@
 	X(ERR_SECCOMP_INIT, PERR("Error in seccomp_init()"))                   \
 	X(ERR_SECCOMP_LOAD, PERR("Error in seccomp_load()"))
 
-#define ERROR_EXAMPLE_ARGS 0
-
 /*
  * Extend `struct result_base` to create a module-specific result_t.
  */
 DEFINE_RESULT(result_seccomp,
               ERROR_TABLE,
-              ERROR_EXAMPLE_ARGS,
+              0,
               MEMBER(result_seccomp_err_t, err),
               MEMBER(int, num))
 

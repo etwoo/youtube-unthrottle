@@ -48,14 +48,12 @@
 	  ERR_EASY("Cannot set POST body"))                                    \
 	X(ERR_URL_DOWNLOAD_PERFORM, ERR_EASY("Error performing HTTP request"))
 
-#define ERROR_EXAMPLE_ARGS 0
-
 /*
  * Extend `struct result_base` to create a module-specific result_t.
  */
 DEFINE_RESULT(result_url,
               ERROR_TABLE,
-              ERROR_EXAMPLE_ARGS,
+              0,
               MEMBER(result_url_err_t, err),
               MEMBER(int, code))
 

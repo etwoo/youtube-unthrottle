@@ -41,14 +41,12 @@
 	  ERR_URL("Cannot append plaintext n-parameter"))                      \
 	X(ERR_STREAM_VISITOR_GET_URL, ERR_URL("Cannot get URL as string"))
 
-#define ERROR_EXAMPLE_ARGS CURLUE_OK
-
 /*
  * Extend `struct result_base` to create a module-specific result_t.
  */
 DEFINE_RESULT(result_youtube,
               ERROR_TABLE,
-              ERROR_EXAMPLE_ARGS,
+              CURLUE_OK,
               MEMBER(result_youtube_err_t, err),
               MEMBER(int, curlu_code))
 

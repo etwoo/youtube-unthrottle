@@ -22,14 +22,12 @@
 	X(ERR_TMPFILE_FSTAT, PERR("Error fstat()-ing tmpfile"))                \
 	X(ERR_TMPFILE_MMAP, PERR("Error mmap()-ing tmpfile"))
 
-#define ERROR_EXAMPLE_ARGS 0
-
 /*
  * Extend `struct result_base` to create a module-specific result_t.
  */
 DEFINE_RESULT(result_tmpfile,
               ERROR_TABLE,
-              ERROR_EXAMPLE_ARGS,
+              0,
               MEMBER(result_tmpfile_err_t, err),
               MEMBER(int, num))
 
