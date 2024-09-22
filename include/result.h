@@ -5,7 +5,18 @@
 
 #include <stddef.h> /* for size_t */
 
-struct result {
+/*
+ * result_t: generic result type used by various libyoutube subsystems
+ *
+ * Note: a modular, extensible, per-subsystem version of result_t is
+ * implemented in branch `feature/add-modular-result-type`. However, the
+ * associated complexity of this more modular implementation is not worth
+ * incurring for a codebase of this size (e.g. less than 100k lines). In other
+ * words, one-big-enum appears to be the more readable, maintainable approach
+ * for error-handling (at least for now), despite the lack of encapsulation
+ * across subsystems.
+ */
+typedef struct {
 	enum {
 		OK = 0,
 		ERR_JS_PARSE_JSON_ALLOC_HEAP,
@@ -68,9 +79,7 @@ struct result {
 	} err;
 	int num; /* may hold errno, CURLcode, CURLUcode, etc */
 	const char *msg;
-};
-
-typedef struct result result_t;
+} result_t;
 
 extern const result_t RESULT_OK;
 
