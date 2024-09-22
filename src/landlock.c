@@ -98,6 +98,7 @@ DEFINE_RESULT(result_ll,
 static void
 result_ll_cleanup_members(struct result_ll *p __attribute__((unused)))
 {
+	free(p->path);
 }
 
 static result_t WARN_UNUSED
