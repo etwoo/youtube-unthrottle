@@ -12,6 +12,7 @@
 		break;
 
 #define SEMICOLON ;
+#define DECLARE_MEMBERS(...) JOIN_EVEN_ARGS(SEMICOLON, __VA_ARGS__)
 #define INIT_MEMBERS(...)                                                      \
 	do {                                                                   \
 		JOIN_ODD_ARGS(SEMICOLON, __VA_ARGS__);                         \
@@ -30,6 +31,11 @@
  * Prerequisite functions: typ##_cleanup_members
  */
 #define DEFINE_RESULT(typ, ...)                                                \
+	typedef enum { ERROR_TABLE(INTO_ENUM) } typ##_err_t;                   \
+	struct typ {                                                           \
+		struct result_base base;                                       \
+		DECLARE_MEMBERS(__VA_ARGS__);                                  \
+	};                                                                     \
 	static WARN_UNUSED bool typ##_ok(result_t r)                           \
 	{                                                                      \
 		struct typ *p = (struct typ *)r;                               \
@@ -42,6 +48,7 @@
 			ERROR_TABLE(INTO_SWITCH)                               \
 		}                                                              \
 	}                                                                      \
+	static void typ##_cleanup_members(struct typ *p);                      \
 	static void typ##_cleanup(result_t r)                                  \
 	{                                                                      \
 		if (r == NULL) {                                               \

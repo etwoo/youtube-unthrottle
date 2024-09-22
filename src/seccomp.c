@@ -43,18 +43,15 @@
 /*
  * Extend `struct result_base` to create a module-specific result_t.
  */
-struct result_seccomp {
-	struct result_base base;
-	enum { ERROR_TABLE(INTO_ENUM) } err;
-	int num;
-};
+DEFINE_RESULT(result_seccomp,
+              MEMBER(result_seccomp_err_t, err),
+              MEMBER(int, num))
 
 static void
 result_seccomp_cleanup_members(struct result_seccomp *p __attribute__((unused)))
 {
 }
 
-DEFINE_RESULT(result_seccomp, MEMBER(int, err), MEMBER(int, num))
 #define make_result make_result_seccomp
 
 /*

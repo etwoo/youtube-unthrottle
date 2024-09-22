@@ -46,18 +46,14 @@
 /*
  * Extend `struct result_base` to create a module-specific result_t.
  */
-struct result_youtube {
-	struct result_base base;
-	enum { ERROR_TABLE(INTO_ENUM) } err;
-	CURLUcode curlu_code;
-};
+DEFINE_RESULT(result_youtube,
+              MEMBER(result_youtube_err_t, err),
+              MEMBER(int, curlu_code))
 
 static void
 result_youtube_cleanup_members(struct result_youtube *p __attribute__((unused)))
 {
 }
-
-DEFINE_RESULT(result_youtube, MEMBER(int, err), MEMBER(int, curlu_code))
 
 #define check_if_uc(uc, err_type)                                              \
 	do {                                                                   \

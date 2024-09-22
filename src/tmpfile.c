@@ -27,18 +27,15 @@
 /*
  * Extend `struct result_base` to create a module-specific result_t.
  */
-struct result_tmpfile {
-	struct result_base base;
-	enum { ERROR_TABLE(INTO_ENUM) } err;
-	int num;
-};
+DEFINE_RESULT(result_tmpfile,
+              MEMBER(result_tmpfile_err_t, err),
+              MEMBER(int, num))
 
 static void
 result_tmpfile_cleanup_members(struct result_tmpfile *p __attribute__((unused)))
 {
 }
 
-DEFINE_RESULT(result_tmpfile, MEMBER(int, err), MEMBER(int, num))
 #define make_result make_result_tmpfile
 
 static void

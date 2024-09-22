@@ -53,18 +53,12 @@
 /*
  * Extend `struct result_base` to create a module-specific result_t.
  */
-struct result_url {
-	struct result_base base;
-	enum { ERROR_TABLE(INTO_ENUM) } err;
-	int code; /* either CURLcode or CURLUcode */
-};
+DEFINE_RESULT(result_url, MEMBER(result_url_err_t, err), MEMBER(int, code))
 
 static void
 result_url_cleanup_members(struct result_url *p __attribute__((unused)))
 {
 }
-
-DEFINE_RESULT(result_url, MEMBER(int, err), MEMBER(int, code))
 
 #define check_if_res(res, err_type)                                            \
 	do {                                                                   \

@@ -61,23 +61,16 @@
 /*
  * Extend `struct result_base` to create a module-specific result_t.
  */
-struct result_js {
-	struct result_base base;
-	enum { ERROR_TABLE(INTO_ENUM) } err;
-	int num;
-	char *details;
-};
+DEFINE_RESULT(result_js,
+              MEMBER(result_js_err_t, err),
+              MEMBER(int, num),
+              MEMBER(char *, details))
 
 static void
 result_js_cleanup_members(struct result_js *p)
 {
 	free(p->details);
 }
-
-DEFINE_RESULT(result_js,
-              MEMBER(int, err),
-              MEMBER(int, num),
-              MEMBER(char *, details))
 
 static result_t WARN_UNUSED
 make_result(int err_type, char *details)

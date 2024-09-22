@@ -82,22 +82,15 @@ landlock_restrict_self(const int ruleset_fd, const __u32 flags)
 /*
  * Extend `struct result_base` to create a module-specific result_t.
  */
-struct result_ll {
-	struct result_base base;
-	enum { ERROR_TABLE(INTO_ENUM) } err;
-	int num;
-	char *path;
-};
+DEFINE_RESULT(result_ll,
+              MEMBER(result_ll_err_t, err),
+              MEMBER(int, num),
+              MEMBER(char *, path))
 
 static void
 result_ll_cleanup_members(struct result_ll *p __attribute__((unused)))
 {
 }
-
-DEFINE_RESULT(result_ll,
-              MEMBER(int, err),
-              MEMBER(int, num),
-              MEMBER(char *, path))
 
 static result_t WARN_UNUSED
 make_result(int err, int my_errno)
