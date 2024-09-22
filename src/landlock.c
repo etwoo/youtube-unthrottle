@@ -92,6 +92,9 @@ DEFINE_RESULT(result_ll,
               MEMBER(int, num),
               MEMBER(char *, path))
 
+#undef ERROR_EXAMPLE_ARGS
+#undef ERROR_TABLE
+
 static void
 result_ll_cleanup_members(struct result_ll *p __attribute__((unused)))
 {
@@ -185,6 +188,3 @@ landlock_apply(const char **paths, int sz, int port)
 
 	return RESULT_OK;
 }
-
-#undef ERROR_EXAMPLE_ARGS
-#undef ERROR_TABLE

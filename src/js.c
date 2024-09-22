@@ -69,6 +69,9 @@ DEFINE_RESULT(result_js,
               MEMBER(int, num),
               MEMBER(char *, details))
 
+#undef ERROR_EXAMPLE_ARGS
+#undef ERROR_TABLE
+
 static void
 result_js_cleanup_members(struct result_js *p)
 {
@@ -396,6 +399,3 @@ call_js_foreach(const char *code,
 
 	return RESULT_OK;
 }
-
-#undef ERROR_EXAMPLE_ARGS
-#undef ERROR_TABLE

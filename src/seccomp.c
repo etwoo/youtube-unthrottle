@@ -47,6 +47,8 @@ DEFINE_RESULT(result_seccomp,
               MEMBER(result_seccomp_err_t, err),
               MEMBER(int, num))
 
+#undef ERROR_TABLE
+
 static void
 result_seccomp_cleanup_members(struct result_seccomp *p __attribute__((unused)))
 {
@@ -463,6 +465,5 @@ seccomp_apply(unsigned flags)
 }
 
 #undef make_result
-#undef ERROR_TABLE
 #undef SCMP_ARG_UNUSED
 #undef info_seccomp_rule_add_if

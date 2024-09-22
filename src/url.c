@@ -56,6 +56,10 @@ DEFINE_RESULT(result_url,
               MEMBER(result_url_err_t, err),
               MEMBER(int, code))
 
+#undef ERROR_TABLE
+#undef ERR_EASY
+#undef ERR_URL
+
 static void
 result_url_cleanup_members(struct result_url *p __attribute__((unused)))
 {
@@ -248,6 +252,3 @@ url_download(const char *url_str,   /* may be NULL */
 
 #undef check_if_res
 #undef check_if_uc
-#undef ERROR_TABLE
-#undef ERR_EASY
-#undef ERR_URL

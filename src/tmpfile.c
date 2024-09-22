@@ -31,6 +31,8 @@ DEFINE_RESULT(result_tmpfile,
               MEMBER(result_tmpfile_err_t, err),
               MEMBER(int, num))
 
+#undef ERROR_TABLE
+
 static void
 result_tmpfile_cleanup_members(struct result_tmpfile *p __attribute__((unused)))
 {
@@ -108,4 +110,3 @@ tmpunmap(void *addr, unsigned int sz)
 }
 
 #undef make_result
-#undef ERROR_TABLE

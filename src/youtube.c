@@ -49,6 +49,9 @@ DEFINE_RESULT(result_youtube,
               MEMBER(result_youtube_err_t, err),
               MEMBER(int, curlu_code))
 
+#undef ERROR_TABLE
+#undef ERR_URL
+
 static void
 result_youtube_cleanup_members(struct result_youtube *p __attribute__((unused)))
 {
@@ -521,5 +524,3 @@ youtube_stream_setup(struct youtube_stream *p,
 }
 
 #undef check_if_uc
-#undef ERROR_TABLE
-#undef ERR_URL
