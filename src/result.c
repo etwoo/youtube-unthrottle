@@ -7,7 +7,7 @@ const struct result_base RESULT_OK_SENTINEL = {
 };
 result_t RESULT_OK = &RESULT_OK_SENTINEL;
 
-struct result_base RESULT_CANNOT_ALLOC_SENTINEL = {
+const struct result_base RESULT_CANNOT_ALLOC_SENTINEL = {
 	.ops = NULL,
 };
 result_t RESULT_CANNOT_ALLOC = &RESULT_CANNOT_ALLOC_SENTINEL;
