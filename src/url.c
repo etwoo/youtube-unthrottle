@@ -248,7 +248,6 @@ url_download(const char *url_str,   /* may be NULL */
 
 #undef check_if_res
 #undef check_if_uc
-#undef ERROR_EXAMPLE_ARGS
 #undef ERROR_TABLE
 #undef ERR_EASY
 #undef ERR_URL

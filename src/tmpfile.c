@@ -107,5 +107,5 @@ tmpunmap(void *addr, unsigned int sz)
 	info_m_if(rc < 0, "Ignoring error munmap()-ing tmpfile");
 }
 
-#undef ERROR_EXAMPLE_ARGS
+#undef make_result
 #undef ERROR_TABLE

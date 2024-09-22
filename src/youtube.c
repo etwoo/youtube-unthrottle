@@ -520,6 +520,6 @@ youtube_stream_setup(struct youtube_stream *p,
 	return RESULT_OK;
 }
 
-#undef ERROR_EXAMPLE_ARGS
+#undef check_if_uc
 #undef ERROR_TABLE
 #undef ERR_URL

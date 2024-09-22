@@ -462,7 +462,7 @@ seccomp_apply(unsigned flags)
 	return RESULT_OK;
 }
 
-#undef ERROR_EXAMPLE_ARGS
+#undef make_result
 #undef ERROR_TABLE
 #undef SCMP_ARG_UNUSED
 #undef info_seccomp_rule_add_if
