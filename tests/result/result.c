@@ -80,7 +80,7 @@ test_result_ll_visit(size_t pos, result_t r)
 	static const char *EXPECTED[] = {
 		"Success",
 		"Error in landlock",
-		"Error in open O_PATH",
+		"Error in open() with O_PATH",
 		"Error in landlock",
 		"Error in landlock",
 		"Error in prctl",
