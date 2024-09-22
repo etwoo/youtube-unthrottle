@@ -53,7 +53,11 @@
 /*
  * Extend `struct result_base` to create a module-specific result_t.
  */
-DEFINE_RESULT(result_url, MEMBER(result_url_err_t, err), MEMBER(int, code))
+DEFINE_RESULT(result_url,
+              ERROR_TABLE,
+              ERROR_EXAMPLE_ARGS,
+              MEMBER(result_url_err_t, err),
+              MEMBER(int, code))
 
 static void
 result_url_cleanup_members(struct result_url *p __attribute__((unused)))

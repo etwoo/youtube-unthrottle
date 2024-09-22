@@ -44,6 +44,8 @@
  * Extend `struct result_base` to create a module-specific result_t.
  */
 DEFINE_RESULT(result_seccomp,
+              ERROR_TABLE,
+              ERROR_EXAMPLE_ARGS,
               MEMBER(result_seccomp_err_t, err),
               MEMBER(int, num))
 

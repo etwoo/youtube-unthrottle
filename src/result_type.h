@@ -27,11 +27,10 @@
 /*
  * Generate glue code for a subsystem implementing the `struct result_ops` API.
  *
- * Prerequisite macros: ERROR_TABLE, ERROR_EXAMPLE_ARGS
  * Prerequisite functions: typ##_cleanup_members
  */
-#define DEFINE_RESULT(typ, ...)                                                \
-	typedef enum { ERROR_TABLE(INTO_ENUM) } typ##_err_t;                   \
+#define DEFINE_RESULT(typ, error_table, example_args, ...)                     \
+	typedef enum { error_table(INTO_ENUM) } typ##_err_t;                   \
 	struct typ {                                                           \
 		struct result_base base;                                       \
 		DECLARE_MEMBERS(__VA_ARGS__);                                  \
@@ -45,7 +44,7 @@
 	{                                                                      \
 		struct typ *p = (struct typ *)r;                               \
 		switch (p->err) {                                              \
-			ERROR_TABLE(INTO_SWITCH)                               \
+			error_table(INTO_SWITCH)                               \
 		}                                                              \
 	}                                                                      \
 	static void typ##_cleanup_members(struct typ *p);                      \
@@ -76,9 +75,9 @@
 	void test_##typ##_foreach(void (*visit)(size_t, result_t));            \
 	void test_##typ##_foreach(void (*visit)(size_t, result_t))             \
 	{                                                                      \
-		int arr[] = {ERROR_TABLE(INTO_ARRAY)};                         \
+		int arr[] = {error_table(INTO_ARRAY)};                         \
 		for (size_t i = 0; i < ARRAY_SIZE(arr); ++i) {                 \
-			result_t r = make_##typ(arr[i], ERROR_EXAMPLE_ARGS);   \
+			result_t r = make_##typ(arr[i], example_args);         \
 			visit(i, r);                                           \
 			typ##_cleanup(r);                                      \
 		}                                                              \
