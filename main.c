@@ -52,31 +52,13 @@ to_stderr(result_t r)
 	free(msg);
 }
 
-static WARN_UNUSED int
+static WARN_UNUSED result_t
 try_sandbox(void)
 {
-	result_t err __attribute__((cleanup(result_cleanup))) = RESULT_OK;
-
-	err = sandbox_only_io_inet_tmpfile();
-	if (!is_ok(err)) {
-		goto cleanup;
-	}
-
-	err = sandbox_only_io_inet_rpath();
-	if (!is_ok(err)) {
-		goto cleanup;
-	}
-
-	err = sandbox_only_io();
-	if (!is_ok(err)) {
-		goto cleanup;
-	}
-
-	return EX_OK;
-
-cleanup:
-	to_stderr(err);
-	return EX_SOFTWARE;
+	check(sandbox_only_io_inet_tmpfile());
+	check(sandbox_only_io_inet_rpath());
+	check(sandbox_only_io());
+	return RESULT_OK;
 }
 
 static WARN_UNUSED result_t
@@ -97,15 +79,30 @@ print_url(const char *url)
 	puts(url);
 }
 
-#define check_stderr(expr, status)                                             \
-	do {                                                                   \
-		result_t x = expr;                                             \
-		if (!is_ok(x)) {                                               \
-			to_stderr(x);                                          \
-			rc = status;                                           \
-			goto cleanup;                                          \
-		}                                                              \
-	} while (0)
+static WARN_UNUSED result_t
+do_unthrottle(const char *target, youtube_handle_t stream)
+{
+	check(youtube_global_init());
+	check(sandbox_only_io_inet_tmpfile());
+
+	struct youtube_setup_ops sops = {
+		.before = NULL,
+		.before_inet = before_inet,
+		.after_inet = after_inet,
+		.before_parse = NULL,
+		.after_parse = NULL,
+		.before_eval = NULL,
+		.after_eval = NULL,
+		.after = NULL,
+	};
+
+	check(youtube_stream_setup(stream, &sops, target));
+	check(youtube_stream_visitor(stream, print_url));
+
+	youtube_stream_cleanup(stream);
+	youtube_global_cleanup();
+	return RESULT_OK;
+}
 
 int
 main(int argc, const char *argv[])
@@ -119,38 +116,22 @@ main(int argc, const char *argv[])
 	if (0 == strncmp(ARG_HELP, argv[1], strlen(ARG_HELP))) {
 		return usage(argv[0], EX_OK);
 	} else if (0 == strncmp(ARG_SANDBOX, argv[1], strlen(ARG_SANDBOX))) {
-		return try_sandbox();
+		result_t err __attribute__((cleanup(result_cleanup))) =
+			try_sandbox();
+		return is_ok(err) ? EX_OK : EX_SOFTWARE;
 	}
 
-	int rc = EX_OK;
-	youtube_handle_t stream = NULL;
-
-	check_stderr(youtube_global_init(), EX_SOFTWARE);
-	check_stderr(sandbox_only_io_inet_tmpfile(), EX_OSERR);
-
-	stream = youtube_stream_init();
+	youtube_handle_t stream = youtube_stream_init();
 	if (stream == NULL) {
 		fprintf(stderr, "Cannot allocate stream object\n");
-		rc = EX_OSERR;
-		goto cleanup;
+		return EX_OSERR;
 	}
 
-	struct youtube_setup_ops sops = {
-		.before = NULL,
-		.before_inet = before_inet,
-		.after_inet = after_inet,
-		.before_parse = NULL,
-		.after_parse = NULL,
-		.before_eval = NULL,
-		.after_eval = NULL,
-		.after = NULL,
-	};
-
-	check_stderr(youtube_stream_setup(stream, &sops, argv[1]), EX_DATAERR);
-	check_stderr(youtube_stream_visitor(stream, print_url), EX_DATAERR);
-
-cleanup:
-	youtube_stream_cleanup(stream);
-	youtube_global_cleanup();
-	return rc;
+	result_t err __attribute__((cleanup(result_cleanup))) =
+		do_unthrottle(argv[1], stream);
+	if (!is_ok(err)) {
+		to_stderr(err);
+		return EX_SOFTWARE;
+	}
+	return EX_OK;
 }
