@@ -20,6 +20,7 @@ add_subdirectory(src)
 
 if (BUILD_TESTING)
 	# TODO: use PATCHES to make greatest_parse_options() and greatest_run_suite() non-static, i.e. visible to other translation units
+	# TODO: also use PATCHES to add forward declarations to greatest.h at header scope (not inside GREATEST_MAIN_DEFS, for example), and then remove greatest_glue.h workaround; basically, make it look like first-class feature of greatest.h itself
 	CPMAddPackage(
 		NAME greatest
 		GITHUB_REPOSITORY silentbicycle/greatest
