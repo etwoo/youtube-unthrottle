@@ -1,5 +1,8 @@
 include(CTest)
 
+add_subdirectory(cli)
+add_subdirectory(fuzzer)
+
 set(TEST_SOURCES "")
 
 macro(register_test source)
@@ -21,10 +24,6 @@ macro(generate_test_driver)
 	)
 	target_link_libraries(test_driver PRIVATE sanitizers youtube my_cflags)
 endmacro()
-
-
-add_subdirectory(cli)
-add_subdirectory(fuzzer)
 
 register_test(js)
 register_test(landlock)
