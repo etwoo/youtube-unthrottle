@@ -2,6 +2,7 @@
 
 #include "coverage.h"
 #include "greatest.h"
+#include "greatest_glue.h"
 #include "tmpfile.h"
 
 #include <arpa/inet.h>
@@ -139,10 +140,9 @@ SUITE(full_landlock)
 	RUN_TEST(after_landlock_network);
 }
 
-GREATEST_MAIN_DEFS();
-
+int landlock(int argc, char **argv);
 int
-main(int argc, char **argv)
+landlock(int argc, char **argv)
 {
 	int fd __attribute__((cleanup(coverage_cleanup))) = coverage_open();
 

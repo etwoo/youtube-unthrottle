@@ -19,6 +19,7 @@ include(get_cpm)
 add_subdirectory(src)
 
 if (BUILD_TESTING)
+	# TODO: use PATCHES to make greatest_parse_options() and greatest_run_suite() non-static, i.e. visible to other translation units
 	CPMAddPackage(
 		NAME greatest
 		GITHUB_REPOSITORY silentbicycle/greatest

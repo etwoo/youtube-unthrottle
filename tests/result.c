@@ -3,6 +3,7 @@
 #include "coverage.h"
 #include "debug.h"
 #include "greatest.h"
+#include "greatest_glue.h"
 
 #define ASSERT_IN(haystack, needle)                                            \
 	do {                                                                   \
@@ -132,10 +133,9 @@ SUITE(print_to_str)
 	RUN_TEST(print_to_str_each_enum_value);
 }
 
-GREATEST_MAIN_DEFS();
-
+int result(int argc, char **argv);
 int
-main(int argc, char **argv)
+result(int argc, char **argv)
 {
 	int fd __attribute__((cleanup(coverage_cleanup))) = coverage_open();
 

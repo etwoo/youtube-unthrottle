@@ -3,6 +3,7 @@
 #include "coverage.h"
 #include "debug.h"
 #include "greatest.h"
+#include "greatest_glue.h"
 #include "url.h"
 #include "write.h"
 
@@ -304,10 +305,9 @@ SUITE(stream_setup_n_param_positions)
 	RUN_TEST(stream_setup_edge_cases_entire_url_missing);
 }
 
-GREATEST_MAIN_DEFS();
-
+int youtube(int argc, char **argv);
 int
-main(int argc, char **argv)
+youtube(int argc, char **argv)
 {
 	int fd __attribute__((cleanup(coverage_cleanup))) = coverage_open();
 

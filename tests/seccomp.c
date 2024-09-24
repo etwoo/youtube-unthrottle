@@ -2,6 +2,7 @@
 
 #include "coverage.h"
 #include "greatest.h"
+#include "greatest_glue.h"
 #include "tmpfile.h"
 
 #include <arpa/inet.h>
@@ -234,10 +235,9 @@ SUITE(seccomp_io_sealed_sandbox)
  * applied to a child process without restricting the unit test rig itself.
  */
 
-GREATEST_MAIN_DEFS();
-
+int seccomp(int argc, char **argv);
 int
-main(int argc, char **argv)
+seccomp(int argc, char **argv)
 {
 	int fd __attribute__((cleanup(coverage_cleanup))) = coverage_open();
 
