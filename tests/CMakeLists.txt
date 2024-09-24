@@ -9,7 +9,7 @@ macro(add_greatest source)
 		${PROJECT_SOURCE_DIR}/src
 		${greatest_SOURCE_DIR}
 	)
-	target_link_libraries(${test_exe} PRIVATE youtube my_cflags)
+	target_link_libraries(${test_exe} PRIVATE sanitizers youtube my_cflags)
 endmacro()
 
 add_subdirectory(cli)
