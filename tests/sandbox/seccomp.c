@@ -13,6 +13,18 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 
+const char *__asan_default_options(void) __attribute__((used));
+
+const char *
+__asan_default_options(void)
+{
+	/*
+	 * Disable LSan for seccomp tests, while leaving other ASan features
+	 * enabled. See __asan_default_options() in main.c for more info.
+	 */
+	return "detect_leaks=0";
+}
+
 TEST
 getpid_allowed(void)
 {
