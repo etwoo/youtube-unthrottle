@@ -172,6 +172,13 @@ TEST
 socket_blocked(void)
 {
 	int sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	if (sfd >= 0) {
+		/*
+		 * Make sure not to leak a file descriptor, even if socket()
+		 * unexpectedly succeeds.
+		 * */
+		close(sfd);
+	}
 	ASSERT_LT(sfd, 0);
 	ASSERT_EQ(errno, EACCES);
 	PASS();
