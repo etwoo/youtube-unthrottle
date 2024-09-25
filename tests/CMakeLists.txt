@@ -20,11 +20,14 @@ macro(register_test source)
 endmacro()
 
 macro(generate_test_driver)
-	create_test_sourcelist(generated_sources test_driver.c
+	create_test_sourcelist(generated_sources
+		test_driver.c
 		${TEST_SOURCES}
 		EXTRA_INCLUDE test_driver.h
 	)
-	add_executable(test_driver ${generated_sources})
+	add_executable(test_driver
+		${generated_sources}
+	)
 	target_include_directories(test_driver PRIVATE
 		${CMAKE_CURRENT_SOURCE_DIR} # for test_driver.h
 		${PROJECT_SOURCE_DIR}/src   # for debug.h, tmpfile.h, etc
