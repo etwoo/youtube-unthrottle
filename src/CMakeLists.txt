@@ -1,4 +1,4 @@
-add_library(youtube ${CMAKE_CURRENT_BINARY_DIR})
+add_library(youtube)
 target_sources(youtube PRIVATE
 	coverage.c
 	debug.c
