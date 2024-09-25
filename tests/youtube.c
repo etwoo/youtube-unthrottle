@@ -37,7 +37,7 @@ test_fixture_request_handler(void *request, const char *path, int fd)
 
 	if (to_write) {
 		/* got a custom value from test-specific handler */
-	} else if (0 == strlen(path)) {
+	} else if (path == NULL || 0 == strlen(path)) {
 		to_write = ""; /* handle thread warmup in url_global_init() */
 	} else if (strstr(path, "/watch?v=")) {
 		to_write = FAKE_HTML_RESPONSE;
