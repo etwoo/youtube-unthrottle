@@ -6,9 +6,17 @@ add_subdirectory(fuzzer)
 set(TEST_SOURCES "")
 
 macro(register_test source)
+	set(envvars ${ARGN}) # optional second argument specifies envvars
+
 	list(APPEND TEST_SOURCES ${source}.c)
 	set(TEST_SOURCES "${TEST_SOURCES}" PARENT_SCOPE)
-	add_test(${source} test_driver ${source} -v)
+
+	set(cmd "${CMAKE_CURRENT_BINARY_DIR}/test_driver" ${source} -v)
+	if (envvars)
+		add_test(${source} /usr/bin/env ${envvars} ${cmd})
+	else (envvars)
+		add_test(${source} ${cmd})
+	endif (envvars)
 endmacro()
 
 macro(generate_test_driver)
@@ -29,7 +37,7 @@ register_test(js)
 register_test(landlock)
 register_test(re)
 register_test(result)
-register_test(seccomp) # TODO: set envvar to disable lsan for seccomp test
+register_test(seccomp "ASAN_OPTIONS=detect_leaks=0")
 register_test(youtube)
 
 generate_test_driver()
