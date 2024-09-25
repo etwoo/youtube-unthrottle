@@ -33,7 +33,7 @@ macro(generate_test_driver)
 		${PROJECT_SOURCE_DIR}/src   # for debug.h, tmpfile.h, etc
 		${greatest_SOURCE_DIR}      # for greatest.h
 	)
-	target_link_libraries(test-driver PRIVATE sanitizers youtube my_cflags)
+	target_link_libraries(test-driver PRIVATE my_cflags sanitizers youtube)
 endmacro()
 
 register_test(js)

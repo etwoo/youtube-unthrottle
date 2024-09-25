@@ -3,7 +3,7 @@ project(youtube-unthrottle)
 
 add_executable(youtube-unthrottle)
 target_sources(youtube-unthrottle PUBLIC main.c)
-target_link_libraries(youtube-unthrottle PRIVATE sanitizers youtube my_cflags)
+target_link_libraries(youtube-unthrottle PRIVATE my_cflags sanitizers youtube)
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 include(get_cpm)
