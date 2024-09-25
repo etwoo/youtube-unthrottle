@@ -1,19 +1,11 @@
 cmake_minimum_required(VERSION 3.15)
 project(youtube-unthrottle)
 
-option(BUILD_SHARED_LIBS "Build using shared libraries" OFF)
-set(CMAKE_DEBUG_POSTFIX d)
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
-
-add_library(my_cflags INTERFACE)
-target_compile_features(my_cflags INTERFACE c_std_99)
-
-add_library(sanitizers INTERFACE)
-
 add_executable(youtube-unthrottle)
 target_sources(youtube-unthrottle PUBLIC main.c)
 target_link_libraries(youtube-unthrottle PRIVATE sanitizers youtube my_cflags)
 
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 include(get_cpm)
 
 add_subdirectory(src)
@@ -82,6 +74,8 @@ add_custom_target(fmt COMMAND find
 
 include(CheckCCompilerFlag)
 
+add_library(my_cflags INTERFACE)
+target_compile_features(my_cflags INTERFACE c_std_99)
 target_compile_options(my_cflags INTERFACE -Wall -Wextra)
 
 check_c_compiler_flag(-fhardened CFLAG_HARDENED)
@@ -192,6 +186,8 @@ target_compile_options(my_cflags INTERFACE
 #
 
 include(CheckSanitizer)
+
+add_library(sanitizers INTERFACE)
 
 check_sanitizer(CFLAG_ASAN -fsanitize=address asan)
 if (CFLAG_ASAN)
