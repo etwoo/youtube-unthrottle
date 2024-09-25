@@ -13,18 +13,6 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 
-const char *__asan_default_options(void) __attribute__((used));
-
-const char *
-__asan_default_options(void)
-{
-	/*
-	 * Disable LSan for seccomp tests, while leaving other ASan features
-	 * enabled. See __asan_default_options() in main.c for more info.
-	 */
-	return "detect_leaks=0";
-}
-
 TEST
 getpid_allowed(void)
 {
@@ -184,6 +172,13 @@ TEST
 socket_blocked(void)
 {
 	int sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	if (sfd >= 0) {
+		/*
+		 * Make sure not to leak a file descriptor, even if socket()
+		 * unexpectedly succeeds.
+		 * */
+		close(sfd);
+	}
 	ASSERT_LT(sfd, 0);
 	ASSERT_EQ(errno, EACCES);
 	PASS();
@@ -234,10 +229,9 @@ SUITE(seccomp_io_sealed_sandbox)
  * applied to a child process without restricting the unit test rig itself.
  */
 
-GREATEST_MAIN_DEFS();
-
+int seccomp(int argc, char **argv);
 int
-main(int argc, char **argv)
+seccomp(int argc, char **argv)
 {
 	int fd __attribute__((cleanup(coverage_cleanup))) = coverage_open();
 

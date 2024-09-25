@@ -695,10 +695,9 @@ SUITE(call_with_duktape)
 	RUN_TEST(call_with_duktape_minimum_valid_function);
 }
 
-GREATEST_MAIN_DEFS();
-
+int js(int argc, char **argv);
 int
-main(int argc, char **argv)
+js(int argc, char **argv)
 {
 	int fd __attribute__((cleanup(coverage_cleanup))) = coverage_open();
 

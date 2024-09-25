@@ -37,7 +37,7 @@ test_fixture_request_handler(void *request, const char *path, int fd)
 
 	if (to_write) {
 		/* got a custom value from test-specific handler */
-	} else if (0 == strlen(path)) {
+	} else if (path == NULL || 0 == strlen(path)) {
 		to_write = ""; /* handle thread warmup in url_global_init() */
 	} else if (strstr(path, "/watch?v=")) {
 		to_write = FAKE_HTML_RESPONSE;
@@ -304,10 +304,9 @@ SUITE(stream_setup_n_param_positions)
 	RUN_TEST(stream_setup_edge_cases_entire_url_missing);
 }
 
-GREATEST_MAIN_DEFS();
-
+int youtube(int argc, char **argv);
 int
-main(int argc, char **argv)
+youtube(int argc, char **argv)
 {
 	int fd __attribute__((cleanup(coverage_cleanup))) = coverage_open();
 
