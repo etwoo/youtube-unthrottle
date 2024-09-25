@@ -11,7 +11,7 @@ macro(register_test source)
 	list(APPEND TEST_SOURCES ${source}.c)
 	set(TEST_SOURCES "${TEST_SOURCES}" PARENT_SCOPE)
 
-	set(cmd "${CMAKE_CURRENT_BINARY_DIR}/test_driver" ${source} -v)
+	set(cmd "${CMAKE_CURRENT_BINARY_DIR}/test-driver" ${source} -v)
 	if (envvars)
 		add_test(${source} /usr/bin/env ${envvars} ${cmd})
 	else (envvars)
@@ -25,15 +25,15 @@ macro(generate_test_driver)
 		${TEST_SOURCES}
 		EXTRA_INCLUDE test_driver.h
 	)
-	add_executable(test_driver
+	add_executable(test-driver
 		${generated_sources}
 	)
-	target_include_directories(test_driver PRIVATE
+	target_include_directories(test-driver PRIVATE
 		${CMAKE_CURRENT_SOURCE_DIR} # for test_driver.h
 		${PROJECT_SOURCE_DIR}/src   # for debug.h, tmpfile.h, etc
 		${greatest_SOURCE_DIR}      # for greatest.h
 	)
-	target_link_libraries(test_driver PRIVATE sanitizers youtube my_cflags)
+	target_link_libraries(test-driver PRIVATE sanitizers youtube my_cflags)
 endmacro()
 
 register_test(js)
