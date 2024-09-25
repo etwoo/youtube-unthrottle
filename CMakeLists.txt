@@ -1,19 +1,11 @@
 cmake_minimum_required(VERSION 3.15)
 project(youtube-unthrottle)
 
-option(BUILD_SHARED_LIBS "Build using shared libraries" OFF)
-set(CMAKE_DEBUG_POSTFIX d)
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
-
-add_library(my_cflags INTERFACE)
-target_compile_features(my_cflags INTERFACE c_std_99)
-
-add_library(sanitizers INTERFACE)
-
 add_executable(youtube-unthrottle)
 target_sources(youtube-unthrottle PUBLIC main.c)
-target_link_libraries(youtube-unthrottle PRIVATE sanitizers youtube my_cflags)
+target_link_libraries(youtube-unthrottle PRIVATE my_cflags sanitizers youtube)
 
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 include(get_cpm)
 
 add_subdirectory(src)
@@ -28,24 +20,6 @@ if (BUILD_TESTING)
 	)
 	add_subdirectory(tests)
 endif (BUILD_TESTING)
-
-if (BUILD_COVERAGE)
-	CPMAddPackage(
-		NAME lcov-to-cobertura-xml
-		GITHUB_REPOSITORY eriwen/lcov-to-cobertura-xml
-		GIT_TAG 028da3798355d0260c6c6491b39347d84ca7a02d
-		DOWNLOAD_ONLY YES
-	)
-	target_compile_definitions(my_cflags INTERFACE WITH_COVERAGE)
-	target_compile_options(my_cflags INTERFACE
-		-fprofile-instr-generate
-		-fcoverage-mapping
-	)
-	target_link_options(my_cflags INTERFACE
-		-fprofile-instr-generate
-		-fcoverage-mapping
-	)
-endif (BUILD_COVERAGE)
 
 #
 # Set up a custom `fmt` target that runs clang-format.
@@ -82,7 +56,29 @@ add_custom_target(fmt COMMAND find
 
 include(CheckCCompilerFlag)
 
+add_library(my_cflags INTERFACE)
+target_compile_features(my_cflags INTERFACE c_std_99)
 target_compile_options(my_cflags INTERFACE -Wall -Wextra)
+
+if (BUILD_COVERAGE)
+	CPMAddPackage(
+		NAME lcov-to-cobertura-xml
+		GITHUB_REPOSITORY eriwen/lcov-to-cobertura-xml
+		GIT_TAG 028da3798355d0260c6c6491b39347d84ca7a02d
+		DOWNLOAD_ONLY YES
+	)
+
+	include(CheckCodeCoverage)
+
+	check_code_coverage(CFLAG_COVERAGE)
+	if (NOT CFLAG_COVERAGE)
+		message(FATAL_ERROR "Cannot enable code coverage")
+	endif (NOT CFLAG_COVERAGE)
+
+	target_compile_definitions(my_cflags INTERFACE WITH_COVERAGE)
+	target_compile_options(my_cflags INTERFACE ${CFLAG_COVERAGE})
+	target_link_options(my_cflags INTERFACE ${CFLAG_COVERAGE})
+endif (BUILD_COVERAGE)
 
 check_c_compiler_flag(-fhardened CFLAG_HARDENED)
 if (CFLAG_HARDENED)
@@ -192,6 +188,8 @@ target_compile_options(my_cflags INTERFACE
 #
 
 include(CheckSanitizer)
+
+add_library(sanitizers INTERFACE)
 
 check_sanitizer(CFLAG_ASAN -fsanitize=address asan)
 if (CFLAG_ASAN)

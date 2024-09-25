@@ -1,4 +1,4 @@
-add_library(youtube ${CMAKE_CURRENT_BINARY_DIR})
+add_library(youtube)
 target_sources(youtube PRIVATE
 	coverage.c
 	debug.c
@@ -33,12 +33,6 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
 		seccomp
 	)
 endif (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-
-# choose between libyoutube.a (release build) and libyoutubed.a (debug build)
-set_target_properties(youtube PROPERTIES DEBUG_POSTFIX ${CMAKE_DEBUG_POSTFIX})
-set_target_properties(youtube PROPERTIES
-	POSITION_INDEPENDENT_CODE ${BUILD_SHARED_LIBS}
-)
 
 if (CMAKE_BUILD_TYPE STREQUAL Debug)
 	message(STATUS "Enabling runtime debug output")
