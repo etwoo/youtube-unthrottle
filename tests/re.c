@@ -58,10 +58,9 @@ SUITE(capture)
 	RUN_TEST(capture_pattern_match_fail_on_null_haystack);
 }
 
-GREATEST_MAIN_DEFS();
-
+int re(int argc, char **argv);
 int
-main(int argc, char **argv)
+re(int argc, char **argv)
 {
 	int fd __attribute__((cleanup(coverage_cleanup))) = coverage_open();
 

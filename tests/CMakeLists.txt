@@ -1,21 +1,46 @@
 include(CTest)
 
-macro(add_greatest source)
-	set(test_exe greatest-${source})
-	add_test(${source} ${test_exe} -v)
-	add_executable(${test_exe})
-	target_sources(${test_exe} PRIVATE ${source}.c)
-	target_include_directories(${test_exe} PRIVATE
-		${PROJECT_SOURCE_DIR}/src
-		${greatest_SOURCE_DIR}
-	)
-	target_link_libraries(${test_exe} PRIVATE sanitizers youtube my_cflags)
-endmacro()
-
 add_subdirectory(cli)
 add_subdirectory(fuzzer)
-add_subdirectory(js)
-add_subdirectory(re)
-add_subdirectory(result)
-add_subdirectory(sandbox)
-add_subdirectory(youtube)
+
+set(TEST_SOURCES "")
+
+macro(register_test source)
+	set(envvars ${ARGN}) # optional second argument specifies envvars
+
+	list(APPEND TEST_SOURCES ${source}.c)
+	set(TEST_SOURCES "${TEST_SOURCES}" PARENT_SCOPE)
+
+	set(cmd "${CMAKE_CURRENT_BINARY_DIR}/test-driver" ${source} -v)
+	if (envvars)
+		add_test(${source} /usr/bin/env ${envvars} ${cmd})
+	else (envvars)
+		add_test(${source} ${cmd})
+	endif (envvars)
+endmacro()
+
+macro(generate_test_driver)
+	create_test_sourcelist(generated_sources
+		test_driver.c
+		${TEST_SOURCES}
+		EXTRA_INCLUDE test_driver.h
+	)
+	add_executable(test-driver
+		${generated_sources}
+	)
+	target_include_directories(test-driver PRIVATE
+		${CMAKE_CURRENT_SOURCE_DIR} # for test_driver.h
+		${PROJECT_SOURCE_DIR}/src   # for debug.h, tmpfile.h, etc
+		${greatest_SOURCE_DIR}      # for greatest.h
+	)
+	target_link_libraries(test-driver PRIVATE sanitizers youtube my_cflags)
+endmacro()
+
+register_test(js)
+register_test(landlock)
+register_test(re)
+register_test(result)
+register_test(seccomp "ASAN_OPTIONS=detect_leaks=0")
+register_test(youtube)
+
+generate_test_driver()

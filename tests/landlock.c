@@ -122,12 +122,12 @@ after_landlock_network(void)
 	sa.sin_port = htons(443);
 	inet_pton(AF_INET, "93.184.215.14", &sa.sin_addr); /* example.com */
 
-	int rc = connect(sfd, (struct sockaddr *)&sa, sizeof(sa));
-	ASSERT_EQ(rc, -1);
-	ASSERT_EQ(errno, EACCES);
-
-	rc = close(sfd);
-	ASSERT_EQ(rc, 0);
+	const int connected = connect(sfd, (struct sockaddr *)&sa, sizeof(sa));
+	const int connected_errno = errno;
+	const int closed = close(sfd);
+	ASSERT_EQ(connected, -1);
+	ASSERT_EQ(connected_errno, EACCES);
+	ASSERT_EQ(closed, 0);
 
 	PASS();
 }
@@ -139,10 +139,9 @@ SUITE(full_landlock)
 	RUN_TEST(after_landlock_network);
 }
 
-GREATEST_MAIN_DEFS();
-
+int landlock(int argc, char **argv);
 int
-main(int argc, char **argv)
+landlock(int argc, char **argv)
 {
 	int fd __attribute__((cleanup(coverage_cleanup))) = coverage_open();
 

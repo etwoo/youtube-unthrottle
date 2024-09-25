@@ -24,6 +24,7 @@ if (BUILD_TESTING)
 		GITHUB_REPOSITORY silentbicycle/greatest
 		VERSION 1.5.0
 		DOWNLOAD_ONLY YES
+		PATCHES ./vendor/greatest_external_linkage.patch
 	)
 	add_subdirectory(tests)
 endif (BUILD_TESTING)
