@@ -2,7 +2,6 @@
 
 #include "coverage.h"
 #include "greatest.h"
-#include "greatest_glue.h"
 #include "tmpfile.h"
 
 #include <arpa/inet.h>

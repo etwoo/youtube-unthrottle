@@ -4,7 +4,6 @@
 #include "coverage.h"
 #include "debug.h"
 #include "greatest.h"
-#include "greatest_glue.h"
 
 #include <assert.h>
 #include <limits.h>

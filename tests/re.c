@@ -2,7 +2,6 @@
 
 #include "coverage.h"
 #include "greatest.h"
-#include "greatest_glue.h"
 
 TEST
 capture_pattern_compile_fail(void)

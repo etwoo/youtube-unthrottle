@@ -3,7 +3,6 @@
 #include "coverage.h"
 #include "debug.h"
 #include "greatest.h"
-#include "greatest_glue.h"
 
 #define ASSERT_IN(haystack, needle)                                            \
 	do {                                                                   \
