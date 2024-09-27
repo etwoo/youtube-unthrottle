@@ -8,6 +8,46 @@ const result_t RESULT_OK = {
 	.err = OK,
 };
 
+result_t
+make_result_t(int typ)
+{
+	return (result_t){
+		.err = typ,
+		.num = 0,
+		.msg = NULL,
+	};
+}
+
+result_t
+make_result_ti(int typ, int num)
+{
+	return (result_t){
+		.err = typ,
+		.num = num,
+		.msg = NULL,
+	};
+}
+
+result_t
+make_result_ts(int typ, const char *msg)
+{
+	return (result_t){
+		.err = typ,
+		.num = 0,
+		.msg = msg,
+	};
+}
+
+result_t
+make_result_tis(int typ, int num, const char *msg)
+{
+	return (result_t){
+		.err = typ,
+		.num = num,
+		.msg = msg,
+	};
+}
+
 /*
  * Bump-style allocator for dynamic strings in result_t structs
  */

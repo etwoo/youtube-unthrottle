@@ -6,5 +6,6 @@
  */
 
 #define WARN_UNUSED __attribute__((warn_unused_result))
+#define COLD __attribute__((cold))
 
 #endif

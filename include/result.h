@@ -81,7 +81,41 @@ typedef struct {
 	const char *msg;
 } result_t;
 
+/*
+ * RESULT_OK: sentinel that represents generic success, not specific to any
+ * particular subsystem or function
+ */
 extern const result_t RESULT_OK;
+
+/*
+ * make_result_*: create various result_t variants
+ *
+ * In general, the make_result_* variants should not be called directly; the
+ * variadic make_result() macro should be used instead.
+ */
+result_t make_result_t(int typ) WARN_UNUSED COLD;
+result_t make_result_ti(int typ, int num) WARN_UNUSED COLD;
+result_t make_result_ts(int typ, const char *msg) WARN_UNUSED COLD;
+result_t make_result_tis(int typ, int num, const char *msg) WARN_UNUSED COLD;
+
+#define make_result_2_arg(x, y)                                                \
+	_Generic(y, int: make_result_ti, const char *: make_result_ts)(x, y)
+#define GET_MACRO(A0, A1, A3, NAME, ...) NAME
+
+/*
+ * Create a result_t by passing any of the following sets of arguments:
+ *
+ * - an ERR_* value (alone)
+ * - an ERR_* value and an errno (or similar int status code)
+ * - an ERR_* value and a details string created by result_strdup*
+ * - an ERR_* value, an errno, and a details string
+ */
+#define make_result(...)                                                       \
+	GET_MACRO(__VA_ARGS__,                                                 \
+	          make_result_tis,                                             \
+	          make_result_2_arg,                                           \
+	          make_result_t)                                               \
+	(__VA_ARGS__)
 
 /*
  * Return if <expr> yields a non-OK result_t.
@@ -89,23 +123,18 @@ extern const result_t RESULT_OK;
 #define check(expr)                                                            \
 	do {                                                                   \
 		result_t x = expr;                                             \
-		if (x.err) {                                                   \
+		if (__builtin_expect(x.err != OK, 0)) {                        \
 			return x;                                              \
 		}                                                              \
 	} while (0)
 
 /*
  * Return a result_t if a given (arbitrary) condition is true.
- *
- * Note: this currently only works well for zero-arg result_t values that do
- * not need to set extra values like an errno, CURLcode, or CURLUcode.
  */
-#define check_if(cond, err_type)                                               \
+#define check_if(cond, ...)                                                    \
 	do {                                                                   \
 		if (cond) {                                                    \
-			return (result_t){                                     \
-				.err = err_type,                               \
-			};                                                     \
+			return make_result(__VA_ARGS__);                       \
 		}                                                              \
 	} while (0)
 
@@ -114,15 +143,7 @@ extern const result_t RESULT_OK;
  *
  * Note: <num> would typically be something like a CURLcode or CURLUcode.
  */
-#define check_if_num(val, err_type)                                            \
-	do {                                                                   \
-		if (val) {                                                     \
-			return (result_t){                                     \
-				.err = err_type,                               \
-				.num = val,                                    \
-			};                                                     \
-		}                                                              \
-	} while (0)
+#define check_if_num(val, err_type) check_if(val, err_type, (int)val)
 
 /*
  * Like check_if(), while also capturing <errno> in the result_t.
@@ -130,15 +151,7 @@ extern const result_t RESULT_OK;
  * Note that while this captures <errno> in the result_t, the controlling
  * <cond> need not depend on <errno> explicitly!
  */
-#define check_if_cond_with_errno(cond, err_type)                               \
-	do {                                                                   \
-		if (cond) {                                                    \
-			return (result_t){                                     \
-				.err = err_type,                               \
-				.num = errno,                                  \
-			};                                                     \
-		}                                                              \
-	} while (0)
+#define check_if_cond_with_errno(cond, err_type) check_if(cond, err_type, errno)
 
 /*
  * Duplicate <src>, using automatic storage managed by result.c module.
