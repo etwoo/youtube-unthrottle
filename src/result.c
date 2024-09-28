@@ -51,7 +51,7 @@ result_strdup_span(const char *src, size_t sz)
 }
 
 result_t
-mk_t(int typ)
+makeresult_t(int typ)
 {
 	return (result_t){
 		.err = typ,
@@ -61,7 +61,7 @@ mk_t(int typ)
 }
 
 result_t
-mk_ti(int typ, int num)
+makeresult_ti(int typ, int num)
 {
 	return (result_t){
 		.err = typ,
@@ -71,7 +71,7 @@ mk_ti(int typ, int num)
 }
 
 result_t
-mk_ts(int typ, const char *msg)
+makeresult_ts(int typ, const char *msg)
 {
 	return (result_t){
 		.err = typ,
@@ -81,7 +81,7 @@ mk_ts(int typ, const char *msg)
 }
 
 result_t
-mk_tss(int typ, const char *msg, size_t sz)
+makeresult_tss(int typ, const char *msg, size_t sz)
 {
 	return (result_t){
 		.err = typ,
@@ -91,7 +91,7 @@ mk_tss(int typ, const char *msg, size_t sz)
 }
 
 result_t
-mk_tis(int typ, int num, const char *msg)
+makeresult_tis(int typ, int num, const char *msg)
 {
 	return (result_t){
 		.err = typ,
@@ -101,7 +101,7 @@ mk_tis(int typ, int num, const char *msg)
 }
 
 result_t
-mk_tiss(int typ, int num, const char *msg, size_t sz)
+makeresult_tiss(int typ, int num, const char *msg, size_t sz)
 {
 	return (result_t){
 		.err = typ,

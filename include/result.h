@@ -88,20 +88,27 @@ typedef struct {
 extern const result_t RESULT_OK;
 
 /*
- * mk_*: create various result_t variants
- *
- * In general, the mk_* variants should not be called directly; the variadic
- * make_result() macro should be used instead.
+ * Implementation details of make_result(); result_t users can ignore the
+ * following macro glue.
  */
-result_t mk_t(int typ) WARN_UNUSED COLD;
-result_t mk_ti(int typ, int num) WARN_UNUSED COLD;
-result_t mk_ts(int typ, const char *msg) WARN_UNUSED COLD;
-result_t mk_tss(int typ, const char *msg, size_t sz) WARN_UNUSED COLD;
-result_t mk_tis(int typ, int num, const char *msg) WARN_UNUSED COLD;
-result_t mk_tiss(int typ, int num, const char *msg, size_t sz) WARN_UNUSED COLD;
 
-#define mk_2(x, y) _Generic(y, int: mk_ti, const char *: mk_ts)(x, y)
-#define mk_3(x, y, z) _Generic(y, int: mk_tis, const char *: mk_tss)(x, y, z)
+#define DECLARE_MAKERESULT_IMPL(x, ...)                                        \
+	result_t makeresult_##x(__VA_ARGS__) WARN_UNUSED __attribute__((cold))
+
+DECLARE_MAKERESULT_IMPL(t, int typ);
+DECLARE_MAKERESULT_IMPL(ti, int typ, int num);
+DECLARE_MAKERESULT_IMPL(ts, int typ, const char *msg);
+DECLARE_MAKERESULT_IMPL(tss, int typ, const char *msg, size_t sz);
+DECLARE_MAKERESULT_IMPL(tis, int typ, int num, const char *msg);
+DECLARE_MAKERESULT_IMPL(tiss, int typ, int num, const char *msg, size_t sz);
+
+#undef DECLARE_MAKERESULT_IMPL
+
+#define makeresult_2arg(x, y)                                                  \
+	_Generic(y, int: makeresult_ti, const char *: makeresult_ts)(x, y)
+#define makeresult_3arg(x, y, z)                                               \
+	_Generic(y, int: makeresult_tis, const char *: makeresult_tss)(x, y, z)
+
 #define GET_MACRO(A0, A1, A3, A4, NAME, ...) NAME
 
 /*
@@ -113,7 +120,12 @@ result_t mk_tiss(int typ, int num, const char *msg, size_t sz) WARN_UNUSED COLD;
  * - an ERR_* value, an errno, and a details string
  */
 #define make_result(...)                                                       \
-	GET_MACRO(__VA_ARGS__, mk_tiss, mk_3, mk_2, mk_t)(__VA_ARGS__)
+	GET_MACRO(__VA_ARGS__,                                                 \
+	          makeresult_tiss,                                             \
+	          makeresult_3arg,                                             \
+	          makeresult_2arg,                                             \
+	          makeresult_t)                                                \
+	(__VA_ARGS__)
 
 /*
  * Return if <expr> yields a non-OK result_t.
