@@ -31,11 +31,11 @@ typedef struct {
 		ERR_JS_BASEJS_URL_FIND,
 		ERR_JS_BASEJS_URL_ALLOC,
 		ERR_JS_TIMESTAMP_FIND,
-		ERR_JS_TIMESTAMP_PARSE_TO_LONGLONG,
+		ERR_JS_TIMESTAMP_PARSE_LL,
 		ERR_JS_DEOBFUSCATOR_ALLOC,
-		ERR_JS_DEOBFUSCATOR_FIND_FUNCTION_ONE,
-		ERR_JS_DEOBFUSCATOR_FIND_FUNCTION_TWO,
-		ERR_JS_DEOBFUSCATOR_FIND_FUNCTION_BODY,
+		ERR_JS_DEOB_FIND_FUNCTION_ONE,
+		ERR_JS_DEOB_FIND_FUNCTION_TWO,
+		ERR_JS_DEOB_FIND_FUNCTION_BODY,
 		ERR_JS_CALL_ALLOC,
 		ERR_JS_CALL_COMPILE,
 		ERR_JS_CALL_INVOKE,
@@ -81,7 +81,51 @@ typedef struct {
 	const char *msg;
 } result_t;
 
+/*
+ * RESULT_OK: sentinel that represents generic success, not specific to any
+ * particular subsystem or function
+ */
 extern const result_t RESULT_OK;
+
+/*
+ * Implementation details of make_result(); result_t users can ignore the
+ * following macro glue.
+ */
+
+#define DECLARE_MAKERESULT_IMPL(x, ...)                                        \
+	result_t makeresult_##x(__VA_ARGS__) WARN_UNUSED __attribute__((cold))
+
+DECLARE_MAKERESULT_IMPL(t, int typ);
+DECLARE_MAKERESULT_IMPL(ti, int typ, int num);
+DECLARE_MAKERESULT_IMPL(ts, int typ, const char *msg);
+DECLARE_MAKERESULT_IMPL(tss, int typ, const char *msg, size_t sz);
+DECLARE_MAKERESULT_IMPL(tis, int typ, int num, const char *msg);
+DECLARE_MAKERESULT_IMPL(tiss, int typ, int num, const char *msg, size_t sz);
+
+#undef DECLARE_MAKERESULT_IMPL
+
+#define makeresult_2arg(x, y)                                                  \
+	_Generic(y, int: makeresult_ti, const char *: makeresult_ts)(x, y)
+#define makeresult_3arg(x, y, z)                                               \
+	_Generic(y, int: makeresult_tis, const char *: makeresult_tss)(x, y, z)
+
+#define CHOOSE_MACRO_BY_ARGN(A0, A1, A3, A4, NAME, ...) NAME
+
+/*
+ * Create a result_t by passing any of the following sets of arguments:
+ *
+ * - an ERR_* value (alone)
+ * - an ERR_* value and an errno (or similar int status code)
+ * - an ERR_* value and a string (null-terminated or explicit span)
+ * - an ERR_* value, an errno, and a string (null-terminated or explicit span)
+ */
+#define make_result(...)                                                       \
+	CHOOSE_MACRO_BY_ARGN(__VA_ARGS__,                                      \
+	                     makeresult_tiss,                                  \
+	                     makeresult_3arg,                                  \
+	                     makeresult_2arg,                                  \
+	                     makeresult_t)                                     \
+	(__VA_ARGS__)
 
 /*
  * Return if <expr> yields a non-OK result_t.
@@ -89,23 +133,18 @@ extern const result_t RESULT_OK;
 #define check(expr)                                                            \
 	do {                                                                   \
 		result_t x = expr;                                             \
-		if (x.err) {                                                   \
+		if (__builtin_expect(x.err != OK, 0)) {                        \
 			return x;                                              \
 		}                                                              \
 	} while (0)
 
 /*
  * Return a result_t if a given (arbitrary) condition is true.
- *
- * Note: this currently only works well for zero-arg result_t values that do
- * not need to set extra values like an errno, CURLcode, or CURLUcode.
  */
-#define check_if(cond, err_type)                                               \
+#define check_if(cond, ...)                                                    \
 	do {                                                                   \
 		if (cond) {                                                    \
-			return (result_t){                                     \
-				.err = err_type,                               \
-			};                                                     \
+			return make_result(__VA_ARGS__);                       \
 		}                                                              \
 	} while (0)
 
@@ -114,42 +153,7 @@ extern const result_t RESULT_OK;
  *
  * Note: <num> would typically be something like a CURLcode or CURLUcode.
  */
-#define check_if_num(val, err_type)                                            \
-	do {                                                                   \
-		if (val) {                                                     \
-			return (result_t){                                     \
-				.err = err_type,                               \
-				.num = val,                                    \
-			};                                                     \
-		}                                                              \
-	} while (0)
-
-/*
- * Like check_if(), while also capturing <errno> in the result_t.
- *
- * Note that while this captures <errno> in the result_t, the controlling
- * <cond> need not depend on <errno> explicitly!
- */
-#define check_if_cond_with_errno(cond, err_type)                               \
-	do {                                                                   \
-		if (cond) {                                                    \
-			return (result_t){                                     \
-				.err = err_type,                               \
-				.num = errno,                                  \
-			};                                                     \
-		}                                                              \
-	} while (0)
-
-/*
- * Duplicate <src>, using automatic storage managed by result.c module.
- */
-const char *result_strdup(const char *src) WARN_UNUSED;
-
-/*
- * Like result_strdup(), with an explicit span. Use this with strings that are
- * not guaranteed to be NUL-terminated.
- */
-const char *result_strdup_span(const char *src, size_t sz) WARN_UNUSED;
+#define check_if_num(val, err_type) check_if(val, err_type, (int)val)
 
 /*
  * Convert a result_t into a human-readable error message.

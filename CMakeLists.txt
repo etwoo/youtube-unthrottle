@@ -57,7 +57,7 @@ add_custom_target(fmt COMMAND find
 include(CheckCCompilerFlag)
 
 add_library(my_cflags INTERFACE)
-target_compile_features(my_cflags INTERFACE c_std_99)
+target_compile_features(my_cflags INTERFACE c_std_11)
 target_compile_options(my_cflags INTERFACE -Wall -Wextra)
 
 if (BUILD_COVERAGE)
