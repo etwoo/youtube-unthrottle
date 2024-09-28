@@ -116,8 +116,8 @@ DECLARE_MAKERESULT_IMPL(tiss, int typ, int num, const char *msg, size_t sz);
  *
  * - an ERR_* value (alone)
  * - an ERR_* value and an errno (or similar int status code)
- * - an ERR_* value and a details string created by result_strdup*
- * - an ERR_* value, an errno, and a details string
+ * - an ERR_* value and a string (null-terminated or explicit span)
+ * - an ERR_* value, an errno, and a string (null-terminated or explicit span)
  */
 #define make_result(...)                                                       \
 	CHOOSE_MACRO_BY_ARGN(__VA_ARGS__,                                      \
