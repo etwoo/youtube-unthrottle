@@ -24,7 +24,7 @@ tmpfd(int *fd)
 	 * to call open() with O_TMPFILE|O_EXCL ourselves.
 	 */
 	FILE *fs __attribute__((cleanup(checked_fclose))) = tmpfile();
-	check_if_cond_with_errno(fs == NULL, ERR_TMPFILE);
+	check_if(fs == NULL, ERR_TMPFILE, errno);
 
 	/*
 	 * dup the underlying file descriptor behind the tmpfile stream, and
@@ -33,10 +33,10 @@ tmpfd(int *fd)
 	 */
 
 	int inner_fd = fileno(fs);
-	check_if_cond_with_errno(inner_fd < 0, ERR_TMPFILE_FILENO);
+	check_if(inner_fd < 0, ERR_TMPFILE_FILENO, errno);
 
 	int dup_fd = dup(inner_fd);
-	check_if_cond_with_errno(dup_fd < 0, ERR_TMPFILE_DUP);
+	check_if(dup_fd < 0, ERR_TMPFILE_DUP, errno);
 
 	*fd = dup_fd;
 	debug("Got tmpfile with fd=%d", *fd);
@@ -49,11 +49,11 @@ tmpmap(int fd, void **addr, unsigned int *sz)
 	struct stat st = {
 		.st_size = 0,
 	};
-	check_if_cond_with_errno(fstat(fd, &st) < 0, ERR_TMPFILE_FSTAT);
+	check_if(fstat(fd, &st) < 0, ERR_TMPFILE_FSTAT, errno);
 	*sz = st.st_size;
 
 	*addr = mmap(NULL, *sz, PROT_READ, MAP_PRIVATE, fd, 0);
-	check_if_cond_with_errno(*addr == MAP_FAILED, ERR_TMPFILE_MMAP);
+	check_if(*addr == MAP_FAILED, ERR_TMPFILE_MMAP, errno);
 
 	/*
 	 * mmap() can technically return NULL on some platforms, but our

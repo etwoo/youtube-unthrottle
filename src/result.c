@@ -34,7 +34,7 @@ my_snprintf(const char *pattern, ...)
 	va_end(ap);
 }
 
-const char *
+static WARN_UNUSED const char *
 result_strdup(const char *src)
 {
 	const char *s = RESULT_HEAP_POS;
@@ -42,12 +42,72 @@ result_strdup(const char *src)
 	return s;
 }
 
-const char *
+static WARN_UNUSED const char *
 result_strdup_span(const char *src, size_t sz)
 {
 	const char *s = RESULT_HEAP_POS;
 	my_snprintf("%.*s", (int)sz, src);
 	return s;
+}
+
+result_t
+makeresult_t(int typ)
+{
+	return (result_t){
+		.err = typ,
+		.num = 0,
+		.msg = NULL,
+	};
+}
+
+result_t
+makeresult_ti(int typ, int num)
+{
+	return (result_t){
+		.err = typ,
+		.num = num,
+		.msg = NULL,
+	};
+}
+
+result_t
+makeresult_ts(int typ, const char *msg)
+{
+	return (result_t){
+		.err = typ,
+		.num = 0,
+		.msg = result_strdup(msg),
+	};
+}
+
+result_t
+makeresult_tss(int typ, const char *msg, size_t sz)
+{
+	return (result_t){
+		.err = typ,
+		.num = 0,
+		.msg = result_strdup_span(msg, sz),
+	};
+}
+
+result_t
+makeresult_tis(int typ, int num, const char *msg)
+{
+	return (result_t){
+		.err = typ,
+		.num = num,
+		.msg = result_strdup(msg),
+	};
+}
+
+result_t
+makeresult_tiss(int typ, int num, const char *msg, size_t sz)
+{
+	return (result_t){
+		.err = typ,
+		.num = num,
+		.msg = result_strdup_span(msg, sz),
+	};
 }
 
 static WARN_UNUSED const char *
@@ -113,7 +173,7 @@ result_to_str(result_t r)
 	case ERR_JS_TIMESTAMP_FIND:
 		s = "Cannot find timestamp in base.js";
 		break;
-	case ERR_JS_TIMESTAMP_PARSE_TO_LONGLONG:
+	case ERR_JS_TIMESTAMP_PARSE_LL:
 		my_snprintf("Error in strtoll() on %s: %s",
 		            r.msg,
 		            my_strerror(r));
@@ -121,13 +181,13 @@ result_to_str(result_t r)
 	case ERR_JS_DEOBFUSCATOR_ALLOC:
 		s = "Cannot allocate asprintf buffer";
 		break;
-	case ERR_JS_DEOBFUSCATOR_FIND_FUNCTION_ONE:
+	case ERR_JS_DEOB_FIND_FUNCTION_ONE:
 		s = "Cannot find deobfuscation function in base.js";
 		break;
-	case ERR_JS_DEOBFUSCATOR_FIND_FUNCTION_TWO:
+	case ERR_JS_DEOB_FIND_FUNCTION_TWO:
 		my_snprintf("Cannot find reference to %s in base.js", r.msg);
 		break;
-	case ERR_JS_DEOBFUSCATOR_FIND_FUNCTION_BODY:
+	case ERR_JS_DEOB_FIND_FUNCTION_BODY:
 		my_snprintf("Cannot find body of %s in base.js", r.msg);
 		break;
 	case ERR_JS_CALL_ALLOC:

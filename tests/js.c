@@ -469,7 +469,7 @@ find_js_timestamp_negative_strtoll_erange(void)
 	static const char json[] = "{signatureTimestamp:9223372036854775808}";
 	long long int timestamp = -1;
 	result_t err = find_js_timestamp(json, sizeof(json), &timestamp);
-	ASSERT_EQ(err.err, ERR_JS_TIMESTAMP_PARSE_TO_LONGLONG);
+	ASSERT_EQ(err.err, ERR_JS_TIMESTAMP_PARSE_LL);
 	ASSERT_EQ(err.num, ERANGE);
 	ASSERT_STR_EQ(err.msg, "9223372036854775808");
 	ASSERT_LT(timestamp, 0);
@@ -507,7 +507,7 @@ find_js_deobfuscator_negative_first_match_fail(void)
 	static const char js[] =
 		"var _yt_player={};(function(g){})(_yt_player);";
 	result_t err = find_js_deobfuscator(js, sizeof(js), &deobfuscator, &sz);
-	ASSERT_EQ(err.err, ERR_JS_DEOBFUSCATOR_FIND_FUNCTION_ONE);
+	ASSERT_EQ(err.err, ERR_JS_DEOB_FIND_FUNCTION_ONE);
 
 	ASSERT_EQ(deobfuscator, NULL);
 	ASSERT_EQ(sz, 0);
@@ -522,7 +522,7 @@ find_js_deobfuscator_negative_second_match_fail(void)
 
 	static const char js[] = "&&(c=ODa[0](c),";
 	result_t err = find_js_deobfuscator(js, sizeof(js), &deobfuscator, &sz);
-	ASSERT_EQ(err.err, ERR_JS_DEOBFUSCATOR_FIND_FUNCTION_TWO);
+	ASSERT_EQ(err.err, ERR_JS_DEOB_FIND_FUNCTION_TWO);
 
 	ASSERT_EQ(deobfuscator, NULL);
 	ASSERT_EQ(sz, 0);
@@ -537,7 +537,7 @@ find_js_deobfuscator_negative_third_match_fail(void)
 
 	static const char js[] = "&&(c=ODa[0](c),\nvar ODa=[Pma];";
 	result_t err = find_js_deobfuscator(js, sizeof(js), &deobfuscator, &sz);
-	ASSERT_EQ(err.err, ERR_JS_DEOBFUSCATOR_FIND_FUNCTION_BODY);
+	ASSERT_EQ(err.err, ERR_JS_DEOB_FIND_FUNCTION_BODY);
 
 	ASSERT_EQ(deobfuscator, NULL);
 	ASSERT_EQ(sz, 0);

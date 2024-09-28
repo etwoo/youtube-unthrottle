@@ -150,10 +150,9 @@ pop_n_param_one(CURLU *url, char **result)
 	                getargs_sz,
 	                &ciphertext_within_getargs,
 	                &ciphertext_sz)) {
-		return (result_t){
-			.err = ERR_YOUTUBE_N_PARAM_FIND_IN_QUERY,
-			.msg = result_strdup_span(getargs, getargs_sz),
-		};
+		return make_result(ERR_YOUTUBE_N_PARAM_FIND_IN_QUERY,
+		                   (const char *)getargs,
+		                   getargs_sz);
 	}
 
 	/*
@@ -296,12 +295,13 @@ format_innertube_post(const char *target, long long int ts, char **body)
 	size_t sz = 0;
 
 	/* Note use of non-capturing group: (?:...) */
-	check_if(!re_capture("(?:&|\\?)v=([^&]+)(?:&|$)",
-	                     target,
-	                     strlen(target),
-	                     &id,
-	                     &sz),
-	         ERR_YOUTUBE_INNERTUBE_POST_ID);
+	if (!re_capture("(?:&|\\?)v=([^&]+)(?:&|$)",
+	                target,
+	                strlen(target),
+	                &id,
+	                &sz)) {
+		return make_result(ERR_YOUTUBE_INNERTUBE_POST_ID);
+	}
 	debug("Parsed ID: %.*s", (int)sz, id);
 
 	const int rc = asprintf(body, INNERTUBE_POST_FMT, (int)sz, id, ts);

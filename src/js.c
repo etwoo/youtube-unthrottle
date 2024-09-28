@@ -63,28 +63,19 @@ parse_json(const char *json,
 	duk_push_lstring(ctx, json, json_sz);
 	duk_ret_t res = duk_safe_call(ctx, try_decode, NULL, 1, 1);
 	if (res != DUK_EXEC_SUCCESS) {
-		return (result_t){
-			.err = ERR_JS_PARSE_JSON_DECODE,
-			.msg = result_strdup(peek(ctx)),
-		};
+		return make_result(ERR_JS_PARSE_JSON_DECODE, peek(ctx));
 	}
 
 	if (DUK_TYPE_OBJECT != duk_get_type(ctx, -1) ||
 	    0 == duk_get_prop_literal(ctx, -1, "streamingData")) {
-		return (result_t){
-			.err = ERR_JS_PARSE_JSON_GET_STREAMINGDATA,
-		};
+		return make_result(ERR_JS_PARSE_JSON_GET_STREAMINGDATA);
 	}
 	if (DUK_TYPE_OBJECT != duk_get_type(ctx, -1) ||
 	    0 == duk_get_prop_literal(ctx, -1, "adaptiveFormats")) {
-		return (result_t){
-			.err = ERR_JS_PARSE_JSON_GET_ADAPTIVEFORMATS,
-		};
+		return make_result(ERR_JS_PARSE_JSON_GET_ADAPTIVEFORMATS);
 	}
 	if (DUK_TYPE_OBJECT != duk_get_type(ctx, -1)) {
-		return (result_t){
-			.err = ERR_JS_PARSE_JSON_ADAPTIVEFORMATS_TYPE,
-		};
+		return make_result(ERR_JS_PARSE_JSON_ADAPTIVEFORMATS_TYPE);
 	}
 
 	bool got_video = false;
@@ -96,23 +87,17 @@ parse_json(const char *json,
 		duk_get_prop_index(ctx, -1, i);
 
 		if (DUK_TYPE_OBJECT != duk_get_type(ctx, -1)) {
-			return (result_t){
-				.err = ERR_JS_PARSE_JSON_ELEM_TYPE,
-			};
+			return make_result(ERR_JS_PARSE_JSON_ELEM_TYPE);
 		}
 
 		if (0 == duk_get_prop_literal(ctx, -1, "mimeType") ||
 		    DUK_TYPE_STRING != duk_get_type(ctx, -1)) {
-			return (result_t){
-				.err = ERR_JS_PARSE_JSON_ELEM_MIMETYPE,
-			};
+			return make_result(ERR_JS_PARSE_JSON_ELEM_MIMETYPE);
 		}
 
 		if (0 == duk_get_prop_literal(ctx, -2, "url") ||
 		    DUK_TYPE_STRING != duk_get_type(ctx, -1)) {
-			return (result_t){
-				.err = ERR_JS_PARSE_JSON_ELEM_URL,
-			};
+			return make_result(ERR_JS_PARSE_JSON_ELEM_URL);
 		}
 
 		const char *url = duk_get_string(ctx, -1);
@@ -159,12 +144,13 @@ find_base_js_url(const char *html,
                  const char **basejs,
                  size_t *basejs_sz)
 {
-	check_if(!re_capture("\"(/s/player/[^\"]+/base.js)\"",
-	                     html,
-	                     sz,
-	                     basejs,
-	                     basejs_sz),
-	         ERR_JS_BASEJS_URL_FIND);
+	if (!re_capture("\"(/s/player/[^\"]+/base.js)\"",
+	                html,
+	                sz,
+	                basejs,
+	                basejs_sz)) {
+		return make_result(ERR_JS_BASEJS_URL_FIND);
+	}
 
 	debug("Parsed base.js URI: %.*s", (int)*basejs_sz, *basejs);
 	return RESULT_OK;
@@ -175,12 +161,9 @@ find_js_timestamp(const char *js, size_t js_sz, long long int *value)
 {
 	const char *ts = NULL;
 	size_t tsz = 0;
-	check_if(!re_capture("signatureTimestamp:([0-9]+)",
-	                     js,
-	                     js_sz,
-	                     &ts,
-	                     &tsz),
-	         ERR_JS_TIMESTAMP_FIND);
+	if (!re_capture("signatureTimestamp:([0-9]+)", js, js_sz, &ts, &tsz)) {
+		return make_result(ERR_JS_TIMESTAMP_FIND);
+	}
 
 	/*
 	 * strtoll() does not modify errno on success, so we must clear it
@@ -190,11 +173,7 @@ find_js_timestamp(const char *js, size_t js_sz, long long int *value)
 
 	long long int res = strtoll(ts, NULL, 10);
 	if (errno != 0) {
-		return (result_t){
-			.err = ERR_JS_TIMESTAMP_PARSE_TO_LONGLONG,
-			.num = errno,
-			.msg = result_strdup_span(ts, tsz),
-		};
+		return make_result(ERR_JS_TIMESTAMP_PARSE_LL, errno, ts, tsz);
 	}
 
 	debug("Parsed signatureTimestamp %.*s into %lld", (int)tsz, ts, res);
@@ -244,9 +223,7 @@ find_js_deobfuscator(const char *js,
 		info("Cannot find '%s' in base.js", RE_FUNC_NAME[i]);
 	}
 	if (name == NULL || nsz == 0) {
-		return (result_t){
-			.err = ERR_JS_DEOBFUSCATOR_FIND_FUNCTION_ONE,
-		};
+		return make_result(ERR_JS_DEOB_FIND_FUNCTION_ONE);
 	}
 	debug("Got function name 1: %.*s", (int)nsz, name);
 
@@ -255,10 +232,7 @@ find_js_deobfuscator(const char *js,
 	check_if(rc < 0, ERR_JS_DEOBFUSCATOR_ALLOC);
 
 	if (!re_capture(p2, js, js_sz, &name, &nsz)) {
-		return (result_t){
-			.err = ERR_JS_DEOBFUSCATOR_FIND_FUNCTION_TWO,
-			.msg = result_strdup_span(name, nsz),
-		};
+		return make_result(ERR_JS_DEOB_FIND_FUNCTION_TWO, name, nsz);
 	}
 	debug("Got function name 2: %.*s", (int)nsz, name);
 
@@ -272,10 +246,7 @@ find_js_deobfuscator(const char *js,
 	check_if(rc < 0, ERR_JS_DEOBFUSCATOR_ALLOC);
 
 	if (!re_capture(p3, js, js_sz, deobfuscator, deobfuscator_sz)) {
-		return (result_t){
-			.err = ERR_JS_DEOBFUSCATOR_FIND_FUNCTION_BODY,
-			.msg = result_strdup_span(name, nsz),
-		};
+		return make_result(ERR_JS_DEOB_FIND_FUNCTION_BODY, name, nsz);
 	}
 
 	// debug("Got function body: %.*s", *deobfuscator_sz, *deobfuscator);
@@ -313,10 +284,7 @@ call_js_one(duk_context *ctx,
 	 */
 	duk_push_lstring(ctx, js_arg, strlen(js_arg));
 	if (duk_pcall(ctx, 1) != DUK_EXEC_SUCCESS) {
-		return (result_t){
-			.err = ERR_JS_CALL_INVOKE,
-			.msg = result_strdup(peek(ctx)),
-		};
+		return make_result(ERR_JS_CALL_INVOKE, peek(ctx));
 	}
 
 	const char *result = duk_get_string(ctx, -1);
@@ -345,10 +313,7 @@ call_js_foreach(const char *code,
 
 	duk_push_string(ctx, __FUNCTION__);
 	if (duk_pcompile(ctx, DUK_COMPILE_FUNCTION) != 0) {
-		return (result_t){
-			.err = ERR_JS_CALL_COMPILE,
-			.msg = result_strdup(peek(ctx)),
-		};
+		return make_result(ERR_JS_CALL_COMPILE, peek(ctx));
 	}
 
 	for (size_t i = 0; i < argc; ++i) {
