@@ -64,6 +64,8 @@ ruleset_add_one(int fd, const char *path, struct landlock_path_beneath_attr *pb)
 {
 	int rc = -1;
 
+	// TODO: reconsider this pattern of check_if() usage, as it looks like result_strdup() is called unconditionally and then leaked(-ish), when it actually only executes within an if() expanded from check_if(); maybe too weird?
+	// TODO: ... maybe cleaner instead to require clean_if() to take a callback, which would make it more obvious syntax-wise that the allocation from result_strdup() is conditional, doesn't just happen inline
 	pb->parent_fd = open(path, O_PATH);
 	check_if(pb->parent_fd < 0,
 	         ERR_SANDBOX_LANDLOCK_OPEN_O_PATH,
