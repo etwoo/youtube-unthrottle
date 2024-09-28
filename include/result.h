@@ -31,11 +31,11 @@ typedef struct {
 		ERR_JS_BASEJS_URL_FIND,
 		ERR_JS_BASEJS_URL_ALLOC,
 		ERR_JS_TIMESTAMP_FIND,
-		ERR_JS_TIMESTAMP_PARSE_TO_LONGLONG,
+		ERR_JS_TIMESTAMP_PARSE_LL,
 		ERR_JS_DEOBFUSCATOR_ALLOC,
-		ERR_JS_DEOBFUSCATOR_FIND_FUNCTION_ONE,
-		ERR_JS_DEOBFUSCATOR_FIND_FUNCTION_TWO,
-		ERR_JS_DEOBFUSCATOR_FIND_FUNCTION_BODY,
+		ERR_JS_DEOB_FIND_FUNCTION_ONE,
+		ERR_JS_DEOB_FIND_FUNCTION_TWO,
+		ERR_JS_DEOB_FIND_FUNCTION_BODY,
 		ERR_JS_CALL_ALLOC,
 		ERR_JS_CALL_COMPILE,
 		ERR_JS_CALL_INVOKE,
@@ -88,19 +88,21 @@ typedef struct {
 extern const result_t RESULT_OK;
 
 /*
- * make_result_*: create various result_t variants
+ * mk_*: create various result_t variants
  *
- * In general, the make_result_* variants should not be called directly; the
- * variadic make_result() macro should be used instead.
+ * In general, the mk_* variants should not be called directly; the variadic
+ * make_result() macro should be used instead.
  */
-result_t make_result_t(int typ) WARN_UNUSED COLD;
-result_t make_result_ti(int typ, int num) WARN_UNUSED COLD;
-result_t make_result_ts(int typ, const char *msg) WARN_UNUSED COLD;
-result_t make_result_tis(int typ, int num, const char *msg) WARN_UNUSED COLD;
+result_t mk_t(int typ) WARN_UNUSED COLD;
+result_t mk_ti(int typ, int num) WARN_UNUSED COLD;
+result_t mk_ts(int typ, const char *msg) WARN_UNUSED COLD;
+result_t mk_tss(int typ, const char *msg, size_t sz) WARN_UNUSED COLD;
+result_t mk_tis(int typ, int num, const char *msg) WARN_UNUSED COLD;
+result_t mk_tiss(int typ, int num, const char *msg, size_t sz) WARN_UNUSED COLD;
 
-#define make_result_2_arg(x, y)                                                \
-	_Generic(y, int: make_result_ti, const char *: make_result_ts)(x, y)
-#define GET_MACRO(A0, A1, A3, NAME, ...) NAME
+#define mk_2(x, y) _Generic(y, int: mk_ti, const char *: mk_ts)(x, y)
+#define mk_3(x, y, z) _Generic(y, int: mk_tis, const char *: mk_tss)(x, y, z)
+#define GET_MACRO(A0, A1, A3, A4, NAME, ...) NAME
 
 /*
  * Create a result_t by passing any of the following sets of arguments:
@@ -111,11 +113,7 @@ result_t make_result_tis(int typ, int num, const char *msg) WARN_UNUSED COLD;
  * - an ERR_* value, an errno, and a details string
  */
 #define make_result(...)                                                       \
-	GET_MACRO(__VA_ARGS__,                                                 \
-	          make_result_tis,                                             \
-	          make_result_2_arg,                                           \
-	          make_result_t)                                               \
-	(__VA_ARGS__)
+	GET_MACRO(__VA_ARGS__, mk_tiss, mk_3, mk_2, mk_t)(__VA_ARGS__)
 
 /*
  * Return if <expr> yields a non-OK result_t.
@@ -152,17 +150,6 @@ result_t make_result_tis(int typ, int num, const char *msg) WARN_UNUSED COLD;
  * <cond> need not depend on <errno> explicitly!
  */
 #define check_if_cond_with_errno(cond, err_type) check_if(cond, err_type, errno)
-
-/*
- * Duplicate <src>, using automatic storage managed by result.c module.
- */
-const char *result_strdup(const char *src) WARN_UNUSED;
-
-/*
- * Like result_strdup(), with an explicit span. Use this with strings that are
- * not guaranteed to be NUL-terminated.
- */
-const char *result_strdup_span(const char *src, size_t sz) WARN_UNUSED;
 
 /*
  * Convert a result_t into a human-readable error message.

@@ -63,8 +63,7 @@ parse_json(const char *json,
 	duk_push_lstring(ctx, json, json_sz);
 	duk_ret_t res = duk_safe_call(ctx, try_decode, NULL, 1, 1);
 	if (res != DUK_EXEC_SUCCESS) {
-		return make_result(ERR_JS_PARSE_JSON_DECODE,
-		                   result_strdup(peek(ctx)));
+		return make_result(ERR_JS_PARSE_JSON_DECODE, peek(ctx));
 	}
 
 	if (DUK_TYPE_OBJECT != duk_get_type(ctx, -1) ||
@@ -174,9 +173,7 @@ find_js_timestamp(const char *js, size_t js_sz, long long int *value)
 
 	long long int res = strtoll(ts, NULL, 10);
 	if (errno != 0) {
-		return make_result(ERR_JS_TIMESTAMP_PARSE_TO_LONGLONG,
-		                   errno,
-		                   result_strdup_span(ts, tsz));
+		return make_result(ERR_JS_TIMESTAMP_PARSE_LL, errno, ts, tsz);
 	}
 
 	debug("Parsed signatureTimestamp %.*s into %lld", (int)tsz, ts, res);
@@ -226,7 +223,7 @@ find_js_deobfuscator(const char *js,
 		info("Cannot find '%s' in base.js", RE_FUNC_NAME[i]);
 	}
 	if (name == NULL || nsz == 0) {
-		return make_result(ERR_JS_DEOBFUSCATOR_FIND_FUNCTION_ONE);
+		return make_result(ERR_JS_DEOB_FIND_FUNCTION_ONE);
 	}
 	debug("Got function name 1: %.*s", (int)nsz, name);
 
@@ -235,8 +232,7 @@ find_js_deobfuscator(const char *js,
 	check_if(rc < 0, ERR_JS_DEOBFUSCATOR_ALLOC);
 
 	if (!re_capture(p2, js, js_sz, &name, &nsz)) {
-		return make_result(ERR_JS_DEOBFUSCATOR_FIND_FUNCTION_TWO,
-		                   result_strdup_span(name, nsz));
+		return make_result(ERR_JS_DEOB_FIND_FUNCTION_TWO, name, nsz);
 	}
 	debug("Got function name 2: %.*s", (int)nsz, name);
 
@@ -250,8 +246,7 @@ find_js_deobfuscator(const char *js,
 	check_if(rc < 0, ERR_JS_DEOBFUSCATOR_ALLOC);
 
 	if (!re_capture(p3, js, js_sz, deobfuscator, deobfuscator_sz)) {
-		return make_result(ERR_JS_DEOBFUSCATOR_FIND_FUNCTION_BODY,
-		                   result_strdup_span(name, nsz));
+		return make_result(ERR_JS_DEOB_FIND_FUNCTION_BODY, name, nsz);
 	}
 
 	// debug("Got function body: %.*s", *deobfuscator_sz, *deobfuscator);
@@ -289,8 +284,7 @@ call_js_one(duk_context *ctx,
 	 */
 	duk_push_lstring(ctx, js_arg, strlen(js_arg));
 	if (duk_pcall(ctx, 1) != DUK_EXEC_SUCCESS) {
-		return make_result(ERR_JS_CALL_INVOKE,
-		                   result_strdup(peek(ctx)));
+		return make_result(ERR_JS_CALL_INVOKE, peek(ctx));
 	}
 
 	const char *result = duk_get_string(ctx, -1);
@@ -319,8 +313,7 @@ call_js_foreach(const char *code,
 
 	duk_push_string(ctx, __FUNCTION__);
 	if (duk_pcompile(ctx, DUK_COMPILE_FUNCTION) != 0) {
-		return make_result(ERR_JS_CALL_COMPILE,
-		                   result_strdup(peek(ctx)));
+		return make_result(ERR_JS_CALL_COMPILE, peek(ctx));
 	}
 
 	for (size_t i = 0; i < argc; ++i) {

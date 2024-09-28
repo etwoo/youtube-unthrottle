@@ -57,6 +57,7 @@ landlock_restrict_self(const int ruleset_fd, const __u32 flags)
 
 #include <fcntl.h>
 #include <linux/prctl.h>
+#include <stdbool.h>
 #include <sys/prctl.h>
 
 static WARN_UNUSED result_t
@@ -64,19 +65,12 @@ ruleset_add_one(int fd, const char *path, struct landlock_path_beneath_attr *pb)
 {
 	int rc = -1;
 
-	// TODO: reconsider this pattern of check_if() usage, as it looks like result_strdup() is called unconditionally and then leaked(-ish), when it actually only executes within an if() expanded from check_if(); maybe too weird?
-	// TODO: ... maybe cleaner instead to require clean_if() to take a callback, which would make it more obvious syntax-wise that the allocation from result_strdup() is conditional, doesn't just happen inline
 	pb->parent_fd = open(path, O_PATH);
-	check_if(pb->parent_fd < 0,
-	         ERR_SANDBOX_LANDLOCK_OPEN_O_PATH,
-	         errno,
-	         result_strdup(path));
+	const bool opened = pb->parent_fd >= 0;
+	check_if(!opened, ERR_SANDBOX_LANDLOCK_OPEN_O_PATH, errno, path);
 
 	rc = landlock_add_rule(fd, LANDLOCK_RULE_PATH_BENEATH, pb, 0);
-	check_if(rc < 0,
-	         ERR_SANDBOX_LANDLOCK_ADD_RULE_PATH,
-	         errno,
-	         result_strdup(path));
+	check_if(rc < 0, ERR_SANDBOX_LANDLOCK_ADD_RULE_PATH, errno, path);
 
 	rc = close(pb->parent_fd);
 	info_m_if(rc < 0, "Ignoring error close()-ing Landlock paths fd");

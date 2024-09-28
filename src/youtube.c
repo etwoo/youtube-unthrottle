@@ -151,7 +151,8 @@ pop_n_param_one(CURLU *url, char **result)
 	                &ciphertext_within_getargs,
 	                &ciphertext_sz)) {
 		return make_result(ERR_YOUTUBE_N_PARAM_FIND_IN_QUERY,
-		                   result_strdup_span(getargs, getargs_sz));
+		                   (const char *)getargs,
+		                   getargs_sz);
 	}
 
 	/*
