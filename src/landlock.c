@@ -66,7 +66,7 @@ ruleset_add_one(int fd, const char *path, struct landlock_path_beneath_attr *pb)
 	int rc = -1;
 
 	pb->parent_fd = open(path, O_PATH);
-	const bool opened = pb->parent_fd >= 0;
+	const bool opened = (pb->parent_fd >= 0);
 	check_if(!opened, ERR_SANDBOX_LANDLOCK_OPEN_O_PATH, errno, path);
 
 	rc = landlock_add_rule(fd, LANDLOCK_RULE_PATH_BENEATH, pb, 0);
