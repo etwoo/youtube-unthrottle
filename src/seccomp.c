@@ -423,13 +423,13 @@ result_t
 seccomp_apply(unsigned flags)
 {
 	scmp_filter_ctx ctx = seccomp_init(SCMP_ACT_ERRNO(EACCES));
-	check_if_cond_with_errno(ctx == NULL, ERR_SANDBOX_SECCOMP_INIT);
+	check_if(ctx == NULL, ERR_SANDBOX_SECCOMP_INIT, errno);
 
 	const bool apply = seccomp_apply_common(ctx, flags);
 	info_if(!apply, "Cannot add all seccomp rules; continuing ...");
 
 	const int rc = seccomp_load(ctx);
-	check_if_cond_with_errno(rc < 0, ERR_SANDBOX_SECCOMP_LOAD);
+	check_if(rc < 0, ERR_SANDBOX_SECCOMP_LOAD, errno);
 	seccomp_release(ctx);
 
 	debug("seccomp_apply() %s", apply ? "succeeded" : "encountered issues");

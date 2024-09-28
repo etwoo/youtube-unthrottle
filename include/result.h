@@ -144,14 +144,6 @@ result_t mk_tiss(int typ, int num, const char *msg, size_t sz) WARN_UNUSED COLD;
 #define check_if_num(val, err_type) check_if(val, err_type, (int)val)
 
 /*
- * Like check_if(), while also capturing <errno> in the result_t.
- *
- * Note that while this captures <errno> in the result_t, the controlling
- * <cond> need not depend on <errno> explicitly!
- */
-#define check_if_cond_with_errno(cond, err_type) check_if(cond, err_type, errno)
-
-/*
  * Convert a result_t into a human-readable error message.
  *
  * Note: the caller does not own the returned buffer.

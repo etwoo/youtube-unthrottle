@@ -102,7 +102,7 @@ ruleset_add_rule_port(int fd, int port)
 		.port = port,
 	};
 	const int rc = landlock_add_rule(fd, LANDLOCK_RULE_NET_PORT, &np, 0);
-	check_if_cond_with_errno(rc < 0, ERR_SANDBOX_LANDLOCK_ADD_RULE_PORT);
+	check_if(rc < 0, ERR_SANDBOX_LANDLOCK_ADD_RULE_PORT, errno);
 	return RESULT_OK;
 }
 
@@ -116,7 +116,7 @@ landlock_apply(const char **paths, int sz, int port)
 		.handled_access_net = LANDLOCK_ACCESS_NET_CONNECT_TCP,
 	};
 	int fd = landlock_create_ruleset(&ra, sizeof(ra), 0);
-	check_if_cond_with_errno(fd < 0, ERR_SANDBOX_LANDLOCK_CREATE_RULESET);
+	check_if(fd < 0, ERR_SANDBOX_LANDLOCK_CREATE_RULESET, errno);
 
 	if (paths) {
 		check(ruleset_add_rule_paths(fd, paths, sz));
@@ -127,10 +127,10 @@ landlock_apply(const char **paths, int sz, int port)
 	}
 
 	rc = prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0);
-	check_if_cond_with_errno(rc < 0, ERR_SANDBOX_LANDLOCK_SET_NO_NEW_PRIVS);
+	check_if(rc < 0, ERR_SANDBOX_LANDLOCK_SET_NO_NEW_PRIVS, errno);
 
 	rc = landlock_restrict_self(fd, 0);
-	check_if_cond_with_errno(rc < 0, ERR_SANDBOX_LANDLOCK_RESTRICT_SELF);
+	check_if(rc < 0, ERR_SANDBOX_LANDLOCK_RESTRICT_SELF, errno);
 
 	debug("landlock_apply() succeeded");
 
