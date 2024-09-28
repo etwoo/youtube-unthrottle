@@ -109,7 +109,7 @@ DECLARE_MAKERESULT_IMPL(tiss, int typ, int num, const char *msg, size_t sz);
 #define makeresult_3arg(x, y, z)                                               \
 	_Generic(y, int: makeresult_tis, const char *: makeresult_tss)(x, y, z)
 
-#define GET_MACRO(A0, A1, A3, A4, NAME, ...) NAME
+#define CHOOSE_MACRO_BY_ARGN(A0, A1, A3, A4, NAME, ...) NAME
 
 /*
  * Create a result_t by passing any of the following sets of arguments:
@@ -120,11 +120,11 @@ DECLARE_MAKERESULT_IMPL(tiss, int typ, int num, const char *msg, size_t sz);
  * - an ERR_* value, an errno, and a details string
  */
 #define make_result(...)                                                       \
-	GET_MACRO(__VA_ARGS__,                                                 \
-	          makeresult_tiss,                                             \
-	          makeresult_3arg,                                             \
-	          makeresult_2arg,                                             \
-	          makeresult_t)                                                \
+	CHOOSE_MACRO_BY_ARGN(__VA_ARGS__,                                      \
+	                     makeresult_tiss,                                  \
+	                     makeresult_3arg,                                  \
+	                     makeresult_2arg,                                  \
+	                     makeresult_t)                                     \
 	(__VA_ARGS__)
 
 /*
