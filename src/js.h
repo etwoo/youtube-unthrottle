@@ -8,13 +8,16 @@
 
 struct parse_ops {
 	result_t (*got_video)(const char *, size_t, void *);
+	void *got_video_userdata;
 	result_t (*got_audio)(const char *, size_t, void *);
+	void *got_audio_userdata;
+	result_t (*choose_quality)(const char *, size_t, void *);
+	void *choose_quality_userdata;
 };
 
-result_t parse_json(const char *json,
-                    size_t sz,
-                    struct parse_ops *ops,
-                    void *userdata) WARN_UNUSED;
+result_t parse_json(const char *json_text,
+                    size_t json_text_sz,
+                    struct parse_ops *ops) WARN_UNUSED;
 
 result_t find_base_js_url(const char *html,
                           size_t sz,

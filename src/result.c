@@ -164,6 +164,9 @@ result_to_str(result_t r)
 	case ERR_JS_PARSE_JSON_CALLBACK_GOT_CIPHERTEXT_URL:
 		my_snprintf("Cannot set ciphertext URL: %s", url_error(r));
 		break;
+	case ERR_JS_PARSE_JSON_CALLBACK_QUALITY:
+		s = "Chose to skip stream based on qualityLevel";
+		break;
 	case ERR_JS_BASEJS_URL_FIND:
 		s = "Cannot find base.js URL in HTML document";
 		break;

@@ -18,13 +18,17 @@ parse_callback_noop(const char *val __attribute__((unused)),
 
 static struct parse_ops NOOP = {
 	.got_video = parse_callback_noop,
+	.got_video_userdata = NULL,
 	.got_audio = parse_callback_noop,
+	.got_audio_userdata = NULL,
+	.choose_quality = parse_callback_noop,
+	.choose_quality_userdata = NULL,
 };
 
 static WARN_UNUSED int
 parse(const char *str)
 {
-	result_t err = parse_json(str, strlen(str), &NOOP, NULL);
+	result_t err = parse_json(str, strlen(str), &NOOP);
 	return err.err;
 }
 
@@ -362,11 +366,6 @@ copy_audio(const char *val, size_t sz, void *userdata)
 	return RESULT_OK;
 }
 
-static struct parse_ops URL_COPY_OPS = {
-	.got_video = copy_video,
-	.got_audio = copy_audio,
-};
-
 TEST
 minimum_json_with_correct_shape(void)
 {
@@ -379,7 +378,15 @@ minimum_json_with_correct_shape(void)
 	struct url_copy urls;
 	url_copy_init(&urls);
 
-	result_t err = parse_json(json, strlen(json), &URL_COPY_OPS, &urls);
+	struct parse_ops pops = {
+		.got_video = copy_video,
+		.got_video_userdata = &urls,
+		.got_audio = copy_audio,
+		.got_audio_userdata = &urls,
+		.choose_quality = parse_callback_noop,
+		.choose_quality_userdata = NULL,
+	};
+	result_t err = parse_json(json, strlen(json), &pops);
 	ASSERT_EQ(err.err, OK);
 
 	ASSERT_STR_EQ(urls.audio, "http://a.test");
@@ -401,7 +408,15 @@ extra_adaptiveFormats_elements(void)
 	struct url_copy urls;
 	url_copy_init(&urls);
 
-	result_t err = parse_json(json, strlen(json), &URL_COPY_OPS, &urls);
+	struct parse_ops pops = {
+		.got_video = copy_video,
+		.got_video_userdata = &urls,
+		.got_audio = copy_audio,
+		.got_audio_userdata = &urls,
+		.choose_quality = parse_callback_noop,
+		.choose_quality_userdata = NULL,
+	};
+	result_t err = parse_json(json, strlen(json), &pops);
 	ASSERT_EQ(err.err, OK);
 
 	ASSERT_STR_EQ(urls.audio, "http://a.test");
@@ -409,10 +424,63 @@ extra_adaptiveFormats_elements(void)
 	PASS();
 }
 
+static WARN_UNUSED result_t
+choose_quality_skip_marked_entries(const char *val,
+                                   size_t sz,
+                                   void *userdata __attribute__((unused)))
+{
+	const char *skip_pattern = (const char *)userdata;
+	if (0 == strncmp(skip_pattern, val, sz)) {
+		return make_result(ERR_JS_PARSE_JSON_CALLBACK_QUALITY);
+	}
+	return RESULT_OK;
+}
+
+TEST
+choose_adaptiveFormats_elements(void)
+{
+	static const char json[] =
+		"{\"streamingData\": {\"adaptiveFormats\": [{"
+		"\"mimeType\": \"audio/foo\","
+		"\"qualityLabel\": \"skip\","
+		"\"url\": \"http://bad.test\""
+		"},"
+		"{"
+		"\"mimeType\": \"audio/bar\","
+		"\"url\": \"http://a.test\""
+		"},"
+		"{\"mimeType\": \"video/foo\","
+		"\"qualityLabel\": \"skip\","
+		"\"url\": \"http://bad.test\""
+		"},"
+		"{\"mimeType\": \"video/bar\","
+		"\"url\": \"http://v.test\""
+		"}]}}";
+
+	struct url_copy urls;
+	url_copy_init(&urls);
+
+	struct parse_ops pops = {
+		.got_video = copy_video,
+		.got_video_userdata = &urls,
+		.got_audio = copy_audio,
+		.got_audio_userdata = &urls,
+		.choose_quality = choose_quality_skip_marked_entries,
+		.choose_quality_userdata = "skip",
+	};
+	result_t err = parse_json(json, strlen(json), &pops);
+	ASSERT_EQ(err.err, OK);
+
+	ASSERT_STR_EQ("http://a.test", urls.audio);
+	ASSERT_STR_EQ("http://v.test", urls.video);
+	PASS();
+}
+
 SUITE(correct_shape)
 {
 	RUN_TEST(minimum_json_with_correct_shape);
 	RUN_TEST(extra_adaptiveFormats_elements);
+	RUN_TEST(choose_adaptiveFormats_elements);
 }
 
 TEST
