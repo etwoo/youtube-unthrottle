@@ -389,8 +389,8 @@ minimum_json_with_correct_shape(void)
 	result_t err = parse_json(json, strlen(json), &pops);
 	ASSERT_EQ(err.err, OK);
 
-	ASSERT_STR_EQ(urls.audio, "http://a.test");
-	ASSERT_STR_EQ(urls.video, "http://v.test");
+	ASSERT_STR_EQ("http://a.test", urls.audio);
+	ASSERT_STR_EQ("http://v.test", urls.video);
 	PASS();
 }
 
@@ -419,8 +419,8 @@ extra_adaptiveFormats_elements(void)
 	result_t err = parse_json(json, strlen(json), &pops);
 	ASSERT_EQ(err.err, OK);
 
-	ASSERT_STR_EQ(urls.audio, "http://a.test");
-	ASSERT_STR_EQ(urls.video, "http://v.test");
+	ASSERT_STR_EQ("http://a.test", urls.audio);
+	ASSERT_STR_EQ("http://v.test", urls.video);
 	PASS();
 }
 
@@ -539,7 +539,7 @@ find_js_timestamp_negative_strtoll_erange(void)
 	result_t err = find_js_timestamp(json, sizeof(json), &timestamp);
 	ASSERT_EQ(err.err, ERR_JS_TIMESTAMP_PARSE_LL);
 	ASSERT_EQ(err.num, ERANGE);
-	ASSERT_STR_EQ(err.msg, "9223372036854775808");
+	ASSERT_STR_EQ("9223372036854775808", err.msg);
 	ASSERT_LT(timestamp, 0);
 	PASS();
 }
@@ -751,7 +751,7 @@ call_with_duktape_minimum_valid_function(void)
 	                               &cops,
 	                               &result);
 	ASSERT_EQ(err.err, OK);
-	ASSERT_STR_EQ(result.str, "HELLO, WORLD!");
+	ASSERT_STR_EQ("HELLO, WORLD!", result.str);
 	PASS();
 }
 
