@@ -19,6 +19,10 @@ result_t parse_json(const char *json_text,
                     size_t json_text_sz,
                     struct parse_ops *ops) WARN_UNUSED;
 
+result_t make_innertube_json(const char *target_url,
+                             long long int timestamp,
+                             char **body);
+
 result_t find_base_js_url(const char *html,
                           size_t sz,
                           const char **basejs,

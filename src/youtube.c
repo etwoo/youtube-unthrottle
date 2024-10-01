@@ -275,51 +275,6 @@ download_and_mmap_tmpfd(const char *url,
 static const char INNERTUBE_URI[] =
 	"https://www.youtube.com/youtubei/v1/player";
 
-static const char INNERTUBE_POST_FMT[] =
-	"{\n"
-	"  \"context\": {\n"
-	"    \"client\": {\n"
-	"      \"clientName\": \"WEB_CREATOR\",\n"
-	"      \"clientVersion\": \"1.20240723.03.00\",\n"
-	"      \"hl\": \"en\",\n"
-	"      \"timeZone\": \"UTC\",\n"
-	"      \"utcOffsetMinutes\": 0\n"
-	"    }\n"
-	"  },\n"
-	"  \"videoId\": \"%.*s\",\n"
-	"  \"playbackContext\": {\n"
-	"    \"contentPlaybackContext\": {\n"
-	"      \"html5Preference\": \"HTML5_PREF_WANTS\",\n"
-	"      \"signatureTimestamp\": %lld,\n"
-	"    }\n"
-	"  },\n"
-	"  \"contentCheckOk\": true,\n"
-	"  \"racyCheckOk\": true\n"
-	"}";
-
-static WARN_UNUSED result_t
-format_innertube_post(const char *target, long long int ts, char **body)
-{
-	const char *id = NULL;
-	size_t sz = 0;
-
-	/* Note use of non-capturing group: (?:...) */
-	if (!re_capture("(?:&|\\?)v=([^&]+)(?:&|$)",
-	                target,
-	                strlen(target),
-	                &id,
-	                &sz)) {
-		return make_result(ERR_YOUTUBE_INNERTUBE_POST_ID);
-	}
-	debug("Parsed ID: %.*s", (int)sz, id);
-
-	const int rc = asprintf(body, INNERTUBE_POST_FMT, (int)sz, id, ts);
-	check_if(rc < 0, ERR_YOUTUBE_INNERTUBE_POST_ALLOC);
-
-	debug("Formatted InnerTube POST body:\n%s", *body);
-	return RESULT_OK;
-}
-
 struct downloaded {
 	const char *description; /* does not own */
 	int fd;
@@ -347,6 +302,12 @@ downloaded_cleanup(struct downloaded *d)
 
 static void
 strndup_free(char **strp)
+{
+	free(*strp);
+}
+
+static void
+json_dump_free(char **strp)
 {
 	free(*strp);
 }
@@ -418,8 +379,8 @@ youtube_stream_setup(struct youtube_stream *p,
 	long long int timestamp = 0;
 	check(find_js_timestamp(js.buf, js.sz, &timestamp));
 
-	char *innertube_post __attribute__((cleanup(asprintf_free))) = NULL;
-	check(format_innertube_post(target, timestamp, &innertube_post));
+	char *innertube_post __attribute__((cleanup(json_dump_free))) = NULL;
+	check(make_innertube_json(target, timestamp, &innertube_post));
 	check(download_and_mmap_tmpfd(INNERTUBE_URI,
 	                              NULL,
 	                              NULL,

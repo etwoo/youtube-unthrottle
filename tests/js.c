@@ -154,36 +154,35 @@ SUITE(invalid_json)
 TEST
 root_null(void)
 {
-	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA, parse("null"));
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("null"));
 	PASS();
 }
 
 TEST
 root_number(void)
 {
-	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA, parse("-123.456"));
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("-123.456"));
 	PASS();
 }
 
 TEST
 root_string_empty(void)
 {
-	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA, parse("\"\""));
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("\"\""));
 	PASS();
 }
 
 TEST
 root_string_nonempty(void)
 {
-	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA,
-	          parse("\"Hello, World!\""));
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("\"Hello, World!\""));
 	PASS();
 }
 
 TEST
 root_boolean(void)
 {
-	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA, parse("false"));
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("false"));
 	PASS();
 }
 

@@ -141,7 +141,7 @@ result_to_str(result_t r)
 		s = "Cannot allocate JavaScript interpreter heap";
 		break;
 	case ERR_JS_PARSE_JSON_DECODE:
-		my_snprintf("Error in duk_json_decode(): %s", r.msg);
+		my_snprintf("Error in json_load*(): %s", r.msg);
 		break;
 	case ERR_JS_PARSE_JSON_GET_STREAMINGDATA:
 		s = "Cannot get .streamingData";
@@ -166,6 +166,12 @@ result_to_str(result_t r)
 		break;
 	case ERR_JS_PARSE_JSON_CALLBACK_QUALITY:
 		s = "Chose to skip stream based on qualityLevel";
+		break;
+	case ERR_JS_MAKE_INNERTUBE_JSON_ID:
+		s = "Cannot find video ID for InnerTube POST";
+		break;
+	case ERR_JS_MAKE_INNERTUBE_JSON_ALLOC:
+		s = "Cannot allocate buffer for InnerTube POST";
 		break;
 	case ERR_JS_BASEJS_URL_FIND:
 		s = "Cannot find base.js URL in HTML document";
@@ -293,12 +299,6 @@ result_to_str(result_t r)
 		break;
 	case ERR_URL_DOWNLOAD_PERFORM:
 		my_snprintf("Error performing HTTP request: %s", easy_error(r));
-		break;
-	case ERR_YOUTUBE_INNERTUBE_POST_ID:
-		s = "Cannot find video ID for InnerTube POST";
-		break;
-	case ERR_YOUTUBE_INNERTUBE_POST_ALLOC:
-		s = "Cannot allocate buffer for InnerTube POST";
 		break;
 	case ERR_YOUTUBE_N_PARAM_QUERY_ALLOC:
 		s = "Cannot allocate ciphertext buffer";

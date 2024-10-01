@@ -16,10 +16,12 @@ target_link_libraries(youtube PRIVATE my_cflags)
 
 add_library(libcurl SHARED IMPORTED)
 add_library(libduktape SHARED IMPORTED)
+add_library(libjansson SHARED IMPORTED)
 add_library(libpcre2-8 SHARED IMPORTED)
 target_link_libraries(youtube PRIVATE
 	curl
 	duktape
+	jansson
 	pcre2-8
 )
 
