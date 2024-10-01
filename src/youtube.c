@@ -117,6 +117,15 @@ youtube_stream_set_audio(const char *val, size_t sz, void *userdata)
 	return youtube_stream_set_one(p, 0, val, sz);
 }
 
+static WARN_UNUSED result_t
+youtube_stream_choose_quality_any(const char *val,
+                                  size_t sz,
+                                  void *userdata __attribute__((unused)))
+{
+	debug("Any quality allowed: %.*s", (int)sz, val);
+	return RESULT_OK;
+}
+
 static void
 curl_free_getargs(char **getargs)
 {
@@ -355,6 +364,7 @@ ciphertexts_cleanup(char *ciphertexts[][2])
 result_t
 youtube_stream_setup(struct youtube_stream *p,
                      struct youtube_setup_ops *ops,
+                     void *userdata,
                      const char *target)
 {
 	struct downloaded json __attribute__((cleanup(downloaded_cleanup)));
@@ -366,7 +376,7 @@ youtube_stream_setup(struct youtube_stream *p,
 	downloaded_init(&js, "JavaScript tmpfile");
 
 	if (ops && ops->before) {
-		check(ops->before(p));
+		check(ops->before(userdata));
 	}
 
 	check(tmpfd(&json.fd));
@@ -374,7 +384,7 @@ youtube_stream_setup(struct youtube_stream *p,
 	check(tmpfd(&js.fd));
 
 	if (ops && ops->before_inet) {
-		check(ops->before_inet(p));
+		check(ops->before_inet(userdata));
 	}
 
 	check(download_and_mmap_tmpfd(target,
@@ -419,25 +429,32 @@ youtube_stream_setup(struct youtube_stream *p,
 	                              &json.sz));
 
 	if (ops && ops->after_inet) {
-		check(ops->after_inet(p));
+		check(ops->after_inet(userdata));
 	}
 
 	if (ops && ops->before_parse) {
-		check(ops->before_parse(p));
+		check(ops->before_parse(userdata));
 	}
 
 	struct parse_ops pops = {
 		.got_video = youtube_stream_set_video,
+		.got_video_userdata = p,
 		.got_audio = youtube_stream_set_audio,
+		.got_audio_userdata = p,
+		.choose_quality = ops->during_parse_choose_quality,
+		.choose_quality_userdata = userdata,
 	};
-	check(parse_json(json.buf, json.sz, &pops, p));
+	if (pops.choose_quality == NULL) {
+		pops.choose_quality = youtube_stream_choose_quality_any;
+	}
+	check(parse_json(json.buf, json.sz, &pops));
 
 	if (ops && ops->after_parse) {
-		check(ops->after_parse(p));
+		check(ops->after_parse(userdata));
 	}
 
 	if (ops && ops->before_eval) {
-		check(ops->before_eval(p));
+		check(ops->before_eval(userdata));
 	}
 
 	const char *deobfuscator = NULL;
@@ -459,11 +476,11 @@ youtube_stream_setup(struct youtube_stream *p,
 	                      p));
 
 	if (ops && ops->after_eval) {
-		check(ops->after_eval(p));
+		check(ops->after_eval(userdata));
 	}
 
 	if (ops && ops->after) {
-		check(ops->after(p));
+		check(ops->after(userdata));
 	}
 
 	return RESULT_OK;

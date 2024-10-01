@@ -48,10 +48,7 @@ static const char MTVIDEO[] = "video/";
 static const char MTAUDIO[] = "audio/";
 
 result_t
-parse_json(const char *json,
-           size_t json_sz,
-           struct parse_ops *ops,
-           void *userdata)
+parse_json(const char *json, size_t json_sz, struct parse_ops *ops)
 {
 	// debug("Got JSON blob: %.*s", json_sz, json);
 	debug("Got JSON blob of size %zd", json_sz);
@@ -100,18 +97,31 @@ parse_json(const char *json,
 			return make_result(ERR_JS_PARSE_JSON_ELEM_URL);
 		}
 
-		const char *url = duk_get_string(ctx, -1);
-		const char *mimetype = duk_get_string(ctx, -2);
-		assert(url != NULL && mimetype != NULL);
+		bool choose_quality = true;
+		if (0 != duk_get_prop_literal(ctx, -3, "qualityLabel") &&
+		    DUK_TYPE_STRING == duk_get_type(ctx, -1)) {
+			const char *quality = duk_get_string(ctx, -1);
+			const size_t qz = strlen(quality);
+			void *ud = ops->choose_quality_userdata;
+			result_t err = ops->choose_quality(quality, qz, ud);
+			choose_quality = (err.err == OK);
+		}
 
-		if (0 == strncmp(mimetype, MTVIDEO, strlen(MTVIDEO)) &&
+		const char *url = duk_get_string(ctx, -2);
+		const char *mimetype = duk_get_string(ctx, -3);
+		assert(url != NULL && mimetype != NULL);
+		const size_t uz = strlen(url);
+
+		if (choose_quality &&
+		    0 == strncmp(mimetype, MTVIDEO, strlen(MTVIDEO)) &&
 		    false == got_video) {
-			check(ops->got_video(url, strlen(url), userdata));
+			check(ops->got_video(url, uz, ops->got_video_userdata));
 			got_video = true;
 		}
-		if (0 == strncmp(mimetype, MTAUDIO, strlen(MTAUDIO)) &&
+		if (choose_quality &&
+		    0 == strncmp(mimetype, MTAUDIO, strlen(MTAUDIO)) &&
 		    false == got_audio) {
-			check(ops->got_audio(url, strlen(url), userdata));
+			check(ops->got_audio(url, uz, ops->got_audio_userdata));
 			got_audio = true;
 		}
 
@@ -123,12 +133,14 @@ parse_json(const char *json,
 		 * from) n-parameter decoding.
 		 * */
 		const duk_bool_t get_streaming_cipher =
-			duk_get_prop_literal(ctx, -3, "signatureCipher");
+			duk_get_prop_literal(ctx, -4, "signatureCipher");
 		if (get_streaming_cipher && !warned_about_signature_cipher) {
 			warned_about_signature_cipher = true;
 			info("signatureCipher is unsupported!");
 		}
 		duk_pop(ctx); /* for .signatureCipher */
+
+		duk_pop(ctx); /* for .qualityLabel */
 
 		/* restore stack, to prepare for (i+1)-th element */
 		duk_pop_3(ctx);
