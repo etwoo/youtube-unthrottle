@@ -13,41 +13,27 @@
 static WARN_UNUSED const char *
 make(int err_type)
 {
-	result_t err = {
-		.err = err_type,
-	};
-	return result_to_str(err);
+	return result_to_str(make_result(err_type));
 }
 
 static WARN_UNUSED const char *
 make_n(int err_type)
 {
-	result_t err = {
-		.err = err_type,
-		.num = 0,
-	};
-	return result_to_str(err);
+	return result_to_str(make_result(err_type, 0));
 }
+
+static const char MAKE_RESULT_PLACEHOLDER[] = "foobar";
 
 static WARN_UNUSED const char *
 make_s(int err_type)
 {
-	result_t err = {
-		.err = err_type,
-		.msg = "foobar",
-	};
-	return result_to_str(err);
+	return result_to_str(make_result(err_type, MAKE_RESULT_PLACEHOLDER));
 }
 
 static WARN_UNUSED const char *
 make_ns(int err_type)
 {
-	result_t err = {
-		.err = err_type,
-		.num = 0,
-		.msg = "foobar",
-	};
-	return result_to_str(err);
+	return result_to_str(make_result(err_type, 0, MAKE_RESULT_PLACEHOLDER));
 }
 
 static const char CANNOT_ALLOC[] = "Cannot allocate";
