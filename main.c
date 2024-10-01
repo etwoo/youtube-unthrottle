@@ -111,7 +111,7 @@ struct quality {
 	pcre2_match_data *md;
 };
 
-static bool
+static WARN_UNUSED bool
 parse_quality_choices(const char *str, struct quality *q)
 {
 	assert(q->re == NULL && q->md == NULL);
