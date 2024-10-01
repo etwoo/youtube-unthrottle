@@ -13,12 +13,13 @@ shift $((OPTIND - 1))
 
 COVERAGE_PROFILE_DIR="$1"
 COBERTURA_OUTPUT="$2"
-BIN='./build/youtube-unthrottle'
-PROFILE_DATA='coverage.profdata'
-LCOV_FMT='coverage.lcov'
-LCOV_TO_COBERTURA=$(find ./build -name lcov_cobertura.py)
+BUILD='./build'
+BIN="$BUILD/youtube-unthrottle"
+PROFILE_DATA="$BUILD/coverage.profdata"
+LCOV_FMT="$BUILD/coverage.lcov"
+LCOV_TO_COBERTURA=$(find "$BUILD" -name lcov_cobertura.py)
 
-find ./build -path "*/$COVERAGE_PROFILE_DIR/*" -print0 | \
+find "$BUILD" -path "*/$COVERAGE_PROFILE_DIR/*" -print0 | \
 	xargs -0 llvm-profdata merge -sparse -o "$PROFILE_DATA"
 
 #

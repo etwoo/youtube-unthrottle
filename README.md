@@ -130,8 +130,8 @@ To generate a code coverage report:
 CC=clang CXX=clang++ cmake --fresh -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=1 -DBUILD_COVERAGE=1 . -B ./build
 cmake --build ./build --clean-first
 COVERAGE_PROFILE_DIR=coverage.profraw ctest --test-dir ./build/tests/
-./scripts/coverage.sh coverage.profraw coverage.xml
-llvm-cov show -instr-profile=coverage.profdata -object ./build/youtube-unthrottle
+./scripts/coverage.sh coverage.profraw ./build/coverage.xml
+llvm-cov show -instr-profile=./build/coverage.profdata -object ./build/youtube-unthrottle
 ```
 
 To build and fuzz:
