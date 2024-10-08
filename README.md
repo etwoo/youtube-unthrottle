@@ -61,7 +61,7 @@ more for fun than anything else.
 
 ## Platforms
 
-I've only tested this on 64-bit Arch Linux so far.
+I've tested on 64-bit Arch Linux and 64-bit OpenBSD 7.5.
 
 ## Dependencies
 
@@ -69,6 +69,7 @@ I've only tested this on 64-bit Arch Linux so far.
 cmake
 curl
 duktape
+jansson
 libseccomp
 pcre2
 ```
@@ -77,17 +78,18 @@ I developed with the following versions of these libaries (though I am
 currently assuming that many other versions would work equally well):
 
 ```sh
-$ pacman -Q cmake curl duktape pcre2
+$ pacman -Q cmake curl duktape jansson libseccomp pcre2
 cmake 3.30.0-1
 curl 8.8.0-1
 duktape 2.7.0-6
+jansson 2.14-4
 libseccomp 2.5.5-3
 pcre2 10.44-1
 ```
 
 Optional dependencies for code coverage and fuzzing:
 
-```sh
+```
 clang
 llvm
 ```

@@ -1,7 +1,7 @@
 image: archlinux/archlinux:base-devel
 
 .build_dependencies: &build_dependencies
-    - pacman --noconfirm -Sy cmake clang curl duktape git libseccomp pcre2
+    - pacman --noconfirm -Sy cmake clang curl duktape git jansson libseccomp pcre2
 
 .build_steps: &build_steps
     - cmake -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=1 . -B ./build

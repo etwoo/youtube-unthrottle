@@ -13,6 +13,13 @@
  */
 #include <duktape.h>
 
+/*
+ * Some helpful Jansson references:
+ *
+ *   https://jansson.readthedocs.io/en/latest/apiref.html
+ */
+#include <jansson.h>
+
 static WARN_UNUSED const char *
 peek(duk_context *ctx)
 {
@@ -31,19 +38,6 @@ destroy_heap(duk_context **ctx)
 	duk_destroy_heap(*ctx); /* handles NULL gracefully */
 }
 
-/*
- * Set up boilerplate so that it is possible to provide some error logs when
- * given an invalid JSON payload. For reference, see:
- *
- *   https://github.com/svaarala/duktape/issues/386#issuecomment-417087800
- */
-static WARN_UNUSED duk_ret_t
-try_decode(duk_context *ctx, void *udata __attribute__((unused)))
-{
-	duk_json_decode(ctx, -1);
-	return 1;
-}
-
 static const char MTVIDEO[] = "video/";
 static const char MTAUDIO[] = "audio/";
 
@@ -53,64 +47,67 @@ parse_json(const char *json, size_t json_sz, struct parse_ops *ops)
 	// debug("Got JSON blob: %.*s", json_sz, json);
 	debug("Got JSON blob of size %zd", json_sz);
 
-	duk_context *ctx __attribute__((cleanup(destroy_heap))) =
-		duk_create_heap_default(); /* may return NULL! */
-	check_if(ctx == NULL, ERR_JS_PARSE_JSON_ALLOC_HEAP);
+	json_error_t json_error;
 
-	duk_push_lstring(ctx, json, json_sz);
-	duk_ret_t res = duk_safe_call(ctx, try_decode, NULL, 1, 1);
-	if (res != DUK_EXEC_SUCCESS) {
-		return make_result(ERR_JS_PARSE_JSON_DECODE, peek(ctx));
-	}
-
-	if (DUK_TYPE_OBJECT != duk_get_type(ctx, -1) ||
-	    0 == duk_get_prop_literal(ctx, -1, "streamingData")) {
+	json_auto_t *obj = json_loadb(json, json_sz, 0, &json_error);
+	if (obj == NULL) {
+		return make_result(ERR_JS_PARSE_JSON_DECODE,
+		                   (const char *)json_error.text);
+	} else if (!json_is_object(obj)) {
 		return make_result(ERR_JS_PARSE_JSON_GET_STREAMINGDATA);
 	}
-	if (DUK_TYPE_OBJECT != duk_get_type(ctx, -1) ||
-	    0 == duk_get_prop_literal(ctx, -1, "adaptiveFormats")) {
+
+	json_t *streamingData = json_object_get(obj, "streamingData");
+	if (streamingData == NULL) {
+		return make_result(ERR_JS_PARSE_JSON_GET_STREAMINGDATA);
+	} else if (!json_is_object(streamingData)) {
 		return make_result(ERR_JS_PARSE_JSON_GET_ADAPTIVEFORMATS);
 	}
-	if (DUK_TYPE_OBJECT != duk_get_type(ctx, -1)) {
+
+	json_t *adaptiveFormats =
+		json_object_get(streamingData, "adaptiveFormats");
+	if (adaptiveFormats == NULL) {
+		return make_result(ERR_JS_PARSE_JSON_GET_ADAPTIVEFORMATS);
+	} else if (!json_is_array(adaptiveFormats)) {
 		return make_result(ERR_JS_PARSE_JSON_ADAPTIVEFORMATS_TYPE);
 	}
 
 	bool got_video = false;
 	bool got_audio = false;
 	bool warned_about_signature_cipher = false;
-	const duk_size_t sz = duk_get_length(ctx, -1);
-	for (duk_size_t i = 0; i < sz; ++i) {
-		/* get i-th element of adaptiveFormats array */
-		duk_get_prop_index(ctx, -1, i);
 
-		if (DUK_TYPE_OBJECT != duk_get_type(ctx, -1)) {
+	size_t i = 0;
+	json_t *cur = NULL;
+	json_array_foreach (adaptiveFormats, i, cur) {
+		if (!json_is_object(cur)) {
 			return make_result(ERR_JS_PARSE_JSON_ELEM_TYPE);
 		}
 
-		if (0 == duk_get_prop_literal(ctx, -1, "mimeType") ||
-		    DUK_TYPE_STRING != duk_get_type(ctx, -1)) {
+		json_t *json_mimetype = json_object_get(cur, "mimeType");
+		if (!json_is_string(json_mimetype)) {
 			return make_result(ERR_JS_PARSE_JSON_ELEM_MIMETYPE);
 		}
+		const char *mimetype = json_string_value(json_mimetype);
+		assert(mimetype != NULL);
 
-		if (0 == duk_get_prop_literal(ctx, -2, "url") ||
-		    DUK_TYPE_STRING != duk_get_type(ctx, -1)) {
+		json_t *json_url = json_object_get(cur, "url");
+		if (!json_is_string(json_url)) {
 			return make_result(ERR_JS_PARSE_JSON_ELEM_URL);
 		}
+		const char *url = json_string_value(json_url);
+		const size_t uz = json_string_length(json_url);
+		assert(url != NULL);
 
 		bool choose_quality = true;
-		if (0 != duk_get_prop_literal(ctx, -3, "qualityLabel") &&
-		    DUK_TYPE_STRING == duk_get_type(ctx, -1)) {
-			const char *quality = duk_get_string(ctx, -1);
-			const size_t qz = strlen(quality);
+		json_t *quality = json_object_get(cur, "qualityLabel");
+		if (json_is_string(quality)) {
+			const char *q = json_string_value(quality);
+			assert(q != NULL);
+			const size_t qz = json_string_length(quality);
 			void *ud = ops->choose_quality_userdata;
-			result_t err = ops->choose_quality(quality, qz, ud);
+			result_t err = ops->choose_quality(q, qz, ud);
 			choose_quality = (err.err == OK);
 		}
-
-		const char *url = duk_get_string(ctx, -2);
-		const char *mimetype = duk_get_string(ctx, -3);
-		assert(url != NULL && mimetype != NULL);
-		const size_t uz = strlen(url);
 
 		if (choose_quality &&
 		    0 == strncmp(mimetype, MTVIDEO, strlen(MTVIDEO)) &&
@@ -132,21 +129,68 @@ parse_json(const char *json, size_t json_sz, struct parse_ops *ops)
 		 * additional deobfuscation logic, similar to (but distinct
 		 * from) n-parameter decoding.
 		 * */
-		const duk_bool_t get_streaming_cipher =
-			duk_get_prop_literal(ctx, -4, "signatureCipher");
+		json_t *get_streaming_cipher =
+			json_object_get(cur, "signatureCipher");
 		if (get_streaming_cipher && !warned_about_signature_cipher) {
 			warned_about_signature_cipher = true;
 			info("signatureCipher is unsupported!");
 		}
-		duk_pop(ctx); /* for .signatureCipher */
-
-		duk_pop(ctx); /* for .qualityLabel */
-
-		/* restore stack, to prepare for (i+1)-th element */
-		duk_pop_3(ctx);
 	}
 
-	duk_pop_2(ctx); /* for .streamingData.adaptiveFormats */
+	return RESULT_OK;
+}
+
+result_t
+make_innertube_json(const char *target_url,
+                    long long int timestamp,
+                    char **body)
+{
+	const char *id = NULL;
+	size_t sz = 0;
+
+	/* Note use of non-capturing group: (?:...) */
+	if (!re_capture("(?:&|\\?)v=([^&]+)(?:&|$)",
+	                target_url,
+	                strlen(target_url),
+	                &id,
+	                &sz)) {
+		return make_result(ERR_JS_MAKE_INNERTUBE_JSON_ID);
+	}
+	debug("Parsed ID: %.*s", (int)sz, id);
+
+	json_auto_t *obj = NULL;
+	obj = json_pack("{s{s{ss,ss,ss,ss,si}},ss%,s{s{ss,si}},sb,sb}",
+	                "context",
+	                "client",
+	                "clientName",
+	                "WEB_CREATOR",
+	                "clientVersion",
+	                "1.20240723.03.00",
+	                "hl",
+	                "en",
+	                "timeZone",
+	                "UTC",
+	                "utcOffsetMinutes",
+	                0,
+	                "videoId",
+	                id,
+	                sz,
+	                "playbackContext",
+	                "contentPlaybackContext",
+	                "html5Preference",
+	                "HTML5_PREF_WANTS",
+	                "signatureTimestamp",
+	                timestamp,
+	                "contentCheckOk",
+	                1,
+	                "racyCheckOk",
+	                1);
+	check_if(obj == NULL, ERR_JS_MAKE_INNERTUBE_JSON_ALLOC);
+
+	*body = json_dumps(obj, JSON_COMPACT);
+	check_if(*body == NULL, ERR_JS_MAKE_INNERTUBE_JSON_ALLOC);
+
+	debug("Formatted InnerTube POST body: %s", *body);
 	return RESULT_OK;
 }
 

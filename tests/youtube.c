@@ -188,7 +188,7 @@ stream_setup_edge_cases_target_url_missing_stream_id(void)
 	ASSERT(stream);
 
 	result_t err = youtube_stream_setup(stream, &NOOP, NULL, YT_MISSING_ID);
-	ASSERT_EQ(err.err, ERR_YOUTUBE_INNERTUBE_POST_ID);
+	ASSERT_EQ(err.err, ERR_JS_MAKE_INNERTUBE_JSON_ID);
 
 	youtube_stream_cleanup(stream);
 	PASS();
