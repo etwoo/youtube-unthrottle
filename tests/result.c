@@ -1,6 +1,5 @@
 #include "result.h"
 
-#include "coverage.h"
 #include "debug.h"
 #include "greatest.h"
 
@@ -116,17 +115,4 @@ print_to_str_each_enum_value(void)
 SUITE(print_to_str)
 {
 	RUN_TEST(print_to_str_each_enum_value);
-}
-
-int result(int argc, char **argv);
-int
-result(int argc, char **argv)
-{
-	int fd __attribute__((cleanup(coverage_cleanup))) = coverage_open();
-
-	GREATEST_MAIN_BEGIN();
-
-	RUN_SUITE(print_to_str);
-
-	GREATEST_MAIN_END();
 }

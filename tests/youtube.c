@@ -1,6 +1,5 @@
 #include "youtube.h"
 
-#include "coverage.h"
 #include "debug.h"
 #include "greatest.h"
 #include "url.h"
@@ -322,18 +321,14 @@ SUITE(stream_setup_n_param_positions)
 	RUN_TEST(stream_setup_edge_cases_entire_url_missing);
 }
 
-int youtube(int argc, char **argv);
-int
-youtube(int argc, char **argv)
+TEST
+global_cleanup(void)
 {
-	int fd __attribute__((cleanup(coverage_cleanup))) = coverage_open();
-
-	GREATEST_MAIN_BEGIN();
-
-	RUN_SUITE(stream_setup_simple);
-	RUN_SUITE(stream_setup_target_url_variations);
-	RUN_SUITE(stream_setup_n_param_positions);
-
 	youtube_global_cleanup();
-	GREATEST_MAIN_END();
+	PASS();
+}
+
+SUITE(stream_cleanup)
+{
+	RUN_TEST(global_cleanup);
 }

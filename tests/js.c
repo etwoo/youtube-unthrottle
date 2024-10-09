@@ -1,7 +1,6 @@
 #include "js.h"
 
 #include "array.h"
-#include "coverage.h"
 #include "debug.h"
 #include "greatest.h"
 
@@ -760,22 +759,4 @@ SUITE(call_with_duktape)
 	RUN_TEST(call_with_duktape_pcall_fail);
 	RUN_TEST(call_with_duktape_pcall_incorrect_result_type);
 	RUN_TEST(call_with_duktape_minimum_valid_function);
-}
-
-int js(int argc, char **argv);
-int
-js(int argc, char **argv)
-{
-	int fd __attribute__((cleanup(coverage_cleanup))) = coverage_open();
-
-	GREATEST_MAIN_BEGIN();
-
-	RUN_SUITE(invalid_json);
-	RUN_SUITE(incorrect_root_type);
-	RUN_SUITE(incorrect_shape);
-	RUN_SUITE(correct_shape);
-	RUN_SUITE(find_with_pcre);
-	RUN_SUITE(call_with_duktape);
-
-	GREATEST_MAIN_END();
 }
