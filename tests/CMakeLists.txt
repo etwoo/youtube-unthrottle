@@ -20,13 +20,24 @@ macro(register_test source)
 endmacro()
 
 macro(generate_test_driver)
+	add_custom_command(
+		OUTPUT test_suites.c
+		COMMAND
+			${CMAKE_SOURCE_DIR}/scripts/collect-test-suites.sh
+			${CMAKE_CURRENT_BINARY_DIR}/test_suites.c
+			${TEST_SOURCES}
+		DEPENDS
+			${CMAKE_SOURCE_DIR}/scripts/collect-test-suites.sh
+			${TEST_SOURCES}
+		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+	)
 	create_test_sourcelist(generated_sources
 		test_driver.c
 		${TEST_SOURCES}
-		EXTRA_INCLUDE test_driver.h
 	)
 	add_executable(test-driver
 		${generated_sources}
+		test_suites.c
 	)
 	target_include_directories(test-driver PRIVATE
 		${CMAKE_CURRENT_SOURCE_DIR} # for test_driver.h

@@ -1,6 +1,5 @@
 #include "landlock.h"
 
-#include "coverage.h"
 #include "greatest.h"
 #include "tmpfile.h"
 
@@ -137,19 +136,4 @@ SUITE(full_landlock)
 	RUN_TEST(setup_full_landlock);
 	RUN_TEST(after_landlock_filesystem);
 	RUN_TEST(after_landlock_network);
-}
-
-int landlock(int argc, char **argv);
-int
-landlock(int argc, char **argv)
-{
-	int fd __attribute__((cleanup(coverage_cleanup))) = coverage_open();
-
-	GREATEST_MAIN_BEGIN();
-
-	RUN_SUITE(before_landlock);
-	RUN_SUITE(partial_landlock);
-	RUN_SUITE(full_landlock);
-
-	GREATEST_MAIN_END();
 }

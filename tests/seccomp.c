@@ -1,6 +1,5 @@
 #include "seccomp.h"
 
-#include "coverage.h"
 #include "greatest.h"
 #include "tmpfile.h"
 
@@ -228,21 +227,3 @@ SUITE(seccomp_io_sealed_sandbox)
  * unit test rig to exercise this scenario, such that seccomp_apply() can be
  * applied to a child process without restricting the unit test rig itself.
  */
-
-int seccomp(int argc, char **argv);
-int
-seccomp(int argc, char **argv)
-{
-	int fd __attribute__((cleanup(coverage_cleanup))) = coverage_open();
-
-	GREATEST_MAIN_BEGIN();
-
-	RUN_SUITE(before_seccomp);
-	RUN_SUITE(seccomp_io_inet_tmpfile);
-	RUN_SUITE(seccomp_io_inet_rpath);
-	RUN_SUITE(seccomp_io_inet);
-	RUN_SUITE(seccomp_io);
-	RUN_SUITE(seccomp_io_sealed_sandbox);
-
-	GREATEST_MAIN_END();
-}

@@ -1,6 +1,5 @@
 #include "re.h"
 
-#include "coverage.h"
 #include "greatest.h"
 
 TEST
@@ -56,17 +55,4 @@ SUITE(capture)
 	RUN_TEST(capture_pattern_match_one);
 	RUN_TEST(capture_pattern_match_none);
 	RUN_TEST(capture_pattern_match_fail_on_null_haystack);
-}
-
-int re(int argc, char **argv);
-int
-re(int argc, char **argv)
-{
-	int fd __attribute__((cleanup(coverage_cleanup))) = coverage_open();
-
-	GREATEST_MAIN_BEGIN();
-
-	RUN_SUITE(capture);
-
-	GREATEST_MAIN_END();
 }
