@@ -9,7 +9,8 @@ void youtube_global_cleanup(void);
 
 typedef struct youtube_stream *youtube_handle_t;
 
-youtube_handle_t youtube_stream_init(void) WARN_UNUSED;
+youtube_handle_t youtube_stream_init(const char *proof_of_origin,
+                                     const char *visitor_data) WARN_UNUSED;
 void youtube_stream_cleanup(youtube_handle_t h);
 
 struct youtube_setup_ops {

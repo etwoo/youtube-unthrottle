@@ -16,6 +16,8 @@
 
 struct youtube_stream {
 	CURLU *url[2];
+	char *proof_of_origin;
+	char *visitor_data;
 };
 
 result_t
@@ -30,22 +32,31 @@ youtube_global_cleanup(void)
 	url_global_cleanup();
 }
 
-struct youtube_stream *
-youtube_stream_init(void)
-{
-	struct youtube_stream *p = malloc(sizeof(*p));
-	if (p == NULL) {
-		goto oom;
+#define check_oom(p)                                                           \
+	if ((p) == NULL) {                                                     \
+		goto oom;                                                      \
 	}
 
-	memset(p->url, 0, sizeof(p->url)); /* zero early, just in case */
+struct youtube_stream *
+youtube_stream_init(const char *proof_of_origin, const char *visitor_data)
+{
+	assert(proof_of_origin && visitor_data);
+
+	struct youtube_stream *p = malloc(sizeof(*p));
+	check_oom(p);
+
+	memset(p, 0, sizeof(*p)); /* zero early, just in case */
 
 	for (size_t i = 0; i < ARRAY_SIZE(p->url); ++i) {
 		p->url[i] = curl_url(); /* may return NULL! */
-		if (p->url[i] == NULL) {
-			goto oom;
-		}
+		check_oom(p->url[i]);
 	}
+
+	p->proof_of_origin = strdup(proof_of_origin);
+	check_oom(p->proof_of_origin);
+
+	p->visitor_data = strdup(visitor_data);
+	check_oom(p->visitor_data);
 
 	return p;
 
@@ -53,6 +64,8 @@ oom:
 	youtube_stream_cleanup(p);
 	return NULL;
 }
+
+#undef check_oom
 
 void
 youtube_stream_cleanup(struct youtube_stream *p)
@@ -64,6 +77,8 @@ youtube_stream_cleanup(struct youtube_stream *p)
 		curl_url_cleanup(p->url[i]); /* handles NULL gracefully */
 		p->url[i] = NULL;
 	}
+	free(p->proof_of_origin);
+	free(p->visitor_data);
 	free(p);
 }
 
@@ -90,14 +105,31 @@ youtube_stream_visitor(struct youtube_stream *p, void (*visit)(const char *))
 	return RESULT_OK;
 }
 
+static void
+asprintf_free(char **strp)
+{
+	free(*strp);
+}
+
 static WARN_UNUSED result_t
 youtube_stream_set_one(struct youtube_stream *p,
                        int idx,
                        const char *val,
                        size_t sz __attribute__((unused)))
 {
-	CURLUcode uc = curl_url_set(p->url[idx], CURLUPART_URL, val, 0);
+	CURLUcode uc = CURLUE_OK;
+	CURLU *u = p->url[idx];
+
+	uc = curl_url_set(u, CURLUPART_URL, val, 0);
 	check_if_num(uc, ERR_JS_PARSE_JSON_CALLBACK_GOT_CIPHERTEXT_URL);
+
+	char *kv __attribute__((cleanup(asprintf_free))) = NULL;
+	const int rc = asprintf(&kv, "pot=%s", p->proof_of_origin);
+	check_if(rc < 0, ERR_YOUTUBE_POT_PARAM_KVPAIR_ALLOC);
+
+	uc = curl_url_set(u, CURLUPART_QUERY, kv, CURLU_APPENDQUERY);
+	check_if_num(uc, ERR_YOUTUBE_POT_PARAM_QUERY_APPEND);
+
 	return RESULT_OK;
 }
 
@@ -231,12 +263,6 @@ pop_n_param_all(struct youtube_stream *p, char **results, size_t capacity)
 	return RESULT_OK;
 }
 
-static void
-asprintf_free(char **strp)
-{
-	free(*strp);
-}
-
 static WARN_UNUSED result_t
 append_n_param(const char *plaintext, size_t sz, size_t pos, void *userdata)
 {
@@ -249,7 +275,7 @@ append_n_param(const char *plaintext, size_t sz, size_t pos, void *userdata)
 	assert(pos < ARRAY_SIZE(p->url));
 	CURLU *u = p->url[pos];
 	CURLUcode uc = curl_url_set(u, CURLUPART_QUERY, kv, CURLU_APPENDQUERY);
-	check_if_num(uc, ERR_YOUTUBE_N_PARAM_QUERY_APPEND_PLAINTEXT);
+	check_if_num(uc, ERR_YOUTUBE_N_PARAM_QUERY_APPEND);
 
 	return RESULT_OK;
 }
@@ -259,13 +285,14 @@ download_and_mmap_tmpfd(const char *url,
                         const char *host,
                         const char *path,
                         const char *post_body,
+                        const char *post_header,
                         int fd,
                         void **addr,
                         unsigned int *sz)
 {
 	assert(fd >= 0);
 
-	check(url_download(url, host, path, post_body, fd));
+	check(url_download(url, host, path, post_body, post_header, fd));
 	check(tmpmap(fd, addr, sz));
 
 	debug("Downloaded %s to fd=%d", url ? url : path, fd);
@@ -274,6 +301,15 @@ download_and_mmap_tmpfd(const char *url,
 
 static const char INNERTUBE_URI[] =
 	"https://www.youtube.com/youtubei/v1/player";
+
+static WARN_UNUSED result_t
+make_http_header_visitor_id(const char *visitor_data, char **strp)
+{
+	const int rc = asprintf(strp, "X-Goog-Visitor-Id: %s", visitor_data);
+	check_if(rc < 0, ERR_YOUTUBE_VISITOR_DATA_HEADER_ALLOC);
+	debug("Formatted InnerTube header: %s", *strp);
+	return RESULT_OK;
+}
 
 struct downloaded {
 	const char *description; /* does not own */
@@ -352,6 +388,7 @@ youtube_stream_setup(struct youtube_stream *p,
 	                              NULL,
 	                              NULL,
 	                              NULL,
+	                              NULL,
 	                              html.fd,
 	                              &html.buf,
 	                              &html.sz));
@@ -372,6 +409,7 @@ youtube_stream_setup(struct youtube_stream *p,
 	                              "www.youtube.com",
 	                              null_terminated_basejs,
 	                              NULL,
+	                              NULL,
 	                              js.fd,
 	                              &js.buf,
 	                              &js.sz));
@@ -380,11 +418,19 @@ youtube_stream_setup(struct youtube_stream *p,
 	check(find_js_timestamp(js.buf, js.sz, &timestamp));
 
 	char *innertube_post __attribute__((cleanup(json_dump_free))) = NULL;
-	check(make_innertube_json(target, timestamp, &innertube_post));
+	check(make_innertube_json(target,
+	                          p->proof_of_origin,
+	                          timestamp,
+	                          &innertube_post));
+
+	char *innertube_header __attribute__((cleanup(asprintf_free))) = NULL;
+	check(make_http_header_visitor_id(p->visitor_data, &innertube_header));
+
 	check(download_and_mmap_tmpfd(INNERTUBE_URI,
 	                              NULL,
 	                              NULL,
 	                              innertube_post,
+	                              innertube_header,
 	                              json.fd,
 	                              &json.buf,
 	                              &json.sz));

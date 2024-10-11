@@ -142,6 +142,7 @@ parse_json(const char *json, size_t json_sz, struct parse_ops *ops)
 
 result_t
 make_innertube_json(const char *target_url,
+                    const char *proof_of_origin,
                     long long int timestamp,
                     char **body)
 {
@@ -159,13 +160,13 @@ make_innertube_json(const char *target_url,
 	debug("Parsed ID: %.*s", (int)sz, id);
 
 	json_auto_t *obj = NULL;
-	obj = json_pack("{s{s{ss,ss,ss,ss,si}},ss%,s{s{ss,si}},sb,sb}",
+	obj = json_pack("{s{s{ss,ss,ss,ss,si}},ss%,s{ss},s{s{ss,si}},sb,sb}",
 	                "context",
 	                "client",
 	                "clientName",
-	                "WEB_CREATOR",
+	                "WEB",
 	                "clientVersion",
-	                "1.20240723.03.00",
+	                "2.20240726.00.00",
 	                "hl",
 	                "en",
 	                "timeZone",
@@ -175,6 +176,9 @@ make_innertube_json(const char *target_url,
 	                "videoId",
 	                id,
 	                sz,
+	                "serviceIntegrityDimensions",
+	                "poToken",
+	                proof_of_origin,
 	                "playbackContext",
 	                "contentPlaybackContext",
 	                "html5Preference",

@@ -15,6 +15,7 @@
 #include "youtube.h"
 
 #include <assert.h>
+#include <getopt.h> /* for getopt_long() */
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -23,10 +24,6 @@
 
 #define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
-
-static const char ARG_HELP[] = "--help";
-static const char ARG_SANDBOX[] = "--try-sandbox";
-static const char ARG_QUALITY[] = "--quality=";
 
 const char *__asan_default_options(void) __attribute__((used));
 
@@ -194,26 +191,59 @@ print_url(const char *url)
 	} while (0)
 
 int
-main(int argc, const char *argv[])
+main(int argc, char *argv[])
 {
 	int fd __attribute__((cleanup(coverage_cleanup))) = coverage_open();
 
-	if (argc < 2) {
+	struct quality q = {NULL, NULL};
+	const char *proof_of_origin = NULL;
+	const char *visitor_data = NULL;
+
+	int synonym = 0;
+	struct option lo[] = {
+		{"help", no_argument, &synonym, 'h'},
+		{"try-sandbox", no_argument, &synonym, 't'},
+		{"quality", required_argument, &synonym, 'q'},
+		{"proof-of-origin", required_argument, &synonym, 'p'},
+		{"visitor-data", required_argument, &synonym, 'v'},
+	};
+
+	int opt = 0;
+	while ((opt = getopt_long(argc, argv, "htq:p:v:", lo, NULL)) != -1) {
+		switch (opt == 0 ? synonym : opt) {
+		case 'h':
+			return usage(argv[0], EX_OK);
+		case 't':
+			return try_sandbox();
+		case 'q':
+			if (!parse_quality_choices(optarg, &q)) {
+				return EX_DATAERR;
+			}
+			break;
+		case 'p':
+			proof_of_origin = optarg;
+			break;
+		case 'v':
+			visitor_data = optarg;
+			break;
+		default:
+			return usage(argv[0], EX_USAGE);
+		}
+	}
+
+	if (optind >= argc) {
+		fprintf(stderr, "Expected URL argument after options\n");
 		return usage(argv[0], EX_USAGE);
 	}
 
-	int idx = 1;
-	const char *arg1 = argv[idx];
-	struct quality q = {NULL, NULL};
-	if (0 == strncmp(ARG_HELP, arg1, strlen(ARG_HELP))) {
-		return usage(argv[0], EX_OK);
-	} else if (0 == strncmp(ARG_SANDBOX, arg1, strlen(ARG_SANDBOX))) {
-		return try_sandbox();
-	} else if (0 == strncmp(ARG_QUALITY, arg1, strlen(ARG_QUALITY))) {
-		if (!parse_quality_choices(arg1 + strlen(ARG_QUALITY), &q)) {
-			return EX_DATAERR;
-		}
-		++idx;
+	if (proof_of_origin == NULL || *proof_of_origin == '\0') {
+		fprintf(stderr, "Expected --proof-of-origin value\n");
+		return usage(argv[0], EX_USAGE);
+	}
+
+	if (visitor_data == NULL || *visitor_data == '\0') {
+		fprintf(stderr, "Expected --visitor-data value\n");
+		return usage(argv[0], EX_USAGE);
 	}
 
 	int rc = EX_OK;
@@ -222,7 +252,7 @@ main(int argc, const char *argv[])
 	check_stderr(youtube_global_init(), EX_SOFTWARE);
 	check_stderr(sandbox_only_io_inet_tmpfile(), EX_OSERR);
 
-	stream = youtube_stream_init();
+	stream = youtube_stream_init(proof_of_origin, visitor_data);
 	if (stream == NULL) {
 		fprintf(stderr, "ERROR: Cannot allocate stream object\n");
 		rc = EX_OSERR;
@@ -241,7 +271,7 @@ main(int argc, const char *argv[])
 		.after = NULL,
 	};
 
-	const char *url = argv[idx];
+	const char *url = argv[optind];
 	check_stderr(youtube_stream_setup(stream, &sops, &q, url), EX_DATAERR);
 	check_stderr(youtube_stream_visitor(stream, print_url), EX_DATAERR);
 
