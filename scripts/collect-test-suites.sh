@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 
 set -euo pipefail
 
@@ -11,7 +11,7 @@ echo '#include "greatest.h"' >> "$OUTPUT_FILE"
 echo 'GREATEST_MAIN_DEFS();' >> "$OUTPUT_FILE"
 
 for filename ; do # iterate over remaining positional parameters
-	entrypoint=$(basename -s .c "$filename")
+	entrypoint=$(basename "$filename" .c)
 	sed -n 's@^SUITE(\(.*\))@SUITE_EXTERN(\1);@p' "$filename"
 	echo -e "int ${entrypoint}(int argc, char **argv);"
 	echo -e "int ${entrypoint}(int argc, char **argv)"
