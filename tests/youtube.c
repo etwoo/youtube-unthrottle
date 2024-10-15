@@ -112,6 +112,8 @@ global_setup(void)
 	PASS();
 }
 
+#define youtube_stream_init() youtube_stream_init("POT", "VISITOR_DATA")
+
 TEST
 stream_setup_with_redirected_network_io(const char *(*custom_fn)(const char *),
                                         const char *expected_audio_url,
@@ -173,8 +175,8 @@ SUITE(stream_setup_simple)
 	RUN_TEST(global_setup);
 	RUN_TESTp(stream_setup_with_redirected_network_io,
 	          NULL,
-	          "http://a.test/?n=AAA",
-	          "http://v.test/?n=VVV");
+	          "http://a.test/?pot=POT&n=AAA",
+	          "http://v.test/?pot=POT&n=VVV");
 	RUN_TEST(stream_setup_with_null_ops);
 }
 
@@ -307,16 +309,16 @@ SUITE(stream_setup_n_param_positions)
 	RUN_TEST(global_setup);
 	RUN_TESTp(stream_setup_with_redirected_network_io,
 	          test_request_n_param_pos_middle,
-	          "http://a.test/?first=foo&last=bar&n=AAA",
-	          "http://v.test/?first=foo&last=bar&n=VVV");
+	          "http://a.test/?first=foo&last=bar&pot=POT&n=AAA",
+	          "http://v.test/?first=foo&last=bar&pot=POT&n=VVV");
 	RUN_TESTp(stream_setup_with_redirected_network_io,
 	          test_request_n_param_pos_first,
-	          "http://a.test/?second=foo&third=bar&n=AAA",
-	          "http://v.test/?second=foo&third=bar&n=VVV");
+	          "http://a.test/?second=foo&third=bar&pot=POT&n=AAA",
+	          "http://v.test/?second=foo&third=bar&pot=POT&n=VVV");
 	RUN_TESTp(stream_setup_with_redirected_network_io,
 	          test_request_n_param_pos_last,
-	          "http://a.test/?first=foo&second=bar&n=AAA",
-	          "http://v.test/?first=foo&second=bar&n=VVV");
+	          "http://a.test/?first=foo&second=bar&pot=POT&n=AAA",
+	          "http://v.test/?first=foo&second=bar&pot=POT&n=VVV");
 	RUN_TEST(stream_setup_edge_cases_n_param_missing);
 	RUN_TEST(stream_setup_edge_cases_entire_url_missing);
 }

@@ -20,6 +20,7 @@ result_t parse_json(const char *json_text,
                     struct parse_ops *ops) WARN_UNUSED;
 
 result_t make_innertube_json(const char *target_url,
+                             const char *proof_of_origin,
                              long long int timestamp,
                              char **body);
 

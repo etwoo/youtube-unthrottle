@@ -276,6 +276,9 @@ result_to_str(result_t r)
 	case ERR_URL_DOWNLOAD_ALLOC:
 		s = "Cannot allocate easy handle";
 		break;
+	case ERR_URL_DOWNLOAD_LIST_APPEND:
+		s = "Cannot append string to linked list of HTTP headers";
+		break;
 	case ERR_URL_DOWNLOAD_SET_OPT_WRITEDATA:
 		my_snprintf("Cannot set WRITEDATA: %s", easy_error(r));
 		break;
@@ -313,11 +316,21 @@ result_to_str(result_t r)
 		my_snprintf("No n-parameter in query string: %s", r.msg);
 		break;
 	case ERR_YOUTUBE_N_PARAM_KVPAIR_ALLOC:
-		s = "Cannot allocate kv-pair buffer";
+		s = "Cannot allocate kv-pair buffer for plaintext n-parameter";
 		break;
-	case ERR_YOUTUBE_N_PARAM_QUERY_APPEND_PLAINTEXT:
+	case ERR_YOUTUBE_N_PARAM_QUERY_APPEND:
 		my_snprintf("Cannot append plaintext n-parameter: %s",
 		            url_error(r));
+		break;
+	case ERR_YOUTUBE_POT_PARAM_KVPAIR_ALLOC:
+		s = "Cannot allocate kv-pair buffer for proof of origin";
+		break;
+	case ERR_YOUTUBE_POT_PARAM_QUERY_APPEND:
+		my_snprintf("Cannot append proof of origin parameter: %s",
+		            url_error(r));
+		break;
+	case ERR_YOUTUBE_VISITOR_DATA_HEADER_ALLOC:
+		s = "Cannot allocate asprintf buffer for visitor data header";
 		break;
 	case ERR_YOUTUBE_STREAM_VISITOR_GET_URL:
 		my_snprintf("Cannot get URL as string: %s", url_error(r));

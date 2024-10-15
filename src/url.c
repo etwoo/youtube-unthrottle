@@ -71,6 +71,7 @@ url_global_init(void)
 	                            NULL,
 	                            NULL,
 	                            NULL,
+	                            NULL,
 	                            FD_DISCARD);
 	info_if(err.err, "Error creating early URL worker threads");
 
@@ -119,6 +120,15 @@ url_prepare(const char *hostp, const char *pathp, CURLU **url)
 	return RESULT_OK;
 }
 
+static WARN_UNUSED result_t
+url_list_append(struct curl_slist **list, const char *str)
+{
+	struct curl_slist *tmp = curl_slist_append(*list, str);
+	check_if(tmp == NULL, ERR_URL_DOWNLOAD_LIST_APPEND);
+	*list = tmp;
+	return RESULT_OK;
+}
+
 static const char BROWSER_USERAGENT[] =
 	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, "
 	"like Gecko) Chrome/87.0.4280.101 Safari/537.36";
@@ -126,10 +136,11 @@ static const char CONTENT_TYPE_JSON[] = "Content-Type: application/json";
 static const char DEFAULT_HOST_STR[] = "www.youtube.com";
 
 result_t
-url_download(const char *url_str,   /* may be NULL */
-             const char *host_str,  /* may be NULL */
-             const char *path_str,  /* may be NULL */
-             const char *post_body, /* may be NULL */
+url_download(const char *url_str,     /* may be NULL */
+             const char *host_str,    /* may be NULL */
+             const char *path_str,    /* may be NULL */
+             const char *post_body,   /* may be NULL */
+             const char *post_header, /* may be NULL */
              int fd)
 {
 	CURLU *url = NULL;
@@ -169,13 +180,20 @@ url_download(const char *url_str,   /* may be NULL */
 	}
 
 	if (post_body) {
-		headers = curl_slist_append(headers, CONTENT_TYPE_JSON);
-		res = curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-		check_if_num(res, ERR_URL_DOWNLOAD_SET_OPT_HTTP_HEADER);
+		check(url_list_append(&headers, CONTENT_TYPE_JSON));
 
 		res = curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_body);
 		/* Note: libcurl does not copy <post_body> */
 		check_if_num(res, ERR_URL_DOWNLOAD_SET_OPT_POST_BODY);
+	}
+
+	if (post_header) {
+		check(url_list_append(&headers, post_header));
+	}
+
+	if (headers) {
+		res = curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+		check_if_num(res, ERR_URL_DOWNLOAD_SET_OPT_HTTP_HEADER);
 	}
 
 	res = CURL_EASY_PERFORM(curl, url_fragment_or_path_str, fd);
