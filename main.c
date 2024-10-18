@@ -63,32 +63,13 @@ result_to_stderr(result_t r)
 	to_stderr("%s", result_to_str(r));
 }
 
-static WARN_UNUSED int
+static WARN_UNUSED result_t
 try_sandbox(void)
 {
-	result_t err = RESULT_OK;
-
-	err = sandbox_only_io_inet_tmpfile();
-	if (err.err) {
-		goto cleanup;
-	}
-
-	err = sandbox_only_io_inet_rpath();
-	if (err.err) {
-		goto cleanup;
-	}
-
-	err = sandbox_only_io();
-	if (err.err) {
-		goto cleanup;
-	}
-
-cleanup:
-	if (err.err) {
-		result_to_stderr(err);
-		return EX_SOFTWARE;
-	}
-	return EX_OK;
+	check(sandbox_only_io_inet_tmpfile());
+	check(sandbox_only_io_inet_rpath());
+	check(sandbox_only_io());
+	return RESULT_OK;
 }
 
 static WARN_UNUSED result_t
@@ -107,6 +88,13 @@ struct quality {
 	pcre2_code *re;
 	pcre2_match_data *md;
 };
+
+static void
+quality_cleanup(struct quality *q)
+{
+	pcre2_match_data_free(q->md); /* handles NULL gracefully */
+	pcre2_code_free(q->re);       /* handles NULL gracefully */
+}
 
 static WARN_UNUSED bool
 parse_quality_choices(const char *str, struct quality *q)
@@ -180,22 +168,57 @@ print_url(const char *url)
 	puts(url);
 }
 
-#define check_stderr(expr, status)                                             \
-	do {                                                                   \
-		result_t x = expr;                                             \
-		if (x.err) {                                                   \
-			result_to_stderr(x);                                   \
-			rc = status;                                           \
-			goto cleanup;                                          \
-		}                                                              \
-	} while (0)
+static void
+yt_cleanup(youtube_handle_t *h)
+{
+	youtube_stream_cleanup(*h);
+	youtube_global_cleanup();
+}
+
+static WARN_UNUSED result_t
+unthrottle(const char *target,
+           const char *proof_of_origin,
+           const char *visitor_data,
+           const struct quality *q)
+{
+	youtube_handle_t stream __attribute__((cleanup(yt_cleanup))) = NULL;
+
+	check(youtube_global_init());
+	check(sandbox_only_io_inet_tmpfile());
+
+	stream = youtube_stream_init(proof_of_origin, visitor_data);
+	if (stream == NULL) {
+		fprintf(stderr, "ERROR: Cannot allocate stream object\n");
+		exit(EX_OSERR);
+	}
+
+	struct youtube_setup_ops sops = {
+		.before = NULL,
+		.before_inet = before_inet,
+		.after_inet = after_inet,
+		.before_parse = NULL,
+		.during_parse_choose_quality = during_parse_choose_quality,
+		.after_parse = NULL,
+		.before_eval = NULL,
+		.after_eval = NULL,
+		.after = NULL,
+	};
+
+	check(youtube_stream_setup(stream, &sops, &q, target));
+	check(youtube_stream_visitor(stream, print_url));
+	return RESULT_OK;
+}
 
 int
 main(int argc, char *argv[])
 {
 	int fd __attribute__((cleanup(coverage_cleanup))) = coverage_open();
+	result_t err = RESULT_OK;
 
-	struct quality q = {NULL, NULL};
+	struct quality q __attribute__((cleanup(quality_cleanup))) = {
+		NULL,
+		NULL,
+	};
 	const char *proof_of_origin = NULL;
 	const char *visitor_data = NULL;
 
@@ -214,7 +237,8 @@ main(int argc, char *argv[])
 		case 'h':
 			return usage(argv[0], EX_OK);
 		case 't':
-			return try_sandbox();
+			err = try_sandbox();
+			goto done;
 		case 'q':
 			if (!parse_quality_choices(optarg, &q)) {
 				return EX_DATAERR;
@@ -246,39 +270,11 @@ main(int argc, char *argv[])
 		return usage(argv[0], EX_USAGE);
 	}
 
-	int rc = EX_OK;
-	youtube_handle_t stream = NULL;
-
-	check_stderr(youtube_global_init(), EX_SOFTWARE);
-	check_stderr(sandbox_only_io_inet_tmpfile(), EX_OSERR);
-
-	stream = youtube_stream_init(proof_of_origin, visitor_data);
-	if (stream == NULL) {
-		fprintf(stderr, "ERROR: Cannot allocate stream object\n");
-		rc = EX_OSERR;
-		goto cleanup;
+	err = unthrottle(argv[optind], proof_of_origin, visitor_data, &q);
+done:
+	if (err.err) {
+		result_to_stderr(err);
+		return EX_SOFTWARE;
 	}
-
-	struct youtube_setup_ops sops = {
-		.before = NULL,
-		.before_inet = before_inet,
-		.after_inet = after_inet,
-		.before_parse = NULL,
-		.during_parse_choose_quality = during_parse_choose_quality,
-		.after_parse = NULL,
-		.before_eval = NULL,
-		.after_eval = NULL,
-		.after = NULL,
-	};
-
-	const char *url = argv[optind];
-	check_stderr(youtube_stream_setup(stream, &sops, &q, url), EX_DATAERR);
-	check_stderr(youtube_stream_visitor(stream, print_url), EX_DATAERR);
-
-cleanup:
-	youtube_stream_cleanup(stream);
-	youtube_global_cleanup();
-	pcre2_match_data_free(q.md); /* handles NULL gracefully */
-	pcre2_code_free(q.re);       /* handles NULL gracefully */
-	return rc;
+	return EX_OK;
 }
