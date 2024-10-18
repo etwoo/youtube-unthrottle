@@ -1,16 +1,16 @@
 #ifndef YOUTUBE_H
 #define YOUTUBE_H
 
-#include "compiler_features.h"
 #include "result.h"
 
-result_t youtube_global_init(void) WARN_UNUSED;
+result_t youtube_global_init(void) __attribute__((warn_unused_result));
 void youtube_global_cleanup(void);
 
 typedef struct youtube_stream *youtube_handle_t;
 
 youtube_handle_t youtube_stream_init(const char *proof_of_origin,
-                                     const char *visitor_data) WARN_UNUSED;
+                                     const char *visitor_data)
+	__attribute__((warn_unused_result));
 void youtube_stream_cleanup(youtube_handle_t h);
 
 struct youtube_setup_ops {
@@ -28,9 +28,10 @@ struct youtube_setup_ops {
 result_t youtube_stream_setup(youtube_handle_t h,
                               struct youtube_setup_ops *ops,
                               void *userdata,
-                              const char *target) WARN_UNUSED;
+                              const char *target)
+	__attribute__((warn_unused_result));
 
-result_t youtube_stream_visitor(youtube_handle_t h,
-                                void (*visit)(const char *)) WARN_UNUSED;
+result_t youtube_stream_visitor(youtube_handle_t h, void (*visit)(const char *))
+	__attribute__((warn_unused_result));
 
 #endif

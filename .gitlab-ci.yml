@@ -6,7 +6,7 @@ image: archlinux/archlinux:base-devel
 .build_steps: &build_steps
     - cmake -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=1 . -B ./build
     - cmake --build ./build
-    - ctest --test-dir ./build/tests/ --output-junit junit.xml -E '^cli-try-sandbox|landlock$'
+    - ctest --test-dir ./build/tests/ --output-junit junit.xml -E '^(cli-try-sandbox|cli-valid-args-invalid-hostname|landlock|sandbox)$'
 
 build_with_gcc:
   stage: build
@@ -56,8 +56,8 @@ coverage:
     - export CXX=clang++
     - cmake -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=1 -DBUILD_COVERAGE=1 . -B ./build
     - cmake --build ./build
-    - COVERAGE_PROFILE_DIR=coverage.profraw ctest --test-dir ./build/tests/ --output-junit junit.xml -E '^cli-try-sandbox|landlock$'
-    - ./scripts/coverage.sh -E 'main.c|src/(coverage|sandbox|landlock).c' coverage.profraw ./build/coverage.xml
+    - COVERAGE_PROFILE_DIR=coverage.profraw ctest --test-dir ./build/tests/ --output-junit junit.xml -E '^(cli-try-sandbox|cli-valid-args-invalid-hostname|landlock|sandbox)$'
+    - ./scripts/coverage.sh -E 'main.c|src/(sandbox|landlock).c' coverage.profraw ./build/coverage.xml
   coverage: '/^TOTAL.*\s+([\d\.]+\%)$/'
   artifacts:
     reports:

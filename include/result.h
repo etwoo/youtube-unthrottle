@@ -1,8 +1,6 @@
 #ifndef RESULT_H
 #define RESULT_H
 
-#include "compiler_features.h"
-
 #include <stddef.h> /* for size_t */
 
 /*
@@ -98,7 +96,8 @@ extern const result_t RESULT_OK;
  */
 
 #define DECLARE_MAKERESULT_IMPL(x, ...)                                        \
-	result_t makeresult_##x(__VA_ARGS__) WARN_UNUSED __attribute__((cold))
+	result_t makeresult_##x(__VA_ARGS__)                                   \
+		__attribute__((warn_unused_result)) __attribute__((cold))
 
 DECLARE_MAKERESULT_IMPL(t, int typ);
 DECLARE_MAKERESULT_IMPL(ti, int typ, int num);
@@ -165,6 +164,6 @@ DECLARE_MAKERESULT_IMPL(tiss, int typ, int num, const char *msg, size_t sz);
  *
  * Note: the caller does not own the returned buffer.
  */
-const char *result_to_str(result_t r) WARN_UNUSED;
+const char *result_to_str(result_t r) __attribute__((warn_unused_result));
 
 #endif

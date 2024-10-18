@@ -8,8 +8,6 @@
  * of an embedded JavaScript engine (in this case, Duktape).
  */
 
-#include "compiler_features.h"
-#include "coverage.h"
 #include "result.h"
 #include "sandbox.h"
 #include "youtube.h"
@@ -19,14 +17,13 @@
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <string.h>
+#include <sys/param.h> /* for MAX() */
 #include <sysexits.h>
 
 #define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
 
 const char *__asan_default_options(void) __attribute__((used));
-
 const char *
 __asan_default_options(void)
 {
@@ -37,13 +34,6 @@ __asan_default_options(void)
 	 * while repeatedly calling sched_yield().
 	 */
 	return "detect_leaks=0";
-}
-
-static WARN_UNUSED int
-usage(const char *cmd, int rc)
-{
-	fprintf(stderr, "Usage: %s [URL]\n", cmd);
-	return rc;
 }
 
 static void __attribute__((format(printf, 1, 2)))
@@ -57,47 +47,32 @@ to_stderr(const char *pattern, ...)
 	va_end(ap);
 }
 
-static void
-result_to_stderr(result_t r)
+static __attribute__((warn_unused_result)) int
+result_to_status(result_t r)
 {
-	to_stderr("%s", result_to_str(r));
-}
-
-static WARN_UNUSED int
-try_sandbox(void)
-{
-	result_t err = RESULT_OK;
-
-	err = sandbox_only_io_inet_tmpfile();
-	if (err.err) {
-		goto cleanup;
-	}
-
-	err = sandbox_only_io_inet_rpath();
-	if (err.err) {
-		goto cleanup;
-	}
-
-	err = sandbox_only_io();
-	if (err.err) {
-		goto cleanup;
-	}
-
-cleanup:
-	if (err.err) {
-		result_to_stderr(err);
+	if (r.err) {
+		to_stderr("%s", result_to_str(r));
 		return EX_SOFTWARE;
 	}
 	return EX_OK;
 }
 
-static WARN_UNUSED result_t
+static __attribute__((warn_unused_result)) result_t
+try_sandbox(void)
+{
+	check(sandbox_only_io_inet_tmpfile());
+	check(sandbox_only_io_inet_rpath());
+	check(sandbox_only_io());
+	return RESULT_OK;
+}
+
+static __attribute__((warn_unused_result)) result_t
 before_inet(void *userdata __attribute__((unused)))
 {
 	return sandbox_only_io_inet_rpath();
 }
 
-static WARN_UNUSED result_t
+static __attribute__((warn_unused_result)) result_t
 after_inet(void *userdata __attribute__((unused)))
 {
 	return sandbox_only_io();
@@ -108,7 +83,7 @@ struct quality {
 	pcre2_match_data *md;
 };
 
-static WARN_UNUSED bool
+static __attribute__((warn_unused_result)) bool
 parse_quality_choices(const char *str, struct quality *q)
 {
 	assert(q->re == NULL && q->md == NULL);
@@ -147,7 +122,7 @@ static const result_t RESULT_QUALITY_BLOCK = {
 	.err = ERR_JS_PARSE_JSON_CALLBACK_QUALITY,
 };
 
-static WARN_UNUSED result_t
+static __attribute__((warn_unused_result)) result_t
 during_parse_choose_quality(const char *val, size_t sz, void *userdata)
 {
 	struct quality *q = (struct quality *)userdata;
@@ -180,84 +155,18 @@ print_url(const char *url)
 	puts(url);
 }
 
-#define check_stderr(expr, status)                                             \
-	do {                                                                   \
-		result_t x = expr;                                             \
-		if (x.err) {                                                   \
-			result_to_stderr(x);                                   \
-			rc = status;                                           \
-			goto cleanup;                                          \
-		}                                                              \
-	} while (0)
-
-int
-main(int argc, char *argv[])
+static __attribute__((warn_unused_result)) result_t
+unthrottle(const char *target,
+           const char *proof_of_origin,
+           const char *visitor_data,
+           struct quality *q,
+           youtube_handle_t *stream)
 {
-	int fd __attribute__((cleanup(coverage_cleanup))) = coverage_open();
+	check(youtube_global_init());
+	check(sandbox_only_io_inet_tmpfile());
 
-	struct quality q = {NULL, NULL};
-	const char *proof_of_origin = NULL;
-	const char *visitor_data = NULL;
-
-	int synonym = 0;
-	struct option lo[] = {
-		{"help", no_argument, &synonym, 'h'},
-		{"try-sandbox", no_argument, &synonym, 't'},
-		{"quality", required_argument, &synonym, 'q'},
-		{"proof-of-origin", required_argument, &synonym, 'p'},
-		{"visitor-data", required_argument, &synonym, 'v'},
-	};
-
-	int opt = 0;
-	while ((opt = getopt_long(argc, argv, "htq:p:v:", lo, NULL)) != -1) {
-		switch (opt == 0 ? synonym : opt) {
-		case 'h':
-			return usage(argv[0], EX_OK);
-		case 't':
-			return try_sandbox();
-		case 'q':
-			if (!parse_quality_choices(optarg, &q)) {
-				return EX_DATAERR;
-			}
-			break;
-		case 'p':
-			proof_of_origin = optarg;
-			break;
-		case 'v':
-			visitor_data = optarg;
-			break;
-		default:
-			return usage(argv[0], EX_USAGE);
-		}
-	}
-
-	if (optind >= argc) {
-		fprintf(stderr, "Expected URL argument after options\n");
-		return usage(argv[0], EX_USAGE);
-	}
-
-	if (proof_of_origin == NULL || *proof_of_origin == '\0') {
-		fprintf(stderr, "Expected --proof-of-origin value\n");
-		return usage(argv[0], EX_USAGE);
-	}
-
-	if (visitor_data == NULL || *visitor_data == '\0') {
-		fprintf(stderr, "Expected --visitor-data value\n");
-		return usage(argv[0], EX_USAGE);
-	}
-
-	int rc = EX_OK;
-	youtube_handle_t stream = NULL;
-
-	check_stderr(youtube_global_init(), EX_SOFTWARE);
-	check_stderr(sandbox_only_io_inet_tmpfile(), EX_OSERR);
-
-	stream = youtube_stream_init(proof_of_origin, visitor_data);
-	if (stream == NULL) {
-		fprintf(stderr, "ERROR: Cannot allocate stream object\n");
-		rc = EX_OSERR;
-		goto cleanup;
-	}
+	*stream = youtube_stream_init(proof_of_origin, visitor_data);
+	check_if(*stream == NULL, OK);
 
 	struct youtube_setup_ops sops = {
 		.before = NULL,
@@ -270,14 +179,102 @@ main(int argc, char *argv[])
 		.after_eval = NULL,
 		.after = NULL,
 	};
+	check(youtube_stream_setup(*stream, &sops, q, target));
+	check(youtube_stream_visitor(*stream, print_url));
+	return RESULT_OK;
+}
 
-	const char *url = argv[optind];
-	check_stderr(youtube_stream_setup(stream, &sops, &q, url), EX_DATAERR);
-	check_stderr(youtube_stream_visitor(stream, print_url), EX_DATAERR);
+int
+main(int argc, char *argv[])
+{
+	enum {
+		ACTION_YOUTUBE_UNTHROTTLE,
+		ACTION_TRY_SANDBOX,
+		ACTION_USAGE_HELP,
+		ACTION_USAGE_ERROR,
+	} action = 0;
+	const char *q_str = NULL;
+	const char *proof_of_origin = NULL;
+	const char *visitor_data = NULL;
 
-cleanup:
-	youtube_stream_cleanup(stream);
-	youtube_global_cleanup();
+	int synonym = 0;
+	struct option lo[] = {
+		{"help", no_argument, &synonym, 'h'},
+		{"try-sandbox", no_argument, &synonym, 't'},
+		{"quality", required_argument, &synonym, 'q'},
+		{"proof-of-origin", required_argument, &synonym, 'p'},
+		{"visitor-data", required_argument, &synonym, 'v'},
+		{NULL, 0, NULL, 0},
+	};
+
+	int opt = 0;
+	while ((opt = getopt_long(argc, argv, "htq:p:v:", lo, NULL)) != -1) {
+		switch (opt == 0 ? synonym : opt) {
+		case 'h':
+			action = MAX(action, ACTION_USAGE_HELP);
+			break;
+		case 't':
+			action = MAX(action, ACTION_TRY_SANDBOX);
+			break;
+		case 'q':
+			q_str = optarg;
+			break;
+		case 'p':
+			proof_of_origin = optarg;
+			break;
+		case 'v':
+			visitor_data = optarg;
+			break;
+		default:
+			action = MAX(action, ACTION_USAGE_ERROR);
+			break;
+		}
+	}
+
+	int rc = EX_USAGE;  /* assume invalid arguments by default */
+	FILE *out = stderr; /* assume output to stderr by default */
+	struct quality q = {NULL, NULL};
+
+	switch (action) {
+	case ACTION_YOUTUBE_UNTHROTTLE:
+		if (optind >= argc) {
+			to_stderr("Missing URL argument after options");
+		} else if (!proof_of_origin || *proof_of_origin == '\0') {
+			to_stderr("Missing --proof-of-origin value");
+		} else if (!visitor_data || *visitor_data == '\0') {
+			to_stderr("Missing --visitor-data value");
+		} else if (q_str && !parse_quality_choices(q_str, &q)) {
+			to_stderr("Invalid --quality value: %s", q_str);
+		} else {
+			youtube_handle_t stream = NULL;
+			rc = result_to_status(unthrottle(argv[optind],
+			                                 proof_of_origin,
+			                                 visitor_data,
+			                                 &q,
+			                                 &stream));
+			if (stream == NULL) {
+				to_stderr("Can't alloc stream");
+				rc = EX_OSERR;
+			}
+			youtube_stream_cleanup(stream);
+			youtube_global_cleanup();
+		}
+		break;
+	case ACTION_TRY_SANDBOX:
+		rc = result_to_status(try_sandbox());
+		break;
+	case ACTION_USAGE_HELP:
+		rc = EX_OK;
+		out = stdout;
+		__attribute__((fallthrough));
+	case ACTION_USAGE_ERROR:
+		fprintf(out, "Usage: %s [options] <url>\nOptions:\n", argv[0]);
+		for (struct option *o = lo; o->name; ++o) {
+			fprintf(out, "  -%c, --%s\n", o->val, o->name);
+		}
+		break;
+	}
+
 	pcre2_match_data_free(q.md); /* handles NULL gracefully */
 	pcre2_code_free(q.re);       /* handles NULL gracefully */
 	return rc;
