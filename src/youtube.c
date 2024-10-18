@@ -448,7 +448,7 @@ youtube_stream_setup(struct youtube_stream *p,
 		.got_video_userdata = p,
 		.got_audio = youtube_stream_set_audio,
 		.got_audio_userdata = p,
-		.choose_quality = ops->during_parse_choose_quality,
+		.choose_quality = ops ? ops->during_parse_choose_quality : NULL,
 		.choose_quality_userdata = userdata,
 	};
 	if (pops.choose_quality == NULL) {

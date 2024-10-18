@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.15)
 project(youtube-unthrottle)
 
+set(CMAKE_C_CLANG_TIDY clang-tidy)
+
 add_executable(youtube-unthrottle)
 target_sources(youtube-unthrottle PUBLIC main.c)
 target_link_libraries(youtube-unthrottle PRIVATE my_cflags sanitizers youtube)
