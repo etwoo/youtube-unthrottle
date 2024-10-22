@@ -26,7 +26,6 @@
 #include <pcre2.h>
 
 const char *__asan_default_options(void) __attribute__((used));
-
 const char *
 __asan_default_options(void)
 {
@@ -183,7 +182,6 @@ unthrottle(const char *target,
 		.after = NULL,
 	};
 	check(youtube_stream_setup(*stream, &sops, q, target));
-
 	check(youtube_stream_visitor(*stream, print_url));
 	return RESULT_OK;
 }
