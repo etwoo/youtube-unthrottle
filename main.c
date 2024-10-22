@@ -19,7 +19,6 @@
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <string.h>
 #include <sys/param.h> /* for MAX() */
 #include <sysexits.h>
 
@@ -252,16 +251,14 @@ main(int argc, char *argv[])
 			fprintf(stderr, "Invalid --quality value: %s\n", q_str);
 		} else {
 			youtube_handle_t stream = NULL;
-			result_t err = unthrottle(argv[optind],
-			                          proof_of_origin,
-			                          visitor_data,
-			                          &q,
-			                          &stream);
+			rc = result_to_status(unthrottle(argv[optind],
+			                                 proof_of_origin,
+			                                 visitor_data,
+			                                 &q,
+			                                 &stream));
 			if (stream == NULL) {
 				fprintf(stderr, "ERROR: Can't alloc stream\n");
 				rc = EX_OSERR;
-			} else {
-				rc = result_to_status(err);
 			}
 			youtube_stream_cleanup(stream);
 			youtube_global_cleanup();
@@ -275,8 +272,7 @@ main(int argc, char *argv[])
 		out = stdout;
 		__attribute__((fallthrough));
 	case ACTION_USAGE_ERROR:
-		fprintf(out, "Usage: %s [options] <url>\n", argv[0]);
-		fprintf(out, "Options:\n");
+		fprintf(out, "Usage: %s [options] <url>\nOptions:\n", argv[0]);
 		for (size_t i = 0; i < (sizeof(lo) / sizeof((lo)[0])); ++i) {
 			fprintf(out, "\t-%c, --%s\n", lo[i].val, lo[i].name);
 		}
