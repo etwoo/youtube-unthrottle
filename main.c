@@ -241,20 +241,6 @@ main(int argc, char *argv[])
 	struct quality q = {NULL, NULL};
 
 	switch (action) {
-	case ACTION_USAGE_HELP:
-		rc = EX_OK;
-		out = stdout;
-		__attribute__((fallthrough));
-	case ACTION_USAGE_ERROR:
-		fprintf(out, "Usage: %s [options] <url>\n", argv[0]);
-		fprintf(out, "Options:\n");
-		for (size_t i = 0; i < (sizeof(lo) / sizeof((lo)[0])); ++i) {
-			fprintf(out, "\t-%c, --%s\n", lo[i].val, lo[i].name);
-		}
-		break;
-	case ACTION_TRY_SANDBOX:
-		rc = result_to_status(try_sandbox());
-		break;
 	case ACTION_YOUTUBE_UNTHROTTLE:
 		if (optind >= argc) {
 			fprintf(stderr, "Missing URL argument after options\n");
@@ -279,6 +265,20 @@ main(int argc, char *argv[])
 			}
 			youtube_stream_cleanup(stream);
 			youtube_global_cleanup();
+		}
+		break;
+	case ACTION_TRY_SANDBOX:
+		rc = result_to_status(try_sandbox());
+		break;
+	case ACTION_USAGE_HELP:
+		rc = EX_OK;
+		out = stdout;
+		__attribute__((fallthrough));
+	case ACTION_USAGE_ERROR:
+		fprintf(out, "Usage: %s [options] <url>\n", argv[0]);
+		fprintf(out, "Options:\n");
+		for (size_t i = 0; i < (sizeof(lo) / sizeof((lo)[0])); ++i) {
+			fprintf(out, "\t-%c, --%s\n", lo[i].val, lo[i].name);
 		}
 		break;
 	}
