@@ -257,7 +257,7 @@ main(int argc, char *argv[])
 			                                 &q,
 			                                 &stream));
 			if (stream == NULL) {
-				to_stderr("ERROR: Can't alloc stream");
+				to_stderr("Can't alloc stream");
 				rc = EX_OSERR;
 			}
 			youtube_stream_cleanup(stream);
