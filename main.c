@@ -209,6 +209,7 @@ main(int argc, char *argv[])
 		{"quality", required_argument, &synonym, 'q'},
 		{"proof-of-origin", required_argument, &synonym, 'p'},
 		{"visitor-data", required_argument, &synonym, 'v'},
+		{NULL, 0, NULL, 0},
 	};
 
 	int opt = 0;
@@ -273,8 +274,8 @@ main(int argc, char *argv[])
 		__attribute__((fallthrough));
 	case ACTION_USAGE_ERROR:
 		fprintf(out, "Usage: %s [options] <url>\nOptions:\n", argv[0]);
-		for (size_t i = 0; i < (sizeof(lo) / sizeof((lo)[0])); ++i) {
-			fprintf(out, "  -%c, --%s\n", lo[i].val, lo[i].name);
+		for (struct option *o = lo; o->name; ++o) {
+			fprintf(out, "  -%c, --%s\n", o->val, o->name);
 		}
 		break;
 	}
