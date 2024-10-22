@@ -242,13 +242,13 @@ main(int argc, char *argv[])
 	switch (action) {
 	case ACTION_YOUTUBE_UNTHROTTLE:
 		if (optind >= argc) {
-			fprintf(stderr, "Missing URL argument after options\n");
+			to_stderr("Missing URL argument after options");
 		} else if (!proof_of_origin || *proof_of_origin == '\0') {
-			fprintf(stderr, "Missing --proof-of-origin value\n");
+			to_stderr("Missing --proof-of-origin value");
 		} else if (!visitor_data || *visitor_data == '\0') {
-			fprintf(stderr, "Missing --visitor-data value\n");
+			to_stderr("Missing --visitor-data value");
 		} else if (q_str && !parse_quality_choices(q_str, &q)) {
-			fprintf(stderr, "Invalid --quality value: %s\n", q_str);
+			to_stderr("Invalid --quality value: %s", q_str);
 		} else {
 			youtube_handle_t stream = NULL;
 			rc = result_to_status(unthrottle(argv[optind],
@@ -257,7 +257,7 @@ main(int argc, char *argv[])
 			                                 &q,
 			                                 &stream));
 			if (stream == NULL) {
-				fprintf(stderr, "ERROR: Can't alloc stream\n");
+				to_stderr("ERROR: Can't alloc stream");
 				rc = EX_OSERR;
 			}
 			youtube_stream_cleanup(stream);
