@@ -39,13 +39,6 @@ __asan_default_options(void)
 	return "detect_leaks=0";
 }
 
-static WARN_UNUSED int
-usage(const char *cmd, int rc)
-{
-	fprintf(stderr, "Usage: %s [URL]\n", cmd);
-	return rc;
-}
-
 static void __attribute__((format(printf, 1, 2)))
 to_stderr(const char *pattern, ...)
 {
@@ -55,12 +48,6 @@ to_stderr(const char *pattern, ...)
 	vfprintf(stderr, pattern, ap);
 	fputc('\n', stderr);
 	va_end(ap);
-}
-
-static void
-result_to_stderr(result_t r)
-{
-	to_stderr("%s", result_to_str(r));
 }
 
 static WARN_UNUSED result_t
@@ -88,13 +75,6 @@ struct quality {
 	pcre2_code *re;
 	pcre2_match_data *md;
 };
-
-static void
-quality_cleanup(struct quality *q)
-{
-	pcre2_match_data_free(q->md); /* handles NULL gracefully */
-	pcre2_code_free(q->re);       /* handles NULL gracefully */
-}
 
 static WARN_UNUSED bool
 parse_quality_choices(const char *str, struct quality *q)
@@ -168,29 +148,18 @@ print_url(const char *url)
 	puts(url);
 }
 
-static void
-yt_cleanup(youtube_handle_t *h)
-{
-	youtube_stream_cleanup(*h);
-	youtube_global_cleanup();
-}
-
 static WARN_UNUSED result_t
 unthrottle(const char *target,
            const char *proof_of_origin,
            const char *visitor_data,
-           const struct quality *q)
+           struct quality *q,
+           youtube_handle_t *stream)
 {
-	youtube_handle_t stream __attribute__((cleanup(yt_cleanup))) = NULL;
-
 	check(youtube_global_init());
 	check(sandbox_only_io_inet_tmpfile());
 
-	stream = youtube_stream_init(proof_of_origin, visitor_data);
-	if (stream == NULL) {
-		fprintf(stderr, "ERROR: Cannot allocate stream object\n");
-		exit(EX_OSERR);
-	}
+	*stream = youtube_stream_init(proof_of_origin, visitor_data);
+	check_if(*stream == NULL, OK);
 
 	struct youtube_setup_ops sops = {
 		.before = NULL,
@@ -203,22 +172,30 @@ unthrottle(const char *target,
 		.after_eval = NULL,
 		.after = NULL,
 	};
+	check(youtube_stream_setup(*stream, &sops, q, target));
 
-	check(youtube_stream_setup(stream, &sops, &q, target));
-	check(youtube_stream_visitor(stream, print_url));
+	check(youtube_stream_visitor(*stream, print_url));
 	return RESULT_OK;
 }
+
+#define goto_check_usage(status)                                               \
+	do {                                                                   \
+		show_usage = true;                                             \
+		rc = status;                                                   \
+		goto check_usage;                                              \
+	} while (0)
 
 int
 main(int argc, char *argv[])
 {
 	int fd __attribute__((cleanup(coverage_cleanup))) = coverage_open();
+
+	bool show_usage = false;
+	int rc = EX_OK;
 	result_t err = RESULT_OK;
 
-	struct quality q __attribute__((cleanup(quality_cleanup))) = {
-		NULL,
-		NULL,
-	};
+	youtube_handle_t yt = NULL;
+	struct quality q = {NULL, NULL};
 	const char *proof_of_origin = NULL;
 	const char *visitor_data = NULL;
 
@@ -235,13 +212,13 @@ main(int argc, char *argv[])
 	while ((opt = getopt_long(argc, argv, "htq:p:v:", lo, NULL)) != -1) {
 		switch (opt == 0 ? synonym : opt) {
 		case 'h':
-			return usage(argv[0], EX_OK);
+			goto_check_usage(EX_OK);
 		case 't':
 			err = try_sandbox();
-			goto done;
+			goto check_result;
 		case 'q':
 			if (!parse_quality_choices(optarg, &q)) {
-				return EX_DATAERR;
+				goto_check_usage(EX_DATAERR);
 			}
 			break;
 		case 'p':
@@ -251,30 +228,38 @@ main(int argc, char *argv[])
 			visitor_data = optarg;
 			break;
 		default:
-			return usage(argv[0], EX_USAGE);
+			goto_check_usage(EX_USAGE);
 		}
 	}
 
 	if (optind >= argc) {
-		fprintf(stderr, "Expected URL argument after options\n");
-		return usage(argv[0], EX_USAGE);
+		fprintf(stderr, "Missing URL argument after options\n");
+		goto_check_usage(EX_USAGE);
+	} else if (proof_of_origin == NULL || *proof_of_origin == '\0') {
+		fprintf(stderr, "Missing --proof-of-origin value\n");
+		goto_check_usage(EX_USAGE);
+	} else if (visitor_data == NULL || *visitor_data == '\0') {
+		fprintf(stderr, "Missing --visitor-data value\n");
+		goto_check_usage(EX_USAGE);
 	}
 
-	if (proof_of_origin == NULL || *proof_of_origin == '\0') {
-		fprintf(stderr, "Expected --proof-of-origin value\n");
-		return usage(argv[0], EX_USAGE);
+	err = unthrottle(argv[optind], proof_of_origin, visitor_data, &q, &yt);
+	if (yt == NULL) {
+		fprintf(stderr, "ERROR: Could not allocate stream object\n");
+		rc = EX_OSERR;
 	}
-
-	if (visitor_data == NULL || *visitor_data == '\0') {
-		fprintf(stderr, "Expected --visitor-data value\n");
-		return usage(argv[0], EX_USAGE);
-	}
-
-	err = unthrottle(argv[optind], proof_of_origin, visitor_data, &q);
-done:
+check_result:
 	if (err.err) {
-		result_to_stderr(err);
-		return EX_SOFTWARE;
+		to_stderr("%s", result_to_str(err));
+		rc = EX_SOFTWARE;
 	}
-	return EX_OK;
+check_usage:
+	if (show_usage) {
+		fprintf(stderr, "Usage: %s [URL]\n", argv[0]);
+	}
+	pcre2_match_data_free(q.md); /* handles NULL gracefully */
+	pcre2_code_free(q.re);       /* handles NULL gracefully */
+	youtube_stream_cleanup(yt);  /* handles NULL gracefully */
+	youtube_global_cleanup();
+	return rc;
 }
