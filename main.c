@@ -250,9 +250,9 @@ check_result:
 		}
 	}
 cleanup:
-	pcre2_match_data_free(q.md); /* handles NULL gracefully */
-	pcre2_code_free(q.re);       /* handles NULL gracefully */
 	youtube_stream_cleanup(yt);  /* handles NULL gracefully */
 	youtube_global_cleanup();
+	pcre2_match_data_free(q.md); /* handles NULL gracefully */
+	pcre2_code_free(q.re);       /* handles NULL gracefully */
 	return rc;
 }
