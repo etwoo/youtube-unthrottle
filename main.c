@@ -241,7 +241,7 @@ main(int argc, char *argv[])
 			rc = EX_OSERR;
 			goto cleanup;
 		}
-check_result:
+	check_result:
 		if (rc == EX_OK) {
 			/* already succeeded at some earlier stage */
 		} else if (err.err) {
@@ -250,7 +250,7 @@ check_result:
 		}
 	}
 cleanup:
-	youtube_stream_cleanup(yt);  /* handles NULL gracefully */
+	youtube_stream_cleanup(yt);
 	youtube_global_cleanup();
 	pcre2_match_data_free(q.md); /* handles NULL gracefully */
 	pcre2_code_free(q.re);       /* handles NULL gracefully */
