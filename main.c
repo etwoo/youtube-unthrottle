@@ -178,26 +178,17 @@ unthrottle(const char *target,
 	return RESULT_OK;
 }
 
-#define goto_check_usage(status)                                               \
-	do {                                                                   \
-		show_usage = true;                                             \
-		rc = status;                                                   \
-		goto check_usage;                                              \
-	} while (0)
-
 int
 main(int argc, char *argv[])
 {
 	int fd __attribute__((cleanup(coverage_cleanup))) = coverage_open();
-
-	bool show_usage = false;
-	int rc = EX_OK;
+	int rc = EX_USAGE; /* assume invalid arguments by default */
 	result_t err = RESULT_OK;
-
 	youtube_handle_t yt = NULL;
 	struct quality q = {NULL, NULL};
 	const char *proof_of_origin = NULL;
 	const char *visitor_data = NULL;
+	const char *quality_str = NULL;
 
 	int synonym = 0;
 	struct option lo[] = {
@@ -212,14 +203,15 @@ main(int argc, char *argv[])
 	while ((opt = getopt_long(argc, argv, "htq:p:v:", lo, NULL)) != -1) {
 		switch (opt == 0 ? synonym : opt) {
 		case 'h':
-			goto_check_usage(EX_OK);
+			fprintf(stdout, "Usage: %s [URL]\n", argv[0]);
+			rc = EX_OK;
+			goto check_result;
 		case 't':
 			err = try_sandbox();
+			rc = err.err ? EX_SOFTWARE : EX_OK;
 			goto check_result;
 		case 'q':
-			if (!parse_quality_choices(optarg, &q)) {
-				goto_check_usage(EX_DATAERR);
-			}
+			quality_str = optarg;
 			break;
 		case 'p':
 			proof_of_origin = optarg;
@@ -228,35 +220,36 @@ main(int argc, char *argv[])
 			visitor_data = optarg;
 			break;
 		default:
-			goto_check_usage(EX_USAGE);
+			goto check_result;
 		}
 	}
 
+	assert(rc == EX_USAGE); /* still assuming invalid arguments */
 	if (optind >= argc) {
 		fprintf(stderr, "Missing URL argument after options\n");
-		goto_check_usage(EX_USAGE);
 	} else if (proof_of_origin == NULL || *proof_of_origin == '\0') {
 		fprintf(stderr, "Missing --proof-of-origin value\n");
-		goto_check_usage(EX_USAGE);
 	} else if (visitor_data == NULL || *visitor_data == '\0') {
 		fprintf(stderr, "Missing --visitor-data value\n");
-		goto_check_usage(EX_USAGE);
-	}
-
-	err = unthrottle(argv[optind], proof_of_origin, visitor_data, &q, &yt);
-	if (yt == NULL) {
-		fprintf(stderr, "ERROR: Could not allocate stream object\n");
-		rc = EX_OSERR;
-	}
+	} else if (quality_str && !parse_quality_choices(quality_str, &q)) {
+		fprintf(stderr, "Invalid --quality value: %s\n", quality_str);
+	} else {
+		const char *url = argv[optind];
+		err = unthrottle(url, proof_of_origin, visitor_data, &q, &yt);
+		if (yt == NULL) {
+			fprintf(stderr, "ERROR: Could not allocate stream\n");
+			rc = EX_OSERR;
+			goto cleanup;
+		}
 check_result:
-	if (err.err) {
-		to_stderr("%s", result_to_str(err));
-		rc = EX_SOFTWARE;
+		if (rc == EX_OK) {
+			/* already succeeded at some earlier stage */
+		} else if (err.err) {
+			to_stderr("%s", result_to_str(err));
+			rc = EX_SOFTWARE;
+		}
 	}
-check_usage:
-	if (show_usage) {
-		fprintf(stderr, "Usage: %s [URL]\n", argv[0]);
-	}
+cleanup:
 	pcre2_match_data_free(q.md); /* handles NULL gracefully */
 	pcre2_code_free(q.re);       /* handles NULL gracefully */
 	youtube_stream_cleanup(yt);  /* handles NULL gracefully */
