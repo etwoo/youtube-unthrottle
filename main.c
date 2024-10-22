@@ -20,6 +20,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/param.h> /* for MAX() */
 #include <sysexits.h>
 
 #define PCRE2_CODE_UNIT_WIDTH 8
@@ -48,6 +49,16 @@ to_stderr(const char *pattern, ...)
 	vfprintf(stderr, pattern, ap);
 	fputc('\n', stderr);
 	va_end(ap);
+}
+
+static WARN_UNUSED int
+result_to_status(result_t r)
+{
+	if (r.err) {
+		to_stderr("%s", result_to_str(r));
+		return EX_SOFTWARE;
+	}
+	return EX_OK;
 }
 
 static WARN_UNUSED result_t
@@ -182,13 +193,15 @@ int
 main(int argc, char *argv[])
 {
 	int fd __attribute__((cleanup(coverage_cleanup))) = coverage_open();
-	int rc = EX_USAGE; /* assume invalid arguments by default */
-	result_t err = RESULT_OK;
-	youtube_handle_t yt = NULL;
-	struct quality q = {NULL, NULL};
+	enum {
+		ACTION_YOUTUBE_UNTHROTTLE,
+		ACTION_TRY_SANDBOX,
+		ACTION_USAGE_HELP,
+		ACTION_USAGE_ERROR,
+	} action = 0;
+	const char *q_str = NULL;
 	const char *proof_of_origin = NULL;
 	const char *visitor_data = NULL;
-	const char *quality_str = NULL;
 
 	int synonym = 0;
 	struct option lo[] = {
@@ -203,15 +216,13 @@ main(int argc, char *argv[])
 	while ((opt = getopt_long(argc, argv, "htq:p:v:", lo, NULL)) != -1) {
 		switch (opt == 0 ? synonym : opt) {
 		case 'h':
-			fprintf(stdout, "Usage: %s [URL]\n", argv[0]);
-			rc = EX_OK;
-			goto check_result;
+			action = MAX(action, ACTION_USAGE_HELP);
+			break;
 		case 't':
-			err = try_sandbox();
-			rc = err.err ? EX_SOFTWARE : EX_OK;
-			goto check_result;
+			action = MAX(action, ACTION_TRY_SANDBOX);
+			break;
 		case 'q':
-			quality_str = optarg;
+			q_str = optarg;
 			break;
 		case 'p':
 			proof_of_origin = optarg;
@@ -220,38 +231,58 @@ main(int argc, char *argv[])
 			visitor_data = optarg;
 			break;
 		default:
-			goto check_result;
+			action = MAX(action, ACTION_USAGE_ERROR);
+			break;
 		}
 	}
 
-	assert(rc == EX_USAGE); /* still assuming invalid arguments */
-	if (optind >= argc) {
-		fprintf(stderr, "Missing URL argument after options\n");
-	} else if (proof_of_origin == NULL || *proof_of_origin == '\0') {
-		fprintf(stderr, "Missing --proof-of-origin value\n");
-	} else if (visitor_data == NULL || *visitor_data == '\0') {
-		fprintf(stderr, "Missing --visitor-data value\n");
-	} else if (quality_str && !parse_quality_choices(quality_str, &q)) {
-		fprintf(stderr, "Invalid --quality value: %s\n", quality_str);
-	} else {
-		const char *url = argv[optind];
-		err = unthrottle(url, proof_of_origin, visitor_data, &q, &yt);
-		if (yt == NULL) {
-			fprintf(stderr, "ERROR: Could not allocate stream\n");
-			rc = EX_OSERR;
-			goto cleanup;
+	int rc = EX_USAGE;  /* assume invalid arguments by default */
+	FILE *out = stderr; /* assume output to stderr by default */
+	struct quality q = {NULL, NULL};
+
+	switch (action) {
+	case ACTION_USAGE_HELP:
+		rc = EX_OK;
+		out = stdout;
+		__attribute__((fallthrough));
+	case ACTION_USAGE_ERROR:
+		fprintf(out, "Usage: %s [options] <url>\n", argv[0]);
+		fprintf(out, "Options:\n");
+		for (size_t i = 0; i < (sizeof(lo) / sizeof((lo)[0])); ++i) {
+			fprintf(out, "\t-%c, --%s\n", lo[i].val, lo[i].name);
 		}
-	check_result:
-		if (rc == EX_OK) {
-			/* already succeeded at some earlier stage */
-		} else if (err.err) {
-			to_stderr("%s", result_to_str(err));
-			rc = EX_SOFTWARE;
+		break;
+	case ACTION_TRY_SANDBOX:
+		rc = result_to_status(try_sandbox());
+		break;
+	case ACTION_YOUTUBE_UNTHROTTLE:
+		if (optind >= argc) {
+			fprintf(stderr, "Missing URL argument after options\n");
+		} else if (!proof_of_origin || *proof_of_origin == '\0') {
+			fprintf(stderr, "Missing --proof-of-origin value\n");
+		} else if (!visitor_data || *visitor_data == '\0') {
+			fprintf(stderr, "Missing --visitor-data value\n");
+		} else if (q_str && !parse_quality_choices(q_str, &q)) {
+			fprintf(stderr, "Invalid --quality value: %s\n", q_str);
+		} else {
+			youtube_handle_t stream = NULL;
+			result_t err = unthrottle(argv[optind],
+			                          proof_of_origin,
+			                          visitor_data,
+			                          &q,
+			                          &stream);
+			if (stream == NULL) {
+				fprintf(stderr, "ERROR: Can't alloc stream\n");
+				rc = EX_OSERR;
+			} else {
+				rc = result_to_status(err);
+			}
+			youtube_stream_cleanup(stream);
+			youtube_global_cleanup();
 		}
+		break;
 	}
-cleanup:
-	youtube_stream_cleanup(yt);
-	youtube_global_cleanup();
+
 	pcre2_match_data_free(q.md); /* handles NULL gracefully */
 	pcre2_code_free(q.re);       /* handles NULL gracefully */
 	return rc;
