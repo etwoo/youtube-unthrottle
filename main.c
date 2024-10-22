@@ -274,7 +274,7 @@ main(int argc, char *argv[])
 	case ACTION_USAGE_ERROR:
 		fprintf(out, "Usage: %s [options] <url>\nOptions:\n", argv[0]);
 		for (size_t i = 0; i < (sizeof(lo) / sizeof((lo)[0])); ++i) {
-			fprintf(out, "\t-%c, --%s\n", lo[i].val, lo[i].name);
+			fprintf(out, "  -%c, --%s\n", lo[i].val, lo[i].name);
 		}
 		break;
 	}
