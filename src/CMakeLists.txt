@@ -1,6 +1,5 @@
 add_library(youtube)
 target_sources(youtube PRIVATE
-	coverage.c
 	debug.c
 	js.c
 	re.c

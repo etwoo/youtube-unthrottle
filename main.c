@@ -8,8 +8,6 @@
  * of an embedded JavaScript engine (in this case, Duktape).
  */
 
-#include "compiler_features.h"
-#include "coverage.h"
 #include "result.h"
 #include "sandbox.h"
 #include "youtube.h"
@@ -49,7 +47,7 @@ to_stderr(const char *pattern, ...)
 	va_end(ap);
 }
 
-static WARN_UNUSED int
+static __attribute__((warn_unused_result)) int
 result_to_status(result_t r)
 {
 	if (r.err) {
@@ -59,7 +57,7 @@ result_to_status(result_t r)
 	return EX_OK;
 }
 
-static WARN_UNUSED result_t
+static __attribute__((warn_unused_result)) result_t
 try_sandbox(void)
 {
 	check(sandbox_only_io_inet_tmpfile());
@@ -68,13 +66,13 @@ try_sandbox(void)
 	return RESULT_OK;
 }
 
-static WARN_UNUSED result_t
+static __attribute__((warn_unused_result)) result_t
 before_inet(void *userdata __attribute__((unused)))
 {
 	return sandbox_only_io_inet_rpath();
 }
 
-static WARN_UNUSED result_t
+static __attribute__((warn_unused_result)) result_t
 after_inet(void *userdata __attribute__((unused)))
 {
 	return sandbox_only_io();
@@ -85,7 +83,7 @@ struct quality {
 	pcre2_match_data *md;
 };
 
-static WARN_UNUSED bool
+static __attribute__((warn_unused_result)) bool
 parse_quality_choices(const char *str, struct quality *q)
 {
 	assert(q->re == NULL && q->md == NULL);
@@ -124,7 +122,7 @@ static const result_t RESULT_QUALITY_BLOCK = {
 	.err = ERR_JS_PARSE_JSON_CALLBACK_QUALITY,
 };
 
-static WARN_UNUSED result_t
+static __attribute__((warn_unused_result)) result_t
 during_parse_choose_quality(const char *val, size_t sz, void *userdata)
 {
 	struct quality *q = (struct quality *)userdata;
@@ -157,7 +155,7 @@ print_url(const char *url)
 	puts(url);
 }
 
-static WARN_UNUSED result_t
+static __attribute__((warn_unused_result)) result_t
 unthrottle(const char *target,
            const char *proof_of_origin,
            const char *visitor_data,
@@ -189,7 +187,6 @@ unthrottle(const char *target,
 int
 main(int argc, char *argv[])
 {
-	int fd __attribute__((cleanup(coverage_cleanup))) = coverage_open();
 	enum {
 		ACTION_YOUTUBE_UNTHROTTLE,
 		ACTION_TRY_SANDBOX,
