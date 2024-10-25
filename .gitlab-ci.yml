@@ -48,6 +48,10 @@ format:
 
 coverage:
   stage: build
+  image:
+    name: menci/archlinuxarm:base-devel
+    docker:
+      platform: arm64
   before_script:
     - *build_dependencies
     - pacman --noconfirm -Sy llvm python
