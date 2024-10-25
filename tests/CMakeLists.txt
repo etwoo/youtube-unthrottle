@@ -38,6 +38,7 @@ macro(generate_test_driver)
 	add_executable(test-driver
 		${generated_sources}
 		test_suites.c
+		coverage.c
 	)
 	target_include_directories(test-driver PRIVATE
 		${CMAKE_CURRENT_SOURCE_DIR} # for test_driver.h
@@ -50,6 +51,7 @@ endmacro()
 register_test(js)
 register_test(re)
 register_test(result)
+register_test(sandbox "ASAN_OPTIONS=detect_leaks=0")
 register_test(youtube)
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
 	register_test(landlock)

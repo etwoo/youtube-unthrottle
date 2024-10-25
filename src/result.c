@@ -1,5 +1,7 @@
 #include "result.h"
 
+#include "compiler_features.h"
+
 #include <assert.h>
 #include <curl/curl.h>
 #include <string.h> /* for strerror() */
