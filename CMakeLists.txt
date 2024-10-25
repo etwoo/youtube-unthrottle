@@ -92,7 +92,6 @@ else (CFLAG_HARDENED)
 		-Wl,-z,relro
 		-fstack-protector-strong
 		-fstack-clash-protection
-		-fcf-protection=full
 	)
 endif (CFLAG_HARDENED)
 target_compile_options(my_cflags INTERFACE -O2) # req'ed by _FORTIFY_SOURCE
