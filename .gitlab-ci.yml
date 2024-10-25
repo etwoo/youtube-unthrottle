@@ -1,6 +1,7 @@
 image: archlinux/archlinux:base-devel
 
 .build_dependencies: &build_dependencies
+    - zgrep LANDLOCK /proc/config.gz
     - pacman --noconfirm -Sy cmake clang curl duktape git jansson libseccomp pcre2
 
 .build_steps: &build_steps
