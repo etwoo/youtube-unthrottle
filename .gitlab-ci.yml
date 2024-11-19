@@ -1,14 +1,15 @@
 image: archlinux/archlinux:base-devel
 
 .build_dependencies: &build_dependencies
-    - pacman --noconfirm -Sy cmake clang curl duktape git jansson libseccomp pcre2
+    - export PKG="$PKG cmake clang curl duktape git jansson libseccomp pcre2"
+    - pacman --noconfirm --needed -Sy $PKG
 
 .build_steps: &build_steps
     - cmake -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=1 . -B ./build
     - cmake --build ./build
-    - ctest --test-dir ./build/tests/ --output-junit junit.xml -E '^(cli-try-sandbox|cli-valid-args-invalid-hostname|landlock|sandbox)$'
+    - ctest --test-dir ./build/tests/ --output-junit junit.xml -E '^(cli-try-sandbox|cli-valid-args-invalid-hostname|landlock|sandbox|seccomp)$'
 
-build_with_gcc:
+build:gcc:
   stage: build
   before_script:
     - *build_dependencies
@@ -18,12 +19,10 @@ build_with_gcc:
     - *build_steps
   artifacts:
     when: always
-    paths:
-      - ./build/tests/junit.xml
     reports:
       junit: ./build/tests/junit.xml
 
-build_with_clang:
+build:clang:
   stage: build
   before_script:
     - *build_dependencies
@@ -33,12 +32,10 @@ build_with_clang:
     - *build_steps
   artifacts:
     when: always
-    paths:
-      - ./build/tests/junit.xml
     reports:
       junit: ./build/tests/junit.xml
 
-format:
+build:clang-format:
   stage: build
   before_script:
     - *build_dependencies
@@ -46,21 +43,58 @@ format:
     - cmake -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Debug . -B ./build
     - cmake --build ./build --target fmt
 
-coverage:
+build:clang-coverage:
   stage: build
+  # Use medium machine type (instead of default small) to improve VM perf
+  tags:
+    - saas-linux-medium-amd64
+  # Prepend code coverage packages to install via build_dependencies anchor
   before_script:
+    - export PKG="expect jq llvm python qemu-img qemu-system-x86 virtiofsd"
     - *build_dependencies
-    - pacman --noconfirm -Sy llvm python
+  #
+  # For CI_PERSONAL_ACCESS_TOKEN, see: Settings > CI/CD > Variables
+  #
+  # Increment the BUMP envvar to force a VM image cache miss
+  #
   script:
     - export CC=clang
     - export CXX=clang++
-    - cmake -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=1 -DBUILD_COVERAGE=1 . -B ./build
+    - cmake -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=1 -DBUILD_COVERAGE=1 -DCFLAG_FUZZER=0 . -B ./build
     - cmake --build ./build
-    - COVERAGE_PROFILE_DIR=coverage.profraw ctest --test-dir ./build/tests/ --output-junit junit.xml -E '^(cli-try-sandbox|cli-valid-args-invalid-hostname|landlock|sandbox)$'
-    - ./scripts/coverage.sh -E 'main.c|src/(sandbox|landlock).c' coverage.profraw ./build/coverage.xml
+    - export CI_PERSONAL_ACCESS_TOKEN=${CI_PERSONAL_ACCESS_TOKEN}
+    - export CI_PROJECT_ID=${CI_PROJECT_ID}
+    - export BUMP=11
+    - export IMG=$((echo $BUMP && cat ./scripts/user-data) | sha256sum | cut -f1 -d' ')
+    - export URI=$(./scripts/find-vm-artifact.sh "vm-images/$IMG.zst") && echo "Fetching $URI"
+    - ./scripts/qemu-build.exp $IMG $URI
+    - ./scripts/coverage.sh -E main.c coverage.profraw ./build/coverage.xml
+  after_script:
+    - ./scripts/cleanup-vm-archive.sh vm-images
   coverage: '/^TOTAL.*\s+([\d\.]+\%)$/'
   artifacts:
+    when: always
+    paths:
+      - vm-images/*.zst
     reports:
+      junit: ./build/tests/junit.xml
       coverage_report:
         coverage_format: cobertura
         path: ./build/coverage.xml
+
+lint:shell:
+  stage: build
+  before_script:
+    - pacman --noconfirm --needed -Sy shellcheck
+  script:
+    - shellcheck --shell=bash ./scripts/*.sh
+
+lint:tcl:
+  stage: build
+  before_script:
+    - pacman --noconfirm --needed -Sy git python-pip
+    - pip install --break-system-packages --root-user-action ignore tclint
+  script:
+    - tclfmt --in-place --indent=tab ./scripts/*.exp
+    - git diff --exit-code ./scripts/*.exp
+    - tclint ./scripts/*.exp
