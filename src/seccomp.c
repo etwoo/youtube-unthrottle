@@ -313,12 +313,10 @@ seccomp_allow_tmpfile(scmp_filter_ctx ctx,
 	struct statfs fs = {0};
 	if (statfs(P_tmpdir, &fs) == 0 && fs.f_type == OVERLAYFS_SUPER_MAGIC) {
 		info("%s is overlayfs, which does not support O_TMPFILE; "
-		     "now allowing openat() unconditionally and relying on "
-		     "Landlock to restrict access to the filesystem!",
+		     "cannot filter openat() conditionally and hence "
+		     "cannot allow openat() safely!",
 		     P_tmpdir);
-		const int rc = seccomp_rule_add(ctx, SCMP_ACT_ALLOW, num, 0);
-		info_seccomp_rule_add_if(rc, "openat");
-		return rc == 0;
+		return false;
 	}
 
 	/*
