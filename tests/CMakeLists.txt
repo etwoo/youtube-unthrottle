@@ -1,7 +1,8 @@
-include(CTest)
-
 add_subdirectory(cli)
-add_subdirectory(fuzzer)
+
+if (BUILD_FUZZER)
+	add_subdirectory(fuzzer)
+endif (BUILD_FUZZER)
 
 set(TEST_SOURCES "")
 

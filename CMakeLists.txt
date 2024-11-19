@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.25)
 project(youtube-unthrottle)
 
 add_executable(youtube-unthrottle)
@@ -17,6 +17,7 @@ if (BUILD_TESTING)
 		VERSION 1.5.0
 		DOWNLOAD_ONLY YES
 	)
+	include(CTest)
 	add_subdirectory(tests)
 endif (BUILD_TESTING)
 

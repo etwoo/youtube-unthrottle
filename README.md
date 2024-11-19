@@ -99,39 +99,39 @@ llvm
 To perform an initial build:
 
 ```sh
-cmake -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Debug . -B ./build
-cmake --build ./build
+cmake --preset default
+cmake --build --preset default
 ./build/youtube-unthrottle --help
 ```
 
 To rebuild from scratch, discarding any existing on-disk state:
 
 ```sh
-cmake --fresh -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Debug . -B ./build
-cmake --build ./build --clean-first
+cmake --preset default --fresh
+cmake --build --preset default --clean-first
 ```
 
 To build and run unit tests:
 
 ```sh
-cmake --fresh -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=1 . -B ./build
-cmake --build ./build --clean-first
-ctest --test-dir ./build/tests/
+cmake --preset default
+cmake --build --preset default
+ctest --preset default
 ```
 
 To reconfigure and build with clang instead of gcc:
 
 ```sh
-CC=clang CXX=clang++ cmake --fresh -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Debug . -B ./build
-cmake --build ./build --clean-first
+cmake --preset clang --fresh
+cmake --build --preset default --clean-first
 ```
 
 To generate a code coverage report:
 
 ```sh
-CC=clang CXX=clang++ cmake --fresh -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=1 -DBUILD_COVERAGE=1 . -B ./build
-cmake --build ./build --clean-first
-COVERAGE_PROFILE_DIR=coverage.profraw ctest --test-dir ./build/tests/
+cmake --preset coverage --fresh
+cmake --build --preset default --clean-first
+COVERAGE_PROFILE_DIR=coverage.profraw ctest --preset default
 ./scripts/coverage.sh coverage.profraw ./build/coverage.xml
 llvm-cov show -instr-profile=./build/coverage.profdata -object ./build/youtube-unthrottle
 ```
@@ -139,8 +139,8 @@ llvm-cov show -instr-profile=./build/coverage.profdata -object ./build/youtube-u
 To build and fuzz:
 
 ```sh
-CC=clang CXX=clang++ cmake --fresh -Wdev -Werror=dev -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=1 . -B ./build
-cmake --build ./build --clean-first
+cmake --preset fuzzer --fresh
+cmake --build --preset default --clean-first
 cd ./build/tests/fuzzer/
 cp -pr ../../../tests/fuzzer/samples/find_js_deobfuscator corpus
 ./find_js_deobfuscator -max_len=3000000 corpus > fuzz.log 2>&1 &

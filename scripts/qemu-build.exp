@@ -154,11 +154,8 @@ proc install_test_dependencies_in_vm {} {
 }
 
 proc run_tests_in_vm {nproc} {
-	set ctest_cmd [join {
-		"COVERAGE_PROFILE_DIR=coverage.profraw"
-		"ctest --test-dir ./build/tests/ --output-junit junit.xml"
-	} " "]
-	run_in_vm "$ctest_cmd --parallel $nproc"
+	set ctest "COVERAGE_PROFILE_DIR=coverage.profraw ctest --preset default"
+	run_in_vm "$ctest --parallel $nproc"
 
 	return [get_exit_code_of_previous_command_from_vm]
 }
