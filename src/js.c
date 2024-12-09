@@ -247,11 +247,6 @@ asprintf_free(char **strp)
 	free(*strp);
 }
 
-static const char *RE_FUNC_NAME[] = {
-	"&&\\(c=([^\\]]+)\\[0\\]\\(c\\)",
-	"&&\\(b=([^\\]]+)\\[0\\]\\(b\\)",
-};
-
 /*
  * Based on: youtube-dl, yt-dlp, rusty_ytdl
  *
@@ -273,16 +268,14 @@ find_js_deobfuscator(const char *js,
                      size_t *deobfuscator_sz)
 {
 	int rc = 0;
-
 	const char *name = NULL;
 	size_t nsz = 0;
-	for (size_t i = 0; i < ARRAY_SIZE(RE_FUNC_NAME); ++i) {
-		if (re_capture(RE_FUNC_NAME[i], js, js_sz, &name, &nsz)) {
-			break;
-		}
-		info("Cannot find '%s' in base.js", RE_FUNC_NAME[i]);
-	}
-	if (name == NULL || nsz == 0) {
+
+	if (!re_capture("&&\\([[:alpha:]]=([^\\]]+)\\[0\\]\\([[:alpha:]]\\)",
+	                js,
+	                js_sz,
+	                &name,
+	                &nsz)) {
 		return make_result(ERR_JS_DEOB_FIND_FUNCTION_ONE);
 	}
 	debug("Got function name 1: %.*s", (int)nsz, name);
@@ -298,8 +291,11 @@ find_js_deobfuscator(const char *js,
 
 	char *p3 __attribute__((cleanup(asprintf_free))) = NULL;
 	rc = asprintf(&p3,
-	              "(?s)\\Q%.*s\\E=("
-	              "function\\(a\\){.*return b.join\\(\"\"\\)};"
+	              "(?s)\\n\\Q%.*s\\E=("
+	              "function\\([[:alpha:]]\\){.*"
+	              "(?!\\n[^=\\n]+=)"
+	              "return [[:alpha:]]\\.join\\(\"\"\\)"
+	              "};"
 	              ")",
 	              (int)nsz,
 	              name);
@@ -367,6 +363,8 @@ call_js_foreach(const char *code,
 	duk_context *ctx __attribute__((cleanup(destroy_heap))) =
 		duk_create_heap_default(); /* may return NULL! */
 	check_if(ctx == NULL, ERR_JS_CALL_ALLOC);
+
+	duk_eval_string_noresult(ctx, "uwg=0xDEADBEEF");
 
 	duk_push_lstring(ctx, code, sz);
 	assert(duk_get_type(ctx, -1) == DUK_TYPE_STRING);
