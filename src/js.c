@@ -293,7 +293,7 @@ find_js_deobfuscator(const char *js,
 	rc = asprintf(&p3,
 	              "(?s)\\n\\Q%.*s\\E=("
 	              "function\\([[:alpha:]]\\){.*"
-	              "(?!\\n[^=\\n]+=)"
+	              "(?!\\n[^=\\n]+=)" /* stop before next global var decl */
 	              "return [[:alpha:]]\\.join\\(\"\"\\)"
 	              "};"
 	              ")",
