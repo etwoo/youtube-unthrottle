@@ -385,7 +385,7 @@ minimum_json_with_correct_shape(void)
 		.choose_quality_userdata = NULL,
 	};
 	result_t err = parse_json(json, strlen(json), &pops);
-	ASSERT_EQ(err.err, OK);
+	ASSERT_EQ(OK, err.err);
 
 	ASSERT_STR_EQ("http://a.test", urls.audio);
 	ASSERT_STR_EQ("http://v.test", urls.video);
@@ -415,7 +415,7 @@ extra_adaptiveFormats_elements(void)
 		.choose_quality_userdata = NULL,
 	};
 	result_t err = parse_json(json, strlen(json), &pops);
-	ASSERT_EQ(err.err, OK);
+	ASSERT_EQ(OK, err.err);
 
 	ASSERT_STR_EQ("http://a.test", urls.audio);
 	ASSERT_STR_EQ("http://v.test", urls.video);
@@ -467,7 +467,7 @@ choose_adaptiveFormats_elements(void)
 		.choose_quality_userdata = "skip",
 	};
 	result_t err = parse_json(json, strlen(json), &pops);
-	ASSERT_EQ(err.err, OK);
+	ASSERT_EQ(OK, err.err);
 
 	ASSERT_STR_EQ("http://a.test", urls.audio);
 	ASSERT_STR_EQ("http://v.test", urls.video);
@@ -489,10 +489,10 @@ find_base_js_url_negative(void)
 
 	static const char html[] = "<html/>";
 	result_t err = find_base_js_url(html, sizeof(html), &p, &sz);
-	ASSERT_EQ(err.err, ERR_JS_BASEJS_URL_FIND);
+	ASSERT_EQ(ERR_JS_BASEJS_URL_FIND, err.err);
 
-	ASSERT_EQ(p, NULL);
-	ASSERT_EQ(sz, 0);
+	ASSERT_EQ(NULL, p);
+	ASSERT_EQ(0, sz);
 	PASS();
 }
 
@@ -509,12 +509,12 @@ find_base_js_url_positive(void)
 		">"
 		"</script>";
 	result_t err = find_base_js_url(html, sizeof(html), &got_url, &got_sz);
-	ASSERT_EQ(err.err, OK);
+	ASSERT_EQ(OK, err.err);
 
 	static const char expected[] =
 		"/s/player/deadbeef/player_ias.vflset/en_US/base.js";
-	ASSERT_EQ(got_sz, strlen(expected));
-	ASSERT_STRN_EQ(got_url, expected, got_sz);
+	ASSERT_EQ(strlen(expected), got_sz);
+	ASSERT_STRN_EQ(expected, got_url, got_sz);
 	PASS();
 }
 
@@ -524,8 +524,8 @@ find_js_timestamp_negative_re_pattern(void)
 	static const char json[] = "{signatureTimestamp:\"foobar\"}";
 	long long int timestamp = -1;
 	result_t err = find_js_timestamp(json, sizeof(json), &timestamp);
-	ASSERT_EQ(err.err, ERR_JS_TIMESTAMP_FIND);
-	ASSERT_LT(timestamp, 0);
+	ASSERT_EQ(ERR_JS_TIMESTAMP_FIND, err.err);
+	ASSERT_GT(0, timestamp);
 	PASS();
 }
 
@@ -535,10 +535,10 @@ find_js_timestamp_negative_strtoll_erange(void)
 	static const char json[] = "{signatureTimestamp:9223372036854775808}";
 	long long int timestamp = -1;
 	result_t err = find_js_timestamp(json, sizeof(json), &timestamp);
-	ASSERT_EQ(err.err, ERR_JS_TIMESTAMP_PARSE_LL);
-	ASSERT_EQ(err.num, ERANGE);
+	ASSERT_EQ(ERR_JS_TIMESTAMP_PARSE_LL, err.err);
+	ASSERT_EQ(ERANGE, err.num);
 	ASSERT_STR_EQ("9223372036854775808", err.msg);
-	ASSERT_LT(timestamp, 0);
+	ASSERT_GT(0, timestamp);
 	PASS();
 }
 
@@ -548,8 +548,8 @@ find_js_timestamp_positive_strtoll_max(void)
 	static const char json[] = "{signatureTimestamp:9223372036854775807}";
 	long long int timestamp = 0;
 	result_t err = find_js_timestamp(json, sizeof(json), &timestamp);
-	ASSERT_EQ(err.err, OK);
-	ASSERT_EQ(timestamp, LLONG_MAX);
+	ASSERT_EQ(OK, err.err);
+	ASSERT_EQ(LLONG_MAX, timestamp);
 	PASS();
 }
 
@@ -559,8 +559,8 @@ find_js_timestamp_positive_simple(void)
 	static const char json[] = "{signatureTimestamp:19957}";
 	long long int timestamp = 0;
 	result_t err = find_js_timestamp(json, sizeof(json), &timestamp);
-	ASSERT_EQ(err.err, OK);
-	ASSERT_EQ(timestamp, 19957);
+	ASSERT_EQ(OK, err.err);
+	ASSERT_EQ(19957, timestamp);
 	PASS();
 }
 
@@ -573,10 +573,10 @@ find_js_deobfuscator_magic_global_negative(void)
 	static const char js[] = "var magic=\"not an integer\";";
 	result_t err =
 		find_js_deobfuscator_magic_global(js, sizeof(js), &magic, &sz);
-	ASSERT_EQ(err.err, ERR_JS_DEOBFUSCATOR_MAGIC_FIND);
+	ASSERT_EQ(ERR_JS_DEOBFUSCATOR_MAGIC_FIND, err.err);
 
-	ASSERT_EQ(magic, NULL);
-	ASSERT_EQ(sz, 0);
+	ASSERT_EQ(NULL, magic);
+	ASSERT_EQ(0, sz);
 	PASS();
 }
 
@@ -589,8 +589,9 @@ find_js_deobfuscator_magic_global_positive(void)
 	static const char js[] = "var magic=7777777;";
 	result_t err =
 		find_js_deobfuscator_magic_global(js, sizeof(js), &magic, &sz);
-	ASSERT_EQ(err.err, OK);
-	ASSERT_STRN_EQ(magic, js, strlen(js) - 1);
+	ASSERT_EQ(OK, err.err);
+	ASSERT_EQ(strlen(js) - 1, sz);
+	ASSERT_STRN_EQ(js, magic, sz);
 	PASS();
 }
 
@@ -603,10 +604,10 @@ find_js_deobfuscator_negative_first_match_fail(void)
 	static const char js[] =
 		"var _yt_player={};(function(g){})(_yt_player);";
 	result_t err = find_js_deobfuscator(js, sizeof(js), &deobfuscator, &sz);
-	ASSERT_EQ(err.err, ERR_JS_DEOB_FIND_FUNCTION_ONE);
+	ASSERT_EQ(ERR_JS_DEOB_FIND_FUNCTION_ONE, err.err);
 
-	ASSERT_EQ(deobfuscator, NULL);
-	ASSERT_EQ(sz, 0);
+	ASSERT_EQ(NULL, deobfuscator);
+	ASSERT_EQ(0, sz);
 	PASS();
 }
 
@@ -618,10 +619,10 @@ find_js_deobfuscator_negative_second_match_fail(void)
 
 	static const char js[] = "&&(c=ODa[0](c),";
 	result_t err = find_js_deobfuscator(js, sizeof(js), &deobfuscator, &sz);
-	ASSERT_EQ(err.err, ERR_JS_DEOB_FIND_FUNCTION_TWO);
+	ASSERT_EQ(ERR_JS_DEOB_FIND_FUNCTION_TWO, err.err);
 
-	ASSERT_EQ(deobfuscator, NULL);
-	ASSERT_EQ(sz, 0);
+	ASSERT_EQ(NULL, deobfuscator);
+	ASSERT_EQ(0, sz);
 	PASS();
 }
 
@@ -633,10 +634,10 @@ find_js_deobfuscator_negative_third_match_fail(void)
 
 	static const char js[] = "&&(c=ODa[0](c),\nvar ODa=[Pma];";
 	result_t err = find_js_deobfuscator(js, sizeof(js), &deobfuscator, &sz);
-	ASSERT_EQ(err.err, ERR_JS_DEOB_FIND_FUNCTION_BODY);
+	ASSERT_EQ(ERR_JS_DEOB_FIND_FUNCTION_BODY, err.err);
 
-	ASSERT_EQ(deobfuscator, NULL);
-	ASSERT_EQ(sz, 0);
+	ASSERT_EQ(NULL, deobfuscator);
+	ASSERT_EQ(0, sz);
 	PASS();
 }
 
@@ -650,11 +651,11 @@ find_js_deobfuscator_positive_simple(void)
 		"&&(c=ODa[0](c),\nvar ODa=[Pma];\nPma=function(a)"
 		"{return b.join(\"\")};";
 	result_t err = find_js_deobfuscator(js, sizeof(js), &deobfuscator, &sz);
-	ASSERT_EQ(err.err, OK);
+	ASSERT_EQ(OK, err.err);
 
 	static const char expected[] = "function(a){return b.join(\"\")};";
-	ASSERT_EQ(sz, strlen(expected));
-	ASSERT_STRN_EQ(deobfuscator, expected, sz);
+	ASSERT_EQ(strlen(expected), sz);
+	ASSERT_STRN_EQ(expected, deobfuscator, sz);
 	PASS();
 }
 
@@ -668,11 +669,11 @@ find_js_deobfuscator_positive_with_escaping(void)
 		"&&(c=$aa[0](c),\nvar $aa=[$bb];\n$bb=function(a)"
 		"{return b.join(\"\")};";
 	result_t err = find_js_deobfuscator(js, sizeof(js), &deobfuscator, &sz);
-	ASSERT_EQ(err.err, OK);
+	ASSERT_EQ(OK, err.err);
 
 	static const char expected[] = "function(a){return b.join(\"\")};";
-	ASSERT_EQ(sz, strlen(expected));
-	ASSERT_STRN_EQ(deobfuscator, expected, sz);
+	ASSERT_EQ(strlen(expected), sz);
+	ASSERT_STRN_EQ(expected, deobfuscator, sz);
 	PASS();
 }
 
@@ -707,7 +708,7 @@ call_with_duktape_pcompile_fail(void)
 	                               0,
 	                               NULL,
 	                               NULL);
-	ASSERT_EQ(err.err, ERR_JS_CALL_COMPILE);
+	ASSERT_EQ(ERR_JS_CALL_COMPILE, err.err);
 	PASS();
 }
 
@@ -726,7 +727,7 @@ call_with_duktape_pcall_fail(void)
 	                               ARRAY_SIZE(args),
 	                               NULL,
 	                               NULL);
-	ASSERT_EQ(err.err, ERR_JS_CALL_INVOKE);
+	ASSERT_EQ(ERR_JS_CALL_INVOKE, err.err);
 	PASS();
 }
 
@@ -745,7 +746,7 @@ call_with_duktape_pcall_incorrect_result_type(void)
 	                               ARRAY_SIZE(args),
 	                               NULL,
 	                               NULL);
-	ASSERT_EQ(err.err, ERR_JS_CALL_GET_RESULT);
+	ASSERT_EQ(ERR_JS_CALL_GET_RESULT, err.err);
 	PASS();
 }
 
@@ -796,7 +797,7 @@ call_with_duktape_minimum_valid_function(void)
 	                               ARRAY_SIZE(args),
 	                               &cops,
 	                               &result);
-	ASSERT_EQ(err.err, OK);
+	ASSERT_EQ(OK, err.err);
 	ASSERT_STR_EQ("HELLO, WORLD! 123456789", result.str);
 	PASS();
 }

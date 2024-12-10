@@ -112,7 +112,7 @@ TEST
 global_setup(void)
 {
 	result_t err = youtube_global_init();
-	ASSERT_EQ(err.err, OK);
+	ASSERT_EQ(OK, err.err);
 	PASS();
 }
 
@@ -130,7 +130,7 @@ stream_setup_with_redirected_network_io(const char *(*custom_fn)(const char *),
 	result_t err = youtube_stream_setup(stream, &NOOP, NULL, FAKE_YT_URL);
 	test_request_path_to_response = NULL;
 
-	ASSERT_EQ(err.err, OK);
+	ASSERT_EQ(OK, err.err);
 
 	GOT_CORRECT_URLS = true;
 	EXPECTED_AUDIO_URL = expected_audio_url;
@@ -141,7 +141,7 @@ stream_setup_with_redirected_network_io(const char *(*custom_fn)(const char *),
 	EXPECTED_AUDIO_URL = NULL;
 	EXPECTED_VIDEO_URL = NULL;
 
-	ASSERT_EQ(err.err, OK);
+	ASSERT_EQ(OK, err.err);
 	ASSERT(GOT_CORRECT_URLS);
 
 	youtube_stream_cleanup(stream);
@@ -167,7 +167,7 @@ stream_setup_with_null_ops(void)
 	ASSERT(stream);
 
 	result_t err = youtube_stream_setup(stream, &NULLOP, NULL, FAKE_YT_URL);
-	ASSERT_EQ(err.err, OK);
+	ASSERT_EQ(OK, err.err);
 
 	youtube_stream_cleanup(stream);
 	PASS();
@@ -193,7 +193,7 @@ stream_setup_edge_cases_target_url_missing_stream_id(void)
 	ASSERT(stream);
 
 	result_t err = youtube_stream_setup(stream, &NOOP, NULL, YT_MISSING_ID);
-	ASSERT_EQ(err.err, ERR_JS_MAKE_INNERTUBE_JSON_ID);
+	ASSERT_EQ(ERR_JS_MAKE_INNERTUBE_JSON_ID, err.err);
 
 	youtube_stream_cleanup(stream);
 	PASS();
@@ -276,7 +276,7 @@ stream_setup_edge_cases_n_param_missing(void)
 	result_t err = youtube_stream_setup(stream, &NULLOP, NULL, FAKE_YT_URL);
 	test_request_path_to_response = NULL;
 
-	ASSERT_EQ(err.err, ERR_YOUTUBE_N_PARAM_FIND_IN_QUERY);
+	ASSERT_EQ(ERR_YOUTUBE_N_PARAM_FIND_IN_QUERY, err.err);
 
 	youtube_stream_cleanup(stream);
 	PASS();
@@ -301,7 +301,7 @@ stream_setup_edge_cases_entire_url_missing(void)
 	result_t err = youtube_stream_setup(stream, &NULLOP, NULL, FAKE_YT_URL);
 	test_request_path_to_response = NULL;
 
-	ASSERT_EQ(err.err, ERR_YOUTUBE_N_PARAM_QUERY_GET);
+	ASSERT_EQ(ERR_YOUTUBE_N_PARAM_QUERY_GET, err.err);
 
 	youtube_stream_cleanup(stream);
 	PASS();
