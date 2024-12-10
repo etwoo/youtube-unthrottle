@@ -565,6 +565,36 @@ find_js_timestamp_positive_simple(void)
 }
 
 TEST
+find_js_deobfuscator_magic_global_negative(void)
+{
+	const char *magic = NULL;
+	size_t sz = 0;
+
+	static const char js[] = "var magic=\"not an integer\"";
+	result_t err =
+		find_js_deobfuscator_magic_global(js, sizeof(js), &magic, &sz);
+	ASSERT_EQ(err.err, ERR_JS_DEOBFUSCATOR_MAGIC_FIND);
+
+	ASSERT_EQ(magic, NULL);
+	ASSERT_EQ(sz, 0);
+	PASS();
+}
+
+TEST
+find_js_deobfuscator_magic_global_positive(void)
+{
+	const char *magic = NULL;
+	size_t sz = 0;
+
+	static const char js[] = "var magic=7777777;";
+	result_t err =
+		find_js_deobfuscator_magic_global(js, sizeof(js), &magic, &sz);
+	ASSERT_EQ(err.err, OK);
+	ASSERT_STRN_EQ(magic, js, strlen(js) - 1);
+	PASS();
+}
+
+TEST
 find_js_deobfuscator_negative_first_match_fail(void)
 {
 	const char *deobfuscator = NULL;
@@ -654,6 +684,8 @@ SUITE(find_with_pcre)
 	RUN_TEST(find_js_timestamp_negative_strtoll_erange);
 	RUN_TEST(find_js_timestamp_positive_strtoll_max);
 	RUN_TEST(find_js_timestamp_positive_simple);
+	RUN_TEST(find_js_deobfuscator_magic_global_negative);
+	RUN_TEST(find_js_deobfuscator_magic_global_positive);
 	RUN_TEST(find_js_deobfuscator_negative_first_match_fail);
 	RUN_TEST(find_js_deobfuscator_negative_second_match_fail);
 	RUN_TEST(find_js_deobfuscator_negative_third_match_fail);
