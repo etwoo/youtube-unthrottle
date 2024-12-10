@@ -570,7 +570,7 @@ find_js_deobfuscator_magic_global_negative(void)
 	const char *magic = NULL;
 	size_t sz = 0;
 
-	static const char js[] = "var magic=\"not an integer\"";
+	static const char js[] = "var magic=\"not an integer\";";
 	result_t err =
 		find_js_deobfuscator_magic_global(js, sizeof(js), &magic, &sz);
 	ASSERT_EQ(err.err, ERR_JS_DEOBFUSCATOR_MAGIC_FIND);
