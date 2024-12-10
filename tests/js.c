@@ -661,11 +661,20 @@ SUITE(find_with_pcre)
 	RUN_TEST(find_js_deobfuscator_positive_with_escaping);
 }
 
+static const char *JS_MAGIC = "var MY_MAGIC=123456789";
+
 TEST
 call_with_duktape_pcompile_fail(void)
 {
 	static const char js[] = "\"Not a valid function definition!\"";
-	result_t err = call_js_foreach(js, sizeof(js), NULL, 0, NULL, NULL);
+	result_t err = call_js_foreach(JS_MAGIC,
+	                               strlen(JS_MAGIC),
+	                               js,
+	                               sizeof(js),
+	                               NULL,
+	                               0,
+	                               NULL,
+	                               NULL);
 	ASSERT_EQ(err.err, ERR_JS_CALL_COMPILE);
 	PASS();
 }
@@ -677,7 +686,9 @@ call_with_duktape_pcall_fail(void)
 	args[0] = "Hello, World!";
 
 	static const char js[] = "function(a){return not_defined;};";
-	result_t err = call_js_foreach(js,
+	result_t err = call_js_foreach(JS_MAGIC,
+	                               strlen(JS_MAGIC),
+	                               js,
 	                               sizeof(js),
 	                               args,
 	                               ARRAY_SIZE(args),
@@ -694,7 +705,9 @@ call_with_duktape_pcall_incorrect_result_type(void)
 	args[0] = "Hello, World!";
 
 	static const char js[] = "function(a){return true;};";
-	result_t err = call_js_foreach(js,
+	result_t err = call_js_foreach(JS_MAGIC,
+	                               strlen(JS_MAGIC),
+	                               js,
 	                               sizeof(js),
 	                               args,
 	                               ARRAY_SIZE(args),
@@ -705,7 +718,7 @@ call_with_duktape_pcall_incorrect_result_type(void)
 }
 
 struct result_copy {
-	char str[16];
+	char str[24];
 };
 
 static void
@@ -741,15 +754,18 @@ call_with_duktape_minimum_valid_function(void)
 	char *args[1];
 	args[0] = "Hello, World!";
 
-	static const char js[] = "function(a){return a.toUpperCase();};";
-	result_t err = call_js_foreach(js,
+	static const char js[] =
+		"function(a){return a.toUpperCase() + \" \" + MY_MAGIC;};";
+	result_t err = call_js_foreach(JS_MAGIC,
+	                               strlen(JS_MAGIC),
+	                               js,
 	                               sizeof(js),
 	                               args,
 	                               ARRAY_SIZE(args),
 	                               &cops,
 	                               &result);
 	ASSERT_EQ(err.err, OK);
-	ASSERT_STR_EQ("HELLO, WORLD!", result.str);
+	ASSERT_STR_EQ("HELLO, WORLD! 123456789", result.str);
 	PASS();
 }
 

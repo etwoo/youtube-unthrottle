@@ -241,6 +241,24 @@ find_js_timestamp(const char *js, size_t js_sz, long long int *value)
 	return RESULT_OK;
 }
 
+result_t
+find_js_deobfuscator_magic_global(const char *js,
+                                  size_t js_sz,
+                                  const char **magic,
+                                  size_t *magic_sz)
+{
+	if (!re_capture("(var [[:alpha:]]+=[0-9]{6,});",
+	                js,
+	                js_sz,
+	                magic,
+	                magic_sz)) {
+		return make_result(ERR_JS_DEOBFUSCATOR_MAGIC_FIND);
+	}
+
+	debug("Parsed deobfuscator magic: %.*s", (int)*magic_sz, *magic);
+	return RESULT_OK;
+}
+
 static void
 asprintf_free(char **strp)
 {
@@ -353,8 +371,10 @@ call_js_one(duk_context *ctx,
 }
 
 result_t
-call_js_foreach(const char *code,
-                size_t sz,
+call_js_foreach(const char *magic,
+                size_t magic_sz,
+                const char *code,
+                size_t code_sz,
                 char **args,
                 const size_t argc,
                 struct call_ops *ops,
@@ -364,9 +384,9 @@ call_js_foreach(const char *code,
 		duk_create_heap_default(); /* may return NULL! */
 	check_if(ctx == NULL, ERR_JS_CALL_ALLOC);
 
-	duk_eval_string_noresult(ctx, "uwg=0xDEADBEEF");
+	duk_eval_lstring_noresult(ctx, magic, magic_sz);
 
-	duk_push_lstring(ctx, code, sz);
+	duk_push_lstring(ctx, code, code_sz);
 	assert(duk_get_type(ctx, -1) == DUK_TYPE_STRING);
 
 	duk_push_string(ctx, __FUNCTION__);

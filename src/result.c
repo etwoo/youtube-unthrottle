@@ -189,6 +189,9 @@ result_to_str(result_t r)
 		            r.msg,
 		            my_strerror(r));
 		break;
+	case ERR_JS_DEOBFUSCATOR_MAGIC_FIND:
+		s = "Cannot find deobfuscator magic constant in base.js";
+		break;
 	case ERR_JS_DEOBFUSCATOR_ALLOC:
 		s = "Cannot allocate asprintf buffer";
 		break;

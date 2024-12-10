@@ -31,6 +31,10 @@ result_t find_base_js_url(const char *html,
 result_t find_js_timestamp(const char *js,
                            size_t js_sz,
                            long long int *value) WARN_UNUSED;
+result_t find_js_deobfuscator_magic_global(const char *js,
+                                           size_t js_sz,
+                                           const char **magic,
+                                           size_t *magic_sz) WARN_UNUSED;
 result_t find_js_deobfuscator(const char *js,
                               size_t sz,
                               const char **deobfuscator,
@@ -40,8 +44,10 @@ struct call_ops {
 	result_t (*got_result)(const char *, size_t, size_t, void *);
 };
 
-result_t call_js_foreach(const char *code,
-                         size_t sz,
+result_t call_js_foreach(const char *magic,
+                         size_t magic_sz,
+                         const char *code,
+                         size_t code_sz,
                          char **args,
                          const size_t argc,
                          struct call_ops *ops,

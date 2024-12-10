@@ -27,8 +27,12 @@ static const char FAKE_JSON_RESPONSE[] =
 	"]}}";
 static const char FAKE_JS_RESPONSE[] =
 	"{signatureTimestamp:12345}"
-	"&&(c=X[0](c),\nvar X=[Y];\nY=function(a)"
-	"{b=[a.toUpperCase()]; return b.join(\"\")};";
+	"var mmm=88888888;"
+	"&&(c=X[0](c),\nvar X=[Y];\n"
+	"Y=function(a){"
+	"if (typeof mmm === \"undefined\") { return \"FAIL_MAGIC_TYPEOF\"; }"
+	"b=[a.toUpperCase()]; return b.join(\"\")"
+	"};";
 
 static const char *(*test_request_path_to_response)(const char *) = NULL;
 
