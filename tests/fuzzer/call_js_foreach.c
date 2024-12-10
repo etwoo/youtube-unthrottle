@@ -18,7 +18,7 @@ LLVMFuzzerTestOneInput(const char *data, size_t sz)
 	struct call_ops cops = {
 		.got_result = got_result,
 	};
-	const char *magic = "var magic=123"
+	const char *magic = "var magic=123";
 	char *args[8];
 	args[0] = "fPaFSFklkyAP8IeVM1C";
 	args[1] = "K-qX7Rx6NF8wh-wN_Ni";
