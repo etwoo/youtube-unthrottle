@@ -565,6 +565,36 @@ find_js_timestamp_positive_simple(void)
 }
 
 TEST
+find_js_deobfuscator_magic_global_negative(void)
+{
+	const char *magic = NULL;
+	size_t sz = 0;
+
+	static const char js[] = "var magic=\"not an integer\";";
+	result_t err =
+		find_js_deobfuscator_magic_global(js, sizeof(js), &magic, &sz);
+	ASSERT_EQ(err.err, ERR_JS_DEOBFUSCATOR_MAGIC_FIND);
+
+	ASSERT_EQ(magic, NULL);
+	ASSERT_EQ(sz, 0);
+	PASS();
+}
+
+TEST
+find_js_deobfuscator_magic_global_positive(void)
+{
+	const char *magic = NULL;
+	size_t sz = 0;
+
+	static const char js[] = "var magic=7777777;";
+	result_t err =
+		find_js_deobfuscator_magic_global(js, sizeof(js), &magic, &sz);
+	ASSERT_EQ(err.err, OK);
+	ASSERT_STRN_EQ(magic, js, strlen(js) - 1);
+	PASS();
+}
+
+TEST
 find_js_deobfuscator_negative_first_match_fail(void)
 {
 	const char *deobfuscator = NULL;
@@ -654,6 +684,8 @@ SUITE(find_with_pcre)
 	RUN_TEST(find_js_timestamp_negative_strtoll_erange);
 	RUN_TEST(find_js_timestamp_positive_strtoll_max);
 	RUN_TEST(find_js_timestamp_positive_simple);
+	RUN_TEST(find_js_deobfuscator_magic_global_negative);
+	RUN_TEST(find_js_deobfuscator_magic_global_positive);
 	RUN_TEST(find_js_deobfuscator_negative_first_match_fail);
 	RUN_TEST(find_js_deobfuscator_negative_second_match_fail);
 	RUN_TEST(find_js_deobfuscator_negative_third_match_fail);
@@ -661,11 +693,20 @@ SUITE(find_with_pcre)
 	RUN_TEST(find_js_deobfuscator_positive_with_escaping);
 }
 
+static const char *JS_MAGIC = "var MY_MAGIC=123456789";
+
 TEST
 call_with_duktape_pcompile_fail(void)
 {
 	static const char js[] = "\"Not a valid function definition!\"";
-	result_t err = call_js_foreach(js, sizeof(js), NULL, 0, NULL, NULL);
+	result_t err = call_js_foreach(JS_MAGIC,
+	                               strlen(JS_MAGIC),
+	                               js,
+	                               sizeof(js),
+	                               NULL,
+	                               0,
+	                               NULL,
+	                               NULL);
 	ASSERT_EQ(err.err, ERR_JS_CALL_COMPILE);
 	PASS();
 }
@@ -677,7 +718,9 @@ call_with_duktape_pcall_fail(void)
 	args[0] = "Hello, World!";
 
 	static const char js[] = "function(a){return not_defined;};";
-	result_t err = call_js_foreach(js,
+	result_t err = call_js_foreach(JS_MAGIC,
+	                               strlen(JS_MAGIC),
+	                               js,
 	                               sizeof(js),
 	                               args,
 	                               ARRAY_SIZE(args),
@@ -694,7 +737,9 @@ call_with_duktape_pcall_incorrect_result_type(void)
 	args[0] = "Hello, World!";
 
 	static const char js[] = "function(a){return true;};";
-	result_t err = call_js_foreach(js,
+	result_t err = call_js_foreach(JS_MAGIC,
+	                               strlen(JS_MAGIC),
+	                               js,
 	                               sizeof(js),
 	                               args,
 	                               ARRAY_SIZE(args),
@@ -705,7 +750,7 @@ call_with_duktape_pcall_incorrect_result_type(void)
 }
 
 struct result_copy {
-	char str[16];
+	char str[24];
 };
 
 static void
@@ -741,15 +786,18 @@ call_with_duktape_minimum_valid_function(void)
 	char *args[1];
 	args[0] = "Hello, World!";
 
-	static const char js[] = "function(a){return a.toUpperCase();};";
-	result_t err = call_js_foreach(js,
+	static const char js[] =
+		"function(a){return a.toUpperCase() + \" \" + MY_MAGIC;};";
+	result_t err = call_js_foreach(JS_MAGIC,
+	                               strlen(JS_MAGIC),
+	                               js,
 	                               sizeof(js),
 	                               args,
 	                               ARRAY_SIZE(args),
 	                               &cops,
 	                               &result);
 	ASSERT_EQ(err.err, OK);
-	ASSERT_STR_EQ("HELLO, WORLD!", result.str);
+	ASSERT_STR_EQ("HELLO, WORLD! 123456789", result.str);
 	PASS();
 }
 

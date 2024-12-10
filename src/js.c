@@ -241,16 +241,29 @@ find_js_timestamp(const char *js, size_t js_sz, long long int *value)
 	return RESULT_OK;
 }
 
+result_t
+find_js_deobfuscator_magic_global(const char *js,
+                                  size_t js_sz,
+                                  const char **magic,
+                                  size_t *magic_sz)
+{
+	if (!re_capture("(var [[:alpha:]]+=[0-9]{6,});",
+	                js,
+	                js_sz,
+	                magic,
+	                magic_sz)) {
+		return make_result(ERR_JS_DEOBFUSCATOR_MAGIC_FIND);
+	}
+
+	debug("Parsed deobfuscator magic: %.*s", (int)*magic_sz, *magic);
+	return RESULT_OK;
+}
+
 static void
 asprintf_free(char **strp)
 {
 	free(*strp);
 }
-
-static const char *RE_FUNC_NAME[] = {
-	"&&\\(c=([^\\]]+)\\[0\\]\\(c\\)",
-	"&&\\(b=([^\\]]+)\\[0\\]\\(b\\)",
-};
 
 /*
  * Based on: youtube-dl, yt-dlp, rusty_ytdl
@@ -273,16 +286,14 @@ find_js_deobfuscator(const char *js,
                      size_t *deobfuscator_sz)
 {
 	int rc = 0;
-
 	const char *name = NULL;
 	size_t nsz = 0;
-	for (size_t i = 0; i < ARRAY_SIZE(RE_FUNC_NAME); ++i) {
-		if (re_capture(RE_FUNC_NAME[i], js, js_sz, &name, &nsz)) {
-			break;
-		}
-		info("Cannot find '%s' in base.js", RE_FUNC_NAME[i]);
-	}
-	if (name == NULL || nsz == 0) {
+
+	if (!re_capture("&&\\([[:alpha:]]=([^\\]]+)\\[0\\]\\([[:alpha:]]\\)",
+	                js,
+	                js_sz,
+	                &name,
+	                &nsz)) {
 		return make_result(ERR_JS_DEOB_FIND_FUNCTION_ONE);
 	}
 	debug("Got function name 1: %.*s", (int)nsz, name);
@@ -298,8 +309,11 @@ find_js_deobfuscator(const char *js,
 
 	char *p3 __attribute__((cleanup(asprintf_free))) = NULL;
 	rc = asprintf(&p3,
-	              "(?s)\\Q%.*s\\E=("
-	              "function\\(a\\){.*return b.join\\(\"\"\\)};"
+	              "(?s)\\n\\Q%.*s\\E=("
+	              "function\\([[:alpha:]]\\){.*"
+	              "(?!\\n[^=\\n]+=)" /* stop before next global var decl */
+	              "return [[:alpha:]]\\.join\\(\"\"\\)"
+	              "};"
 	              ")",
 	              (int)nsz,
 	              name);
@@ -357,8 +371,10 @@ call_js_one(duk_context *ctx,
 }
 
 result_t
-call_js_foreach(const char *code,
-                size_t sz,
+call_js_foreach(const char *magic,
+                size_t magic_sz,
+                const char *code,
+                size_t code_sz,
                 char **args,
                 const size_t argc,
                 struct call_ops *ops,
@@ -368,7 +384,9 @@ call_js_foreach(const char *code,
 		duk_create_heap_default(); /* may return NULL! */
 	check_if(ctx == NULL, ERR_JS_CALL_ALLOC);
 
-	duk_push_lstring(ctx, code, sz);
+	duk_eval_lstring_noresult(ctx, magic, magic_sz);
+
+	duk_push_lstring(ctx, code, code_sz);
 	assert(duk_get_type(ctx, -1) == DUK_TYPE_STRING);
 
 	duk_push_string(ctx, __FUNCTION__);

@@ -18,6 +18,7 @@ LLVMFuzzerTestOneInput(const char *data, size_t sz)
 	struct call_ops cops = {
 		.got_result = got_result,
 	};
+	const char *magic = "var magic=123";
 	char *args[8];
 	args[0] = "fPaFSFklkyAP8IeVM1C";
 	args[1] = "K-qX7Rx6NF8wh-wN_Ni";
@@ -27,6 +28,13 @@ LLVMFuzzerTestOneInput(const char *data, size_t sz)
 	args[5] = "Kbpbx5yukKR-Px0dhLj";
 	args[6] = "t2yEuJMA6mZh68xBzwE";
 	args[7] = "6a4RySpPL8dKGrGFAqo";
-	(void)call_js_foreach(data, sz, args, ARRAY_SIZE(args), &cops, NULL);
+	(void)call_js_foreach(magic,
+	                      strlen(magic),
+	                      data,
+	                      sz,
+	                      args,
+	                      ARRAY_SIZE(args),
+	                      &cops,
+	                      NULL);
 	return 0;
 }
