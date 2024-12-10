@@ -14,7 +14,7 @@ build:gcc:
   <<: *build_dependencies
   stage: build
   script:
-    - cmake --preset default
+    - cmake --preset default -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
     - cmake --build --preset default
     - ctest --preset default -E ${TESTS_FAIL_LACK_OF_LANDLOCK_API_IN_CI_RUNNERS}
   artifacts:
@@ -26,7 +26,7 @@ build:clang:
   <<: *build_dependencies
   stage: build
   script:
-    - cmake --preset clang
+    - cmake --preset clang -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
     - cmake --build --preset default
     - ctest --preset default -E ${TESTS_FAIL_LACK_OF_LANDLOCK_API_IN_CI_RUNNERS}
   artifacts:

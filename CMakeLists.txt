@@ -54,11 +54,16 @@ add_custom_target(fmt COMMAND find
 # Figure out which compiler options are supported, and enable them.
 #
 
-include(CheckCCompilerFlag)
-
 add_library(my_cflags INTERFACE)
 target_compile_features(my_cflags INTERFACE c_std_11)
-target_compile_options(my_cflags INTERFACE -Wall -Wextra)
+
+target_compile_options(my_cflags INTERFACE
+	-Wall
+	-Wextra
+	-pedantic
+	-Wno-gnu-zero-variadic-macro-arguments
+	-pipe
+)
 
 if (BUILD_COVERAGE)
 	CPMAddPackage(
@@ -80,7 +85,9 @@ if (BUILD_COVERAGE)
 	target_link_options(my_cflags INTERFACE ${CFLAG_COVERAGE})
 endif (BUILD_COVERAGE)
 
-check_c_compiler_flag(-fhardened CFLAG_HARDENED)
+include(CheckHardened)
+
+check_hardened(CFLAG_HARDENED -fhardened -O2)
 if (CFLAG_HARDENED)
 	target_compile_options(my_cflags INTERFACE -fhardened)
 else (CFLAG_HARDENED)
@@ -96,7 +103,15 @@ else (CFLAG_HARDENED)
 		-fcf-protection=full
 	)
 endif (CFLAG_HARDENED)
+
 target_compile_options(my_cflags INTERFACE -O2) # req'ed by _FORTIFY_SOURCE
+
+include(CheckCCompilerFlag)
+
+check_c_compiler_flag(-Wimplicit-fallthrough=5 CFLAG_FALLTHROUGH_STRICT)
+if (CFLAG_FALLTHROUGH_STRICT)
+	target_compile_options(my_cflags INTERFACE -Wimplicit-fallthrough=5)
+endif (CFLAG_FALLTHROUGH_STRICT)
 
 #
 # Enable some of the warnings recommended by https://kristerw.blogspot.com
@@ -104,13 +119,7 @@ target_compile_options(my_cflags INTERFACE -O2) # req'ed by _FORTIFY_SOURCE
 # ... except -Wjump-misses-init, which is too noisy
 #
 
-target_compile_options(my_cflags INTERFACE -Wnull-dereference -Wshadow -Wformat)
-if (NOT CMAKE_C_COMPILER_ID STREQUAL "Clang")
-	# Avoid -Wformat=2 under clang, which doesn't seem to recognize when a
-	# function passes a format string plus va_list to vprintf, resulting in
-	# a spurious warning about the former not being a format string.
-	target_compile_options(my_cflags INTERFACE -Wformat=2)
-endif (NOT CMAKE_C_COMPILER_ID STREQUAL "Clang")
+target_compile_options(my_cflags INTERFACE -Wshadow -Wformat=2)
 
 check_c_compiler_flag(-Wduplicated-cond CFLAG_DUPLICATED_COND)
 if (CFLAG_DUPLICATED_COND)
@@ -127,22 +136,6 @@ if (CFLAG_LOGICAL_OP)
 	target_compile_options(my_cflags INTERFACE -Wlogical-op)
 endif (CFLAG_LOGICAL_OP)
 
-check_c_compiler_flag(-Wrestrict CFLAG_RESTRICT)
-if (CFLAG_RESTRICT)
-	target_compile_options(my_cflags INTERFACE -Wrestrict)
-endif (CFLAG_RESTRICT)
-
-#
-# https://developers.redhat.com/blog/2018/03/21/compiler-and-linker-flags-gcc
-#
-
-target_compile_options(my_cflags INTERFACE
-	-Werror=format-security
-	-Werror=implicit-function-declaration
-	-pipe
-	-Wl,-z,defs
-)
-
 #
 # https://developers.redhat.com/blog/2020/03/26/static-analysis-in-gcc-10
 #
@@ -151,26 +144,6 @@ check_c_compiler_flag(-fanalyzer CFLAG_ANALYZER)
 if (CFLAG_ANALYZER)
 	target_compile_options(my_cflags INTERFACE -fanalyzer)
 endif (CFLAG_ANALYZER)
-
-#
-# https://best.openssf.org/Compiler-Hardening-Guides/Compiler-Options-Hardening-Guide-for-C-and-C++.html
-#
-# ... except -Wconversion and -Wsign-conversion, which are too noisy
-# ... and -Wl,-z,nodlopen, which causes an ld.so error on OpenBSD
-#
-
-check_c_compiler_flag(-Wtrampolines CFLAG_TRAMPOLINES)
-if (CFLAG_TRAMPOLINES)
-	target_compile_options(my_cflags INTERFACE -Wtrampolines)
-endif (CFLAG_TRAMPOLINES)
-
-target_compile_options(my_cflags INTERFACE
-	-Wimplicit-fallthrough
-	-Werror=implicit
-	-Werror=incompatible-pointer-types
-	-Werror=int-conversion
-	-Wl,-z,noexecstack
-)
 
 #
 # Enable some options copied from the Linux kernel Makefile

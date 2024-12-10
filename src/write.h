@@ -11,6 +11,6 @@
  *
  * In other words, keep trying in the face of partial writes.
  */
-ssize_t write_with_retry(int fd, const void *buf, size_t nbyte) WARN_UNUSED;
+ssize_t write_with_retry(int fd, const char *buf, size_t nbyte) WARN_UNUSED;
 
 #endif

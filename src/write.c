@@ -1,7 +1,7 @@
 #include "write.h"
 
 ssize_t
-write_with_retry(int fd, const void *buf, size_t nbyte)
+write_with_retry(int fd, const char *buf, size_t nbyte)
 {
 	const ssize_t expected = nbyte;
 

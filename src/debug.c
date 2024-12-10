@@ -3,7 +3,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-static void
+static void __attribute__((format(printf, 4, 0)))
 vlog(const char *level,
      const char *fname,
      unsigned int lineno,
