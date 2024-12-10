@@ -590,7 +590,8 @@ find_js_deobfuscator_magic_global_positive(void)
 	result_t err =
 		find_js_deobfuscator_magic_global(js, sizeof(js), &magic, &sz);
 	ASSERT_EQ(err.err, OK);
-	ASSERT_STRN_EQ(magic, js, strlen(js) - 1);
+	ASSERT_EQ(sz, strlen(js) - 1);
+	ASSERT_STRN_EQ(magic, js, sz);
 	PASS();
 }
 
