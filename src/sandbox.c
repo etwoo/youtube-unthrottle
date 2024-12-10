@@ -141,7 +141,7 @@ sandbox_only_io_inet_tmpfile(void)
 {
 	const char *promises = "dns inet rpath stdio tmppath unveil";
 	check(sandbox_with(SECCOMP_TMPFILE, promises));
-	debug("%s() succeeded", __FUNCTION__);
+	debug("%s() succeeded", __func__);
 	return RESULT_OK;
 }
 
@@ -150,7 +150,7 @@ sandbox_only_io_inet_rpath(void)
 {
 	const char *promises = "dns inet rpath stdio unveil";
 	check(sandbox_with(SECCOMP_RPATH, promises));
-	debug("%s() succeeded", __FUNCTION__);
+	debug("%s() succeeded", __func__);
 	return RESULT_OK;
 }
 
@@ -170,6 +170,6 @@ sandbox_only_io(void)
 	}
 	/* sandbox_verify() would abort() here due to pledge() restrictions */
 #endif
-	debug("%s() succeeded", __FUNCTION__);
+	debug("%s() succeeded", __func__);
 	return RESULT_OK;
 }

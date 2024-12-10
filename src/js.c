@@ -389,7 +389,7 @@ call_js_foreach(const char *magic,
 	duk_push_lstring(ctx, code, code_sz);
 	assert(duk_get_type(ctx, -1) == DUK_TYPE_STRING);
 
-	duk_push_string(ctx, __FUNCTION__);
+	duk_push_string(ctx, __func__);
 	if (duk_pcompile(ctx, DUK_COMPILE_FUNCTION) != 0) {
 		return make_result(ERR_JS_CALL_COMPILE, peek(ctx));
 	}
