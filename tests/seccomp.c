@@ -15,7 +15,7 @@
 TEST
 getpid_allowed(void)
 {
-	ASSERT_GT(getpid(), 0);
+	ASSERT_LT(0, getpid());
 	PASS();
 }
 
@@ -23,9 +23,9 @@ TEST
 mmap_exec_allowed(void)
 {
 	void *p = mmap(NULL, 4, PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-	ASSERT_NEQ(p, MAP_FAILED);
+	ASSERT_NEQ(MAP_FAILED, p);
 	int rc = munmap(p, 4);
-	ASSERT_EQ(rc, 0);
+	ASSERT_EQ(0, rc);
 	PASS();
 }
 
@@ -33,9 +33,9 @@ TEST
 socket_allowed(void)
 {
 	int sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	ASSERT_GTE(sfd, 0);
+	ASSERT_LTE(0, sfd);
 	int rc = close(sfd);
-	ASSERT_EQ(rc, 0);
+	ASSERT_EQ(0, rc);
 	PASS();
 }
 
@@ -43,9 +43,9 @@ TEST
 open_rdonly_allowed(void)
 {
 	int fd = open(__FILE__, O_RDONLY);
-	ASSERT_GTE(fd, 0);
+	ASSERT_LTE(0, fd);
 	int rc = close(fd);
-	ASSERT_EQ(rc, 0);
+	ASSERT_EQ(0, rc);
 	PASS();
 }
 
@@ -54,10 +54,10 @@ open_tmpfile_allowed(void)
 {
 	int tmp = -1;
 	result_t err = tmpfd(&tmp);
-	ASSERT_EQ(err.err, OK);
-	ASSERT_GTE(tmp, 0);
+	ASSERT_EQ(OK, err.err);
+	ASSERT_LTE(0, tmp);
 	int rc = close(tmp);
-	ASSERT_EQ(rc, 0);
+	ASSERT_EQ(0, rc);
 	PASS();
 }
 
@@ -66,7 +66,7 @@ seccomp_change_allowed(void)
 {
 	uint32_t action = SECCOMP_RET_KILL_PROCESS;
 	int rc = syscall(__NR_seccomp, SECCOMP_GET_ACTION_AVAIL, 0, &action);
-	ASSERT_EQ(rc, 0);
+	ASSERT_EQ(0, rc);
 	PASS();
 }
 
@@ -84,7 +84,7 @@ TEST
 mmap_exec_blocked(void)
 {
 	void *p = mmap(NULL, 4, PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-	ASSERT_EQ(p, MAP_FAILED);
+	ASSERT_EQ(MAP_FAILED, p);
 	PASS();
 }
 
@@ -92,9 +92,9 @@ TEST
 mmap_read_allowed(void)
 {
 	void *p = mmap(NULL, 4, PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-	ASSERT_NEQ(p, MAP_FAILED);
+	ASSERT_NEQ(MAP_FAILED, p);
 	int rc = munmap(p, 4);
-	ASSERT_EQ(rc, 0);
+	ASSERT_EQ(0, rc);
 	PASS();
 }
 
@@ -102,7 +102,7 @@ TEST
 setup_seccomp_apply(int flags)
 {
 	result_t err = seccomp_apply(flags);
-	ASSERT_EQ(err.err, OK);
+	ASSERT_EQ(OK, err.err);
 	PASS();
 }
 
@@ -125,9 +125,9 @@ open_tmpfile_blocked(void)
 {
 	int tmp = -1;
 	result_t err = tmpfd(&tmp);
-	ASSERT_EQ(err.err, ERR_TMPFILE);
-	ASSERT_LT(tmp, 0);
-	ASSERT_EQ(errno, EACCES);
+	ASSERT_EQ(ERR_TMPFILE, err.err);
+	ASSERT_GT(0, tmp);
+	ASSERT_EQ(EACCES, errno);
 	PASS();
 }
 
@@ -149,8 +149,8 @@ TEST
 open_rdonly_blocked(void)
 {
 	int fd = open(__FILE__, O_RDONLY);
-	ASSERT_LT(fd, 0);
-	ASSERT_EQ(errno, EACCES);
+	ASSERT_GT(0, fd);
+	ASSERT_EQ(EACCES, errno);
 	PASS();
 }
 
@@ -178,8 +178,8 @@ socket_blocked(void)
 		 * */
 		close(sfd);
 	}
-	ASSERT_LT(sfd, 0);
-	ASSERT_EQ(errno, EACCES);
+	ASSERT_GT(0, sfd);
+	ASSERT_EQ(EACCES, errno);
 	PASS();
 }
 
@@ -201,8 +201,8 @@ seccomp_change_blocked(void)
 {
 	uint32_t action = SECCOMP_RET_KILL_PROCESS;
 	int rc = syscall(__NR_seccomp, SECCOMP_GET_ACTION_AVAIL, 0, &action);
-	ASSERT_NEQ(rc, 0);
-	ASSERT_EQ(errno, EACCES);
+	ASSERT_NEQ(0, rc);
+	ASSERT_EQ(EACCES, errno);
 	PASS();
 }
 

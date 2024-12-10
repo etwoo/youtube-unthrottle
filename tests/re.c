@@ -21,8 +21,8 @@ capture_pattern_match_one(void)
 
 	static const char expected[] = "aaa";
 	ASSERT(rc);
-	ASSERT_EQ(sz, strlen(expected));
-	ASSERT_STRN_EQ(needle, expected, sz);
+	ASSERT_EQ(strlen(expected), sz);
+	ASSERT_STRN_EQ(expected, needle, sz);
 	PASS();
 }
 
@@ -36,8 +36,8 @@ capture_pattern_match_none(void)
 	bool rc = re_capture("b+(a+)b+", hay, strlen(hay), &needle, &sz);
 
 	ASSERT_FALSE(rc);
-	ASSERT_EQ(needle, NULL);
-	ASSERT_EQ(sz, 0);
+	ASSERT_EQ(NULL, needle);
+	ASSERT_EQ(0, sz);
 	PASS();
 }
 

@@ -13,16 +13,16 @@ TEST
 before_landlock_filesystem(void)
 {
 	int fd = open(__FILE__, O_RDONLY);
-	ASSERT_GTE(fd, 0);
+	ASSERT_LTE(0, fd);
 	int rc = close(fd);
-	ASSERT_EQ(rc, 0);
+	ASSERT_EQ(0, rc);
 
 	int tmp = -1;
 	result_t err = tmpfd(&tmp);
-	ASSERT_EQ(err.err, OK);
-	ASSERT_GTE(tmp, 0);
+	ASSERT_EQ(OK, err.err);
+	ASSERT_LTE(0, tmp);
 	rc = close(tmp);
-	ASSERT_EQ(rc, 0);
+	ASSERT_EQ(0, rc);
 
 	PASS();
 }
@@ -31,7 +31,7 @@ TEST
 before_landlock_network(void)
 {
 	int sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	ASSERT_GTE(sfd, 0);
+	ASSERT_LTE(0, sfd);
 
 	struct sockaddr_in sa;
 	memset(&sa, 0, sizeof(sa));
@@ -41,8 +41,8 @@ before_landlock_network(void)
 
 	const int connected = connect(sfd, (struct sockaddr *)&sa, sizeof(sa));
 	const int closed = close(sfd);
-	ASSERT_EQ(connected, 0);
-	ASSERT_EQ(closed, 0);
+	ASSERT_EQ(0, connected);
+	ASSERT_EQ(0, closed);
 
 	PASS();
 }
@@ -60,7 +60,7 @@ setup_partial_landlock(void)
 		P_tmpdir,
 	};
 	result_t err = landlock_apply(paths, 1, 443);
-	ASSERT_EQ(err.err, OK);
+	ASSERT_EQ(OK, err.err);
 	PASS();
 }
 
@@ -68,14 +68,14 @@ TEST
 partial_landlock_filesystem(void)
 {
 	int fd = open(__FILE__, O_RDONLY);
-	ASSERT_LT(fd, 0);
+	ASSERT_GT(0, fd);
 
 	int tmp = -1;
 	result_t err = tmpfd(&tmp);
-	ASSERT_EQ(err.err, OK);
-	ASSERT_GTE(tmp, 0);
+	ASSERT_EQ(OK, err.err);
+	ASSERT_LTE(0, tmp);
 	int rc = close(tmp);
-	ASSERT_EQ(rc, 0);
+	ASSERT_EQ(0, rc);
 
 	PASS();
 }
@@ -91,7 +91,7 @@ TEST
 setup_full_landlock(void)
 {
 	result_t err = landlock_apply(NULL, 0, 0);
-	ASSERT_EQ(err.err, OK);
+	ASSERT_EQ(OK, err.err);
 	PASS();
 }
 
@@ -99,12 +99,12 @@ TEST
 after_landlock_filesystem(void)
 {
 	int fd = open(__FILE__, O_RDONLY);
-	ASSERT_LT(fd, 0);
+	ASSERT_GT(0, fd);
 
 	int tmp = -1;
 	result_t err = tmpfd(&tmp);
-	ASSERT_EQ(err.err, ERR_TMPFILE);
-	ASSERT_LT(tmp, 0);
+	ASSERT_EQ(ERR_TMPFILE, err.err);
+	ASSERT_GT(0, tmp);
 
 	PASS();
 }
@@ -113,7 +113,7 @@ TEST
 after_landlock_network(void)
 {
 	int sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	ASSERT_GTE(sfd, 0);
+	ASSERT_LTE(0, sfd);
 
 	struct sockaddr_in sa;
 	memset(&sa, 0, sizeof(sa));
@@ -124,9 +124,9 @@ after_landlock_network(void)
 	const int connected = connect(sfd, (struct sockaddr *)&sa, sizeof(sa));
 	const int connected_errno = errno;
 	const int closed = close(sfd);
-	ASSERT_EQ(connected, -1);
-	ASSERT_EQ(connected_errno, EACCES);
-	ASSERT_EQ(closed, 0);
+	ASSERT_EQ(-1, connected);
+	ASSERT_EQ(EACCES, connected_errno);
+	ASSERT_EQ(0, closed);
 
 	PASS();
 }
