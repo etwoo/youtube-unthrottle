@@ -464,6 +464,10 @@ youtube_stream_setup(struct youtube_stream *p,
 		check(ops->before_eval(userdata));
 	}
 
+	const char *magic = NULL;
+	size_t m_sz = 0;
+	check(find_js_deobfuscator_magic_global(js.buf, js.sz, &magic, &m_sz));
+
 	const char *deobfuscator = NULL;
 	size_t deob_sz = 0;
 	check(find_js_deobfuscator(js.buf, js.sz, &deobfuscator, &deob_sz));
@@ -475,7 +479,9 @@ youtube_stream_setup(struct youtube_stream *p,
 	struct call_ops cops = {
 		.got_result = append_n_param,
 	};
-	check(call_js_foreach(deobfuscator,
+	check(call_js_foreach(magic,
+	                      m_sz,
+	                      deobfuscator,
 	                      deob_sz,
 	                      ciphertexts,
 	                      ARRAY_SIZE(ciphertexts),
