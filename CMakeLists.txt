@@ -88,8 +88,8 @@ maybe_target_compile_options(my_cflags -Wimplicit-fallthrough=5)
 # ... except -Wjump-misses-init, which is too noisy
 #
 
-target_compile_options(my_cflags INTERFACE -Wshadow -Wformat=2)
-
+maybe_target_compile_options(my_cflags -Wshadow)
+maybe_target_compile_options(my_cflags -Wformat=2)
 maybe_target_compile_options(my_cflags -Wduplicated-cond)
 maybe_target_compile_options(my_cflags -Wduplicated-branches)
 maybe_target_compile_options(my_cflags -Wlogical-op)
@@ -104,10 +104,8 @@ maybe_target_compile_options(my_cflags -fanalyzer)
 # Enable some options copied from the Linux kernel Makefile
 #
 
-target_compile_options(my_cflags INTERFACE
-	-Wmissing-prototypes
-	-Wstrict-prototypes
-)
+maybe_target_compile_options(my_cflags -Wmissing-prototypes)
+maybe_target_compile_options(my_cflags -Wstrict-prototypes)
 
 #
 # Enable sanitizers
