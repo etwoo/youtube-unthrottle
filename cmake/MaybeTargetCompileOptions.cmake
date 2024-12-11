@@ -12,14 +12,13 @@ macro(maybe_target_compile_options lib compiler_option)
 
 	cmake_push_check_state()
 	set(CMAKE_REQUIRED_QUIET ON)
-
 	check_c_compiler_flag(${compiler_option} CHECK_CFLAG)
+	cmake_pop_check_state()
+
 	if (CHECK_CFLAG)
 		my_msg(${compiler_option} " - Success")
 		target_compile_options(${lib} INTERFACE ${compiler_option})
 	else (CHECK_CFLAG)
 		my_msg(${compiler_option} " - Failed")
 	endif (CHECK_CFLAG)
-
-	cmake_pop_check_state()
 endmacro()
