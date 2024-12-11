@@ -3,7 +3,7 @@ include_guard(GLOBAL)
 include(CMakePushCheckState)
 include(CheckCCompilerFlag)
 
-function(check_code_coverage flags)
+macro(check_code_coverage lib)
 	check_c_compiler_flag(-fprofile-instr-generate CFLAG_PROFILE_INSTR_GEN)
 
 	if (NOT CFLAG_PROFILE_INSTR_GEN)
@@ -19,5 +19,12 @@ function(check_code_coverage flags)
 		message(FATAL_ERROR "No support for -fcoverage-mapping")
 	endif (NOT CFLAG_COVERAGE_MAPPING)
 
-	set(${flags} "-fprofile-instr-generate;-fcoverage-mapping" PARENT_SCOPE)
-endfunction()
+	target_compile_definitions(${lib} INTERFACE WITH_COVERAGE)
+
+	target_compile_options(${lib} INTERFACE
+		-fprofile-instr-generate -fcoverage-mapping
+	)
+	target_link_options(${lib} INTERFACE
+		-fprofile-instr-generate -fcoverage-mapping
+	)
+endmacro()
