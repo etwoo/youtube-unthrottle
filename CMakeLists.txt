@@ -61,7 +61,6 @@ target_compile_options(my_cflags INTERFACE
 	-Wall
 	-Wextra
 	-pedantic
-	-Wno-gnu-zero-variadic-macro-arguments
 	-pipe
 )
 
@@ -112,6 +111,13 @@ check_sanitizer(sanitizers -fsanitize=undefined ubsan CFLAG_UBSAN)
 #
 # Quiet warnings under clang like:
 #
+# warning: token pasting of ',' and __VA_ARGS__ is a GNU extension
+#
+# The -Wgnu-zero-variadic-macro-arguments diagnostic is enabled by -pedantic,
+# which we use to catch unintended GNU-isms and (mis)use of C language features
+# beyond this project's c_std_* version. All that being said, we are OK with
+# this specific GNU-ism and therefore suppress this particular warning.
+#
 # warning: -Wl,-z,relro: 'linker' input unused [-Wunused-command-line-argument]
 #
 # We could avoid these warnings entirely by moving these options from CFLAGS TO
@@ -122,7 +128,10 @@ check_sanitizer(sanitizers -fsanitize=undefined ubsan CFLAG_UBSAN)
 #
 
 if (CMAKE_C_COMPILER_ID STREQUAL "Clang")
-	target_compile_options(my_cflags INTERFACE -Qunused-arguments)
+	target_compile_options(my_cflags INTERFACE
+		-Wno-gnu-zero-variadic-macro-arguments
+		-Qunused-arguments
+	)
 endif (CMAKE_C_COMPILER_ID STREQUAL "Clang")
 
 #
