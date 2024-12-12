@@ -82,41 +82,27 @@ check_hardened(my_cflags)
 include(CheckTargetCompileOptions)
 check_target_compile_options(my_cflags -Wimplicit-fallthrough=5)
 
-#
-# Enable some of the warnings recommended by https://kristerw.blogspot.com
-#
-# ... except -Wjump-misses-init, which is too noisy
-#
-
-check_target_compile_options(my_cflags -Wshadow)
-check_target_compile_options(my_cflags -Wformat=2)
-check_target_compile_options(my_cflags -Wduplicated-cond)
+# Enable some of the options recommended by https://kristerw.blogspot.com
 check_target_compile_options(my_cflags -Wduplicated-branches)
+check_target_compile_options(my_cflags -Wduplicated-cond)
+check_target_compile_options(my_cflags -Wformat=2)
 check_target_compile_options(my_cflags -Wlogical-op)
+check_target_compile_options(my_cflags -Wshadow)
 
-#
 # https://developers.redhat.com/blog/2020/03/26/static-analysis-in-gcc-10
-#
-
 check_target_compile_options(my_cflags -fanalyzer)
 
-#
 # Enable some options copied from the Linux kernel Makefile
-#
-
 check_target_compile_options(my_cflags -Wmissing-prototypes)
 check_target_compile_options(my_cflags -Wstrict-prototypes)
 
 #
-# Enable sanitizers
+# Enable sanitizers, except TSan (since we're currently single-threaded)
 #
-# ... except -fsanitize=thread, since we're single-threaded (for now)
-#
-
-include(CheckSanitizer)
 
 add_library(sanitizers INTERFACE)
 
+include(CheckSanitizer)
 check_sanitizer(sanitizers -fsanitize=address asan CFLAG_ASAN)
 if (NOT CFLAG_ASAN)
 	check_sanitizer(sanitizers -fsanitize=leak lsan CFLAG_LSAN)
