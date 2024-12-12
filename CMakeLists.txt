@@ -61,7 +61,6 @@ target_compile_options(my_cflags INTERFACE
 	-Wall
 	-Wextra
 	-pedantic
-	-Wno-gnu-zero-variadic-macro-arguments
 	-pipe
 )
 
@@ -72,125 +71,52 @@ if (BUILD_COVERAGE)
 		GIT_TAG 028da3798355d0260c6c6491b39347d84ca7a02d
 		DOWNLOAD_ONLY YES
 	)
-
 	include(CheckCodeCoverage)
-
-	check_code_coverage(CFLAG_COVERAGE)
-	if (NOT CFLAG_COVERAGE)
-		message(FATAL_ERROR "Cannot enable code coverage")
-	endif (NOT CFLAG_COVERAGE)
-
-	target_compile_definitions(my_cflags INTERFACE WITH_COVERAGE)
-	target_compile_options(my_cflags INTERFACE ${CFLAG_COVERAGE})
-	target_link_options(my_cflags INTERFACE ${CFLAG_COVERAGE})
+	check_code_coverage(my_cflags)
 endif (BUILD_COVERAGE)
 
 include(CheckHardened)
+check_hardened(my_cflags)
 
-check_hardened(CFLAG_HARDENED -fhardened -O2)
-if (CFLAG_HARDENED)
-	target_compile_options(my_cflags INTERFACE -fhardened)
-else (CFLAG_HARDENED)
-	# -fhardened is not supported; set constituent options individually
-	target_compile_options(my_cflags INTERFACE
-		-D_FORTIFY_SOURCE=3
-		-D_GLIBCXX_ASSERTIONS
-		-fPIE -pie
-		-Wl,-z,now
-		-Wl,-z,relro
-		-fstack-protector-strong
-		-fstack-clash-protection
-		-fcf-protection=full
-	)
-endif (CFLAG_HARDENED)
+include(CheckTargetCompileOptions)
+check_target_compile_options(my_cflags -Wimplicit-fallthrough=5)
 
-target_compile_options(my_cflags INTERFACE -O2) # req'ed by _FORTIFY_SOURCE
+# Enable some of the options recommended by https://kristerw.blogspot.com
+check_target_compile_options(my_cflags -Wduplicated-branches)
+check_target_compile_options(my_cflags -Wduplicated-cond)
+check_target_compile_options(my_cflags -Wformat=2)
+check_target_compile_options(my_cflags -Wlogical-op)
+check_target_compile_options(my_cflags -Wshadow)
 
-include(CheckCCompilerFlag)
-
-check_c_compiler_flag(-Wimplicit-fallthrough=5 CFLAG_FALLTHROUGH_STRICT)
-if (CFLAG_FALLTHROUGH_STRICT)
-	target_compile_options(my_cflags INTERFACE -Wimplicit-fallthrough=5)
-endif (CFLAG_FALLTHROUGH_STRICT)
-
-#
-# Enable some of the warnings recommended by https://kristerw.blogspot.com
-#
-# ... except -Wjump-misses-init, which is too noisy
-#
-
-target_compile_options(my_cflags INTERFACE -Wshadow -Wformat=2)
-
-check_c_compiler_flag(-Wduplicated-cond CFLAG_DUPLICATED_COND)
-if (CFLAG_DUPLICATED_COND)
-	target_compile_options(my_cflags INTERFACE -Wduplicated-cond)
-endif (CFLAG_DUPLICATED_COND)
-
-check_c_compiler_flag(-Wduplicated-branches CFLAG_DUPLICATED_BRANCHES)
-if (CFLAG_DUPLICATED_BRANCHES)
-	target_compile_options(my_cflags INTERFACE -Wduplicated-branches)
-endif (CFLAG_DUPLICATED_BRANCHES)
-
-check_c_compiler_flag(-Wlogical-op CFLAG_LOGICAL_OP)
-if (CFLAG_LOGICAL_OP)
-	target_compile_options(my_cflags INTERFACE -Wlogical-op)
-endif (CFLAG_LOGICAL_OP)
-
-#
 # https://developers.redhat.com/blog/2020/03/26/static-analysis-in-gcc-10
-#
+check_target_compile_options(my_cflags -fanalyzer)
 
-check_c_compiler_flag(-fanalyzer CFLAG_ANALYZER)
-if (CFLAG_ANALYZER)
-	target_compile_options(my_cflags INTERFACE -fanalyzer)
-endif (CFLAG_ANALYZER)
-
-#
 # Enable some options copied from the Linux kernel Makefile
-#
-
-target_compile_options(my_cflags INTERFACE
-	-Wmissing-prototypes
-	-Wstrict-prototypes
-)
+check_target_compile_options(my_cflags -Wmissing-prototypes)
+check_target_compile_options(my_cflags -Wstrict-prototypes)
 
 #
-# Enable sanitizers
+# Enable sanitizers, except TSan (since we're currently single-threaded)
 #
-# ... except -fsanitize=thread, since we're single-threaded (for now)
-#
-
-include(CheckSanitizer)
 
 add_library(sanitizers INTERFACE)
 
-check_sanitizer(CFLAG_ASAN -fsanitize=address asan)
-if (CFLAG_ASAN)
-	target_compile_options(sanitizers INTERFACE -fsanitize=address)
-	add_library(libasan SHARED IMPORTED)
-	target_link_libraries(sanitizers INTERFACE asan)
-endif (CFLAG_ASAN)
-
-check_sanitizer(CFLAG_LSAN -fsanitize=leak lsan)
-if (CFLAG_LSAN)
-	if (CFLAG_ASAN)
-		message(STATUS "LSan stand-alone mode is unnecessary because ASan is already enabled")
-	else (CFLAG_ASAN)
-		target_compile_options(sanitizers INTERFACE -fsanitize=leak)
-		add_library(liblsan SHARED IMPORTED)
-		target_link_libraries(sanitizers INTERFACE lsan)
-	endif (CFLAG_ASAN)
-endif (CFLAG_LSAN)
-
-check_sanitizer(CFLAG_UBSAN -fsanitize=undefined ubsan)
-if (CFLAG_UBSAN)
-	target_compile_options(sanitizers INTERFACE -fsanitize=undefined)
-	add_library(libubsan SHARED IMPORTED)
-	target_link_libraries(sanitizers INTERFACE ubsan)
-endif (CFLAG_UBSAN)
+include(CheckSanitizer)
+check_sanitizer(sanitizers -fsanitize=address asan CFLAG_ASAN)
+if (NOT CFLAG_ASAN)
+	check_sanitizer(sanitizers -fsanitize=leak lsan CFLAG_LSAN)
+endif (NOT CFLAG_ASAN)
+check_sanitizer(sanitizers -fsanitize=undefined ubsan CFLAG_UBSAN)
 
 #
 # Quiet warnings under clang like:
+#
+# warning: token pasting of ',' and __VA_ARGS__ is a GNU extension
+#
+# The -Wgnu-zero-variadic-macro-arguments diagnostic is enabled by -pedantic,
+# which we use to catch unintended GNU-isms and (mis)use of C language features
+# beyond this project's c_std_* version. All that being said, we are OK with
+# this specific GNU-ism and therefore suppress this particular warning.
 #
 # warning: -Wl,-z,relro: 'linker' input unused [-Wunused-command-line-argument]
 #
@@ -202,7 +128,10 @@ endif (CFLAG_UBSAN)
 #
 
 if (CMAKE_C_COMPILER_ID STREQUAL "Clang")
-	target_compile_options(my_cflags INTERFACE -Qunused-arguments)
+	target_compile_options(my_cflags INTERFACE
+		-Wno-gnu-zero-variadic-macro-arguments
+		-Qunused-arguments
+	)
 endif (CMAKE_C_COMPILER_ID STREQUAL "Clang")
 
 #
