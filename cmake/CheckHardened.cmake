@@ -3,12 +3,12 @@ include_guard(GLOBAL)
 include(CMakePushCheckState)
 include(CheckCCompilerFlag)
 
-macro(my_msg compiler_option str)
-	message(STATUS "Detecting " ${compiler_option} ${str})
+macro(my_msg str)
+	message(STATUS "Detecting -fhardened" ${str})
 endmacro()
 
 macro(check_hardened lib)
-	my_msg(-fhardened "")
+	my_msg("")
 
 	cmake_push_check_state()
 	set(CMAKE_REQUIRED_QUIET ON)
@@ -17,10 +17,10 @@ macro(check_hardened lib)
 	cmake_pop_check_state()
 
 	if (CFLAG_HARDENED)
-		my_msg(-fhardened " - Success")
+		my_msg(" - Success")
 		target_compile_options(${lib} INTERFACE -fhardened)
 	else (CFLAG_HARDENED)
-		my_msg(-fhardened " - Failed")
+		my_msg(" - Failed")
 		# -fhardened unsupported; set constituent options individually
 		target_compile_options(${lib} INTERFACE
 			-D_FORTIFY_SOURCE=3

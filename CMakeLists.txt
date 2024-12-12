@@ -79,8 +79,8 @@ endif (BUILD_COVERAGE)
 include(CheckHardened)
 check_hardened(my_cflags)
 
-include(MaybeTargetCompileOptions)
-maybe_target_compile_options(my_cflags -Wimplicit-fallthrough=5)
+include(CheckTargetCompileOptions)
+check_target_compile_options(my_cflags -Wimplicit-fallthrough=5)
 
 #
 # Enable some of the warnings recommended by https://kristerw.blogspot.com
@@ -88,24 +88,24 @@ maybe_target_compile_options(my_cflags -Wimplicit-fallthrough=5)
 # ... except -Wjump-misses-init, which is too noisy
 #
 
-maybe_target_compile_options(my_cflags -Wshadow)
-maybe_target_compile_options(my_cflags -Wformat=2)
-maybe_target_compile_options(my_cflags -Wduplicated-cond)
-maybe_target_compile_options(my_cflags -Wduplicated-branches)
-maybe_target_compile_options(my_cflags -Wlogical-op)
+check_target_compile_options(my_cflags -Wshadow)
+check_target_compile_options(my_cflags -Wformat=2)
+check_target_compile_options(my_cflags -Wduplicated-cond)
+check_target_compile_options(my_cflags -Wduplicated-branches)
+check_target_compile_options(my_cflags -Wlogical-op)
 
 #
 # https://developers.redhat.com/blog/2020/03/26/static-analysis-in-gcc-10
 #
 
-maybe_target_compile_options(my_cflags -fanalyzer)
+check_target_compile_options(my_cflags -fanalyzer)
 
 #
 # Enable some options copied from the Linux kernel Makefile
 #
 
-maybe_target_compile_options(my_cflags -Wmissing-prototypes)
-maybe_target_compile_options(my_cflags -Wstrict-prototypes)
+check_target_compile_options(my_cflags -Wmissing-prototypes)
+check_target_compile_options(my_cflags -Wstrict-prototypes)
 
 #
 # Enable sanitizers
