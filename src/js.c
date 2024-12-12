@@ -247,7 +247,7 @@ find_js_deobfuscator_magic_global(const char *js,
                                   const char **magic,
                                   size_t *magic_sz)
 {
-	if (!re_capture("(var [[:alpha:]]+=[0-9]{6,});",
+	if (!re_capture("(var [[:alpha:]]+=[-0-9]{6,});",
 	                js,
 	                js_sz,
 	                magic,
