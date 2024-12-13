@@ -1,51 +1,62 @@
 #include "re.h"
 
 #include "greatest.h"
+#include "test_macros.h"
 
 TEST
 capture_pattern_compile_fail(void)
 {
-	bool rc = re_capture("+", "", 0, NULL, NULL);
+	const struct string_view hay = MAKE_TEST_STRING("");
+
+	struct string_view needle = {0};
+	bool rc = re_capture("+", &hay, &needle);
+
 	ASSERT_FALSE(rc);
+	ASSERT_EQ(NULL, needle.data);
+	ASSERT_EQ(0, needle.sz);
 	PASS();
 }
 
 TEST
 capture_pattern_match_one(void)
 {
-	const char *needle = NULL;
-	size_t sz = 0;
+	const struct string_view hay = MAKE_TEST_STRING("bbbaaabbb");
 
-	static const char hay[] = "bbbaaabbb";
-	bool rc = re_capture("b+(a+)b+", hay, strlen(hay), &needle, &sz);
+	struct string_view needle = {0};
+	bool rc = re_capture("b+(a+)b+", &hay, &needle);
 
 	static const char expected[] = "aaa";
 	ASSERT(rc);
-	ASSERT_EQ(strlen(expected), sz);
-	ASSERT_STRN_EQ(expected, needle, sz);
+	ASSERT_EQ(strlen(expected), needle.sz);
+	ASSERT_STRN_EQ(expected, needle.data, needle.sz);
 	PASS();
 }
 
 TEST
 capture_pattern_match_none(void)
 {
-	const char *needle = NULL;
-	size_t sz = 0;
+	const struct string_view hay = MAKE_TEST_STRING("bbbAAAbbb");
 
-	static const char hay[] = "bbbAAAbbb";
-	bool rc = re_capture("b+(a+)b+", hay, strlen(hay), &needle, &sz);
+	struct string_view needle = {0};
+	bool rc = re_capture("b+(a+)b+", &hay, &needle);
 
 	ASSERT_FALSE(rc);
-	ASSERT_EQ(NULL, needle);
-	ASSERT_EQ(0, sz);
+	ASSERT_EQ(NULL, needle.data);
+	ASSERT_EQ(0, needle.sz);
 	PASS();
 }
 
 TEST
 capture_pattern_match_fail_on_null_haystack(void)
 {
-	bool rc = re_capture("b+(a+)b+", NULL, 8, NULL, NULL);
+	const struct string_view hay = {.data = NULL, .sz = 8};
+
+	struct string_view needle = {0};
+	bool rc = re_capture("b+(a+)b+", &hay, &needle);
+
 	ASSERT_FALSE(rc);
+	ASSERT_EQ(NULL, needle.data);
+	ASSERT_EQ(0, needle.sz);
 	PASS();
 }
 

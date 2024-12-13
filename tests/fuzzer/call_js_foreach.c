@@ -1,9 +1,9 @@
 #include "array.h"
 #include "js.h"
+#include "test_macros.h"
 
 static WARN_UNUSED result_t
 got_result(const char *val __attribute__((unused)),
-           size_t sz __attribute__((unused)),
            size_t pos __attribute__((unused)),
            void *userdata __attribute__((unused)))
 {
@@ -18,7 +18,10 @@ LLVMFuzzerTestOneInput(const char *data, size_t sz)
 	struct call_ops cops = {
 		.got_result = got_result,
 	};
-	const char *magic = "var magic=123";
+
+	const struct string_view magic = MAKE_TEST_STRING("var magic=123");
+	const struct string_view js = {.data = data, .sz = sz};
+
 	char *args[8];
 	args[0] = "fPaFSFklkyAP8IeVM1C";
 	args[1] = "K-qX7Rx6NF8wh-wN_Ni";
@@ -27,14 +30,8 @@ LLVMFuzzerTestOneInput(const char *data, size_t sz)
 	args[4] = "Zx9BTcsQimFxwVqtVfF";
 	args[5] = "Kbpbx5yukKR-Px0dhLj";
 	args[6] = "t2yEuJMA6mZh68xBzwE";
-	args[7] = "6a4RySpPL8dKGrGFAqo";
-	(void)call_js_foreach(magic,
-	                      strlen(magic),
-	                      data,
-	                      sz,
-	                      args,
-	                      ARRAY_SIZE(args),
-	                      &cops,
-	                      NULL);
+	args[7] = NULL;
+
+	(void)call_js_foreach(&magic, &js, args, &cops, NULL);
 	return 0;
 }

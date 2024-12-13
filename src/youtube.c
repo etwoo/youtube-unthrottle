@@ -112,10 +112,7 @@ asprintf_free(char **strp)
 }
 
 static WARN_UNUSED result_t
-youtube_stream_set_one(struct youtube_stream *p,
-                       int idx,
-                       const char *val,
-                       size_t sz __attribute__((unused)))
+youtube_stream_set_one(struct youtube_stream *p, int idx, const char *val)
 {
 	CURLUcode uc = CURLUE_OK;
 	CURLU *u = p->url[idx];
@@ -134,27 +131,26 @@ youtube_stream_set_one(struct youtube_stream *p,
 }
 
 static WARN_UNUSED result_t
-youtube_stream_set_video(const char *val, size_t sz, void *userdata)
+youtube_stream_set_video(const char *val, void *userdata)
 {
 	struct youtube_stream *p = (struct youtube_stream *)userdata;
-	debug("Setting video stream: %.*s", (int)sz, val);
-	return youtube_stream_set_one(p, 1, val, sz);
+	debug("Setting video stream: %s", val);
+	return youtube_stream_set_one(p, 1, val);
 }
 
 static WARN_UNUSED result_t
-youtube_stream_set_audio(const char *val, size_t sz, void *userdata)
+youtube_stream_set_audio(const char *val, void *userdata)
 {
 	struct youtube_stream *p = (struct youtube_stream *)userdata;
-	debug("Setting audio stream: %.*s", (int)sz, val);
-	return youtube_stream_set_one(p, 0, val, sz);
+	debug("Setting audio stream: %s", val);
+	return youtube_stream_set_one(p, 0, val);
 }
 
 static WARN_UNUSED result_t
 youtube_stream_choose_quality_any(const char *val,
-                                  size_t sz,
                                   void *userdata __attribute__((unused)))
 {
-	debug("Any quality allowed: %.*s", (int)sz, val);
+	debug("Any quality allowed: %s", val);
 	return RESULT_OK;
 }
 
@@ -174,26 +170,24 @@ pop_n_param_one(CURLU *url, char **result)
 {
 	*result = NULL; /* NULL out early, just in case */
 
-	char *getargs __attribute__((cleanup(curl_free_getargs))) = NULL;
+	char *gs __attribute__((cleanup(curl_free_getargs))) = NULL;
 
-	CURLUcode uc = curl_url_get(url, CURLUPART_QUERY, &getargs, 0);
+	CURLUcode uc = curl_url_get(url, CURLUPART_QUERY, &gs, 0);
 	check_if_num(uc, ERR_YOUTUBE_N_PARAM_QUERY_GET);
-	assert(getargs);
+	assert(gs);
 
-	const size_t getargs_sz = strlen(getargs);
-	assert(*(getargs + getargs_sz) == '\0');
-	const char *ciphertext_within_getargs = NULL;
-	size_t ciphertext_sz = 0;
+	struct string_view getargs = {.data = gs, .sz = strlen(gs)};
+	assert(*(getargs.data + getargs.sz) == '\0');
+
+	struct string_view ciphertext_within_getargs = {0};
 
 	/* Note use of non-capturing group: (?:...) */
 	if (!re_capture("(?:&|^)n=([^&]+)(?:&|$)",
-	                getargs,
-	                getargs_sz,
-	                &ciphertext_within_getargs,
-	                &ciphertext_sz)) {
+	                &getargs,
+	                &ciphertext_within_getargs)) {
 		return make_result(ERR_YOUTUBE_N_PARAM_FIND_IN_QUERY,
-		                   (const char *)getargs,
-		                   getargs_sz);
+		                   getargs.data,
+		                   getargs.sz);
 	}
 
 	/*
@@ -204,12 +198,12 @@ pop_n_param_one(CURLU *url, char **result)
 	 */
 	const int rc = asprintf(result,
 	                        "%.*s",
-	                        (int)ciphertext_sz,
-	                        ciphertext_within_getargs);
+	                        (int)ciphertext_within_getargs.sz,
+	                        ciphertext_within_getargs.data);
 	check_if(rc < 0, ERR_YOUTUBE_N_PARAM_QUERY_ALLOC);
 	debug("Copied n-param ciphertext: %s", *result);
 
-	debug("Before n-param ciphertext removal: %s", getargs);
+	debug("Before n-param ciphertext removal: %s", gs);
 
 	/*
 	 * Remove ciphertext n-parameter (key and value) from query string.
@@ -228,21 +222,21 @@ pop_n_param_one(CURLU *url, char **result)
 	 * return type to have a single function definition body expand to both
 	 * const and non-const variants.
 	 */
-	assert(ciphertext_within_getargs[-2] == 'n' &&
-	       ciphertext_within_getargs[-1] == '=');
-	char *dst = (char *)ciphertext_within_getargs - strlen("n=");
-	char *after_ciphertext =
-		(char *)ciphertext_within_getargs + ciphertext_sz;
+	assert(ciphertext_within_getargs.data[-2] == 'n' &&
+	       ciphertext_within_getargs.data[-1] == '=');
+	char *dst = (char *)ciphertext_within_getargs.data - strlen("n=");
+	char *after_ciphertext = (char *)ciphertext_within_getargs.data +
+	                         ciphertext_within_getargs.sz;
 	if (*after_ciphertext == '&') {
 		++after_ciphertext; /* omit duplicate '&' */
 	}
-	const size_t remaining = (getargs + getargs_sz) - after_ciphertext;
+	const size_t remaining = (getargs.data + getargs.sz) - after_ciphertext;
 	memmove(dst, after_ciphertext, remaining);
 	dst[remaining] = '\0';
 
-	debug("After n-param ciphertext removal:  %s", getargs);
+	debug("After n-param ciphertext removal: %s", gs);
 
-	uc = curl_url_set(url, CURLUPART_QUERY, getargs, 0);
+	uc = curl_url_set(url, CURLUPART_QUERY, gs, 0);
 	check_if_num(uc, ERR_YOUTUBE_N_PARAM_QUERY_SET);
 
 	return RESULT_OK;
@@ -254,9 +248,8 @@ pop_n_param_one(CURLU *url, char **result)
  * Caller is responsible for free()-ing the pointers returned in <results>.
  */
 static WARN_UNUSED result_t
-pop_n_param_all(struct youtube_stream *p, char **results, size_t capacity)
+pop_n_param_all(struct youtube_stream *p, char **results)
 {
-	assert(capacity >= ARRAY_SIZE(p->url));
 	for (size_t i = 0; i < ARRAY_SIZE(p->url); ++i) {
 		check(pop_n_param_one(p->url[i], results + i));
 	}
@@ -264,12 +257,12 @@ pop_n_param_all(struct youtube_stream *p, char **results, size_t capacity)
 }
 
 static WARN_UNUSED result_t
-append_n_param(const char *plaintext, size_t sz, size_t pos, void *userdata)
+append_n_param(const char *plaintext, size_t pos, void *userdata)
 {
 	struct youtube_stream *p = (struct youtube_stream *)userdata;
 
 	char *kv __attribute__((cleanup(asprintf_free))) = NULL;
-	const int rc = asprintf(&kv, "n=%.*s", (int)sz, plaintext);
+	const int rc = asprintf(&kv, "n=%s", plaintext);
 	check_if(rc < 0, ERR_YOUTUBE_N_PARAM_KVPAIR_ALLOC);
 
 	assert(pos < ARRAY_SIZE(p->url));
@@ -287,13 +280,12 @@ download_and_mmap_tmpfd(const char *url,
                         const char *post_body,
                         const char *post_header,
                         int fd,
-                        void **addr,
-                        unsigned int *sz)
+                        struct string_view *data)
 {
 	assert(fd >= 0);
 
 	check(url_download(url, host, path, post_body, post_header, fd));
-	check(tmpmap(fd, addr, sz));
+	check(tmpmap(fd, data));
 
 	debug("Downloaded %s to fd=%d", url ? url : path, fd);
 	return RESULT_OK;
@@ -314,8 +306,7 @@ make_http_header_visitor_id(const char *visitor_data, char **strp)
 struct downloaded {
 	const char *description; /* does not own */
 	int fd;
-	unsigned int sz;
-	void *buf;
+	struct string_view data;
 };
 
 static void
@@ -323,14 +314,13 @@ downloaded_init(struct downloaded *d, const char *description)
 {
 	d->description = description;
 	d->fd = -1; /* guarantee fd is invalid by default */
-	d->sz = 0;
-	d->buf = NULL;
+	memset(&d->data, 0, sizeof(d->data));
 }
 
 static void
 downloaded_cleanup(struct downloaded *d)
 {
-	tmpunmap(d->buf, d->sz);
+	tmpunmap(&d->data);
 	info_m_if(d->fd > 0 && close(d->fd) < 0,
 	          "Ignoring error close()-ing %s",
 	          d->description);
@@ -349,13 +339,17 @@ json_dump_free(char **strp)
 }
 
 static void
-ciphertexts_cleanup(char *ciphertexts[][2])
+ciphertexts_cleanup(char *ciphertexts[][3])
 {
+	size_t free_count = 0;
 	for (size_t i = 0; i < ARRAY_SIZE(*ciphertexts); ++i) {
-		free((*ciphertexts)[i]);
-		(*ciphertexts)[i] = NULL;
+		if ((*ciphertexts)[i]) {
+			free((*ciphertexts)[i]);
+			(*ciphertexts)[i] = NULL;
+			++free_count;
+		}
 	}
-	debug("free()-d %zd n-param ciphertext bufs", ARRAY_SIZE(*ciphertexts));
+	debug("free()-d %zd n-param ciphertext bufs", free_count);
 }
 
 result_t
@@ -390,18 +384,16 @@ youtube_stream_setup(struct youtube_stream *p,
 	                              NULL,
 	                              NULL,
 	                              html.fd,
-	                              &html.buf,
-	                              &html.sz));
+	                              &html.data));
 
 	char *null_terminated_basejs __attribute__((cleanup(strndup_free))) =
 		NULL;
 	{
-		const char *basejs = NULL;
-		size_t basejs_sz = 0;
-		check(find_base_js_url(html.buf, html.sz, &basejs, &basejs_sz));
+		struct string_view basejs = {0};
+		check(find_base_js_url(&html.data, &basejs));
 
-		debug("Setting base.js URL: %.*s", (int)basejs_sz, basejs);
-		null_terminated_basejs = strndup(basejs, basejs_sz);
+		debug("Setting base.js URL: %.*s", (int)basejs.sz, basejs.data);
+		null_terminated_basejs = strndup(basejs.data, basejs.sz);
 	}
 	check_if(null_terminated_basejs == NULL, ERR_JS_BASEJS_URL_ALLOC);
 
@@ -411,11 +403,10 @@ youtube_stream_setup(struct youtube_stream *p,
 	                              NULL,
 	                              NULL,
 	                              js.fd,
-	                              &js.buf,
-	                              &js.sz));
+	                              &js.data));
 
 	long long int timestamp = 0;
-	check(find_js_timestamp(js.buf, js.sz, &timestamp));
+	check(find_js_timestamp(&js.data, &timestamp));
 
 	char *innertube_post __attribute__((cleanup(json_dump_free))) = NULL;
 	check(make_innertube_json(target,
@@ -432,8 +423,7 @@ youtube_stream_setup(struct youtube_stream *p,
 	                              innertube_post,
 	                              innertube_header,
 	                              json.fd,
-	                              &json.buf,
-	                              &json.sz));
+	                              &json.data));
 
 	if (ops && ops->after_inet) {
 		check(ops->after_inet(userdata));
@@ -454,7 +444,7 @@ youtube_stream_setup(struct youtube_stream *p,
 	if (pops.choose_quality == NULL) {
 		pops.choose_quality = youtube_stream_choose_quality_any;
 	}
-	check(parse_json(json.buf, json.sz, &pops));
+	check(parse_json(&json.data, &pops));
 
 	if (ops && ops->after_parse) {
 		check(ops->after_parse(userdata));
@@ -464,29 +454,20 @@ youtube_stream_setup(struct youtube_stream *p,
 		check(ops->before_eval(userdata));
 	}
 
-	const char *magic = NULL;
-	size_t m_sz = 0;
-	check(find_js_deobfuscator_magic_global(js.buf, js.sz, &magic, &m_sz));
+	struct string_view magic = {0};
+	check(find_js_deobfuscator_magic_global(&js.data, &magic));
 
-	const char *deobfuscator = NULL;
-	size_t deob_sz = 0;
-	check(find_js_deobfuscator(js.buf, js.sz, &deobfuscator, &deob_sz));
+	struct string_view deobfuscator = {0};
+	check(find_js_deobfuscator(&js.data, &deobfuscator));
 
-	char *ciphertexts[ARRAY_SIZE(p->url)]
+	char *ciphertexts[ARRAY_SIZE(p->url) + 1]
 		__attribute__((cleanup(ciphertexts_cleanup))) = {NULL};
-	check(pop_n_param_all(p, ciphertexts, ARRAY_SIZE(ciphertexts)));
+	check(pop_n_param_all(p, ciphertexts));
 
 	struct call_ops cops = {
 		.got_result = append_n_param,
 	};
-	check(call_js_foreach(magic,
-	                      m_sz,
-	                      deobfuscator,
-	                      deob_sz,
-	                      ciphertexts,
-	                      ARRAY_SIZE(ciphertexts),
-	                      &cops,
-	                      p));
+	check(call_js_foreach(&magic, &deobfuscator, ciphertexts, &cops, p));
 
 	if (ops && ops->after_eval) {
 		check(ops->after_eval(userdata));

@@ -44,10 +44,8 @@ re_info_message(const char *action_that_caused_error,
 
 bool
 re_capture(const char *pattern_in,
-           const char *subject_in,
-           size_t sz,
-           const char **capture_p,
-           size_t *capture_sz)
+           const struct string_view *subject_in,
+           struct string_view *capture)
 {
 	int rc = 0;
 	PCRE2_SIZE loc = 0;
@@ -67,7 +65,8 @@ re_capture(const char *pattern_in,
 		return false;
 	}
 
-	rc = pcre2_match(re, (PCRE2_SPTR)subject_in, sz, 0, 0, md, NULL);
+	PCRE2_SPTR sbj = (PCRE2_SPTR)subject_in->data;
+	rc = pcre2_match(re, sbj, subject_in->sz, 0, 0, md, NULL);
 	if (rc > 0) {
 		assert(rc == 2); /* pattern_in must contain one capture group */
 	} else {
@@ -83,9 +82,9 @@ re_capture(const char *pattern_in,
 	debug("Regex \"%s\" matched at offset %zd within subject of size %zd",
 	      pattern_in,
 	      (size_t)ovector[0],
-	      sz);
+	      subject_in->sz);
 
-	*capture_p = subject_in + ovector[2];
-	*capture_sz = ovector[3] - ovector[2];
+	capture->data = subject_in->data + ovector[2];
+	capture->sz = ovector[3] - ovector[2];
 	return true;
 }

@@ -42,14 +42,14 @@ static const char MTVIDEO[] = "video/";
 static const char MTAUDIO[] = "audio/";
 
 result_t
-parse_json(const char *json, size_t json_sz, struct parse_ops *ops)
+parse_json(const struct string_view *json, struct parse_ops *ops)
 {
-	// debug("Got JSON blob: %.*s", json_sz, json);
-	debug("Got JSON blob of size %zd", json_sz);
+	// debug("Got JSON blob: %.*s", json->sz, json->data);
+	debug("Got JSON blob of size %zd", json->sz);
 
 	json_error_t json_error;
 
-	json_auto_t *obj = json_loadb(json, json_sz, 0, &json_error);
+	json_auto_t *obj = json_loadb(json->data, json->sz, 0, &json_error);
 	if (obj == NULL) {
 		return make_result(ERR_JS_PARSE_JSON_DECODE,
 		                   (const char *)json_error.text);
@@ -95,7 +95,6 @@ parse_json(const char *json, size_t json_sz, struct parse_ops *ops)
 			return make_result(ERR_JS_PARSE_JSON_ELEM_URL);
 		}
 		const char *url = json_string_value(json_url);
-		const size_t uz = json_string_length(json_url);
 		assert(url != NULL);
 
 		bool choose_quality = true;
@@ -103,22 +102,21 @@ parse_json(const char *json, size_t json_sz, struct parse_ops *ops)
 		if (json_is_string(quality)) {
 			const char *q = json_string_value(quality);
 			assert(q != NULL);
-			const size_t qz = json_string_length(quality);
 			void *ud = ops->choose_quality_userdata;
-			result_t err = ops->choose_quality(q, qz, ud);
+			result_t err = ops->choose_quality(q, ud);
 			choose_quality = (err.err == OK);
 		}
 
 		if (choose_quality &&
 		    0 == strncmp(mimetype, MTVIDEO, strlen(MTVIDEO)) &&
 		    false == got_video) {
-			check(ops->got_video(url, uz, ops->got_video_userdata));
+			check(ops->got_video(url, ops->got_video_userdata));
 			got_video = true;
 		}
 		if (choose_quality &&
 		    0 == strncmp(mimetype, MTAUDIO, strlen(MTAUDIO)) &&
 		    false == got_audio) {
-			check(ops->got_audio(url, uz, ops->got_audio_userdata));
+			check(ops->got_audio(url, ops->got_audio_userdata));
 			got_audio = true;
 		}
 
@@ -146,18 +144,14 @@ make_innertube_json(const char *target_url,
                     long long int timestamp,
                     char **body)
 {
-	const char *id = NULL;
-	size_t sz = 0;
+	struct string_view id = {0};
+	struct string_view url = {.data = target_url, .sz = strlen(target_url)};
 
 	/* Note use of non-capturing group: (?:...) */
-	if (!re_capture("(?:&|\\?)v=([^&]+)(?:&|$)",
-	                target_url,
-	                strlen(target_url),
-	                &id,
-	                &sz)) {
+	if (!re_capture("(?:&|\\?)v=([^&]+)(?:&|$)", &url, &id)) {
 		return make_result(ERR_JS_MAKE_INNERTUBE_JSON_ID);
 	}
-	debug("Parsed ID: %.*s", (int)sz, id);
+	debug("Parsed ID: %.*s", (int)id.sz, id.data);
 
 	json_auto_t *obj = NULL;
 	obj = json_pack("{s{s{ss,ss,ss,ss,si}},ss%,s{ss},s{s{ss,si}},sb,sb}",
@@ -174,8 +168,8 @@ make_innertube_json(const char *target_url,
 	                "utcOffsetMinutes",
 	                0,
 	                "videoId",
-	                id,
-	                sz,
+	                id.data,
+	                id.sz,
 	                "serviceIntegrityDimensions",
 	                "poToken",
 	                proof_of_origin,
@@ -199,29 +193,21 @@ make_innertube_json(const char *target_url,
 }
 
 result_t
-find_base_js_url(const char *html,
-                 size_t sz,
-                 const char **basejs,
-                 size_t *basejs_sz)
+find_base_js_url(const struct string_view *html, struct string_view *basejs)
 {
-	if (!re_capture("\"(/s/player/[^\"]+/base.js)\"",
-	                html,
-	                sz,
-	                basejs,
-	                basejs_sz)) {
+	if (!re_capture("\"(/s/player/[^\"]+/base.js)\"", html, basejs)) {
 		return make_result(ERR_JS_BASEJS_URL_FIND);
 	}
 
-	debug("Parsed base.js URI: %.*s", (int)*basejs_sz, *basejs);
+	debug("Parsed base.js URI: %.*s", (int)basejs->sz, basejs->data);
 	return RESULT_OK;
 }
 
 result_t
-find_js_timestamp(const char *js, size_t js_sz, long long int *value)
+find_js_timestamp(const struct string_view *js, long long int *value)
 {
-	const char *ts = NULL;
-	size_t tsz = 0;
-	if (!re_capture("signatureTimestamp:([0-9]+)", js, js_sz, &ts, &tsz)) {
+	struct string_view ts = {0};
+	if (!re_capture("signatureTimestamp:([0-9]+)", js, &ts)) {
 		return make_result(ERR_JS_TIMESTAMP_FIND);
 	}
 
@@ -231,31 +217,28 @@ find_js_timestamp(const char *js, size_t js_sz, long long int *value)
 	 */
 	errno = 0;
 
-	long long int res = strtoll(ts, NULL, 10);
+	long long int res = strtoll(ts.data, NULL, 10);
 	if (errno != 0) {
-		return make_result(ERR_JS_TIMESTAMP_PARSE_LL, errno, ts, tsz);
+		return make_result(ERR_JS_TIMESTAMP_PARSE_LL,
+		                   errno,
+		                   ts.data,
+		                   ts.sz);
 	}
 
-	debug("Parsed signatureTimestamp %.*s into %lld", (int)tsz, ts, res);
+	debug("Parsed timestamp %.*s into %lld", (int)ts.sz, ts.data, res);
 	*value = res;
 	return RESULT_OK;
 }
 
 result_t
-find_js_deobfuscator_magic_global(const char *js,
-                                  size_t js_sz,
-                                  const char **magic,
-                                  size_t *magic_sz)
+find_js_deobfuscator_magic_global(const struct string_view *js,
+                                  struct string_view *magic)
 {
-	if (!re_capture("(var [[:alpha:]]+=[-0-9]{6,});",
-	                js,
-	                js_sz,
-	                magic,
-	                magic_sz)) {
+	if (!re_capture("(var [[:alpha:]]+=[-0-9]{6,});", js, magic)) {
 		return make_result(ERR_JS_DEOBFUSCATOR_MAGIC_FIND);
 	}
 
-	debug("Parsed deobfuscator magic: %.*s", (int)*magic_sz, *magic);
+	debug("Parsed deobfuscator magic: %.*s", (int)magic->sz, magic->data);
 	return RESULT_OK;
 }
 
@@ -280,32 +263,27 @@ asprintf_free(char **strp)
  * 5) use return value from step 4 as decoded n-parameter
  */
 result_t
-find_js_deobfuscator(const char *js,
-                     size_t js_sz,
-                     const char **deobfuscator,
-                     size_t *deobfuscator_sz)
+find_js_deobfuscator(const struct string_view *js,
+                     struct string_view *deobfuscator)
 {
 	int rc = 0;
-	const char *name = NULL;
-	size_t nsz = 0;
+	struct string_view n = {0};
 
 	if (!re_capture("&&\\([[:alpha:]]=([^\\]]+)\\[0\\]\\([[:alpha:]]\\)",
 	                js,
-	                js_sz,
-	                &name,
-	                &nsz)) {
-		return make_result(ERR_JS_DEOB_FIND_FUNCTION_ONE);
+	                &n)) {
+		return make_result(ERR_JS_DEOB_FIND_FUNC_ONE);
 	}
-	debug("Got function name 1: %.*s", (int)nsz, name);
+	debug("Got function name 1: %.*s", (int)n.sz, n.data);
 
 	char *p2 __attribute__((cleanup(asprintf_free))) = NULL;
-	rc = asprintf(&p2, "var \\Q%.*s\\E=\\[([^\\]]+)\\]", (int)nsz, name);
+	rc = asprintf(&p2, "var \\Q%.*s\\E=\\[([^\\]]+)\\]", (int)n.sz, n.data);
 	check_if(rc < 0, ERR_JS_DEOBFUSCATOR_ALLOC);
 
-	if (!re_capture(p2, js, js_sz, &name, &nsz)) {
-		return make_result(ERR_JS_DEOB_FIND_FUNCTION_TWO, name, nsz);
+	if (!re_capture(p2, js, &n)) {
+		return make_result(ERR_JS_DEOB_FIND_FUNC_TWO, n.data, n.sz);
 	}
-	debug("Got function name 2: %.*s", (int)nsz, name);
+	debug("Got function name 2: %.*s", (int)n.sz, n.data);
 
 	char *p3 __attribute__((cleanup(asprintf_free))) = NULL;
 	rc = asprintf(&p3,
@@ -315,16 +293,16 @@ find_js_deobfuscator(const char *js,
 	              "return [[:alpha:]]\\.join\\(\"\"\\)"
 	              "};"
 	              ")",
-	              (int)nsz,
-	              name);
+	              (int)n.sz,
+	              n.data);
 	check_if(rc < 0, ERR_JS_DEOBFUSCATOR_ALLOC);
 
-	if (!re_capture(p3, js, js_sz, deobfuscator, deobfuscator_sz)) {
-		return make_result(ERR_JS_DEOB_FIND_FUNCTION_BODY, name, nsz);
+	if (!re_capture(p3, js, deobfuscator)) {
+		return make_result(ERR_JS_DEOB_FIND_FUNC_BODY, n.data, n.sz);
 	}
 
-	// debug("Got function body: %.*s", *deobfuscator_sz, *deobfuscator);
-	debug("Got function body of size %zd", *deobfuscator_sz);
+	// debug("Got func body: %.*s", deobfuscator->sz, deobfuscator->data);
+	debug("Got function body of size %zd", deobfuscator->sz);
 	return RESULT_OK;
 }
 
@@ -365,18 +343,15 @@ call_js_one(duk_context *ctx,
 	check_if(result == NULL, ERR_JS_CALL_GET_RESULT);
 
 	debug("Got JavaScript function result: %s", result);
-	check(ops->got_result(result, strlen(result), js_pos, userdata));
+	check(ops->got_result(result, js_pos, userdata));
 
 	return RESULT_OK;
 }
 
 result_t
-call_js_foreach(const char *magic,
-                size_t magic_sz,
-                const char *code,
-                size_t code_sz,
+call_js_foreach(const struct string_view *magic,
+                const struct string_view *code,
                 char **args,
-                const size_t argc,
                 struct call_ops *ops,
                 void *userdata)
 {
@@ -384,9 +359,9 @@ call_js_foreach(const char *magic,
 		duk_create_heap_default(); /* may return NULL! */
 	check_if(ctx == NULL, ERR_JS_CALL_ALLOC);
 
-	duk_eval_lstring_noresult(ctx, magic, magic_sz);
+	duk_eval_lstring_noresult(ctx, magic->data, magic->sz);
 
-	duk_push_lstring(ctx, code, code_sz);
+	duk_push_lstring(ctx, code->data, code->sz);
 	assert(duk_get_type(ctx, -1) == DUK_TYPE_STRING);
 
 	duk_push_string(ctx, __func__);
@@ -394,7 +369,7 @@ call_js_foreach(const char *magic,
 		return make_result(ERR_JS_CALL_COMPILE, peek(ctx));
 	}
 
-	for (size_t i = 0; i < argc; ++i) {
+	for (size_t i = 0; args[i]; ++i) {
 		check(call_js_one(ctx, args[i], i, ops, userdata));
 	}
 

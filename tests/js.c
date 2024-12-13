@@ -3,13 +3,13 @@
 #include "array.h"
 #include "debug.h"
 #include "greatest.h"
+#include "test_macros.h"
 
 #include <assert.h>
 #include <limits.h>
 
 static WARN_UNUSED result_t
 parse_callback_noop(const char *val __attribute__((unused)),
-                    size_t sz __attribute__((unused)),
                     void *userdata __attribute__((unused)))
 {
 	return RESULT_OK;
@@ -27,7 +27,8 @@ static struct parse_ops NOOP = {
 static WARN_UNUSED int
 parse(const char *str)
 {
-	result_t err = parse_json(str, strlen(str), &NOOP);
+	struct string_view tmp = {.data = str, .sz = strlen(str)};
+	result_t err = parse_json(&tmp, &NOOP);
 	return err.err;
 }
 
@@ -343,9 +344,10 @@ url_copy_init(struct url_copy *c)
 }
 
 static WARN_UNUSED result_t
-copy_video(const char *val, size_t sz, void *userdata)
+copy_video(const char *val, void *userdata)
 {
 	struct url_copy *urls = (struct url_copy *)userdata;
+	const size_t sz = strlen(val);
 	assert(sizeof(urls->video) >= sz);
 	memcpy(urls->video, val, sz);
 	urls->video[sz] = '\0';
@@ -354,9 +356,10 @@ copy_video(const char *val, size_t sz, void *userdata)
 }
 
 static WARN_UNUSED result_t
-copy_audio(const char *val, size_t sz, void *userdata)
+copy_audio(const char *val, void *userdata)
 {
 	struct url_copy *urls = (struct url_copy *)userdata;
+	const size_t sz = strlen(val);
 	assert(sizeof(urls->audio) >= sz);
 	memcpy(urls->audio, val, sz);
 	urls->audio[sz] = '\0';
@@ -367,11 +370,11 @@ copy_audio(const char *val, size_t sz, void *userdata)
 TEST
 minimum_json_with_correct_shape(void)
 {
-	static const char json[] =
+	const struct string_view json = MAKE_TEST_STRING(
 		"{\"streamingData\": {\"adaptiveFormats\": ["
 		"{\"mimeType\": \"audio/foo\",\"url\": \"http://a.test\"},"
 		"{\"mimeType\": \"video/foo\",\"url\": \"http://v.test\"}"
-		"]}}";
+		"]}}");
 
 	struct url_copy urls;
 	url_copy_init(&urls);
@@ -384,7 +387,7 @@ minimum_json_with_correct_shape(void)
 		.choose_quality = parse_callback_noop,
 		.choose_quality_userdata = NULL,
 	};
-	result_t err = parse_json(json, strlen(json), &pops);
+	result_t err = parse_json(&json, &pops);
 	ASSERT_EQ(OK, err.err);
 
 	ASSERT_STR_EQ("http://a.test", urls.audio);
@@ -395,13 +398,13 @@ minimum_json_with_correct_shape(void)
 TEST
 extra_adaptiveFormats_elements(void)
 {
-	static const char json[] =
+	const struct string_view json = MAKE_TEST_STRING(
 		"{\"streamingData\": {\"adaptiveFormats\": ["
 		"{\"mimeType\": \"audio/foo\",\"url\": \"http://a.test\"},"
 		"{\"mimeType\": \"audio/bar\",\"url\": \"http://extra.test\"},"
 		"{\"mimeType\": \"video/foo\",\"url\": \"http://v.test\"},"
 		"{\"mimeType\": \"video/bar\",\"url\": \"http://extra.test\"}"
-		"]}}";
+		"]}}");
 
 	struct url_copy urls;
 	url_copy_init(&urls);
@@ -414,7 +417,7 @@ extra_adaptiveFormats_elements(void)
 		.choose_quality = parse_callback_noop,
 		.choose_quality_userdata = NULL,
 	};
-	result_t err = parse_json(json, strlen(json), &pops);
+	result_t err = parse_json(&json, &pops);
 	ASSERT_EQ(OK, err.err);
 
 	ASSERT_STR_EQ("http://a.test", urls.audio);
@@ -424,11 +427,10 @@ extra_adaptiveFormats_elements(void)
 
 static WARN_UNUSED result_t
 choose_quality_skip_marked_entries(const char *val,
-                                   size_t sz,
                                    void *userdata __attribute__((unused)))
 {
 	const char *skip_pattern = (const char *)userdata;
-	if (0 == strncmp(skip_pattern, val, sz)) {
+	if (0 == strcmp(skip_pattern, val)) {
 		return make_result(ERR_JS_PARSE_JSON_CALLBACK_QUALITY);
 	}
 	return RESULT_OK;
@@ -437,8 +439,8 @@ choose_quality_skip_marked_entries(const char *val,
 TEST
 choose_adaptiveFormats_elements(void)
 {
-	static const char json[] =
-		"{\"streamingData\": {\"adaptiveFormats\": [{"
+	const struct string_view json = MAKE_TEST_STRING(
+		"{ \"streamingData\": {\"adaptiveFormats\": [ {"
 		"\"mimeType\": \"audio/foo\","
 		"\"qualityLabel\": \"skip\","
 		"\"url\": \"http://bad.test\""
@@ -453,7 +455,7 @@ choose_adaptiveFormats_elements(void)
 		"},"
 		"{\"mimeType\": \"video/bar\","
 		"\"url\": \"http://v.test\""
-		"}]}}";
+		"} ] }}");
 
 	struct url_copy urls;
 	url_copy_init(&urls);
@@ -466,7 +468,7 @@ choose_adaptiveFormats_elements(void)
 		.choose_quality = choose_quality_skip_marked_entries,
 		.choose_quality_userdata = "skip",
 	};
-	result_t err = parse_json(json, strlen(json), &pops);
+	result_t err = parse_json(&json, &pops);
 	ASSERT_EQ(OK, err.err);
 
 	ASSERT_STR_EQ("http://a.test", urls.audio);
@@ -484,46 +486,47 @@ SUITE(correct_shape)
 TEST
 find_base_js_url_negative(void)
 {
-	const char *p = NULL;
-	size_t sz = 0;
+	struct string_view p = {0};
+	const struct string_view html = MAKE_TEST_STRING("<html/>");
 
-	static const char html[] = "<html/>";
-	result_t err = find_base_js_url(html, sizeof(html), &p, &sz);
+	result_t err = find_base_js_url(&html, &p);
 	ASSERT_EQ(ERR_JS_BASEJS_URL_FIND, err.err);
 
-	ASSERT_EQ(NULL, p);
-	ASSERT_EQ(0, sz);
+	ASSERT_EQ(NULL, p.data);
+	ASSERT_EQ(0, p.sz);
 	PASS();
 }
 
 TEST
 find_base_js_url_positive(void)
 {
-	const char *got_url = NULL;
-	size_t got_sz = 0;
-
-	static const char html[] =
+	struct string_view p = {0};
+	const struct string_view html = MAKE_TEST_STRING(
 		"<script "
 		"src=\"/s/player/deadbeef/player_ias.vflset/en_US/base.js\" "
 		"nonce=\"AAAAAAAAAAAAAAAAAAAAAA\""
 		">"
-		"</script>";
-	result_t err = find_base_js_url(html, sizeof(html), &got_url, &got_sz);
+		"</script>");
+
+	result_t err = find_base_js_url(&html, &p);
 	ASSERT_EQ(OK, err.err);
 
 	static const char expected[] =
 		"/s/player/deadbeef/player_ias.vflset/en_US/base.js";
-	ASSERT_EQ(strlen(expected), got_sz);
-	ASSERT_STRN_EQ(expected, got_url, got_sz);
+	ASSERT_EQ(strlen(expected), p.sz);
+	ASSERT_STRN_EQ(expected, p.data, p.sz);
 	PASS();
 }
 
 TEST
 find_js_timestamp_negative_re_pattern(void)
 {
-	static const char json[] = "{signatureTimestamp:\"foobar\"}";
+	const struct string_view json =
+		MAKE_TEST_STRING("{signatureTimestamp:\"foobar\"}");
+
 	long long int timestamp = -1;
-	result_t err = find_js_timestamp(json, sizeof(json), &timestamp);
+	result_t err = find_js_timestamp(&json, &timestamp);
+
 	ASSERT_EQ(ERR_JS_TIMESTAMP_FIND, err.err);
 	ASSERT_GT(0, timestamp);
 	PASS();
@@ -532,9 +535,12 @@ find_js_timestamp_negative_re_pattern(void)
 TEST
 find_js_timestamp_negative_strtoll_erange(void)
 {
-	static const char json[] = "{signatureTimestamp:9223372036854775808}";
+	const struct string_view json =
+		MAKE_TEST_STRING("{signatureTimestamp:9223372036854775808}");
+
 	long long int timestamp = -1;
-	result_t err = find_js_timestamp(json, sizeof(json), &timestamp);
+	result_t err = find_js_timestamp(&json, &timestamp);
+
 	ASSERT_EQ(ERR_JS_TIMESTAMP_PARSE_LL, err.err);
 	ASSERT_EQ(ERANGE, err.num);
 	ASSERT_STR_EQ("9223372036854775808", err.msg);
@@ -545,9 +551,12 @@ find_js_timestamp_negative_strtoll_erange(void)
 TEST
 find_js_timestamp_positive_strtoll_max(void)
 {
-	static const char json[] = "{signatureTimestamp:9223372036854775807}";
+	const struct string_view json =
+		MAKE_TEST_STRING("{signatureTimestamp:9223372036854775807}");
+
 	long long int timestamp = 0;
-	result_t err = find_js_timestamp(json, sizeof(json), &timestamp);
+	result_t err = find_js_timestamp(&json, &timestamp);
+
 	ASSERT_EQ(OK, err.err);
 	ASSERT_EQ(LLONG_MAX, timestamp);
 	PASS();
@@ -556,9 +565,12 @@ find_js_timestamp_positive_strtoll_max(void)
 TEST
 find_js_timestamp_positive_simple(void)
 {
-	static const char json[] = "{signatureTimestamp:19957}";
+	const struct string_view json =
+		MAKE_TEST_STRING("{signatureTimestamp:19957}");
+
 	long long int timestamp = 0;
-	result_t err = find_js_timestamp(json, sizeof(json), &timestamp);
+	result_t err = find_js_timestamp(&json, &timestamp);
+
 	ASSERT_EQ(OK, err.err);
 	ASSERT_EQ(19957, timestamp);
 	PASS();
@@ -567,113 +579,107 @@ find_js_timestamp_positive_simple(void)
 TEST
 find_js_deobfuscator_magic_global_negative(void)
 {
-	const char *magic = NULL;
-	size_t sz = 0;
+	struct string_view magic = {0};
 
-	static const char js[] = "var magic=\"not an integer\";";
-	result_t err =
-		find_js_deobfuscator_magic_global(js, sizeof(js), &magic, &sz);
+	const struct string_view js =
+		MAKE_TEST_STRING("var magic=\"not an integer\";");
+	result_t err = find_js_deobfuscator_magic_global(&js, &magic);
+
 	ASSERT_EQ(ERR_JS_DEOBFUSCATOR_MAGIC_FIND, err.err);
-
-	ASSERT_EQ(NULL, magic);
-	ASSERT_EQ(0, sz);
+	ASSERT_EQ(NULL, magic.data);
+	ASSERT_EQ(0, magic.sz);
 	PASS();
 }
 
 TEST
 find_js_deobfuscator_magic_global_positive(void)
 {
-	const char *magic = NULL;
-	size_t sz = 0;
+	struct string_view magic = {0};
 
-	static const char js[] = "var magic=7777777;";
-	result_t err =
-		find_js_deobfuscator_magic_global(js, sizeof(js), &magic, &sz);
+	const struct string_view js = MAKE_TEST_STRING("var magic=7777777;");
+	result_t err = find_js_deobfuscator_magic_global(&js, &magic);
+
 	ASSERT_EQ(OK, err.err);
-	ASSERT_EQ(strlen(js) - 1, sz);
-	ASSERT_STRN_EQ(js, magic, sz);
+	ASSERT_EQ(js.sz - 1, magic.sz);
+	ASSERT_STRN_EQ(js.data, magic.data, magic.sz);
 	PASS();
 }
 
 TEST
 find_js_deobfuscator_negative_first_match_fail(void)
 {
-	const char *deobfuscator = NULL;
-	size_t sz = 0;
+	struct string_view deobfuscator = {0};
 
-	static const char js[] =
-		"var _yt_player={};(function(g){})(_yt_player);";
-	result_t err = find_js_deobfuscator(js, sizeof(js), &deobfuscator, &sz);
-	ASSERT_EQ(ERR_JS_DEOB_FIND_FUNCTION_ONE, err.err);
+	const struct string_view js = MAKE_TEST_STRING(
+		"var _yt_player={};(function(g){})(_yt_player);");
+	result_t err = find_js_deobfuscator(&js, &deobfuscator);
 
-	ASSERT_EQ(NULL, deobfuscator);
-	ASSERT_EQ(0, sz);
+	ASSERT_EQ(ERR_JS_DEOB_FIND_FUNC_ONE, err.err);
+	ASSERT_EQ(NULL, deobfuscator.data);
+	ASSERT_EQ(0, deobfuscator.sz);
 	PASS();
 }
 
 TEST
 find_js_deobfuscator_negative_second_match_fail(void)
 {
-	const char *deobfuscator = NULL;
-	size_t sz = 0;
+	struct string_view deobfuscator = {0};
 
-	static const char js[] = "&&(c=ODa[0](c),";
-	result_t err = find_js_deobfuscator(js, sizeof(js), &deobfuscator, &sz);
-	ASSERT_EQ(ERR_JS_DEOB_FIND_FUNCTION_TWO, err.err);
+	const struct string_view js = MAKE_TEST_STRING("&&(c=ODa[0](c),");
+	result_t err = find_js_deobfuscator(&js, &deobfuscator);
 
-	ASSERT_EQ(NULL, deobfuscator);
-	ASSERT_EQ(0, sz);
+	ASSERT_EQ(ERR_JS_DEOB_FIND_FUNC_TWO, err.err);
+	ASSERT_EQ(NULL, deobfuscator.data);
+	ASSERT_EQ(0, deobfuscator.sz);
 	PASS();
 }
 
 TEST
 find_js_deobfuscator_negative_third_match_fail(void)
 {
-	const char *deobfuscator = NULL;
-	size_t sz = 0;
+	struct string_view deobfuscator = {0};
 
-	static const char js[] = "&&(c=ODa[0](c),\nvar ODa=[Pma];";
-	result_t err = find_js_deobfuscator(js, sizeof(js), &deobfuscator, &sz);
-	ASSERT_EQ(ERR_JS_DEOB_FIND_FUNCTION_BODY, err.err);
+	const struct string_view js =
+		MAKE_TEST_STRING("&&(c=ODa[0](c),\nvar ODa=[Pma];");
+	result_t err = find_js_deobfuscator(&js, &deobfuscator);
 
-	ASSERT_EQ(NULL, deobfuscator);
-	ASSERT_EQ(0, sz);
+	ASSERT_EQ(ERR_JS_DEOB_FIND_FUNC_BODY, err.err);
+	ASSERT_EQ(NULL, deobfuscator.data);
+	ASSERT_EQ(0, deobfuscator.sz);
 	PASS();
 }
 
 TEST
 find_js_deobfuscator_positive_simple(void)
 {
-	const char *deobfuscator = NULL;
-	size_t sz = 0;
+	struct string_view deobfuscator = {0};
 
-	static const char js[] =
+	const struct string_view js = MAKE_TEST_STRING(
 		"&&(c=ODa[0](c),\nvar ODa=[Pma];\nPma=function(a)"
-		"{return b.join(\"\")};";
-	result_t err = find_js_deobfuscator(js, sizeof(js), &deobfuscator, &sz);
+		"{return b.join(\"\")};");
+	result_t err = find_js_deobfuscator(&js, &deobfuscator);
 	ASSERT_EQ(OK, err.err);
 
 	static const char expected[] = "function(a){return b.join(\"\")};";
-	ASSERT_EQ(strlen(expected), sz);
-	ASSERT_STRN_EQ(expected, deobfuscator, sz);
+	ASSERT_EQ(strlen(expected), deobfuscator.sz);
+	ASSERT_STRN_EQ(expected, deobfuscator.data, deobfuscator.sz);
 	PASS();
 }
 
 TEST
 find_js_deobfuscator_positive_with_escaping(void)
 {
-	const char *deobfuscator = NULL;
-	size_t sz = 0;
+	struct string_view deobfuscator = {0};
 
-	static const char js[] =
+	const struct string_view js = MAKE_TEST_STRING(
 		"&&(c=$aa[0](c),\nvar $aa=[$bb];\n$bb=function(a)"
-		"{return b.join(\"\")};";
-	result_t err = find_js_deobfuscator(js, sizeof(js), &deobfuscator, &sz);
+		"{return b.join(\"\")};");
+	result_t err = find_js_deobfuscator(&js, &deobfuscator);
 	ASSERT_EQ(OK, err.err);
 
 	static const char expected[] = "function(a){return b.join(\"\")};";
-	ASSERT_EQ(strlen(expected), sz);
-	ASSERT_STRN_EQ(expected, deobfuscator, sz);
+	ASSERT_EQ(strlen(expected), deobfuscator.sz);
+	ASSERT_STRN_EQ(expected, deobfuscator.data, deobfuscator.sz);
 	PASS();
 }
 
@@ -694,20 +700,15 @@ SUITE(find_with_pcre)
 	RUN_TEST(find_js_deobfuscator_positive_with_escaping);
 }
 
-static const char *JS_MAGIC = "var MY_MAGIC=123456789";
+static const struct string_view MAGIC = MAKE_TEST_STRING("var MY_MAGIC=123456");
 
 TEST
 call_with_duktape_pcompile_fail(void)
 {
-	static const char js[] = "\"Not a valid function definition!\"";
-	result_t err = call_js_foreach(JS_MAGIC,
-	                               strlen(JS_MAGIC),
-	                               js,
-	                               sizeof(js),
-	                               NULL,
-	                               0,
-	                               NULL,
-	                               NULL);
+	const struct string_view js =
+		MAKE_TEST_STRING("\"Not a valid function definition!\"");
+
+	result_t err = call_js_foreach(&MAGIC, &js, NULL, NULL, NULL);
 	ASSERT_EQ(ERR_JS_CALL_COMPILE, err.err);
 	PASS();
 }
@@ -715,18 +716,14 @@ call_with_duktape_pcompile_fail(void)
 TEST
 call_with_duktape_pcall_fail(void)
 {
-	char *args[1];
+	char *args[2];
 	args[0] = "Hello, World!";
+	args[1] = NULL;
 
-	static const char js[] = "function(a){return not_defined;};";
-	result_t err = call_js_foreach(JS_MAGIC,
-	                               strlen(JS_MAGIC),
-	                               js,
-	                               sizeof(js),
-	                               args,
-	                               ARRAY_SIZE(args),
-	                               NULL,
-	                               NULL);
+	const struct string_view js =
+		MAKE_TEST_STRING("function(a){return not_defined;};");
+
+	result_t err = call_js_foreach(&MAGIC, &js, args, NULL, NULL);
 	ASSERT_EQ(ERR_JS_CALL_INVOKE, err.err);
 	PASS();
 }
@@ -734,18 +731,14 @@ call_with_duktape_pcall_fail(void)
 TEST
 call_with_duktape_pcall_incorrect_result_type(void)
 {
-	char *args[1];
+	char *args[2];
 	args[0] = "Hello, World!";
+	args[1] = NULL;
 
-	static const char js[] = "function(a){return true;};";
-	result_t err = call_js_foreach(JS_MAGIC,
-	                               strlen(JS_MAGIC),
-	                               js,
-	                               sizeof(js),
-	                               args,
-	                               ARRAY_SIZE(args),
-	                               NULL,
-	                               NULL);
+	const struct string_view js =
+		MAKE_TEST_STRING("function(a){return true;};");
+
+	result_t err = call_js_foreach(&MAGIC, &js, args, NULL, NULL);
 	ASSERT_EQ(ERR_JS_CALL_GET_RESULT, err.err);
 	PASS();
 }
@@ -761,12 +754,10 @@ result_copy_init(struct result_copy *c)
 }
 
 static WARN_UNUSED result_t
-copy_result(const char *val,
-            size_t sz,
-            size_t pos __attribute__((unused)),
-            void *userdata)
+copy_result(const char *val, size_t pos __attribute__((unused)), void *userdata)
 {
 	struct result_copy *result = (struct result_copy *)userdata;
+	const size_t sz = strlen(val);
 	assert(sizeof(result->str) >= sz);
 	memcpy(result->str, val, sz);
 	result->str[sz] = '\0';
@@ -784,21 +775,16 @@ call_with_duktape_minimum_valid_function(void)
 	struct result_copy result;
 	result_copy_init(&result);
 
-	char *args[1];
+	char *args[2];
 	args[0] = "Hello, World!";
+	args[1] = NULL;
 
-	static const char js[] =
-		"function(a){return a.toUpperCase() + \" \" + MY_MAGIC;};";
-	result_t err = call_js_foreach(JS_MAGIC,
-	                               strlen(JS_MAGIC),
-	                               js,
-	                               sizeof(js),
-	                               args,
-	                               ARRAY_SIZE(args),
-	                               &cops,
-	                               &result);
+	const struct string_view js = MAKE_TEST_STRING(
+		"function(a){return a.toUpperCase() + \" \" + MY_MAGIC;};");
+
+	result_t err = call_js_foreach(&MAGIC, &js, args, &cops, &result);
 	ASSERT_EQ(OK, err.err);
-	ASSERT_STR_EQ("HELLO, WORLD! 123456789", result.str);
+	ASSERT_STR_EQ("HELLO, WORLD! 123456", result.str);
 	PASS();
 }
 

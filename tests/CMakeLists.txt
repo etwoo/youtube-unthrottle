@@ -42,7 +42,7 @@ macro(generate_test_driver)
 		coverage.c
 	)
 	target_include_directories(test-driver PRIVATE
-		${CMAKE_CURRENT_SOURCE_DIR} # for test_driver.h
+		${CMAKE_CURRENT_SOURCE_DIR} # for coverage.h, test_macros.h, etc
 		${PROJECT_SOURCE_DIR}/src   # for debug.h, tmpfile.h, etc
 		${greatest_SOURCE_DIR}      # for greatest.h
 	)

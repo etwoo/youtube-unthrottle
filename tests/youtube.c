@@ -73,7 +73,6 @@ setup_callback_noop(void *userdata __attribute__((unused)))
 
 static WARN_UNUSED result_t
 parse_callback_noop(const char *val __attribute__((unused)),
-                    size_t sz __attribute__((unused)),
                     void *userdata __attribute__((unused)))
 {
 	return RESULT_OK;

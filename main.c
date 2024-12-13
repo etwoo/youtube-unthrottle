@@ -17,6 +17,7 @@
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <string.h>    /* for strlen() */
 #include <sys/param.h> /* for MAX() */
 #include <sysexits.h>
 
@@ -123,9 +124,10 @@ static const result_t RESULT_QUALITY_BLOCK = {
 };
 
 static __attribute__((warn_unused_result)) result_t
-during_parse_choose_quality(const char *val, size_t sz, void *userdata)
+during_parse_choose_quality(const char *val, void *userdata)
 {
 	struct quality *q = (struct quality *)userdata;
+	size_t sz = strlen(val);
 
 	if (q->re == NULL || q->md == NULL) {
 		return RESULT_OK;
