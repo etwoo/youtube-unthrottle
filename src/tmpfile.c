@@ -44,16 +44,16 @@ tmpfd(int *fd)
 }
 
 result_t
-tmpmap(int fd, void **addr, unsigned int *sz)
+tmpmap(int fd, struct string_view *addr)
 {
 	struct stat st = {
 		.st_size = 0,
 	};
 	check_if(fstat(fd, &st) < 0, ERR_TMPFILE_FSTAT, errno);
-	*sz = st.st_size;
+	addr->sz = st.st_size;
 
-	*addr = mmap(NULL, *sz, PROT_READ, MAP_PRIVATE, fd, 0);
-	check_if(*addr == MAP_FAILED, ERR_TMPFILE_MMAP, errno);
+	addr->data = mmap(NULL, addr->sz, PROT_READ, MAP_PRIVATE, fd, 0);
+	check_if(addr->data == MAP_FAILED, ERR_TMPFILE_MMAP, errno);
 
 	/*
 	 * mmap() can technically return NULL on some platforms, but our
@@ -62,18 +62,18 @@ tmpmap(int fd, void **addr, unsigned int *sz)
 	 * this, we'll need to export MAP_FAILED and break encapsulation of
 	 * the tmpfile.c module a bit.
 	 */
-	assert(*addr != NULL);
+	assert(addr->data != NULL);
 
 	return RESULT_OK;
 }
 
 void
-tmpunmap(void *addr, unsigned int sz)
+tmpunmap(struct string_view *addr)
 {
-	if (addr == MAP_FAILED || addr == NULL) {
+	if (addr->data == MAP_FAILED || addr->data == NULL) {
 		return;
 	}
 
-	const int rc = munmap(addr, sz);
+	const int rc = munmap((void *)addr->data, addr->sz);
 	info_m_if(rc < 0, "Ignoring error munmap()-ing tmpfile");
 }

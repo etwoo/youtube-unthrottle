@@ -3,20 +3,18 @@
 
 #include "compiler_features.h"
 #include "result.h"
-
-#include <stddef.h> /* for size_t */
+#include "string_view.h"
 
 struct parse_ops {
-	result_t (*got_video)(const char *, size_t, void *);
+	result_t (*got_video)(const char *, void *);
 	void *got_video_userdata;
-	result_t (*got_audio)(const char *, size_t, void *);
+	result_t (*got_audio)(const char *, void *);
 	void *got_audio_userdata;
-	result_t (*choose_quality)(const char *, size_t, void *);
+	result_t (*choose_quality)(const char *, void *);
 	void *choose_quality_userdata;
 };
 
-result_t parse_json(const char *json_text,
-                    size_t json_text_sz,
+result_t parse_json(const struct string_view *json,
                     struct parse_ops *ops) WARN_UNUSED;
 
 result_t make_innertube_json(const char *target_url,
@@ -24,32 +22,22 @@ result_t make_innertube_json(const char *target_url,
                              long long int timestamp,
                              char **body);
 
-result_t find_base_js_url(const char *html,
-                          size_t sz,
-                          const char **basejs,
-                          size_t *basejs_sz) WARN_UNUSED;
-result_t find_js_timestamp(const char *js,
-                           size_t js_sz,
+result_t find_base_js_url(const struct string_view *html,
+                          struct string_view *basejs) WARN_UNUSED;
+result_t find_js_timestamp(const struct string_view *js,
                            long long int *value) WARN_UNUSED;
-result_t find_js_deobfuscator_magic_global(const char *js,
-                                           size_t js_sz,
-                                           const char **magic,
-                                           size_t *magic_sz) WARN_UNUSED;
-result_t find_js_deobfuscator(const char *js,
-                              size_t sz,
-                              const char **deobfuscator,
-                              size_t *deobfuscator_sz) WARN_UNUSED;
+result_t find_js_deobfuscator_magic_global(const struct string_view *js,
+                                           struct string_view *m) WARN_UNUSED;
+result_t find_js_deobfuscator(const struct string_view *js,
+                              struct string_view *deobfuscator) WARN_UNUSED;
 
 struct call_ops {
-	result_t (*got_result)(const char *, size_t, size_t, void *);
+	result_t (*got_result)(const char *, size_t, void *);
 };
 
-result_t call_js_foreach(const char *magic,
-                         size_t magic_sz,
-                         const char *code,
-                         size_t code_sz,
+result_t call_js_foreach(const struct string_view *magic,
+                         const struct string_view *code,
                          char **args,
-                         const size_t argc,
                          struct call_ops *ops,
                          void *userdata) WARN_UNUSED;
 

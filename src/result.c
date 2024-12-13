@@ -195,13 +195,13 @@ result_to_str(result_t r)
 	case ERR_JS_DEOBFUSCATOR_ALLOC:
 		s = "Cannot allocate asprintf buffer";
 		break;
-	case ERR_JS_DEOB_FIND_FUNCTION_ONE:
+	case ERR_JS_DEOB_FIND_FUNC_ONE:
 		s = "Cannot find deobfuscation function in base.js";
 		break;
-	case ERR_JS_DEOB_FIND_FUNCTION_TWO:
+	case ERR_JS_DEOB_FIND_FUNC_TWO:
 		my_snprintf("Cannot find reference to %s in base.js", r.msg);
 		break;
-	case ERR_JS_DEOB_FIND_FUNCTION_BODY:
+	case ERR_JS_DEOB_FIND_FUNC_BODY:
 		my_snprintf("Cannot find body of %s in base.js", r.msg);
 		break;
 	case ERR_JS_CALL_ALLOC:

@@ -2,7 +2,6 @@
 
 static WARN_UNUSED result_t
 got_video(const char *val __attribute__((unused)),
-          size_t sz __attribute__((unused)),
           void *userdata __attribute__((unused)))
 {
 	return RESULT_OK;
@@ -10,7 +9,6 @@ got_video(const char *val __attribute__((unused)),
 
 static WARN_UNUSED result_t
 got_audio(const char *val __attribute__((unused)),
-          size_t sz __attribute__((unused)),
           void *userdata __attribute__((unused)))
 {
 	return RESULT_OK;
@@ -18,7 +16,6 @@ got_audio(const char *val __attribute__((unused)),
 
 static WARN_UNUSED result_t
 choose_quality(const char *val __attribute__((unused)),
-               size_t sz __attribute__((unused)),
                void *userdata __attribute__((unused)))
 {
 	return RESULT_OK;
@@ -29,6 +26,7 @@ int LLVMFuzzerTestOneInput(const char *data, size_t sz);
 int
 LLVMFuzzerTestOneInput(const char *data, size_t sz)
 {
+	const struct string_view json = {.data = data, .sz = sz};
 	struct parse_ops pops = {
 		.got_video = got_audio,
 		.got_video_userdata = NULL,
@@ -37,6 +35,6 @@ LLVMFuzzerTestOneInput(const char *data, size_t sz)
 		.choose_quality = choose_quality,
 		.choose_quality_userdata = NULL,
 	};
-	(void)parse_json(data, sz, &pops);
+	(void)parse_json(&json, &pops);
 	return 0;
 }
