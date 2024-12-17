@@ -163,7 +163,7 @@ curl_free_getargs(char **getargs)
 /*
  * Copy and clear n-parameters from query string in <url>.
  *
- * Caller is responsible for free()-ing the pointer returned in <result>.
+ * Caller has responsibility to free() the pointer returned in <result>.
  */
 static WARN_UNUSED result_t
 pop_n_param_one(CURLU *url, char **result)
@@ -210,17 +210,16 @@ pop_n_param_one(CURLU *url, char **result)
 	 *
 	 * Note: memmove() supports overlapping <src> and <dst> pointers.
 	 *
-	 * Note: it is safe (I think ...) to cast away const below because we
-	 * know that <ciphertext_within_getargs> ultimately points at a
-	 * subsection of <getargs>, and the latter is non-const.
+	 * Note: (I think) we can safely cast away const below because we know
+	 * that <ciphertext_within_getargs> ultimately points at a subsection
+	 * of <gs>, a mutable buffer.
 	 *
-	 * Casting away const is required here because the re.h functions
-	 * accept and return (const char *) instead of (char *), and I don't
-	 * currently know a way to handle this kind of const/non-const
-	 * variation cleanly in C (without ugly macro usage, code duplication,
-	 * etc); if this were C++, we'd probably use a template with an auto
-	 * return type to have a single function definition body expand to both
-	 * const and non-const variants.
+	 * We must cast away const because the re.h functions accept and return
+	 * (const char *) instead of (char *), and I don't currently know a way
+	 * to handle this kind of const/non-const variation cleanly in C
+	 * (without ugly macro usage, code duplication, etc). In C++, we'd
+	 * probably use a template with an auto return type to have a single
+	 * function definition body expand to both const/non-const variants.
 	 */
 	assert(ciphertext_within_getargs.data[-2] == 'n' &&
 	       ciphertext_within_getargs.data[-1] == '=');
@@ -245,7 +244,7 @@ pop_n_param_one(CURLU *url, char **result)
 /*
  * Copy and clear n-parameters from all query strings in <p>.
  *
- * Caller is responsible for free()-ing the pointers returned in <results>.
+ * Caller has responsibility to free() the pointers returned in <results>.
  */
 static WARN_UNUSED result_t
 pop_n_param_all(struct youtube_stream *p, char **results)
@@ -313,7 +312,7 @@ static void
 downloaded_init(struct downloaded *d, const char *description)
 {
 	d->description = description;
-	d->fd = -1; /* guarantee fd is invalid by default */
+	d->fd = -1; /* guarantee invalid <fd> by default */
 	memset(&d->data, 0, sizeof(d->data));
 }
 

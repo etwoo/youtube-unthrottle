@@ -197,7 +197,7 @@ proc optimize_next_vm_boot {} {
 # Main body of Expect/Tcl script
 #
 
-debug "Prepare VM directory $vm_dir; subsequent steps assume it exists"
+debug "Prepare VM directory $vm_dir; later steps assume it exists"
 file mkdir $vm_dir
 
 set img [lindex $argv 0]
@@ -209,7 +209,7 @@ if {$argc > 1} {
 	get_vm_from_cache $img $vm_url "PRIVATE-TOKEN:$access_token"
 }
 
-debug "If necessary, decompress VM files prior to boot"
+debug "If necessary, decompress VM files before attempting to boot"
 maybe_decompress $img
 
 set slowpath [expr {![file exists [make_path $img]]}]
@@ -252,7 +252,7 @@ if {$slowpath} {
 	run_in_vm "cloud-init status --long --wait"
 }
 
-# debug "Get timing information about boot, in case it is slow under CI"
+# debug "Get timing information about boot, in case of slow boot under CI"
 # run_in_vm "systemd-analyze"
 # run_in_vm "systemd-analyze critical-chain"
 # run_in_vm "systemd-analyze blame --no-pager"
@@ -269,10 +269,10 @@ debug "Run tests"
 set exit_code [run_tests_in_vm $nproc]
 
 if {$slowpath} {
-	debug "Prior to shutdown, tweak how VM will boot in the future"
+	debug "Before shutdown, tweak how VM will boot in the future"
 	optimize_next_vm_boot
 
-	debug "Shutdown VM, after interactive usage is complete"
+	debug "Shutdown VM, after interactive usage completes"
 	run_in_vm "systemctl poweroff --no-wall"
 	wait -i $qemu_id
 

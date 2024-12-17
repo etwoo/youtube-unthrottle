@@ -221,9 +221,11 @@ SUITE(seccomp_io_sealed_sandbox)
 
 /*
  * Note: it seems we cannot currently test seccomp_apply(0) in a single-process
- * context, as restricting the sandbox to this degree prevents the unit test
- * rig from proceeding, e.g. prevents greatest.h macros from being able to
- * print test results to stdout. We might need a multiprocess or multithreaded
- * unit test rig to exercise this scenario, such that seccomp_apply() can be
- * applied to a child process without restricting the unit test rig itself.
+ * context, as restricting the sandbox to this degree prevents the test rig
+ * from proceeding, e.g. prevents greatest.h macros from printing test results
+ * to stdout.
+ *
+ * We might need a multiprocess or multithreaded system to exercise this
+ * scenario, such that seccomp_apply() can restrict a child process without
+ * restricting the test rig itself.
  */

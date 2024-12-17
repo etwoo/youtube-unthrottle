@@ -4,7 +4,7 @@
 
 #include <assert.h>
 #include <fcntl.h>
-#include <stdio.h> /* for P_tmpdir */
+#include <stdio.h> /* for <P_tmpdir> */
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -19,17 +19,17 @@ result_t
 tmpfd(int *fd)
 {
 	/*
-	 * strace suggests that tmpfile() already uses O_TMPFILE when
-	 * possible, at least under glibc. As a result, there's no need
-	 * to call open() with O_TMPFILE|O_EXCL ourselves.
+	 * strace output suggests that tmpfile() already uses O_TMPFILE when
+	 * possible, at least under glibc. As a result, we need not call open()
+	 * with O_TMPFILE|O_EXCL ourselves.
 	 */
 	FILE *fs __attribute__((cleanup(checked_fclose))) = tmpfile();
 	check_if(fs == NULL, ERR_TMPFILE, errno);
 
 	/*
 	 * dup the underlying file descriptor behind the tmpfile stream, and
-	 * then close the original stream. I believe (though I'm not totally
-	 * sure) that this is necessary to avoid leaking the FILE* itself.
+	 * then close the original stream. I believe fclose()-ing the original
+	 * stream in this way avoids leaking the FILE* itself.
 	 */
 
 	int inner_fd = fileno(fs);
@@ -57,7 +57,7 @@ tmpmap(int fd, struct string_view *addr)
 
 	/*
 	 * mmap() can technically return NULL on some platforms, but our
-	 * callers use NULL as a default/sentinel value to indicate failure.
+	 * callers use NULL as a default/sentinel value to signal failure.
 	 * Just bail out under this condition. If we ever want to deal with
 	 * this, we'll need to export MAP_FAILED and break encapsulation of
 	 * the tmpfile.c module a bit.

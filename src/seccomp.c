@@ -172,7 +172,7 @@ static const char *SYSCALLS_INET[] = {
 };
 
 /*
- * Linux syscalls corresponding to the ability to modify the sandbox itself, a
+ * Linux syscalls corresponding to the ability to alter the sandbox itself, a
  * conceptual superset of OpenBSD pledge("unveil")
  */
 static const char *SYSCALLS_SANDBOX_MODIFY[] = {
@@ -214,11 +214,12 @@ seccomp_allow_cmp_union(scmp_filter_ctx ctx,
 }
 
 /*
- * Quiet clang warnings about a member being left uninitialized in the
- * scmp_arg_cmp struct (-Wmissing-field-initializers). In cases where
- * the scmp_compare op only takes one argument, like SCMP_CMP_EQ, it is
- * intentional for the libseccomp macros not to initialize datum_b, as
- * this member represents an optional second argument.
+ * Quiet clang warnings about a member left uninitialized in the <scmp_arg_cmp>
+ * struct (-Wmissing-field-initializers).
+ *
+ * In cases where <scmp_compare> only takes one argument, like SCMP_CMP_EQ,
+ * libseccomp macros intentionally leave <datum_b> uninitialized, as this
+ * member represents an optional second argument.
  */
 #define SCMP_ARG_UNUSED 0
 
@@ -249,7 +250,7 @@ static WARN_UNUSED int
 seccomp_allow_mmap(scmp_filter_ctx ctx, int num)
 {
 	/*
-	 * Add syscall rules for <prot> and <flags> args to mmap()
+	 * Add syscall rules for <prot> and <flags> arguments to mmap()
 	 * simultaneously, producing an AND relationship (intersection).
 	 */
 	const int allowed_flags = MAP_PRIVATE | MAP_ANONYMOUS | MAP_DENYWRITE |
@@ -320,8 +321,8 @@ seccomp_allow_tmpfile(scmp_filter_ctx ctx,
 	}
 
 	/*
-	 * Require openat() callers to be doing either landlock-related O_PATH
-	 * calls or tmpfile-creation O_TMPFILE|O_EXCL calls.
+	 * Restrict openat() callers to landlock-related O_PATH calls and
+	 * tmpfile-creation O_TMPFILE|O_EXCL calls.
 	 */
 	const int allowed_flags = O_PATH | O_TMPFILE | O_EXCL | O_RDWR;
 	const struct scmp_arg_cmp op[] = {
@@ -339,8 +340,8 @@ seccomp_allow_rpath(scmp_filter_ctx ctx,
 {
 	const int num = SCMP_SYS(openat);
 	/*
-	 * Require openat() callers to be doing either landlock-related O_PATH
-	 * calls or O_RDONLY operations (i.e. all-zero flags).
+	 * Restrict openat() callers to landlock-related O_PATH calls and
+	 * O_RDONLY operations (i.e. all-zero flags).
 	 */
 	assert(O_RDONLY == 0);
 	const int allowed_flags = O_PATH | O_RDONLY;

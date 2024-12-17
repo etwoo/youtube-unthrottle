@@ -2,15 +2,14 @@
 
 ## Usage
 
-`youtube-unthrottle` is essentially a tiny subset of the functionality
-provided by more sophisticated tools like
+`youtube-unthrottle` implements a small subset of tools like
 [yt-dlp](https://github.com/yt-dlp/yt-dlp),
-[rusty_ytdl](https://github.com/Mithronn/rusty_ytdl).
+[rusty_ytdl](https://github.com/Mithronn/rusty_ytdl),
 and of course, [youtube-dl](https://github.com/ytdl-org/youtube-dl).
 
 Specifically, `youtube-unthrottle` extracts the video and audio stream URLs
-from a YouTube link passed via `argv[1]` and then prints the results to stdout.
-This output can be combined with an external video player like `mpv`:
+from a YouTube link passed via `argv[1]`. A program like `mpv` can act on
+this output like:
 
 ```sh
 uri="$(xclip -o)"
@@ -22,42 +21,36 @@ video="$(tail -1 $x)"
 mpv --title="$uri" --audio-file="$audio" "$video"
 ```
 
-## Motivation
+## Goals
 
-The main challenge here is that YouTube stream URLs contain parameters
-that must be deobfuscated using JavaScript fragments supplied elsewhere
-in the YouTube payload. This is why solving this puzzle requires the use
-of an embedded JavaScript engine (in this case,
-[Duktape](https://duktape.org/)).
+Our main challenge: YouTube obfuscates its stream URLs and pairs them with
+dynamic JavaScript-based deobfuscation logic. To get usable URLs, we must
+apply the latter to the former.
 
-That being said, why does this project exist, when tools like `yt-dlp`
-already solve this problem (and many others) so completely? The reasons
-are mainly personal for the author:
+Why solve this problem anew, when tools like `yt-dlp` already exist? I have
+mainly learning in mind:
 
-- gain experience embedding a scripting language within another program
-- use the C APIs of libcurl and pcre2 directly, rather than indirectly through
-  a higher-level language's wrapper
-- test-drive the [-fanalyzer](https://developers.redhat.com/blog/2020/03/26/static-analysis-in-gcc-10) compiler option
-- learn how [ASan](https://clang.llvm.org/docs/AddressSanitizer.html),
+- embed a scripting language within another program
+- use the C APIs of libcurl and pcre2, without relying on a higher-level
+  language wrapper
+- test-drive the [-fanalyzer](https://developers.redhat.com/blog/2020/03/26/static-analysis-in-gcc-10) gcc option
+- see whether [ASan](https://clang.llvm.org/docs/AddressSanitizer.html),
   [LSan](https://clang.llvm.org/docs/LeakSanitizer.html),
   and [UBSan](https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html)
-  behave in the context of a greenfield codebase, especially one where
-  error-handling codepaths are exercised by evolving external inputs on
-  an ongoing basis
-- experiment with sandboxing APIs like
+  catch problems caused by changing server-side state
+- try out sandboxing APIs like
   [libseccomp](https://man.archlinux.org/man/seccomp_rule_add.3.en),
   [Landlock](https://docs.kernel.org/userspace-api/landlock.html),
   [pledge()](https://man.openbsd.org/pledge.2),
   and [unveil()](https://man.openbsd.org/unveil.2)
 
-Additional day-to-day reasons:
+I also want to watch YouTube without:
 
-- watch YouTube without crashing my desktop PC due to CPU/GPU thermals
-- watch YouTube without triggering the OOM killer
-- watch YouTube without jank, tearing, and other visual artifacts
+- crashing my desktop PC due to CPU/GPU thermals
+- needing the OOM killer to save me from swap death
+- seeing jank, tearing, and other visual glitches
 
-I also like to avoid python3 dependencies on my desktop PC whenever possible,
-more for fun than anything else.
+I like to avoid python3 as well, which e.g. `yt-dlp` requires.
 
 ## Platforms
 
@@ -74,8 +67,8 @@ libseccomp
 pcre2
 ```
 
-I developed with the following versions of these libaries (though I am
-currently assuming that many other versions would work equally well):
+I developed with the following versions of these libraries (though I assume
+many other versions would work as well):
 
 ```sh
 $ pacman -Q cmake curl duktape jansson libseccomp pcre2
@@ -87,7 +80,7 @@ libseccomp 2.5.5-3
 pcre2 10.44-1
 ```
 
-Optional dependencies for code coverage and fuzzing:
+Optionally, for code coverage and fuzzing:
 
 ```
 clang
@@ -96,7 +89,7 @@ llvm
 
 ## Build
 
-To perform an initial build:
+To build and run:
 
 ```sh
 cmake --preset default
@@ -104,14 +97,7 @@ cmake --build --preset default
 ./build/youtube-unthrottle --help
 ```
 
-To rebuild from scratch, discarding any existing on-disk state:
-
-```sh
-cmake --preset default --fresh
-cmake --build --preset default --clean-first
-```
-
-To build and run unit tests:
+To build and run tests:
 
 ```sh
 cmake --preset default
@@ -119,14 +105,21 @@ cmake --build --preset default
 ctest --preset default
 ```
 
-To reconfigure and build with clang instead of gcc:
+To rebuild from scratch:
+
+```sh
+cmake --preset default --fresh
+cmake --build --preset default --clean-first
+```
+
+To build with clang instead of gcc:
 
 ```sh
 cmake --preset clang --fresh
 cmake --build --preset default --clean-first
 ```
 
-To generate a code coverage report:
+To create a code coverage report:
 
 ```sh
 cmake --preset coverage --fresh

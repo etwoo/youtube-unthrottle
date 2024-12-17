@@ -68,11 +68,11 @@ re_capture(const char *pattern_in,
 	PCRE2_SPTR sbj = (PCRE2_SPTR)subject_in->data;
 	rc = pcre2_match(re, sbj, subject_in->sz, 0, 0, md, NULL);
 	if (rc > 0) {
-		assert(rc == 2); /* pattern_in must contain one capture group */
+		assert(rc == 2); /* pattern must contain one capture group */
 	} else {
 		if (rc != PCRE2_ERROR_NOMATCH) {
 			re_info_message("matching", rc, pattern_in, loc);
-		} /* else: *_NOMATCH is a non-error for our purposes */
+		} /* else: *_NOMATCH, not an error for our purposes */
 		return false;
 	}
 

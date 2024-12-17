@@ -24,7 +24,7 @@ endif (BUILD_TESTING)
 #
 # Set up a custom `fmt` target that runs clang-format.
 #
-# It would be nice to use the builtin cmake integration instead:
+# I would prefer to use the builtin cmake integration instead:
 #
 #     set(CMAKE_C_CPPLINT clang-format -Werror --dry-run)
 #
@@ -51,7 +51,7 @@ add_custom_target(fmt COMMAND find
 )
 
 #
-# Figure out which compiler options are supported, and enable them.
+# Figure out which options the compiler supports, and enable them.
 #
 
 add_library(my_cflags INTERFACE)
@@ -96,7 +96,7 @@ check_target_compile_options(my_cflags -Wmissing-prototypes)
 check_target_compile_options(my_cflags -Wstrict-prototypes)
 
 #
-# Enable sanitizers, except TSan (since we're currently single-threaded)
+# Enable sanitizers, except TSan (code currently runs single-threaded)
 #
 
 add_library(sanitizers INTERFACE)
@@ -111,20 +111,19 @@ check_sanitizer(sanitizers -fsanitize=undefined ubsan CFLAG_UBSAN)
 #
 # Quiet warnings under clang like:
 #
-# warning: token pasting of ',' and __VA_ARGS__ is a GNU extension
+# warning: token pasting of ',' and __VA_ARGS__ .. a GNU extension
 #
-# The -Wgnu-zero-variadic-macro-arguments diagnostic is enabled by -pedantic,
-# which we use to catch unintended GNU-isms and (mis)use of C language features
-# beyond this project's c_std_* version. All that being said, we are OK with
-# this specific GNU-ism and therefore suppress this particular warning.
+# -pedantic enables the -Wgnu-zero-variadic-macro-arguments diagnostic and
+# detects (mis)use of C language features outside of this project's c_std_*
+# version (including unintended GNU-isms). All that said, we accept with this
+# specific GNU-ism and so suppress this particular warning.
 #
 # warning: -Wl,-z,relro: 'linker' input unused [-Wunused-command-line-argument]
 #
 # We could avoid these warnings entirely by moving these options from CFLAGS TO
-# LDFLAGS, as the latter is only passed to CC when linking the final target
-# executable. However, -Wl,_ seems to be the most common idiom for providing
-# linker flags (at least going by blog posts online), so I would rather stick
-# with -Wl,_ in CFLAGS for ease of future googling.
+# LDFLAGS, but -Wl,_ seems the most common idiom for providing linker flags (at
+# least going by blog posts online). As a result, I prefer to use -Wl,_ in
+# CFLAGS for ease of future googling.
 #
 
 if (CMAKE_C_COMPILER_ID STREQUAL "Clang")
@@ -135,9 +134,11 @@ if (CMAKE_C_COMPILER_ID STREQUAL "Clang")
 endif (CMAKE_C_COMPILER_ID STREQUAL "Clang")
 
 #
-# Workaround PATH, include, and library issues on OpenBSD. I must be doing
-# something wrong, as it seems unlikely that all cmake-based projects fail
-# to find headers and libraries installed through pkg_add.
+# Workaround PATH, include, and library issues on OpenBSD.
+#
+# It seems unlikely that all cmake-based projects fail to find headers and
+# libraries installed through pkg_add, but until I figure out what I've done
+# wrong to cause this, use this kludge.
 #
 
 if (CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")

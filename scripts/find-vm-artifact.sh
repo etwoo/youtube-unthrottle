@@ -38,7 +38,7 @@ while [ $((i++)) ] ; do
 
 	job_candidates=$(echo "$job_json" | jq "$JQ_FILTER")
 	if [ -z "$job_candidates" ] ; then
-		echo "DEBUG: page $i has no artifacts of sufficient size" >&2
+		echo "DEBUG: page $i has no artifacts of required size" >&2
 		continue
 	fi
 

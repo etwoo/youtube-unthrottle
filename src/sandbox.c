@@ -38,8 +38,8 @@ sandbox_verify(const char **paths,
 	 * Use kill() as a dead man's switch for the sandbox.
 	 *
 	 * Either seccomp correctly blocks kill(), allowing verification to
-	 * proceed, or kill() is incorrectly allowed, stopping this process
-	 * before any unexpected actions can occur.
+	 * proceed, or kill() incorrectly runs, stopping this process before
+	 * any unexpected actions can occur.
 	 */
 	rc = kill(target, SIGKILL);
 	assert(rc < 0);

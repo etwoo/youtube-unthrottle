@@ -4,8 +4,9 @@
 /*
  * Convenience macro for string_view usage in tests
  *
- * Note: <lit> must be a string literal and _NOT_ a variable of type `char *`.
- * Lack of type safety here is the main reason we use this only for test code.
+ * Caller must pass a string literal as <lit>, not a variable of type `char *`.
+ *
+ * Note: lack of type safety makes this macro suitable for test code only.
  */
 #define MAKE_TEST_STRING(lit) {.data = lit, .sz = sizeof(lit) - 1}
 

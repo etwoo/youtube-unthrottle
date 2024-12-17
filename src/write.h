@@ -6,8 +6,8 @@
 #include <unistd.h> /* for ssize_t */
 
 /*
- * Keep trying to write() until all <nbyte> of <buf> has been consumed or an
- * error is returned, whichever happens first.
+ * Keep trying to write() until we've consumed all <nbyte> of <buf> or an error
+ * occurs, whichever happens first.
  *
  * In other words, keep trying in the face of partial writes.
  */

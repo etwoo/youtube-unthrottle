@@ -13,9 +13,9 @@ echo "Before cleanup:"
 find "$DST_DIRECTORY"
 
 #
-# Delete files in $DST_DIRECTORY that are marked as coming from cache, while
-# taking care not to perturb any other files created by another process
-# generating new, updated artifacts (i.e. cache miss -> cache repopulate).
+# Delete files in $DST_DIRECTORY marked as coming from cache, while taking
+# care not to perturb any other files created by another process generating
+# new, updated artifacts (i.e. cache miss -> cache repopulate).
 #
 find "$DST_DIRECTORY" -type f -name '*.please_delete' | while read -r cur ; do
 	echo "Cleanup: $cur"

@@ -1,11 +1,11 @@
 /*
  * Extract video and audio stream URLs from a YouTube link passed via argv[1],
- * and then print the results to stdout, for subsequent use by mpv.
+ * and then print the results to stdout, for use by mpv.
  *
- * The main challenge here is that the stream URLs contain parameters
- * that must be deobfuscated using JavaScript fragments supplied elsewhere
- * in the YouTube payload. This is why solving this puzzle requires the use
- * of an embedded JavaScript engine (in this case, Duktape).
+ * Our main challenge: YouTube stream URLs contain obfuscated parameters, and
+ * YouTube web payloads contain JavaScript fragments that deobfuscate these
+ * parameters. To solve this puzzle then requires applying the latter to the
+ * former with a JavaScript engine (in this case, Duktape).
  */
 
 #include "result.h"
@@ -30,8 +30,8 @@ __asan_default_options(void)
 {
 	/*
 	 * Disable LSan by default, as StopTheWorld() seems to misbehave when
-	 * running under the seccomp sandbox. Even if syscalls like clone() and
-	 * ptrace() are allowed, StopTheWorld() seems to hang at process exit,
+	 * running under the seccomp sandbox. Even if we allow syscalls like
+	 * clone() and ptrace(), StopTheWorld() seems to hang at process exit,
 	 * while repeatedly calling sched_yield().
 	 */
 	return "detect_leaks=0";

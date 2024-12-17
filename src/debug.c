@@ -11,14 +11,16 @@ vlog(const char *level,
      va_list ap)
 {
 	fprintf(stderr, "%-*s %s:%u: ", 5, level, fname, lineno);
-	/* magic number 5: longest logging level is 5 chars */
+	/* magic number 5: longest logging level == 5 chars */
 	vfprintf(stderr, pattern, ap);
 	fputc('\n', stderr);
 
+#if 0
 	/* padded/aligned version: */
-	/* fprintf(stderr, "%*s:%-*u: ", 13, fname, 3, lineno); */
-	/* magic number 13: longest source code filename is 13 chars */
+	fprintf(stderr, "%*s:%-*u: ", 13, fname, 3, lineno);
+	/* magic number 13: longest source code filename == 13 chars */
 	/* magic number 3: longest source file has 3-digit line count */
+#endif
 }
 
 void
@@ -30,9 +32,9 @@ debug_at_line(const char *fname, unsigned int lineno, const char *pattern, ...)
 	vlog("DEBUG", fname, lineno, pattern, ap);
 	va_end(ap);
 #else
-	(void)fname;   /* unused */
-	(void)lineno;  /* unused */
-	(void)pattern; /* unused */
+	(void)fname;
+	(void)lineno;
+	(void)pattern;
 #endif
 }
 
