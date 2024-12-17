@@ -44,7 +44,7 @@ build:clang-format:
 build:clang-coverage:
   <<: *build_dependencies
   stage: build
-  # Use medium machine type (instead of default small) to improve VM perf
+  # Use medium machine type (instead of default small) to improve VM performance
   tags:
     - saas-linux-medium-amd64
   variables:
