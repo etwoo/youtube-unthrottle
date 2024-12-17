@@ -121,11 +121,10 @@ parse_json(const struct string_view *json, struct parse_ops *ops)
 		}
 
 		/*
-		 * Check for streamingCipher attribute, which we do not
-		 * currently support. Streams with a "streamingCipher"
-		 * attribute instead of a plaintext "url" value require
-		 * additional deobfuscation logic, similar to (but distinct
-		 * from) n-parameter decoding.
+		 * Check for <streamingCipher> attribute, which we do not
+		 * currently support. Streams with a <streamingCipher>
+		 * attribute instead of a plaintext <url> value require more
+		 * deobfuscation logic, distinct from n-parameter decoding.
 		 * */
 		json_t *get_streaming_cipher =
 			json_object_get(cur, "signatureCipher");
@@ -212,7 +211,7 @@ find_js_timestamp(const struct string_view *js, long long int *value)
 	}
 
 	/*
-	 * strtoll() does not modify errno on success, so we must clear it
+	 * strtoll() does not update errno on success, so we must clear it
 	 * explicitly if we want a predictable value.
 	 */
 	errno = 0;
@@ -257,7 +256,7 @@ asprintf_free(char **strp)
  * 2) find <bar> in base.js like: var foo=[bar]
  * 3) find <...> in base.js like: bar=function(a){...}
  *
- * The resulting function body is subsequently used like:
+ * Later code uses the resulting function body like:
  *
  * 4) eval JavaScript fragment like: function(a){...}([$n_param])
  * 5) use return value from step 4 as decoded n-parameter
@@ -315,15 +314,14 @@ call_js_one(duk_context *ctx,
 {
 	/*
 	 * Duplicate the compiled JavaScript function at the top of the Duktape
-	 * stack. This is necessary because the upcoming duk_pcall() will
-	 * essentially consume one copy of the compiled function; from the
-	 * Duktape API docs:
+	 * stack, to prepare for the upcoming duk_pcall() that consumes one
+	 * copy of the compiled function; from the Duktape API docs:
 	 *
-	 *   The function and its arguments are replaced by a single return
+	 *   The function and its arguments [get] replaced by a single return
 	 *   value or a single error value.
 	 *
-	 * Duplicating the top of stack (TOS) therefore prepares us for
-	 * successive invocations of this function in the near future.
+	 * Duplicating the top of stack (TOS) thus prepares us for successive
+	 * invocations of this function.
 	 */
 	duk_dup_top(ctx);
 
@@ -331,8 +329,8 @@ call_js_one(duk_context *ctx,
 
 	/*
 	 * Push supplied argument onto the Duktape stack, and then call the
-	 * compiled JavaScript function that is ready to go on the Duktape
-	 * stack (set by a preceding duk_pcompile() in call_js_foreach()).
+	 * compiled, ready-to-use JavaScript function on the Duktape stack (set
+	 * by a preceding duk_pcompile() in call_js_foreach()).
 	 */
 	duk_push_lstring(ctx, js_arg, strlen(js_arg));
 	if (duk_pcall(ctx, 1) != DUK_EXEC_SUCCESS) {

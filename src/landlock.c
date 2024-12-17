@@ -9,7 +9,7 @@
  *   https://lwn.net/Articles/859908/
  *   https://docs.kernel.org/userspace-api/landlock.html
  *
- * There is BSD-licensed sample code in the Linux kernel repo, as well:
+ * The Linux kernel repository contains BSD-licensed sample code, as well:
  *
  *   samples/landlock/sandboxer.c
  */
@@ -84,7 +84,7 @@ ruleset_add_rule_paths(int fd, const char **paths, size_t sz)
 {
 	struct landlock_path_beneath_attr pb = {
 		.allowed_access = LANDLOCK_ACCESS_FS_READ_FILE,
-		.parent_fd = -1, /* guarantee fd is invalid by default */
+		.parent_fd = -1, /* guarantee invalid <fd> by default */
 	};
 
 	for (size_t i = 0; i < sz; ++i) {

@@ -4,15 +4,14 @@
 #include <stddef.h> /* for size_t */
 
 /*
- * result_t: generic result type used by various libyoutube subsystems
+ * result_t: generic result type used by libyoutube subsystems
  *
- * Note: a modular, extensible, per-subsystem version of result_t is
- * implemented in branch `feature/add-modular-result-type`. However, the
- * associated complexity of this more modular implementation is not worth
- * incurring for a codebase of this size (e.g. less than 100k lines). In other
- * words, one-big-enum appears to be the more readable, maintainable approach
- * for error-handling (at least for now), despite the lack of encapsulation
- * across subsystems.
+ * Note: a modular, per-subsystem version of result_t exists in branch
+ * `feature/add-modular-result-type`. Unfortunately, the associated complexity
+ * of this more modular implementation outweighs the benefits for a codebase of
+ * this size (e.g. less than 100k lines). In other words, one-big-enum appears
+ * the more readable, maintainable approach for error-handling (at least for
+ * now), despite the lack of encapsulation across subsystems.
  */
 typedef struct {
 	enum {
@@ -144,7 +143,7 @@ DECLARE_MAKERESULT_IMPL(tiss, int typ, int num, const char *msg, size_t sz);
 	} while (0)
 
 /*
- * Return a result_t if a given (arbitrary) condition is true.
+ * Return a result_t if a given (arbitrary) condition evaluates to true.
  */
 #define check_if(cond, ...)                                                    \
 	do {                                                                   \
@@ -154,9 +153,9 @@ DECLARE_MAKERESULT_IMPL(tiss, int typ, int num, const char *msg, size_t sz);
 	} while (0)
 
 /*
- * Return if <num> is non-zero, while also capturing <num> in the result_t.
+ * Return on non-zero <val>, while also capturing <val> in the result_t.
  *
- * Note: <num> would typically be something like a CURLcode or CURLUcode.
+ * Note: <val> would typically originate from CURLcode, CURLUcode, or similar.
  */
 #define check_if_num(val, err_type) check_if(val, err_type, (int)val)
 

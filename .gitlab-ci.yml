@@ -77,6 +77,32 @@ build:clang-coverage:
         coverage_format: cobertura
         path: ./build/coverage.xml
 
+#
+# Based on https://gitlab.com/gitlab-ci-utils/container-images/vale
+#
+# Restricting comments in code and internal documentation with Vale would
+# probably never make sense in a real software project, especially one with
+# a large team of varying language backgrounds.
+#
+# That said, a pedantic approach does no harm for a personal project
+# because at worst, I only shoot myself in the foot.
+#
+lint:prose:
+  stage: build
+  image:
+    name: registry.gitlab.com/gitlab-ci-utils/container-images/vale:latest
+    entrypoint: ['']
+  before_script:
+    - /vale/sync.sh
+  script:
+    - ./scripts/check-prose.sh /vale/vale-glcq.tmpl > vale.json
+  after_script:
+    - jq -r '.[].check_name' vale.json | sort | uniq -c | sort -nr
+  artifacts:
+    when: always
+    reports:
+      codequality: vale.json
+
 lint:shell:
   stage: build
   before_script:

@@ -12,7 +12,7 @@ macro(check_hardened lib)
 
 	cmake_push_check_state()
 	set(CMAKE_REQUIRED_QUIET ON)
-	set(CMAKE_REQUIRED_FLAGS -O2) # req'ed by _FORTIFY_SOURCE
+	set(CMAKE_REQUIRED_FLAGS -O2) # _FORTIFY_SOURCE requires optimization
 	check_c_compiler_flag(-fhardened CFLAG_HARDENED)
 	cmake_pop_check_state()
 
@@ -34,5 +34,5 @@ macro(check_hardened lib)
 		)
 	endif (CFLAG_HARDENED)
 
-	target_compile_options(${lib} INTERFACE -O2) # req'ed by _FORTIFY_SOURCE
+	target_compile_options(${lib} INTERFACE -O2) # for _FORTIFY_SOURCE
 endmacro()

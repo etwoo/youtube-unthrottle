@@ -25,7 +25,7 @@ write_to_tmpfile(char *ptr, size_t size, size_t nmemb, void *userdata)
 	const int *fd = (const int *)userdata;
 	if (*fd == FD_DISCARD) {
 		/*
-		 * FD_DISCARD means caller wants data to be discarded.
+		 * FD_DISCARD means caller wants us to discard data
 		 */
 		return real_size;
 	}
@@ -41,13 +41,13 @@ get_easy_handle(void)
 {
 	static CURL *GLOBAL_CURL_EASY_HANDLE = NULL;
 	/*
-	 * Initialization of these static variables is not currently
-	 * thread-safe. Ditto for callers of get_easy_handle() who use the
+	 * Initialization of these static variables currently lacks
+	 * thread-safety. Ditto for callers of get_easy_handle() who use the
 	 * resulting (cached, shared) curl easy handle.
 	 *
 	 * If youtube-unthrottle ever becomes multithreaded, this code will
-	 * need to be retrofitted with a mutex and/or the callers will need
-	 * to ensure that initialization happens while still single-threaded.
+	 * need retrofits, like a module-level mutex or callers who ensure that
+	 * initialization happens while still single-threaded.
 	 */
 	if (!GLOBAL_CURL_EASY_HANDLE) {
 		GLOBAL_CURL_EASY_HANDLE = curl_easy_init();
@@ -136,11 +136,11 @@ static const char CONTENT_TYPE_JSON[] = "Content-Type: application/json";
 static const char DEFAULT_HOST_STR[] = "www.youtube.com";
 
 result_t
-url_download(const char *url_str,     /* may be NULL */
-             const char *host_str,    /* may be NULL */
-             const char *path_str,    /* may be NULL */
-             const char *post_body,   /* may be NULL */
-             const char *post_header, /* may be NULL */
+url_download(const char *url_str,     /* maybe NULL */
+             const char *host_str,    /* maybe NULL */
+             const char *path_str,    /* maybe NULL */
+             const char *post_body,   /* maybe NULL */
+             const char *post_header, /* maybe NULL */
              int fd)
 {
 	CURLU *url = NULL;
