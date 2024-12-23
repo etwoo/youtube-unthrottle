@@ -35,7 +35,7 @@ my_vsnprintf(const char *pattern, va_list ap)
 	}
 }
 
-static WARN_UNUSED const char *__attribute__((format(printf, 1, 2)))
+static WARN_UNUSED __attribute__((format(printf, 1, 2))) const char *
 my_snprintf(const char *pattern, ...)
 {
 	va_list ap;

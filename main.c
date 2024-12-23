@@ -37,7 +37,7 @@ __asan_default_options(void)
 	return "detect_leaks=0";
 }
 
-static void __attribute__((format(printf, 1, 2)))
+static __attribute__((format(printf, 1, 2))) void
 to_stderr(const char *pattern, ...)
 {
 	va_list ap;
