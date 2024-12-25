@@ -41,13 +41,13 @@ get_easy_handle(void)
 {
 	static CURL *GLOBAL_CURL_EASY_HANDLE = NULL;
 	/*
-	 * Initialization of these static variables currently lacks
-	 * thread-safety. Ditto for callers of get_easy_handle() who use the
-	 * resulting (cached, shared) curl easy handle.
+	 * If youtube-unthrottle ever becomes multithreaded, these static
+	 * variables will need retrofits for thread safety, like a module-level
+	 * mutex or callers who ensure that initialization happens while still
+	 * single-threaded.
 	 *
-	 * If youtube-unthrottle ever becomes multithreaded, this code will
-	 * need retrofits, like a module-level mutex or callers who ensure that
-	 * initialization happens while still single-threaded.
+	 * Ditto for callers of get_easy_handle() who use the resulting
+	 * (cached, shared) curl easy handle.
 	 */
 	if (!GLOBAL_CURL_EASY_HANDLE) {
 		GLOBAL_CURL_EASY_HANDLE = curl_easy_init();

@@ -118,7 +118,47 @@ print_to_str_each_enum_value(void)
 	PASS();
 }
 
+TEST
+print_to_str_too_large(void)
+{
+	const size_t n = 8192;
+
+	char *s = malloc(n);
+	ASSERT_NEQ(NULL, s);
+
+	memset(s, 'L', n - 1);
+	s[n - 1] = '\0';
+
+	result_t err =
+		make_result(ERR_YOUTUBE_N_PARAM_FIND_IN_QUERY, (const char *)s);
+	free(s);
+
+	const char *actual = result_to_str(err);
+	ASSERT_IN(actual, "out of space");
+	PASS();
+}
+
+TEST
+print_to_str_too_many(void)
+{
+	const char *small = "foobar";
+
+	/*
+	 * Exhaust RESULT_HEAP with many small string allocations.
+	 */
+	result_t err = RESULT_OK;
+	for (size_t i = 0; i < 8192; ++i) {
+		err = make_result(ERR_YOUTUBE_N_PARAM_FIND_IN_QUERY, small);
+	}
+
+	const char *actual = result_to_str(err);
+	ASSERT_IN(actual, "out of space");
+	PASS();
+}
+
 SUITE(print_to_str)
 {
 	RUN_TEST(print_to_str_each_enum_value);
+	RUN_TEST(print_to_str_too_large);
+	RUN_TEST(print_to_str_too_many);
 }
