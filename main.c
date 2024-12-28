@@ -152,9 +152,9 @@ during_parse_choose_quality(const char *val, void *userdata)
 }
 
 static void
-print_url(const char *url)
+print_url(const char *url, size_t sz, void *userdata __attribute((unused)))
 {
-	puts(url);
+	printf("%.*s", (int)sz, url);
 }
 
 static __attribute__((warn_unused_result)) result_t
@@ -182,7 +182,7 @@ unthrottle(const char *target,
 		.after = NULL,
 	};
 	check(youtube_stream_setup(*stream, &sops, q, target));
-	check(youtube_stream_visitor(*stream, print_url));
+	check(youtube_stream_visitor(*stream, print_url, NULL));
 	return RESULT_OK;
 }
 

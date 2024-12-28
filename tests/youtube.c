@@ -90,19 +90,22 @@ static const struct youtube_setup_ops NOOP = {
 	.after = setup_callback_noop,
 };
 
-static bool GOT_CORRECT_URLS = true;
-static const char *EXPECTED_AUDIO_URL = NULL;
-static const char *EXPECTED_VIDEO_URL = NULL;
+struct check_url_state {
+	bool got_correct_urls;
+	const char *expected_audio_url;
+	const char *expected_video_url;
+};
 
 static void
-check_url(const char *url)
+check_url(const char *url, size_t sz, void *userdata)
 {
-	if (0 == strcmp(EXPECTED_AUDIO_URL, url)) {
+	struct check_url_state *p = (struct check_url_state *)userdata;
+	if (0 == strncmp(p->expected_audio_url, url, sz)) {
 		debug("Got expected audio URL: %s", url);
-	} else if (0 == strcmp(EXPECTED_VIDEO_URL, url)) {
+	} else if (0 == strncmp(p->expected_video_url, url, sz)) {
 		debug("Got expected video URL: %s", url);
 	} else {
-		GOT_CORRECT_URLS = false;
+		p->got_correct_urls = false;
 		info("check_url() fails: %s", url);
 	}
 }
@@ -131,17 +134,15 @@ stream_setup_with_redirected_network_io(const char *(*custom_fn)(const char *),
 
 	ASSERT_EQ(OK, err.err);
 
-	GOT_CORRECT_URLS = true;
-	EXPECTED_AUDIO_URL = expected_audio_url;
-	EXPECTED_VIDEO_URL = expected_video_url;
-
-	err = youtube_stream_visitor(stream, check_url);
-
-	EXPECTED_AUDIO_URL = NULL;
-	EXPECTED_VIDEO_URL = NULL;
+	struct check_url_state cus = {
+		.got_correct_urls = true,
+		.expected_audio_url = expected_audio_url,
+		.expected_video_url = expected_video_url,
+	};
+	err = youtube_stream_visitor(stream, check_url, &cus);
 
 	ASSERT_EQ(OK, err.err);
-	ASSERT(GOT_CORRECT_URLS);
+	ASSERT(cus.got_correct_urls);
 
 	youtube_stream_cleanup(stream);
 	PASS();

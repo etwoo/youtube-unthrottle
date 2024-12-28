@@ -13,11 +13,13 @@ target_sources(youtube PRIVATE
 target_include_directories(youtube PUBLIC ${PROJECT_SOURCE_DIR}/include)
 target_link_libraries(youtube PRIVATE my_cflags)
 
+add_library(libada SHARED IMPORTED)
 add_library(libcurl SHARED IMPORTED)
 add_library(libduktape SHARED IMPORTED)
 add_library(libjansson SHARED IMPORTED)
 add_library(libpcre2-8 SHARED IMPORTED)
 target_link_libraries(youtube PRIVATE
+	ada
 	curl
 	duktape
 	jansson

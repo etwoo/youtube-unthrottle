@@ -200,7 +200,7 @@ result_to_str(result_t r)
 		s = "Cannot get url of adaptiveFormats element";
 		break;
 	case ERR_JS_PARSE_JSON_CALLBACK_GOT_CIPHERTEXT_URL:
-		s = my_snprintf("Cannot set ciphertext URL: %s", url_error(r));
+		s = my_snprintf("Cannot parse ciphertext URL: %s", r.msg);
 		break;
 	case ERR_JS_PARSE_JSON_CALLBACK_QUALITY:
 		s = "Chose to skip stream based on qualityLevel";
@@ -381,18 +381,8 @@ result_to_str(result_t r)
 		s = my_snprintf("Cannot append plaintext n-parameter: %s",
 		                url_error(r));
 		break;
-	case ERR_YOUTUBE_POT_PARAM_KVPAIR_ALLOC:
-		s = "Cannot allocate kv-pair buffer for proof of origin";
-		break;
-	case ERR_YOUTUBE_POT_PARAM_QUERY_APPEND:
-		s = my_snprintf("Cannot append proof of origin parameter: %s",
-		                url_error(r));
-		break;
 	case ERR_YOUTUBE_VISITOR_DATA_HEADER_ALLOC:
 		s = "Cannot allocate asprintf buffer for visitor data header";
-		break;
-	case ERR_YOUTUBE_STREAM_VISITOR_GET_URL:
-		s = my_snprintf("Cannot get URL as string: %s", url_error(r));
 		break;
 	}
 

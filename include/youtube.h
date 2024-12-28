@@ -31,7 +31,9 @@ result_t youtube_stream_setup(youtube_handle_t h,
                               const char *target)
 	__attribute__((warn_unused_result));
 
-result_t youtube_stream_visitor(youtube_handle_t h, void (*visit)(const char *))
+result_t youtube_stream_visitor(youtube_handle_t h,
+                                void (*visit)(const char *, size_t, void *),
+                                void *userdata)
 	__attribute__((warn_unused_result));
 
 #endif

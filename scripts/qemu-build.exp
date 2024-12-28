@@ -141,6 +141,7 @@ proc install_test_dependencies_in_vm {} {
 		"pacman --noprogressbar --noconfirm --needed -Sy"
 		"--assume-installed guile"
 		"--assume-installed perl"
+		"ada"
 		"clang"
 		"cmake"
 		"curl"
