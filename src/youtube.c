@@ -14,6 +14,9 @@
 #include <string.h>
 #include <unistd.h>
 
+static const char ARG_POT[] = "pot";
+static const char ARG_N[] = "n";
+
 struct youtube_stream {
 	ada_url url[2];
 	char *proof_of_origin;
@@ -110,6 +113,21 @@ free_owned_str(ada_owned_string *str)
 	ada_free_owned_string(*str); /* handles NULL gracefully */
 }
 
+static void
+ada_search_params_set_helper(ada_url url, const char *key, const char *val)
+{
+	ada_string q_str = ada_get_search(url);
+
+	ada_url_search_params q __attribute__((cleanup(free_search_params))) =
+		ada_parse_search_params(q_str.data, q_str.length);
+	ada_search_params_set(q, key, strlen(key), val, strlen(val));
+
+	ada_owned_string new_q_str __attribute__((cleanup(free_owned_str))) =
+		ada_search_params_to_string(q);
+	ada_set_search(url, new_q_str.data, new_q_str.length);
+	q_str = NULL; /* potentially invalidated by ada_set_search() */
+}
+
 static WARN_UNUSED result_t
 youtube_stream_set_one(struct youtube_stream *p, int idx, const char *val)
 {
@@ -119,18 +137,9 @@ youtube_stream_set_one(struct youtube_stream *p, int idx, const char *val)
 	         val,
 	         val_sz);
 
+	assert(idx < ARRAY_SIZE(p->url));
 	p->url[idx] = ada_parse(val, strlen(val));
-	ada_string q_str = ada_get_search(p->url[idx]);
-
-	ada_url_search_params q __attribute__((cleanup(free_search_params))) =
-		ada_parse_search_params(q_str.data, q_str.length);
-
-	const char *pot = p->proof_of_origin;
-	ada_search_params_set(q, "pot", 3, pot, strlen(pot));
-
-	ada_owned_string appended __attribute__((cleanup(free_owned_str))) =
-		ada_search_params_to_string(q);
-	ada_set_search(p->url[idx], appended.data, appended.length);
+	ada_search_params_set_helper(p->url[idx], ARG_POT, p->proof_of_origin);
 	return RESULT_OK;
 }
 
@@ -170,115 +179,48 @@ youtube_stream_choose_quality_any(const char *val,
 // TODO: find a way to scan for mutable global variables? maybe someone has a script somewhere? or maybe LLVM has some analysis that can identify such state?
 
 /*
- * Copy and clear n-parameters from query string in <url>.
+ * Copy n-parameter value from query string in <url>.
  *
  * Caller has responsibility to free() the pointer returned in <result>.
  */
 static WARN_UNUSED result_t
-pop_n_param_one(ada_url *url, char **result)
+copy_n_param_one(ada_url url, char **result)
 {
 	*result = NULL; /* NULL out early, just in case */
 
-	char *gs __attribute__((cleanup(curl_free_getargs))) = NULL;
+	ada_string q_str = ada_get_search(url);
+	ada_url_search_params q __attribute__((cleanup(free_search_params))) =
+		ada_parse_search_params(q_str.data, q_str.length);
+	check_if(!ada_search_params_has(q, ARG_N, strlen(ARG_N)),
+	         ERR_YOUTUBE_N_PARAM_FIND_IN_QUERY);
 
-	CURLUcode uc = curl_url_get(url, CURLUPART_QUERY, &gs, 0);
-	check_if_num(uc, ERR_YOUTUBE_N_PARAM_QUERY_GET);
-	assert(gs);
-
-	struct string_view getargs = {.data = gs, .sz = strlen(gs)};
-	assert(*(getargs.data + getargs.sz) == '\0');
-
-	struct string_view ciphertext_within_getargs = {0};
-
-	/* Note use of non-capturing group: (?:...) */
-	check(re_capture("(?:&|^)n=([^&]+)(?:&|$)",
-	                 &getargs,
-	                 &ciphertext_within_getargs));
-	if (ciphertext_within_getargs.data == NULL) {
-		return make_result(ERR_YOUTUBE_N_PARAM_FIND_IN_QUERY,
-		                   getargs.data,
-		                   getargs.sz);
-	}
-
-	/*
-	 * Copy n-parameter value out of storage owned by CURLU <url>.
-	 *
-	 * For now, assume <ciphertext> does not require URI-encoding. If that
-	 * ever becomes necessary, use curl_easy_escape().
-	 */
-	const int rc = asprintf(result,
-	                        "%.*s",
-	                        (int)ciphertext_within_getargs.sz,
-	                        ciphertext_within_getargs.data);
-	check_if(rc < 0, ERR_YOUTUBE_N_PARAM_QUERY_ALLOC);
-	debug("Copied n-param ciphertext: %s", *result);
-
-	debug("Before n-param ciphertext removal: %s", gs);
-
-	/*
-	 * Remove ciphertext n-parameter (key and value) from query string.
-	 *
-	 * Note: memmove() supports overlapping <src> and <dst> pointers.
-	 *
-	 * Note: (I think) we can safely cast away const below because we know
-	 * that <ciphertext_within_getargs> ultimately points at a subsection
-	 * of <gs>, a mutable buffer.
-	 *
-	 * We must cast away const because the re.h functions accept and return
-	 * (const char *) instead of (char *), and I don't currently know a way
-	 * to handle this kind of const/non-const variation cleanly in C
-	 * (without ugly macro usage, code duplication, etc). In C++, we'd
-	 * probably use a template with an auto return type to have a single
-	 * function definition body expand to both const/non-const variants.
-	 */
-	assert(ciphertext_within_getargs.data[-2] == 'n' &&
-	       ciphertext_within_getargs.data[-1] == '=');
-	char *dst = (char *)ciphertext_within_getargs.data - strlen("n=");
-	char *after_ciphertext = (char *)ciphertext_within_getargs.data +
-	                         ciphertext_within_getargs.sz;
-	if (*after_ciphertext == '&') {
-		++after_ciphertext; /* omit duplicate '&' */
-	}
-	const size_t remaining = (getargs.data + getargs.sz) - after_ciphertext;
-	memmove(dst, after_ciphertext, remaining);
-	dst[remaining] = '\0';
-
-	debug("After n-param ciphertext removal: %s", gs);
-
-	uc = curl_url_set(url, CURLUPART_QUERY, gs, 0);
-	check_if_num(uc, ERR_YOUTUBE_N_PARAM_QUERY_SET);
+	ada_string n_param = ada_search_params_get(q, ARG_N, strlen(ARG_N));
+	*result = strndup(n_param.data, n_param.length);
+	check_if(*result == NULL, ERR_YOUTUBE_N_PARAM_QUERY_ALLOC);
 
 	return RESULT_OK;
 }
 
 /*
- * Copy and clear n-parameters from all query strings in <p>.
+ * Copy n-parameter values from all query strings in <p>.
  *
  * Caller has responsibility to free() the pointers returned in <results>.
  */
 static WARN_UNUSED result_t
-pop_n_param_all(struct youtube_stream *p, char **results)
+copy_n_param_all(struct youtube_stream *p, char **results)
 {
 	for (size_t i = 0; i < ARRAY_SIZE(p->url); ++i) {
-		check(pop_n_param_one(p->url[i], results + i));
+		check(copy_n_param_one(p->url[i], results + i));
 	}
 	return RESULT_OK;
 }
 
 static WARN_UNUSED result_t
-append_n_param(const char *plaintext, size_t pos, void *userdata)
+youtube_stream_update_n_param(const char *val, size_t pos, void *userdata)
 {
 	struct youtube_stream *p = (struct youtube_stream *)userdata;
-
-	char *kv __attribute__((cleanup(asprintf_free))) = NULL;
-	const int rc = asprintf(&kv, "n=%s", plaintext);
-	check_if(rc < 0, ERR_YOUTUBE_N_PARAM_KVPAIR_ALLOC);
-
 	assert(pos < ARRAY_SIZE(p->url));
-	CURLU *u = p->url[pos];
-	CURLUcode uc = curl_url_set(u, CURLUPART_QUERY, kv, CURLU_APPENDQUERY);
-	check_if_num(uc, ERR_YOUTUBE_N_PARAM_QUERY_APPEND);
-
+	ada_search_params_set_helper(p->url[pos], ARG_N, val);
 	return RESULT_OK;
 }
 
@@ -465,10 +407,10 @@ youtube_stream_setup(struct youtube_stream *p,
 
 	char *ciphertexts[ARRAY_SIZE(p->url) + 1]
 		__attribute__((cleanup(ciphertexts_cleanup))) = {NULL};
-	check(pop_n_param_all(p, ciphertexts));
+	check(copy_n_param_all(p, ciphertexts));
 
 	struct call_ops cops = {
-		.got_result = append_n_param,
+		.got_result = youtube_stream_update_n_param,
 	};
 	check(call_js_foreach(&magic, &deobfuscator, ciphertexts, &cops, p));
 
