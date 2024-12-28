@@ -41,6 +41,10 @@ typedef struct {
 		ERR_JS_CALL_COMPILE,
 		ERR_JS_CALL_INVOKE,
 		ERR_JS_CALL_GET_RESULT,
+		ERR_RE_COMPILE,
+		ERR_RE_ALLOC_MATCH_DATA,
+		ERR_RE_CAPTURE_GROUP_COUNT,
+		ERR_RE_TRY_MATCH,
 		ERR_SANDBOX_LANDLOCK_CREATE_RULESET,
 		ERR_SANDBOX_LANDLOCK_OPEN_O_PATH,
 		ERR_SANDBOX_LANDLOCK_ADD_RULE_PATH,
@@ -81,7 +85,13 @@ typedef struct {
 		ERR_YOUTUBE_STREAM_VISITOR_GET_URL,
 	} err;
 	int num; /* may hold errno, CURLcode, CURLUcode, etc */
-	const char *msg;
+	union {
+		const char *msg;
+		struct {
+			const char *pattern;
+			size_t offset;
+		} re;
+	};
 } result_t;
 
 /*
@@ -96,7 +106,7 @@ extern const result_t RESULT_OK;
  */
 
 #define DECLARE_MAKERESULT_IMPL(x, ...)                                        \
-	result_t makeresult_##x(__VA_ARGS__)                                   \
+	result_t make_result_##x(__VA_ARGS__)                                  \
 		__attribute__((warn_unused_result)) __attribute__((cold))
 
 DECLARE_MAKERESULT_IMPL(t, int typ);
@@ -105,13 +115,16 @@ DECLARE_MAKERESULT_IMPL(ts, int typ, const char *msg);
 DECLARE_MAKERESULT_IMPL(tss, int typ, const char *msg, size_t sz);
 DECLARE_MAKERESULT_IMPL(tis, int typ, int num, const char *msg);
 DECLARE_MAKERESULT_IMPL(tiss, int typ, int num, const char *msg, size_t sz);
+DECLARE_MAKERESULT_IMPL(re, int typ, int num, const char *pat, size_t off);
 
 #undef DECLARE_MAKERESULT_IMPL
 
-#define makeresult_2arg(x, y)                                                  \
-	_Generic(y, int: makeresult_ti, const char *: makeresult_ts)(x, y)
-#define makeresult_3arg(x, y, z)                                               \
-	_Generic(y, int: makeresult_tis, const char *: makeresult_tss)(x, y, z)
+#define make_result_str_arg(suffix)                                            \
+	char * : make_result_##suffix, const char * : make_result_##suffix
+#define make_result_2arg(x, y)                                                 \
+	_Generic(y, int: make_result_ti, make_result_str_arg(ts))(x, y)
+#define make_result_3arg(x, y, z)                                              \
+	_Generic(y, int: make_result_tis, make_result_str_arg(tss))(x, y, z)
 
 #define CHOOSE_MACRO_BY_ARGN(A0, A1, A3, A4, NAME, ...) NAME
 
@@ -125,10 +138,10 @@ DECLARE_MAKERESULT_IMPL(tiss, int typ, int num, const char *msg, size_t sz);
  */
 #define make_result(...)                                                       \
 	CHOOSE_MACRO_BY_ARGN(__VA_ARGS__,                                      \
-	                     makeresult_tiss,                                  \
-	                     makeresult_3arg,                                  \
-	                     makeresult_2arg,                                  \
-	                     makeresult_t)                                     \
+	                     make_result_tiss,                                 \
+	                     make_result_3arg,                                 \
+	                     make_result_2arg,                                 \
+	                     make_result_t)                                    \
 	(__VA_ARGS__)
 
 /*
