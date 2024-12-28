@@ -66,12 +66,16 @@ print_to_str_each_enum_value(void)
 	ASSERT_IN(make(ERR_JS_DEOBFUSCATOR_MAGIC_FIND), CANNOT_FIND);
 	ASSERT_IN(make(ERR_JS_DEOBFUSCATOR_ALLOC), CANNOT_ALLOC);
 	ASSERT_IN(make(ERR_JS_DEOB_FIND_FUNC_ONE), CANNOT_FIND);
-	ASSERT_IN(make(ERR_JS_DEOB_FIND_FUNC_TWO), CANNOT_FIND);
-	ASSERT_IN(make(ERR_JS_DEOB_FIND_FUNC_BODY), CANNOT_FIND);
+	ASSERT_IN(make_s(ERR_JS_DEOB_FIND_FUNC_TWO), CANNOT_FIND);
+	ASSERT_IN(make_s(ERR_JS_DEOB_FIND_FUNC_BODY), CANNOT_FIND);
 	ASSERT_IN(make(ERR_JS_CALL_ALLOC), CANNOT_ALLOC);
-	ASSERT_IN(make(ERR_JS_CALL_COMPILE), "Error in duk_pcompile");
-	ASSERT_IN(make(ERR_JS_CALL_INVOKE), "Error in duk_pcall");
+	ASSERT_IN(make_s(ERR_JS_CALL_COMPILE), "Error in duk_pcompile");
+	ASSERT_IN(make_s(ERR_JS_CALL_INVOKE), "Error in duk_pcall");
 	ASSERT_IN(make(ERR_JS_CALL_GET_RESULT), "Error fetching");
+	ASSERT_IN(make_s(ERR_RE_COMPILE), "Error in pcre2_compile");
+	ASSERT_IN(make(ERR_RE_ALLOC_MATCH_DATA), CANNOT_ALLOC);
+	ASSERT_IN(make_s(ERR_RE_CAPTURE_GROUP_COUNT), "Wrong number");
+	ASSERT_IN(make_s(ERR_RE_TRY_MATCH), "Error in pcre2_match");
 	ASSERT_IN(make_n(ERR_SANDBOX_LANDLOCK_CREATE_RULESET),
 	          "Error in landlock");
 	ASSERT_IN(make_ns(ERR_SANDBOX_LANDLOCK_OPEN_O_PATH), "Error opening");
@@ -129,8 +133,7 @@ print_to_str_too_large(void)
 	memset(s, 'L', n - 1);
 	s[n - 1] = '\0';
 
-	result_t err =
-		make_result(ERR_YOUTUBE_N_PARAM_FIND_IN_QUERY, (const char *)s);
+	result_t err = make_result(ERR_YOUTUBE_N_PARAM_FIND_IN_QUERY, s);
 	free(s);
 
 	const char *actual = result_to_str(err);

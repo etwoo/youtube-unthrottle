@@ -182,9 +182,10 @@ pop_n_param_one(CURLU *url, char **result)
 	struct string_view ciphertext_within_getargs = {0};
 
 	/* Note use of non-capturing group: (?:...) */
-	if (!re_capture("(?:&|^)n=([^&]+)(?:&|$)",
-	                &getargs,
-	                &ciphertext_within_getargs)) {
+	check(re_capture("(?:&|^)n=([^&]+)(?:&|$)",
+	                 &getargs,
+	                 &ciphertext_within_getargs));
+	if (ciphertext_within_getargs.data == NULL) {
 		return make_result(ERR_YOUTUBE_N_PARAM_FIND_IN_QUERY,
 		                   getargs.data,
 		                   getargs.sz);

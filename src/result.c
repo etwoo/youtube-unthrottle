@@ -6,6 +6,9 @@
 #include <curl/curl.h>
 #include <string.h> /* for strerror() */
 
+#define PCRE2_CODE_UNIT_WIDTH 8
+#include <pcre2.h> /* for pcre2_get_error_message */
+
 const result_t RESULT_OK = {
 	.err = OK,
 };
@@ -59,7 +62,7 @@ result_strdup_span(const char *src, size_t sz)
 }
 
 result_t
-makeresult_t(int typ)
+make_result_t(int typ)
 {
 	return (result_t){
 		.err = typ,
@@ -69,7 +72,7 @@ makeresult_t(int typ)
 }
 
 result_t
-makeresult_ti(int typ, int num)
+make_result_ti(int typ, int num)
 {
 	return (result_t){
 		.err = typ,
@@ -79,7 +82,7 @@ makeresult_ti(int typ, int num)
 }
 
 result_t
-makeresult_ts(int typ, const char *msg)
+make_result_ts(int typ, const char *msg)
 {
 	return (result_t){
 		.err = typ,
@@ -89,7 +92,7 @@ makeresult_ts(int typ, const char *msg)
 }
 
 result_t
-makeresult_tss(int typ, const char *msg, size_t sz)
+make_result_tss(int typ, const char *msg, size_t sz)
 {
 	return (result_t){
 		.err = typ,
@@ -99,7 +102,7 @@ makeresult_tss(int typ, const char *msg, size_t sz)
 }
 
 result_t
-makeresult_tis(int typ, int num, const char *msg)
+make_result_tis(int typ, int num, const char *msg)
 {
 	return (result_t){
 		.err = typ,
@@ -109,12 +112,23 @@ makeresult_tis(int typ, int num, const char *msg)
 }
 
 result_t
-makeresult_tiss(int typ, int num, const char *msg, size_t sz)
+make_result_tiss(int typ, int num, const char *msg, size_t sz)
 {
 	return (result_t){
 		.err = typ,
 		.num = num,
 		.msg = result_strdup_span(msg, sz),
+	};
+}
+
+result_t
+make_result_re(int typ, int num, const char *pattern, size_t offset)
+{
+	return (result_t){
+		.err = typ,
+		.num = num,
+		.re.pattern = result_strdup(pattern),
+		.re.offset = offset,
 	};
 }
 
@@ -134,6 +148,22 @@ static WARN_UNUSED const char *
 url_error(result_t r)
 {
 	return curl_url_strerror(r.num);
+}
+
+static WARN_UNUSED const char *
+regex_error(result_t r)
+{
+	PCRE2_UCHAR err[256];
+	if (pcre2_get_error_message(r.num, err, sizeof(err)) < 0) {
+		return my_snprintf("regex \"%s\" at offset %zd: [no details]",
+		                   r.re.pattern,
+		                   r.re.offset);
+	} else {
+		return my_snprintf("regex \"%s\" at offset %zd: %s",
+		                   r.re.pattern,
+		                   r.re.offset,
+		                   err);
+	}
 }
 
 const char *
@@ -221,6 +251,20 @@ result_to_str(result_t r)
 		break;
 	case ERR_JS_CALL_GET_RESULT:
 		s = "Error fetching function result";
+		break;
+	case ERR_RE_COMPILE:
+		s = my_snprintf("Error in pcre2_compile() with %s",
+		                regex_error(r));
+		break;
+	case ERR_RE_ALLOC_MATCH_DATA:
+		s = "Cannot allocate pcre2 match data";
+		break;
+	case ERR_RE_CAPTURE_GROUP_COUNT:
+		s = my_snprintf("Wrong number of capture groups in %s", r.msg);
+		break;
+	case ERR_RE_TRY_MATCH:
+		s = my_snprintf("Error in pcre2_match() with %s",
+		                regex_error(r));
 		break;
 	case ERR_SANDBOX_LANDLOCK_CREATE_RULESET:
 		s = my_snprintf("Error in landlock_create_ruleset(): %s",

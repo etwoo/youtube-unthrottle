@@ -5,6 +5,7 @@
 #include "re.h"
 
 #include <assert.h>
+#include <stdbool.h>
 
 /*
  * Some helpful Duktape references:
@@ -51,8 +52,7 @@ parse_json(const struct string_view *json, struct parse_ops *ops)
 
 	json_auto_t *obj = json_loadb(json->data, json->sz, 0, &json_error);
 	if (obj == NULL) {
-		return make_result(ERR_JS_PARSE_JSON_DECODE,
-		                   (const char *)json_error.text);
+		return make_result(ERR_JS_PARSE_JSON_DECODE, json_error.text);
 	} else if (!json_is_object(obj)) {
 		return make_result(ERR_JS_PARSE_JSON_GET_STREAMINGDATA);
 	}
@@ -147,7 +147,8 @@ make_innertube_json(const char *target_url,
 	struct string_view url = {.data = target_url, .sz = strlen(target_url)};
 
 	/* Note use of non-capturing group: (?:...) */
-	if (!re_capture("(?:&|\\?)v=([^&]+)(?:&|$)", &url, &id)) {
+	check(re_capture("(?:&|\\?)v=([^&]+)(?:&|$)", &url, &id));
+	if (id.data == NULL) {
 		return make_result(ERR_JS_MAKE_INNERTUBE_JSON_ID);
 	}
 	debug("Parsed ID: %.*s", (int)id.sz, id.data);
@@ -194,7 +195,8 @@ make_innertube_json(const char *target_url,
 result_t
 find_base_js_url(const struct string_view *html, struct string_view *basejs)
 {
-	if (!re_capture("\"(/s/player/[^\"]+/base.js)\"", html, basejs)) {
+	check(re_capture("\"(/s/player/[^\"]+/base.js)\"", html, basejs));
+	if (basejs->data == NULL) {
 		return make_result(ERR_JS_BASEJS_URL_FIND);
 	}
 
@@ -206,7 +208,8 @@ result_t
 find_js_timestamp(const struct string_view *js, long long int *value)
 {
 	struct string_view ts = {0};
-	if (!re_capture("signatureTimestamp:([0-9]+)", js, &ts)) {
+	check(re_capture("signatureTimestamp:([0-9]+)", js, &ts));
+	if (ts.data == NULL) {
 		return make_result(ERR_JS_TIMESTAMP_FIND);
 	}
 
@@ -233,7 +236,8 @@ result_t
 find_js_deobfuscator_magic_global(const struct string_view *js,
                                   struct string_view *magic)
 {
-	if (!re_capture("(var [[:alpha:]]+=[-0-9]{6,});", js, magic)) {
+	check(re_capture("(var [[:alpha:]]+=[-0-9]{6,});", js, magic));
+	if (magic->data == NULL) {
 		return make_result(ERR_JS_DEOBFUSCATOR_MAGIC_FIND);
 	}
 
@@ -268,9 +272,10 @@ find_js_deobfuscator(const struct string_view *js,
 	int rc = 0;
 	struct string_view n = {0};
 
-	if (!re_capture("&&\\([[:alpha:]]=([^\\]]+)\\[0\\]\\([[:alpha:]]\\)",
-	                js,
-	                &n)) {
+	check(re_capture("&&\\([[:alpha:]]=([^\\]]+)\\[0\\]\\([[:alpha:]]\\)",
+	                 js,
+	                 &n));
+	if (n.data == NULL) {
 		return make_result(ERR_JS_DEOB_FIND_FUNC_ONE);
 	}
 	debug("Got function name 1: %.*s", (int)n.sz, n.data);
@@ -279,7 +284,8 @@ find_js_deobfuscator(const struct string_view *js,
 	rc = asprintf(&p2, "var \\Q%.*s\\E=\\[([^\\]]+)\\]", (int)n.sz, n.data);
 	check_if(rc < 0, ERR_JS_DEOBFUSCATOR_ALLOC);
 
-	if (!re_capture(p2, js, &n)) {
+	check(re_capture(p2, js, &n));
+	if (n.data == NULL) {
 		return make_result(ERR_JS_DEOB_FIND_FUNC_TWO, n.data, n.sz);
 	}
 	debug("Got function name 2: %.*s", (int)n.sz, n.data);
@@ -296,7 +302,8 @@ find_js_deobfuscator(const struct string_view *js,
 	              n.data);
 	check_if(rc < 0, ERR_JS_DEOBFUSCATOR_ALLOC);
 
-	if (!re_capture(p3, js, deobfuscator)) {
+	check(re_capture(p3, js, deobfuscator));
+	if (deobfuscator->data == NULL) {
 		return make_result(ERR_JS_DEOB_FIND_FUNC_BODY, n.data, n.sz);
 	}
 
