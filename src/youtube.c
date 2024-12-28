@@ -11,6 +11,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <stdio.h> /* for asprintf() */
 #include <string.h>
 #include <unistd.h>
 
@@ -125,7 +126,9 @@ ada_search_params_set_helper(ada_url url, const char *key, const char *val)
 	ada_owned_string new_q_str __attribute__((cleanup(free_owned_str))) =
 		ada_search_params_to_string(q);
 	ada_set_search(url, new_q_str.data, new_q_str.length);
-	q_str = NULL; /* potentially invalidated by ada_set_search() */
+
+	q_str.data = NULL; /* likely invalidated by ada_set_search() above */
+	q_str.length = 0;
 }
 
 static WARN_UNUSED result_t
@@ -137,7 +140,7 @@ youtube_stream_set_one(struct youtube_stream *p, int idx, const char *val)
 	         val,
 	         val_sz);
 
-	assert(idx < ARRAY_SIZE(p->url));
+	assert(idx >= 0 && (unsigned int)idx < ARRAY_SIZE(p->url));
 	p->url[idx] = ada_parse(val, strlen(val));
 	ada_search_params_set_helper(p->url[idx], ARG_POT, p->proof_of_origin);
 	return RESULT_OK;
