@@ -15,7 +15,7 @@ struct parse_ops {
 };
 
 result_t parse_json(const struct string_view *json,
-                    struct parse_ops *ops) WARN_UNUSED;
+                    const struct parse_ops *ops) WARN_UNUSED;
 
 result_t make_innertube_json(const char *target_url,
                              const char *proof_of_origin,

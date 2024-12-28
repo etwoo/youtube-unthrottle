@@ -26,7 +26,7 @@ struct youtube_setup_ops {
 };
 
 result_t youtube_stream_setup(youtube_handle_t h,
-                              struct youtube_setup_ops *ops,
+                              const struct youtube_setup_ops *ops,
                               void *userdata,
                               const char *target)
 	__attribute__((warn_unused_result));

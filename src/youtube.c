@@ -354,7 +354,7 @@ ciphertexts_cleanup(char *ciphertexts[][3])
 
 result_t
 youtube_stream_setup(struct youtube_stream *p,
-                     struct youtube_setup_ops *ops,
+                     const struct youtube_setup_ops *ops,
                      void *userdata,
                      const char *target)
 {

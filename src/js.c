@@ -43,7 +43,7 @@ static const char MTVIDEO[] = "video/";
 static const char MTAUDIO[] = "audio/";
 
 result_t
-parse_json(const struct string_view *json, struct parse_ops *ops)
+parse_json(const struct string_view *json, const struct parse_ops *ops)
 {
 	// debug("Got JSON blob: %.*s", json->sz, json->data);
 	debug("Got JSON blob of size %zd", json->sz);

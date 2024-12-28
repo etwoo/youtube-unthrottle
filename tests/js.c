@@ -15,7 +15,7 @@ parse_callback_noop(const char *val __attribute__((unused)),
 	return RESULT_OK;
 }
 
-static struct parse_ops NOOP = {
+static const struct parse_ops NOOP = {
 	.got_video = parse_callback_noop,
 	.got_video_userdata = NULL,
 	.got_audio = parse_callback_noop,
@@ -511,7 +511,7 @@ find_base_js_url_positive(void)
 	result_t err = find_base_js_url(&html, &p);
 	ASSERT_EQ(OK, err.err);
 
-	static const char expected[] =
+	const char expected[] =
 		"/s/player/deadbeef/player_ias.vflset/en_US/base.js";
 	ASSERT_EQ(strlen(expected), p.sz);
 	ASSERT_STRN_EQ(expected, p.data, p.sz);
@@ -660,7 +660,7 @@ find_js_deobfuscator_positive_simple(void)
 	result_t err = find_js_deobfuscator(&js, &deobfuscator);
 	ASSERT_EQ(OK, err.err);
 
-	static const char expected[] = "function(a){return b.join(\"\")};";
+	const char expected[] = "function(a){return b.join(\"\")};";
 	ASSERT_EQ(strlen(expected), deobfuscator.sz);
 	ASSERT_STRN_EQ(expected, deobfuscator.data, deobfuscator.sz);
 	PASS();
@@ -677,7 +677,7 @@ find_js_deobfuscator_positive_with_escaping(void)
 	result_t err = find_js_deobfuscator(&js, &deobfuscator);
 	ASSERT_EQ(OK, err.err);
 
-	static const char expected[] = "function(a){return b.join(\"\")};";
+	const char expected[] = "function(a){return b.join(\"\")};";
 	ASSERT_EQ(strlen(expected), deobfuscator.sz);
 	ASSERT_STRN_EQ(expected, deobfuscator.data, deobfuscator.sz);
 	PASS();

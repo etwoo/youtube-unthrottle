@@ -35,7 +35,7 @@ capture_pattern_match_one(void)
 	struct string_view needle = {0};
 	result_t err = re_capture("b+(a+)b+", &hay, &needle);
 
-	static const char expected[] = "aaa";
+	const char expected[] = "aaa";
 	ASSERT_EQ(OK, err.err);
 	ASSERT_EQ(strlen(expected), needle.sz);
 	ASSERT_STRN_EQ(expected, needle.data, needle.sz);

@@ -78,7 +78,7 @@ parse_callback_noop(const char *val __attribute__((unused)),
 	return RESULT_OK;
 }
 
-struct youtube_setup_ops NOOP = {
+static const struct youtube_setup_ops NOOP = {
 	.before = setup_callback_noop,
 	.before_inet = setup_callback_noop,
 	.after_inet = setup_callback_noop,
@@ -147,7 +147,7 @@ stream_setup_with_redirected_network_io(const char *(*custom_fn)(const char *),
 	PASS();
 }
 
-struct youtube_setup_ops NULLOP = {
+static const struct youtube_setup_ops NULLOP = {
 	.before = NULL,
 	.before_inet = NULL,
 	.after_inet = NULL,
