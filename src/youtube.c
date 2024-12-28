@@ -160,6 +160,17 @@ curl_free_getargs(char **getargs)
 	curl_free(*getargs); /* handles NULL gracefully */
 }
 
+// TODO: add URL-parsing library that is more full-featured than curl, then replace pop_n_param_one() and other GET param manipulation with library usage
+// TODO: stop include-ing curl.h in this file
+// TODO: change `struct youtube_stream` to use URL library type, not CURLU
+// TODO: have url.h expose an opaque type that wraps easy handle
+// TODO: cache opaque type in `struct youtube_stream`
+// TODO: pass opaque type as parameter into url_download(), obviating the need to have cached easy handle in url.c, and then remove GLOBAL_CURL_EASY_HANDLE entirely, thus getting rid of one more file-scoped (static, internal linkage) mutable global variable
+//
+// after this change, all remaining global variables should be const, with the sole exception of RESULT_HEAP and RESULT_HEAP_POS
+//
+// TODO: find a way to scan for mutable global variables? maybe someone has a script somewhere? or maybe LLVM has some analysis that can identify such state?
+
 /*
  * Copy and clear n-parameters from query string in <url>.
  *
