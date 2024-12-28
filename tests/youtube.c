@@ -179,8 +179,8 @@ SUITE(stream_setup_simple)
 	RUN_TEST(global_setup);
 	RUN_TESTp(stream_setup_with_redirected_network_io,
 	          NULL,
-	          "http://a.test/?pot=POT&n=AAA",
-	          "http://v.test/?pot=POT&n=VVV");
+	          "http://a.test/?n=AAA&pot=POT",
+	          "http://v.test/?n=VVV&pot=POT");
 	RUN_TEST(stream_setup_with_null_ops);
 }
 
@@ -313,16 +313,16 @@ SUITE(stream_setup_n_param_positions)
 	RUN_TEST(global_setup);
 	RUN_TESTp(stream_setup_with_redirected_network_io,
 	          test_request_n_param_pos_middle,
-	          "http://a.test/?first=foo&last=bar&pot=POT&n=AAA",
-	          "http://v.test/?first=foo&last=bar&pot=POT&n=VVV");
+	          "http://a.test/?first=foo&n=AAA&last=bar&pot=POT",
+	          "http://v.test/?first=foo&n=VVV&last=bar&pot=POT");
 	RUN_TESTp(stream_setup_with_redirected_network_io,
 	          test_request_n_param_pos_first,
-	          "http://a.test/?second=foo&third=bar&pot=POT&n=AAA",
-	          "http://v.test/?second=foo&third=bar&pot=POT&n=VVV");
+	          "http://a.test/?n=AAA&second=foo&third=bar&pot=POT",
+	          "http://v.test/?n=VVV&second=foo&third=bar&pot=POT");
 	RUN_TESTp(stream_setup_with_redirected_network_io,
 	          test_request_n_param_pos_last,
-	          "http://a.test/?first=foo&second=bar&pot=POT&n=AAA",
-	          "http://v.test/?first=foo&second=bar&pot=POT&n=VVV");
+	          "http://a.test/?first=foo&second=bar&n=AAA&pot=POT",
+	          "http://v.test/?first=foo&second=bar&n=VVV&pot=POT");
 	RUN_TEST(stream_setup_edge_cases_n_param_missing);
 	RUN_TEST(stream_setup_edge_cases_entire_url_missing);
 }
