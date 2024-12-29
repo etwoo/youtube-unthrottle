@@ -22,6 +22,7 @@ struct youtube_stream {
 	ada_url url[2];
 	char *proof_of_origin;
 	char *visitor_data;
+	struct url_request_context request_context;
 };
 
 result_t
@@ -57,6 +58,19 @@ youtube_stream_init(const char *proof_of_origin, const char *visitor_data)
 	p->visitor_data = strdup(visitor_data);
 	check_oom(p->visitor_data);
 
+	/*
+	 * Nudge curl into creating its DNS resolver thread(s) now, before the
+	 * the process sandbox closes and blocks the clone3() syscall.
+	 */
+	result_t err = url_download("https://www.youtube.com",
+	                            NULL,
+	                            NULL,
+	                            NULL,
+	                            NULL,
+	                            URL_DOWNLOAD_FD_DISCARD,
+	                            &p->request_context);
+	info_if(err.err, "Error creating early URL worker threads");
+
 	return p;
 
 oom:
@@ -78,6 +92,7 @@ youtube_stream_cleanup(struct youtube_stream *p)
 	}
 	free(p->proof_of_origin);
 	free(p->visitor_data);
+	url_free(&p->request_context);
 	free(p);
 }
 
@@ -317,10 +332,8 @@ youtube_stream_setup(struct youtube_stream *p,
 		check(ops->before_inet(userdata));
 	}
 
-	struct url_request_context ctx __attribute__((cleanup(url_free))) = {
-		.state = NULL,
-		.handler = ops->during_inet_do_request,
-	};
+	p->request_context.handler = ops->during_inet_do_request;
+
 	check(download_and_mmap_tmpfd(target,
 	                              NULL,
 	                              NULL,
@@ -328,7 +341,7 @@ youtube_stream_setup(struct youtube_stream *p,
 	                              NULL,
 	                              html.fd,
 	                              &html.data,
-	                              &ctx));
+	                              &p->request_context));
 
 	char *null_terminated_basejs __attribute__((cleanup(str_free))) = NULL;
 	{
@@ -347,7 +360,7 @@ youtube_stream_setup(struct youtube_stream *p,
 	                              NULL,
 	                              js.fd,
 	                              &js.data,
-	                              &ctx));
+	                              &p->request_context));
 
 	long long int timestamp = 0;
 	check(find_js_timestamp(&js.data, &timestamp));
@@ -368,7 +381,7 @@ youtube_stream_setup(struct youtube_stream *p,
 	                              innertube_header,
 	                              json.fd,
 	                              &json.data,
-	                              &ctx));
+	                              &p->request_context));
 
 	if (ops && ops->after_inet) {
 		check(ops->after_inet(userdata));

@@ -13,6 +13,8 @@ struct url_request_context {
 	url_handler handler;
 };
 
+extern const int URL_DOWNLOAD_FD_DISCARD;
+
 result_t url_download(const char *url,
                       const char *host,
                       const char *path,

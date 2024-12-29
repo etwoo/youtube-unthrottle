@@ -165,10 +165,11 @@ unthrottle(const char *target,
            youtube_handle_t *stream)
 {
 	check(youtube_global_init());
-	check(sandbox_only_io_inet_tmpfile());
 
 	*stream = youtube_stream_init(proof_of_origin, visitor_data);
 	check_if(*stream == NULL, OK);
+
+	check(sandbox_only_io_inet_tmpfile());
 
 	struct youtube_setup_ops sops = {
 		.before = NULL,
