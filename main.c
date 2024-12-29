@@ -154,7 +154,7 @@ during_parse_choose_quality(const char *val, void *userdata)
 static void
 print_url(const char *url, size_t sz, void *userdata __attribute((unused)))
 {
-	printf("%.*s", (int)sz, url);
+	printf("%.*s\n", (int)sz, url);
 }
 
 static __attribute__((warn_unused_result)) result_t
