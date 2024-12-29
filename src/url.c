@@ -36,32 +36,13 @@ write_to_tmpfile(char *ptr, size_t size, size_t nmemb, void *userdata)
 	return real_size; /* always consider buffer entirely consumed */
 }
 
-static WARN_UNUSED CURL *
-get_easy_handle(void)
-{
-	static CURL *GLOBAL_CURL_EASY_HANDLE = NULL;
-	/*
-	 * If youtube-unthrottle ever becomes multithreaded, these static
-	 * variables will need retrofits for thread safety, like a module-level
-	 * mutex or callers who ensure that initialization happens while still
-	 * single-threaded.
-	 *
-	 * Ditto for callers of get_easy_handle() who use the resulting
-	 * (cached, shared) curl easy handle.
-	 */
-	if (!GLOBAL_CURL_EASY_HANDLE) {
-		GLOBAL_CURL_EASY_HANDLE = curl_easy_init();
-	}
-
-	curl_easy_reset(GLOBAL_CURL_EASY_HANDLE);
-	return GLOBAL_CURL_EASY_HANDLE;
-}
-
 result_t
 url_global_init(void)
 {
 	CURLcode res = curl_global_init(CURL_GLOBAL_DEFAULT);
 	check_if_num(res, ERR_URL_GLOBAL_INIT);
+
+	url_handle_t cache __attribute__((cleanup(url_cleanup))) = NULL;
 
 	/*
 	 * Nudge curl into creating its DNS resolver thread(s) now, before the
@@ -72,7 +53,8 @@ url_global_init(void)
 	                            NULL,
 	                            NULL,
 	                            NULL,
-	                            FD_DISCARD);
+	                            FD_DISCARD,
+	                            &cache);
 	info_if(err.err, "Error creating early URL worker threads");
 
 	return RESULT_OK;
@@ -81,7 +63,6 @@ url_global_init(void)
 void
 url_global_cleanup(void)
 {
-	curl_easy_cleanup(get_easy_handle()); /* handles NULL gracefully */
 	curl_global_cleanup();
 }
 
@@ -141,12 +122,20 @@ url_download(const char *url_str,     /* maybe NULL */
              const char *path_str,    /* maybe NULL */
              const char *post_body,   /* maybe NULL */
              const char *post_header, /* maybe NULL */
-             int fd)
+             int fd,
+             url_handle_t *cache)
 {
 	CURLU *url = NULL;
 	struct curl_slist *headers = NULL;
 
-	CURL *curl = get_easy_handle();
+	assert(cache != NULL);
+	if (*cache == NULL) {
+		*cache = curl_easy_init();
+	} else {
+		curl_easy_reset((CURL *)(*cache));
+	}
+	CURL *curl = (CURL *)(*cache);
+
 	CURLcode res = curl == NULL ? CURLE_OUT_OF_MEMORY : CURLE_OK;
 	check_if_num(res, ERR_URL_DOWNLOAD_ALLOC);
 
@@ -202,4 +191,10 @@ url_download(const char *url_str,     /* maybe NULL */
 	curl_slist_free_all(headers); /* handles NULL gracefully */
 	curl_url_cleanup(url);        /* handles NULL gracefully */
 	return RESULT_OK;
+}
+
+void
+url_cleanup(url_handle_t *cache)
+{
+	curl_easy_cleanup(*cache); /* handles NULL gracefully */
 }

@@ -170,17 +170,6 @@ youtube_stream_choose_quality_any(const char *val,
 	return RESULT_OK;
 }
 
-// TODO: add URL-parsing library that is more full-featured than curl, then replace pop_n_param_one() and other GET param manipulation with library usage
-// TODO: stop include-ing curl.h in this file
-// TODO: change `struct youtube_stream` to use URL library type, not CURLU
-// TODO: have url.h expose an opaque type that wraps easy handle
-// TODO: cache opaque type in `struct youtube_stream`
-// TODO: pass opaque type as parameter into url_download(), obviating the need to have cached easy handle in url.c, and then remove GLOBAL_CURL_EASY_HANDLE entirely, thus getting rid of one more file-scoped (static, internal linkage) mutable global variable
-//
-// after this change, all remaining global variables should be const, with the sole exception of RESULT_HEAP and RESULT_HEAP_POS
-//
-// TODO: find a way to scan for mutable global variables? maybe someone has a script somewhere? or maybe LLVM has some analysis that can identify such state?
-
 /*
  * Copy n-parameter value from query string in <url>.
  *
@@ -239,11 +228,12 @@ download_and_mmap_tmpfd(const char *url,
                         const char *post_body,
                         const char *post_header,
                         int fd,
-                        struct string_view *data)
+                        struct string_view *data,
+                        url_handle_t *cache)
 {
 	assert(fd >= 0);
 
-	check(url_download(url, host, path, post_body, post_header, fd));
+	check(url_download(url, host, path, post_body, post_header, fd, cache));
 	check(tmpmap(fd, data));
 
 	debug("Downloaded %s to fd=%d", url ? url : path, fd);
@@ -331,13 +321,15 @@ youtube_stream_setup(struct youtube_stream *p,
 		check(ops->before_inet(userdata));
 	}
 
+	url_handle_t url_cache __attribute__((cleanup(url_cleanup))) = NULL;
 	check(download_and_mmap_tmpfd(target,
 	                              NULL,
 	                              NULL,
 	                              NULL,
 	                              NULL,
 	                              html.fd,
-	                              &html.data));
+	                              &html.data,
+	                              &url_cache));
 
 	char *null_terminated_basejs __attribute__((cleanup(str_free))) =
 		NULL;
@@ -356,7 +348,8 @@ youtube_stream_setup(struct youtube_stream *p,
 	                              NULL,
 	                              NULL,
 	                              js.fd,
-	                              &js.data));
+	                              &js.data,
+	                              &url_cache));
 
 	long long int timestamp = 0;
 	check(find_js_timestamp(&js.data, &timestamp));
@@ -376,7 +369,8 @@ youtube_stream_setup(struct youtube_stream *p,
 	                              innertube_post,
 	                              innertube_header,
 	                              json.fd,
-	                              &json.data));
+	                              &json.data,
+	                              &url_cache));
 
 	if (ops && ops->after_inet) {
 		check(ops->after_inet(userdata));
