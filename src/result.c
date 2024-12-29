@@ -200,7 +200,7 @@ result_to_str(result_t r)
 		                my_strerror(r));
 		break;
 	case ERR_JS_DEOBFUSCATOR_MAGIC_FIND:
-		s = strdup("Cannot find deobfuscator magic constant in base.js");
+		s = strdup("Cannot find deobfuscator magic in base.js");
 		break;
 	case ERR_JS_DEOBFUSCATOR_ALLOC:
 		s = strdup("Cannot allocate asprintf buffer");
@@ -314,7 +314,7 @@ result_to_str(result_t r)
 		s = strdup("Cannot allocate easy handle");
 		break;
 	case ERR_URL_DOWNLOAD_LIST_APPEND:
-		s = strdup("Cannot append string to linked list of HTTP headers");
+		s = strdup("Cannot append string to HTTP headers");
 		break;
 	case ERR_URL_DOWNLOAD_SET_OPT_WRITEDATA:
 		s = my_snprintf("Cannot set WRITEDATA: %s", easy_error(r));
@@ -351,7 +351,7 @@ result_to_str(result_t r)
 		s = my_snprintf("No n-parameter in query string: %s", r.msg);
 		break;
 	case ERR_YOUTUBE_VISITOR_DATA_HEADER_ALLOC:
-		s = strdup("Cannot allocate asprintf buffer for visitor data header");
+		s = strdup("Cannot allocate buffer for visitor data header");
 		break;
 	}
 
