@@ -6,7 +6,7 @@ STATUS=0
 
 echo 'Checking for non-const global variables ...'
 if find . -type f -regextype egrep -regex '.*\.(h|c)' -and ! -path './build/*' \
-	| ctags -L- --output-format=json --sort=yes --c-kinds=v --extras=-F \
+	| ctags -L- --output-format=json --c-kinds=v --extras=-F \
 	| jq -rM .pattern \
 	| sed 's@^/\^@@g' \
 	| sed 's@\$/$@@g' \
@@ -17,7 +17,7 @@ fi
 
 echo 'Checking for non-const local variables with static duration ...'
 if find . -type f -regextype egrep -regex '.*\.(h|c)' -and ! -path './build/*' \
-	| ctags -L- --output-format=json --sort=yes --c-kinds=l \
+	| ctags -L- --output-format=json --c-kinds=l \
 	| jq -rM .pattern \
 	| sed 's@^/\^@@g' \
 	| sed 's@\$/$@@g' \

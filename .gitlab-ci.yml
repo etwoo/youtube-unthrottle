@@ -80,7 +80,7 @@ build:clang-coverage:
 lint:globals:
   stage: build
   before_script:
-    - ${PACKAGE_CMD} ctags
+    - ${PACKAGE_CMD} ctags jq
   script:
     - ./scripts/check-global-variables.sh
 
