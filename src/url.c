@@ -67,6 +67,12 @@ url_context_init(struct url_request_context *context)
 	info_if(err.err, "Error creating early URL worker threads");
 }
 
+void
+url_context_cleanup(struct url_request_context *context)
+{
+	curl_easy_cleanup(context->state); /* handles NULL gracefully */
+}
+
 static WARN_UNUSED result_t
 url_prepare(const char *hostp, const char *pathp, CURLU **url)
 {
@@ -178,10 +184,4 @@ url_download(const char *url_str,     /* maybe NULL */
 	curl_slist_free_all(headers); /* handles NULL gracefully */
 	curl_url_cleanup(url);        /* handles NULL gracefully */
 	return RESULT_OK;
-}
-
-void
-url_context_cleanup(struct url_request_context *context)
-{
-	curl_easy_cleanup(context->state); /* handles NULL gracefully */
 }
