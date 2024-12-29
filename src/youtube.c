@@ -58,18 +58,7 @@ youtube_stream_init(const char *proof_of_origin, const char *visitor_data)
 	p->visitor_data = strdup(visitor_data);
 	check_oom(p->visitor_data);
 
-	/*
-	 * Nudge curl into creating its DNS resolver thread(s) now, before the
-	 * the process sandbox closes and blocks the clone3() syscall.
-	 */
-	result_t err = url_download("https://www.youtube.com",
-	                            NULL,
-	                            NULL,
-	                            NULL,
-	                            NULL,
-	                            URL_DOWNLOAD_FD_DISCARD,
-	                            &p->request_context);
-	info_if(err.err, "Error creating early URL worker threads");
+	url_context_init(&p->request_context);
 
 	return p;
 

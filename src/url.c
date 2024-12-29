@@ -16,16 +16,16 @@
  */
 #include <curl/curl.h>
 
-const int URL_DOWNLOAD_FD_DISCARD = -1;
+const int FD_DISCARD = -1;
 
 static WARN_UNUSED size_t
 write_to_tmpfile(char *ptr, size_t size, size_t nmemb, void *userdata)
 {
 	const size_t real_size = size * nmemb;
 	const int *fd = (const int *)userdata;
-	if (*fd == URL_DOWNLOAD_FD_DISCARD) {
+	if (*fd == FD_DISCARD) {
 		/*
-		 * URL_DOWNLOAD_FD_DISCARD means caller wants us to discard data
+		 * FD_DISCARD means caller wants us to discard data
 		 */
 		return real_size;
 	}
@@ -48,6 +48,23 @@ void
 url_global_cleanup(void)
 {
 	curl_global_cleanup();
+}
+
+void
+url_context_init(struct url_request_context *context)
+{
+	/*
+	 * Nudge curl into creating its DNS resolver thread(s) now, before the
+	 * the process sandbox closes and blocks the clone3() syscall.
+	 */
+	result_t err = url_download("https://www.youtube.com",
+	                            NULL,
+	                            NULL,
+	                            NULL,
+	                            NULL,
+	                            FD_DISCARD,
+	                            context);
+	info_if(err.err, "Error creating early URL worker threads");
 }
 
 static WARN_UNUSED result_t
