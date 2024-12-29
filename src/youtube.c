@@ -191,6 +191,10 @@ copy_n_param_one(ada_url url, char **result)
 {
 	*result = NULL; /* NULL out early, just in case */
 
+	if (url == NULL) {
+		return make_result(ERR_YOUTUBE_STREAM_URL_MISSING);
+	}
+
 	ada_string q_str = ada_get_search(url);
 	ada_url_search_params q __attribute__((cleanup(free_search_params))) =
 		ada_parse_search_params(q_str.data, q_str.length);

@@ -361,6 +361,9 @@ result_to_str(result_t r)
 		s = my_snprintf("Error performing HTTP request: %s",
 		                easy_error(r));
 		break;
+	case ERR_YOUTUBE_STREAM_URL_MISSING:
+		s = "Missing stream URL";
+		break;
 	case ERR_YOUTUBE_N_PARAM_QUERY_ALLOC:
 		s = "Cannot allocate ciphertext buffer";
 		break;

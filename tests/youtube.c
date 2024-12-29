@@ -301,7 +301,7 @@ stream_setup_edge_cases_entire_url_missing(void)
 	result_t err = youtube_stream_setup(stream, &NULLOP, NULL, FAKE_YT_URL);
 	test_request_path_to_response = NULL;
 
-	ASSERT_EQ(OK, err.err); // TODO: what err type do we hit now?
+	ASSERT_EQ(ERR_YOUTUBE_STREAM_URL_MISSING, err.err);
 
 	youtube_stream_cleanup(stream);
 	PASS();
