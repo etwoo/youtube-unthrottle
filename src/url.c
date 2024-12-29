@@ -132,9 +132,9 @@ url_download(const char *url_str,     /* maybe NULL */
 	if (*cache == NULL) {
 		*cache = curl_easy_init();
 	} else {
-		curl_easy_reset((CURL *)(*cache));
+		curl_easy_reset(*cache);
 	}
-	CURL *curl = (CURL *)(*cache);
+	CURL *curl = *cache;
 
 	CURLcode res = curl == NULL ? CURLE_OUT_OF_MEMORY : CURLE_OK;
 	check_if_num(res, ERR_URL_DOWNLOAD_ALLOC);
