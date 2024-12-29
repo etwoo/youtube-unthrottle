@@ -13,6 +13,7 @@ const result_t RESULT_OK = {
 	.err = OK,
 };
 
+// TODO: convert to arena allocator; pull in a dependency to handle this?
 static WARN_UNUSED const char *
 my_vsnprintf(const char *pattern, va_list ap)
 {

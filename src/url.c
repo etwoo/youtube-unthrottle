@@ -74,6 +74,8 @@ wrap_curl_easy_perform(void *request,
 	return curl_easy_perform(request);
 }
 
+// TODO: move CURL_EASY_PERFORM from global var to member of url_handle_t struct; i.e. convert url_handle_t from easy handle to struct containing easy handle plus easy perform function pointer override
+// TODO: add another callback member to youtube_setup_ops struct, which gets threaded through to url_download(), similar to how during_parse_choose_quality() is passed to js.c through choose_quality() member
 int (*CURL_EASY_PERFORM)(void *, const char *, int) = wrap_curl_easy_perform;
 
 void
