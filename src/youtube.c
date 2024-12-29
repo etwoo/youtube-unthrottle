@@ -10,8 +10,8 @@
 #include <ada_c.h>
 #include <assert.h>
 #include <errno.h>
-#include <stdlib.h>
 #include <stdio.h> /* for asprintf() */
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -331,8 +331,7 @@ youtube_stream_setup(struct youtube_stream *p,
 	                              &html.data,
 	                              &url_cache));
 
-	char *null_terminated_basejs __attribute__((cleanup(str_free))) =
-		NULL;
+	char *null_terminated_basejs __attribute__((cleanup(str_free))) = NULL;
 	{
 		struct string_view basejs = {0};
 		check(find_base_js_url(&html.data, &basejs));
