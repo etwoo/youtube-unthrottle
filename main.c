@@ -54,7 +54,7 @@ result_to_status(result_t r)
 	auto_result owner = r;
 	if (owner.err) {
 		auto_result_str str = result_to_str(owner);
-		to_stderr("%s", str);
+		to_stderr("%s", str ? str : "[result_to_str() -> NULL]");
 		return EX_SOFTWARE;
 	}
 	return EX_OK;
