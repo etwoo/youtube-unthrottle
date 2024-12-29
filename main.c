@@ -51,8 +51,10 @@ to_stderr(const char *pattern, ...)
 static __attribute__((warn_unused_result)) int
 result_to_status(result_t r)
 {
-	if (r.err) {
-		to_stderr("%s", result_to_str(r));
+	auto_result owner = r;
+	if (owner.err) {
+		auto_result_str str = result_to_str(owner);
+		to_stderr("%s", str);
 		return EX_SOFTWARE;
 	}
 	return EX_OK;

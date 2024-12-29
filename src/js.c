@@ -103,7 +103,7 @@ parse_json(const struct string_view *json, const struct parse_ops *ops)
 			const char *q = json_string_value(quality);
 			assert(q != NULL);
 			void *ud = ops->choose_quality_userdata;
-			result_t err = ops->choose_quality(q, ud);
+			auto_result err = ops->choose_quality(q, ud);
 			choose_quality = (err.err == OK);
 		}
 

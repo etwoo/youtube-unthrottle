@@ -13,53 +13,17 @@ const result_t RESULT_OK = {
 	.err = OK,
 };
 
-// TODO: convert to arena allocator; pull in a dependency to handle this?
-static WARN_UNUSED const char *
-my_vsnprintf(const char *pattern, va_list ap)
-{
-	/*
-	 * Bump-style allocator for dynamic strings in result_t structs
-	 *
-	 * If youtube-unthrottle ever becomes multithreaded, these static
-	 * variables will need retrofits for thread safety.
-	 */
-	static char RESULT_HEAP[4096] = {0};
-	static char *RESULT_HEAP_POS = RESULT_HEAP;
-
-	int capacity = sizeof(RESULT_HEAP) - (RESULT_HEAP_POS - RESULT_HEAP);
-	int written = vsnprintf(RESULT_HEAP_POS, capacity, pattern, ap);
-
-	if (written < 0 || written >= capacity) {
-		return "[vsnprintf() out of space]";
-	} else {
-		const char *result = RESULT_HEAP_POS;
-		RESULT_HEAP_POS += written;
-		++RESULT_HEAP_POS; /* seek past NUL byte */
-		return result;
-	}
-}
-
-static WARN_UNUSED __attribute__((format(printf, 1, 2))) const char *
+static WARN_UNUSED __attribute__((format(printf, 1, 2))) char *
 my_snprintf(const char *pattern, ...)
 {
+	char *p = NULL;
+
 	va_list ap;
 	va_start(ap, pattern);
-	const char *result = my_vsnprintf(pattern, ap);
+	int result = vasprintf(&p, pattern, ap);
 	va_end(ap);
 
-	return result;
-}
-
-static WARN_UNUSED const char *
-result_strdup(const char *src)
-{
-	return my_snprintf("%s", src);
-}
-
-static WARN_UNUSED const char *
-result_strdup_span(const char *src, size_t sz)
-{
-	return my_snprintf("%.*s", (int)sz, src);
+	return result < 0 ? NULL : p;
 }
 
 result_t
@@ -88,7 +52,7 @@ make_result_ts(int typ, const char *msg)
 	return (result_t){
 		.err = typ,
 		.num = 0,
-		.msg = result_strdup(msg),
+		.msg = strdup(msg),
 	};
 }
 
@@ -98,7 +62,7 @@ make_result_tss(int typ, const char *msg, size_t sz)
 	return (result_t){
 		.err = typ,
 		.num = 0,
-		.msg = result_strdup_span(msg, sz),
+		.msg = strndup(msg, sz),
 	};
 }
 
@@ -108,7 +72,7 @@ make_result_tis(int typ, int num, const char *msg)
 	return (result_t){
 		.err = typ,
 		.num = num,
-		.msg = result_strdup(msg),
+		.msg = strdup(msg),
 	};
 }
 
@@ -118,7 +82,7 @@ make_result_tiss(int typ, int num, const char *msg, size_t sz)
 	return (result_t){
 		.err = typ,
 		.num = num,
-		.msg = result_strdup_span(msg, sz),
+		.msg = strndup(msg, sz),
 	};
 }
 
@@ -128,9 +92,24 @@ make_result_re(int typ, int num, const char *pattern, size_t offset)
 	return (result_t){
 		.err = typ,
 		.num = num,
-		.re.pattern = result_strdup(pattern),
+		.re.pattern = strdup(pattern),
 		.re.offset = offset,
 	};
+}
+
+void
+result_cleanup(result_t *p)
+{
+	switch (p->err) {
+	case ERR_RE_COMPILE:
+	case ERR_RE_TRY_MATCH:
+		free(p->re.pattern);
+		break;
+	default:
+		free(p->msg);
+		break;
+	}
+	memset(p, 0, sizeof(*p));
 }
 
 static WARN_UNUSED const char *
@@ -152,74 +131,68 @@ url_error(result_t r)
 }
 
 static WARN_UNUSED const char *
-regex_error(result_t r)
+regex_error(result_t r, PCRE2_UCHAR *buffer, size_t capacity)
 {
-	PCRE2_UCHAR err[256];
-	if (pcre2_get_error_message(r.num, err, sizeof(err)) < 0) {
-		return my_snprintf("regex \"%s\" at offset %zd: [no details]",
-		                   r.re.pattern,
-		                   r.re.offset);
-	} else {
-		return my_snprintf("regex \"%s\" at offset %zd: %s",
-		                   r.re.pattern,
-		                   r.re.offset,
-		                   err);
+	if (pcre2_get_error_message(r.num, buffer, capacity) < 0) {
+		strlcpy((char *)buffer, "[no error details]", capacity);
 	}
+	return (const char *)buffer;
 }
 
-const char *
+char *
 result_to_str(result_t r)
 {
-	const char *s = NULL;
+	char *s = NULL;
+	PCRE2_UCHAR err[256];
 
 	switch (r.err) {
 	case OK:
-		s = "Success";
+		s = strdup("Success");
 		break;
 	case ERR_JS_PARSE_JSON_ALLOC_HEAP:
-		s = "Cannot allocate JavaScript interpreter heap";
+		s = strdup("Cannot allocate JavaScript interpreter heap");
 		break;
 	case ERR_JS_PARSE_JSON_DECODE:
 		s = my_snprintf("Error in json_load*(): %s", r.msg);
 		break;
 	case ERR_JS_PARSE_JSON_GET_STREAMINGDATA:
-		s = "Cannot get .streamingData";
+		s = strdup("Cannot get .streamingData");
 		break;
 	case ERR_JS_PARSE_JSON_GET_ADAPTIVEFORMATS:
-		s = "Cannot get .adaptiveFormats";
+		s = strdup("Cannot get .adaptiveFormats");
 		break;
 	case ERR_JS_PARSE_JSON_ADAPTIVEFORMATS_TYPE:
-		s = "Cannot iterate over .adaptiveFormats";
+		s = strdup("Cannot iterate over .adaptiveFormats");
 		break;
 	case ERR_JS_PARSE_JSON_ELEM_TYPE:
-		s = "adaptiveFormats element is not object-coercible";
+		s = strdup("adaptiveFormats element is not object-coercible");
 		break;
 	case ERR_JS_PARSE_JSON_ELEM_MIMETYPE:
-		s = "Cannot get mimeType of adaptiveFormats element";
+		s = strdup("Cannot get mimeType of adaptiveFormats element");
 		break;
 	case ERR_JS_PARSE_JSON_ELEM_URL:
-		s = "Cannot get url of adaptiveFormats element";
+		s = strdup("Cannot get url of adaptiveFormats element");
 		break;
 	case ERR_JS_PARSE_JSON_CALLBACK_GOT_CIPHERTEXT_URL:
 		s = my_snprintf("Cannot parse ciphertext URL: %s", r.msg);
 		break;
 	case ERR_JS_PARSE_JSON_CALLBACK_QUALITY:
-		s = "Chose to skip stream based on qualityLevel";
+		s = strdup("Chose to skip stream based on qualityLevel");
 		break;
 	case ERR_JS_MAKE_INNERTUBE_JSON_ID:
-		s = "Cannot find video ID for InnerTube POST";
+		s = strdup("Cannot find video ID for InnerTube POST");
 		break;
 	case ERR_JS_MAKE_INNERTUBE_JSON_ALLOC:
-		s = "Cannot allocate buffer for InnerTube POST";
+		s = strdup("Cannot allocate buffer for InnerTube POST");
 		break;
 	case ERR_JS_BASEJS_URL_FIND:
-		s = "Cannot find base.js URL in HTML document";
+		s = strdup("Cannot find base.js URL in HTML document");
 		break;
 	case ERR_JS_BASEJS_URL_ALLOC:
-		s = "Cannot strndup() base.js URL";
+		s = strdup("Cannot strndup() base.js URL");
 		break;
 	case ERR_JS_TIMESTAMP_FIND:
-		s = "Cannot find timestamp in base.js";
+		s = strdup("Cannot find timestamp in base.js");
 		break;
 	case ERR_JS_TIMESTAMP_PARSE_LL:
 		s = my_snprintf("Error in strtoll() on %s: %s",
@@ -227,13 +200,13 @@ result_to_str(result_t r)
 		                my_strerror(r));
 		break;
 	case ERR_JS_DEOBFUSCATOR_MAGIC_FIND:
-		s = "Cannot find deobfuscator magic constant in base.js";
+		s = strdup("Cannot find deobfuscator magic constant in base.js");
 		break;
 	case ERR_JS_DEOBFUSCATOR_ALLOC:
-		s = "Cannot allocate asprintf buffer";
+		s = strdup("Cannot allocate asprintf buffer");
 		break;
 	case ERR_JS_DEOB_FIND_FUNC_ONE:
-		s = "Cannot find deobfuscation function in base.js";
+		s = strdup("Cannot find deobfuscation function in base.js");
 		break;
 	case ERR_JS_DEOB_FIND_FUNC_TWO:
 		s = my_snprintf("Cannot find ref to %s in base.js", r.msg);
@@ -242,7 +215,7 @@ result_to_str(result_t r)
 		s = my_snprintf("Cannot find body of %s in base.js", r.msg);
 		break;
 	case ERR_JS_CALL_ALLOC:
-		s = "Cannot allocate JavaScript interpreter heap";
+		s = strdup("Cannot allocate JavaScript interpreter heap");
 		break;
 	case ERR_JS_CALL_COMPILE:
 		s = my_snprintf("Error in duk_pcompile(): %s", r.msg);
@@ -251,21 +224,27 @@ result_to_str(result_t r)
 		s = my_snprintf("Error in duk_pcall(): %s", r.msg);
 		break;
 	case ERR_JS_CALL_GET_RESULT:
-		s = "Error fetching function result";
+		s = strdup("Error fetching function result");
 		break;
 	case ERR_RE_COMPILE:
-		s = my_snprintf("Error in pcre2_compile() with %s",
-		                regex_error(r));
+		s = my_snprintf("Error in pcre2_compile() with "
+		                "regex \"%s\" at offset %zd: %s",
+		                r.re.pattern,
+		                r.re.offset,
+		                regex_error(r, err, sizeof(err)));
 		break;
 	case ERR_RE_ALLOC_MATCH_DATA:
-		s = "Cannot allocate pcre2 match data";
+		s = strdup("Cannot allocate pcre2 match data");
 		break;
 	case ERR_RE_CAPTURE_GROUP_COUNT:
 		s = my_snprintf("Wrong number of capture groups in %s", r.msg);
 		break;
 	case ERR_RE_TRY_MATCH:
-		s = my_snprintf("Error in pcre2_match() with %s",
-		                regex_error(r));
+		s = my_snprintf("Error in pcre2_match() with "
+		                "regex \"%s\" at offset %zd: %s",
+		                r.re.pattern,
+		                r.re.offset,
+		                regex_error(r, err, sizeof(err)));
 		break;
 	case ERR_SANDBOX_LANDLOCK_CREATE_RULESET:
 		s = my_snprintf("Error in landlock_create_ruleset(): %s",
@@ -317,10 +296,10 @@ result_to_str(result_t r)
 		s = my_snprintf("Error mmap()-ing tmpfile: %s", my_strerror(r));
 		break;
 	case ERR_URL_GLOBAL_INIT:
-		s = "Cannot use URL functions";
+		s = strdup("Cannot use URL functions");
 		break;
 	case ERR_URL_PREPARE_ALLOC:
-		s = "Cannot allocate URL handle";
+		s = strdup("Cannot allocate URL handle");
 		break;
 	case ERR_URL_PREPARE_SET_PART_SCHEME:
 		s = my_snprintf("Cannot set URL scheme: %s", url_error(r));
@@ -332,10 +311,10 @@ result_to_str(result_t r)
 		s = my_snprintf("Cannot set URL path: %s", url_error(r));
 		break;
 	case ERR_URL_DOWNLOAD_ALLOC:
-		s = "Cannot allocate easy handle";
+		s = strdup("Cannot allocate easy handle");
 		break;
 	case ERR_URL_DOWNLOAD_LIST_APPEND:
-		s = "Cannot append string to linked list of HTTP headers";
+		s = strdup("Cannot append string to linked list of HTTP headers");
 		break;
 	case ERR_URL_DOWNLOAD_SET_OPT_WRITEDATA:
 		s = my_snprintf("Cannot set WRITEDATA: %s", easy_error(r));
@@ -363,18 +342,24 @@ result_to_str(result_t r)
 		                easy_error(r));
 		break;
 	case ERR_YOUTUBE_STREAM_URL_MISSING:
-		s = "Missing stream URL";
+		s = strdup("Missing stream URL");
 		break;
 	case ERR_YOUTUBE_N_PARAM_QUERY_ALLOC:
-		s = "Cannot allocate ciphertext buffer";
+		s = strdup("Cannot allocate ciphertext buffer");
 		break;
 	case ERR_YOUTUBE_N_PARAM_FIND_IN_QUERY:
 		s = my_snprintf("No n-parameter in query string: %s", r.msg);
 		break;
 	case ERR_YOUTUBE_VISITOR_DATA_HEADER_ALLOC:
-		s = "Cannot allocate asprintf buffer for visitor data header";
+		s = strdup("Cannot allocate asprintf buffer for visitor data header");
 		break;
 	}
 
 	return s;
+}
+
+void
+result_str_cleanup(char **s)
+{
+	free(*s);
 }

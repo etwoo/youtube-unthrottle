@@ -57,13 +57,13 @@ url_context_init(struct url_request_context *context)
 	 * Nudge curl into creating its DNS resolver thread(s) now, before the
 	 * the process sandbox closes and blocks the clone3() syscall.
 	 */
-	result_t err = url_download("https://www.youtube.com",
-	                            NULL,
-	                            NULL,
-	                            NULL,
-	                            NULL,
-	                            FD_DISCARD,
-	                            context);
+	auto_result err = url_download("https://www.youtube.com",
+	                               NULL,
+	                               NULL,
+	                               NULL,
+	                               NULL,
+	                               FD_DISCARD,
+	                               context);
 	info_if(err.err, "Error creating early URL worker threads");
 }
 

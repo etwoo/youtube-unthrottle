@@ -114,7 +114,7 @@ check_url(const char *url, size_t sz, void *userdata)
 TEST
 global_setup(void)
 {
-	result_t err = youtube_global_init();
+	auto_result err = youtube_global_init();
 	ASSERT_EQ(OK, err.err);
 	PASS();
 }
@@ -130,7 +130,8 @@ stream_setup_with_redirected_network_io(const char *(*custom_fn)(const char *),
 	ASSERT(stream);
 
 	test_request_path_to_response = custom_fn;
-	result_t err = youtube_stream_setup(stream, &NOOP, NULL, FAKE_YT_URL);
+	auto_result err =
+		youtube_stream_setup(stream, &NOOP, NULL, FAKE_YT_URL);
 	test_request_path_to_response = NULL;
 
 	ASSERT_EQ(OK, err.err);
@@ -168,7 +169,8 @@ stream_setup_with_null_ops(void)
 	youtube_handle_t stream = youtube_stream_init();
 	ASSERT(stream);
 
-	result_t err = youtube_stream_setup(stream, &NULLOP, NULL, FAKE_YT_URL);
+	auto_result err =
+		youtube_stream_setup(stream, &NULLOP, NULL, FAKE_YT_URL);
 	ASSERT_EQ(OK, err.err);
 
 	youtube_stream_cleanup(stream);
@@ -193,7 +195,8 @@ stream_setup_edge_cases_target_url_missing_stream_id(void)
 	youtube_handle_t stream = youtube_stream_init();
 	ASSERT(stream);
 
-	result_t err = youtube_stream_setup(stream, &NOOP, NULL, YT_MISSING_ID);
+	auto_result err =
+		youtube_stream_setup(stream, &NOOP, NULL, YT_MISSING_ID);
 	ASSERT_EQ(ERR_JS_MAKE_INNERTUBE_JSON_ID, err.err);
 
 	youtube_stream_cleanup(stream);
@@ -273,7 +276,8 @@ stream_setup_edge_cases_n_param_missing(void)
 	ASSERT(stream);
 
 	test_request_path_to_response = test_request_n_param_empty_or_missing;
-	result_t err = youtube_stream_setup(stream, &NULLOP, NULL, FAKE_YT_URL);
+	auto_result err =
+		youtube_stream_setup(stream, &NULLOP, NULL, FAKE_YT_URL);
 	test_request_path_to_response = NULL;
 
 	ASSERT_EQ(ERR_YOUTUBE_N_PARAM_FIND_IN_QUERY, err.err);
@@ -298,7 +302,8 @@ stream_setup_edge_cases_entire_url_missing(void)
 	ASSERT(stream);
 
 	test_request_path_to_response = test_request_entire_url_missing;
-	result_t err = youtube_stream_setup(stream, &NULLOP, NULL, FAKE_YT_URL);
+	auto_result err =
+		youtube_stream_setup(stream, &NULLOP, NULL, FAKE_YT_URL);
 	test_request_path_to_response = NULL;
 
 	ASSERT_EQ(ERR_YOUTUBE_STREAM_URL_MISSING, err.err);
