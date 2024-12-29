@@ -42,7 +42,7 @@ url_global_init(void)
 	CURLcode res = curl_global_init(CURL_GLOBAL_DEFAULT);
 	check_if_num(res, ERR_URL_GLOBAL_INIT);
 
-	url_handle_t cache __attribute__((cleanup(url_cleanup))) = NULL;
+	struct url_request_context ctx __attribute__((cleanup(url_free))) = {0};
 
 	/*
 	 * Nudge curl into creating its DNS resolver thread(s) now, before the
@@ -54,7 +54,7 @@ url_global_init(void)
 	                            NULL,
 	                            NULL,
 	                            FD_DISCARD,
-	                            &cache);
+	                            &ctx);
 	info_if(err.err, "Error creating early URL worker threads");
 
 	return RESULT_OK;
@@ -64,24 +64,6 @@ void
 url_global_cleanup(void)
 {
 	curl_global_cleanup();
-}
-
-static WARN_UNUSED int
-wrap_curl_easy_perform(void *request,
-                       const char *path __attribute__((unused)),
-                       int fd __attribute__((unused)))
-{
-	return curl_easy_perform(request);
-}
-
-// TODO: move CURL_EASY_PERFORM from global var to member of url_handle_t struct; i.e. convert url_handle_t from easy handle to struct containing easy handle plus easy perform function pointer override
-// TODO: add another callback member to youtube_setup_ops struct, which gets threaded through to url_download(), similar to how during_parse_choose_quality() is passed to js.c through choose_quality() member
-int (*CURL_EASY_PERFORM)(void *, const char *, int) = wrap_curl_easy_perform;
-
-void
-url_global_set_request_handler(int (*handler)(void *, const char *, int))
-{
-	CURL_EASY_PERFORM = handler;
 }
 
 static WARN_UNUSED result_t
@@ -125,18 +107,17 @@ url_download(const char *url_str,     /* maybe NULL */
              const char *post_body,   /* maybe NULL */
              const char *post_header, /* maybe NULL */
              int fd,
-             url_handle_t *cache)
+             struct url_request_context *context)
 {
 	CURLU *url = NULL;
 	struct curl_slist *headers = NULL;
 
-	assert(cache != NULL);
-	if (*cache == NULL) {
-		*cache = curl_easy_init();
+	if (context->state == NULL) {
+		context->state = curl_easy_init();
 	} else {
-		curl_easy_reset(*cache);
+		curl_easy_reset(context->state);
 	}
-	CURL *curl = *cache;
+	CURL *curl = context->state;
 
 	CURLcode res = curl == NULL ? CURLE_OUT_OF_MEMORY : CURLE_OK;
 	check_if_num(res, ERR_URL_DOWNLOAD_ALLOC);
@@ -187,7 +168,8 @@ url_download(const char *url_str,     /* maybe NULL */
 		check_if_num(res, ERR_URL_DOWNLOAD_SET_OPT_HTTP_HEADER);
 	}
 
-	res = CURL_EASY_PERFORM(curl, url_fragment_or_path_str, fd);
+	url_handler fn = context->handler;
+	res = fn ? fn(url_fragment_or_path_str, fd) : curl_easy_perform(curl);
 	check_if_num(res, ERR_URL_DOWNLOAD_PERFORM);
 
 	curl_slist_free_all(headers); /* handles NULL gracefully */
@@ -196,7 +178,7 @@ url_download(const char *url_str,     /* maybe NULL */
 }
 
 void
-url_cleanup(url_handle_t *cache)
+url_free(struct url_request_context *context)
 {
-	curl_easy_cleanup(*cache); /* handles NULL gracefully */
+	curl_easy_cleanup(context->state); /* handles NULL gracefully */
 }

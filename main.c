@@ -173,6 +173,7 @@ unthrottle(const char *target,
 	struct youtube_setup_ops sops = {
 		.before = NULL,
 		.before_inet = before_inet,
+		.during_inet_do_request = NULL,
 		.after_inet = after_inet,
 		.before_parse = NULL,
 		.during_parse_choose_quality = during_parse_choose_quality,

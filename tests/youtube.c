@@ -37,9 +37,9 @@ static const char FAKE_JS_RESPONSE[] =
 static const char *(*test_request_path_to_response)(const char *) = NULL;
 
 static WARN_UNUSED int
-test_fixture_request_handler(void *request, const char *path, int fd)
+test_fixture_do_request(const char *path, int fd)
 {
-	debug("Mocking request: CURL* %p, %s, fd=%d", request, path, fd);
+	debug("Mocking request with url=%s, fd=%d", path, fd);
 
 	const char *to_write = NULL;
 	if (test_request_path_to_response) {
@@ -81,6 +81,7 @@ parse_callback_noop(const char *val __attribute__((unused)),
 static const struct youtube_setup_ops NOOP = {
 	.before = setup_callback_noop,
 	.before_inet = setup_callback_noop,
+	.during_inet_do_request = test_fixture_do_request,
 	.after_inet = setup_callback_noop,
 	.before_parse = setup_callback_noop,
 	.during_parse_choose_quality = parse_callback_noop,
@@ -151,6 +152,7 @@ stream_setup_with_redirected_network_io(const char *(*custom_fn)(const char *),
 static const struct youtube_setup_ops NULLOP = {
 	.before = NULL,
 	.before_inet = NULL,
+	.during_inet_do_request = test_fixture_do_request,
 	.after_inet = NULL,
 	.before_parse = NULL,
 	.during_parse_choose_quality = NULL,
@@ -175,7 +177,6 @@ stream_setup_with_null_ops(void)
 
 SUITE(stream_setup_simple)
 {
-	url_global_set_request_handler(test_fixture_request_handler);
 	RUN_TEST(global_setup);
 	RUN_TESTp(stream_setup_with_redirected_network_io,
 	          NULL,
@@ -201,7 +202,6 @@ stream_setup_edge_cases_target_url_missing_stream_id(void)
 
 SUITE(stream_setup_target_url_variations)
 {
-	url_global_set_request_handler(test_fixture_request_handler);
 	RUN_TEST(global_setup);
 	RUN_TEST(stream_setup_edge_cases_target_url_missing_stream_id);
 }
@@ -309,7 +309,6 @@ stream_setup_edge_cases_entire_url_missing(void)
 
 SUITE(stream_setup_n_param_positions)
 {
-	url_global_set_request_handler(test_fixture_request_handler);
 	RUN_TEST(global_setup);
 	RUN_TESTp(stream_setup_with_redirected_network_io,
 	          test_request_n_param_pos_middle,

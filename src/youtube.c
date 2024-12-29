@@ -225,11 +225,11 @@ download_and_mmap_tmpfd(const char *url,
                         const char *post_header,
                         int fd,
                         struct string_view *data,
-                        url_handle_t *cache)
+                        struct url_request_context *ctx)
 {
 	assert(fd >= 0);
 
-	check(url_download(url, host, path, post_body, post_header, fd, cache));
+	check(url_download(url, host, path, post_body, post_header, fd, ctx));
 	check(tmpmap(fd, data));
 
 	debug("Downloaded %s to fd=%d", url ? url : path, fd);
@@ -317,7 +317,10 @@ youtube_stream_setup(struct youtube_stream *p,
 		check(ops->before_inet(userdata));
 	}
 
-	url_handle_t url_cache __attribute__((cleanup(url_cleanup))) = NULL;
+	struct url_request_context ctx __attribute__((cleanup(url_free))) = {
+		.state = NULL,
+		.handler = ops->during_inet_do_request,
+	};
 	check(download_and_mmap_tmpfd(target,
 	                              NULL,
 	                              NULL,
@@ -325,7 +328,7 @@ youtube_stream_setup(struct youtube_stream *p,
 	                              NULL,
 	                              html.fd,
 	                              &html.data,
-	                              &url_cache));
+	                              &ctx));
 
 	char *null_terminated_basejs __attribute__((cleanup(str_free))) = NULL;
 	{
@@ -344,7 +347,7 @@ youtube_stream_setup(struct youtube_stream *p,
 	                              NULL,
 	                              js.fd,
 	                              &js.data,
-	                              &url_cache));
+	                              &ctx));
 
 	long long int timestamp = 0;
 	check(find_js_timestamp(&js.data, &timestamp));
@@ -365,7 +368,7 @@ youtube_stream_setup(struct youtube_stream *p,
 	                              innertube_header,
 	                              json.fd,
 	                              &json.data,
-	                              &url_cache));
+	                              &ctx));
 
 	if (ops && ops->after_inet) {
 		check(ops->after_inet(userdata));
