@@ -16,7 +16,7 @@ void youtube_stream_cleanup(youtube_handle_t h);
 struct youtube_setup_ops {
 	result_t (*before)(void *);
 	result_t (*before_inet)(void *);
-	int (*during_inet_do_request)(const char *, int);
+	unsigned (*during_inet_do_request)(const char *, int);
 	result_t (*after_inet)(void *);
 	result_t (*before_parse)(void *);
 	result_t (*during_parse_choose_quality)(const char *, void *);

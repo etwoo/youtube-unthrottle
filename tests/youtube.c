@@ -36,7 +36,7 @@ static const char FAKE_JS_RESPONSE[] =
 
 static const char *(*test_request_path_to_response)(const char *) = NULL;
 
-static WARN_UNUSED int
+static WARN_UNUSED unsigned
 test_fixture_do_request(const char *path, int fd)
 {
 	debug("Mocking request with url=%s, fd=%d", path, fd);

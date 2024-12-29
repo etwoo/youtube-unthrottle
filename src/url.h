@@ -7,7 +7,7 @@
 result_t url_global_init(void) WARN_UNUSED;
 void url_global_cleanup(void);
 
-typedef int (*url_handler)(const char *, int);
+typedef unsigned (*url_handler)(const char *, int);
 struct url_request_context {
 	void *state;
 	url_handler handler;
