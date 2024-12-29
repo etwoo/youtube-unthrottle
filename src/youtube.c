@@ -205,6 +205,7 @@ copy_n_param_one(ada_url url, char **result)
 	*result = strndup(n_param.data, n_param.length);
 	check_if(*result == NULL, ERR_YOUTUBE_N_PARAM_QUERY_ALLOC);
 
+	debug("Got n-param ciphertext: %s", *result);
 	return RESULT_OK;
 }
 
