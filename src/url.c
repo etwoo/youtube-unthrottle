@@ -181,7 +181,7 @@ url_download(const char *url_str,     /* maybe NULL */
 }
 
 void
-url_free(struct url_request_context *context)
+url_context_cleanup(struct url_request_context *context)
 {
 	curl_easy_cleanup(context->state); /* handles NULL gracefully */
 }

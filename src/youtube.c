@@ -81,7 +81,7 @@ youtube_stream_cleanup(struct youtube_stream *p)
 	}
 	free(p->proof_of_origin);
 	free(p->visitor_data);
-	url_free(&p->request_context);
+	url_context_cleanup(&p->request_context);
 	free(p);
 }
 
