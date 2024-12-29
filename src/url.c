@@ -16,7 +16,7 @@
  */
 #include <curl/curl.h>
 
-const int FD_DISCARD = -1;
+static const int FD_DISCARD = -1;
 
 static WARN_UNUSED size_t
 write_to_tmpfile(char *ptr, size_t size, size_t nmemb, void *userdata)
