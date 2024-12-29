@@ -14,7 +14,7 @@ const result_t RESULT_OK = {
 };
 
 static WARN_UNUSED __attribute__((format(printf, 1, 2))) char *
-my_snprintf(const char *pattern, ...)
+my_asprintf(const char *pattern, ...)
 {
 	char *p = NULL;
 
@@ -153,7 +153,7 @@ result_to_str(result_t r)
 		s = strdup("Cannot allocate JavaScript interpreter heap");
 		break;
 	case ERR_JS_PARSE_JSON_DECODE:
-		s = my_snprintf("Error in json_load*(): %s", r.msg);
+		s = my_asprintf("Error in json_load*(): %s", r.msg);
 		break;
 	case ERR_JS_PARSE_JSON_GET_STREAMINGDATA:
 		s = strdup("Cannot get .streamingData");
@@ -174,7 +174,7 @@ result_to_str(result_t r)
 		s = strdup("Cannot get url of adaptiveFormats element");
 		break;
 	case ERR_JS_PARSE_JSON_CALLBACK_GOT_CIPHERTEXT_URL:
-		s = my_snprintf("Cannot parse ciphertext URL: %s", r.msg);
+		s = my_asprintf("Cannot parse ciphertext URL: %s", r.msg);
 		break;
 	case ERR_JS_PARSE_JSON_CALLBACK_QUALITY:
 		s = strdup("Chose to skip stream based on qualityLevel");
@@ -195,7 +195,7 @@ result_to_str(result_t r)
 		s = strdup("Cannot find timestamp in base.js");
 		break;
 	case ERR_JS_TIMESTAMP_PARSE_LL:
-		s = my_snprintf("Error in strtoll() on %s: %s",
+		s = my_asprintf("Error in strtoll() on %s: %s",
 		                r.msg,
 		                my_strerror(r));
 		break;
@@ -209,25 +209,25 @@ result_to_str(result_t r)
 		s = strdup("Cannot find deobfuscation function in base.js");
 		break;
 	case ERR_JS_DEOB_FIND_FUNC_TWO:
-		s = my_snprintf("Cannot find ref to %s in base.js", r.msg);
+		s = my_asprintf("Cannot find ref to %s in base.js", r.msg);
 		break;
 	case ERR_JS_DEOB_FIND_FUNC_BODY:
-		s = my_snprintf("Cannot find body of %s in base.js", r.msg);
+		s = my_asprintf("Cannot find body of %s in base.js", r.msg);
 		break;
 	case ERR_JS_CALL_ALLOC:
 		s = strdup("Cannot allocate JavaScript interpreter heap");
 		break;
 	case ERR_JS_CALL_COMPILE:
-		s = my_snprintf("Error in duk_pcompile(): %s", r.msg);
+		s = my_asprintf("Error in duk_pcompile(): %s", r.msg);
 		break;
 	case ERR_JS_CALL_INVOKE:
-		s = my_snprintf("Error in duk_pcall(): %s", r.msg);
+		s = my_asprintf("Error in duk_pcall(): %s", r.msg);
 		break;
 	case ERR_JS_CALL_GET_RESULT:
 		s = strdup("Error fetching function result");
 		break;
 	case ERR_RE_COMPILE:
-		s = my_snprintf("Error in pcre2_compile() with "
+		s = my_asprintf("Error in pcre2_compile() with "
 		                "regex \"%s\" at offset %zd: %s",
 		                r.re.pattern,
 		                r.re.offset,
@@ -237,63 +237,63 @@ result_to_str(result_t r)
 		s = strdup("Cannot allocate pcre2 match data");
 		break;
 	case ERR_RE_CAPTURE_GROUP_COUNT:
-		s = my_snprintf("Wrong number of capture groups in %s", r.msg);
+		s = my_asprintf("Wrong number of capture groups in %s", r.msg);
 		break;
 	case ERR_RE_TRY_MATCH:
-		s = my_snprintf("Error in pcre2_match() with "
+		s = my_asprintf("Error in pcre2_match() with "
 		                "regex \"%s\" at offset %zd: %s",
 		                r.re.pattern,
 		                r.re.offset,
 		                regex_error(r, err, sizeof(err)));
 		break;
 	case ERR_SANDBOX_LANDLOCK_CREATE_RULESET:
-		s = my_snprintf("Error in landlock_create_ruleset(): %s",
+		s = my_asprintf("Error in landlock_create_ruleset(): %s",
 		                my_strerror(r));
 		break;
 	case ERR_SANDBOX_LANDLOCK_OPEN_O_PATH:
-		s = my_snprintf("Error opening %s with O_PATH for Landlock: %s",
+		s = my_asprintf("Error opening %s with O_PATH for Landlock: %s",
 		                r.msg,
 		                my_strerror(r));
 		break;
 	case ERR_SANDBOX_LANDLOCK_ADD_RULE_PATH:
-		s = my_snprintf("Error in landlock_add_rule() for path %s: %s",
+		s = my_asprintf("Error in landlock_add_rule() for path %s: %s",
 		                r.msg,
 		                my_strerror(r));
 		break;
 	case ERR_SANDBOX_LANDLOCK_ADD_RULE_PORT:
-		s = my_snprintf("Error in landlock_add_rule() for port: %s",
+		s = my_asprintf("Error in landlock_add_rule() for port: %s",
 		                my_strerror(r));
 		break;
 	case ERR_SANDBOX_LANDLOCK_SET_NO_NEW_PRIVS:
-		s = my_snprintf("Error in prctl(PR_SET_NO_NEW_PRIVS): %s",
+		s = my_asprintf("Error in prctl(PR_SET_NO_NEW_PRIVS): %s",
 		                my_strerror(r));
 		break;
 	case ERR_SANDBOX_LANDLOCK_RESTRICT_SELF:
-		s = my_snprintf("Error in landlock_restrict_self(): %s",
+		s = my_asprintf("Error in landlock_restrict_self(): %s",
 		                my_strerror(r));
 		break;
 	case ERR_SANDBOX_SECCOMP_INIT:
-		s = my_snprintf("Error in seccomp_init(): %s", my_strerror(r));
+		s = my_asprintf("Error in seccomp_init(): %s", my_strerror(r));
 		break;
 	case ERR_SANDBOX_SECCOMP_LOAD:
-		s = my_snprintf("Error in seccomp_load(): %s", my_strerror(r));
+		s = my_asprintf("Error in seccomp_load(): %s", my_strerror(r));
 		break;
 	case ERR_TMPFILE:
-		s = my_snprintf("Error in tmpfile(): %s", my_strerror(r));
+		s = my_asprintf("Error in tmpfile(): %s", my_strerror(r));
 		break;
 	case ERR_TMPFILE_FILENO:
-		s = my_snprintf("Error fileno()-ing tmpfile: %s",
+		s = my_asprintf("Error fileno()-ing tmpfile: %s",
 		                my_strerror(r));
 		break;
 	case ERR_TMPFILE_DUP:
-		s = my_snprintf("Error dup()-ing tmpfile: %s", my_strerror(r));
+		s = my_asprintf("Error dup()-ing tmpfile: %s", my_strerror(r));
 		break;
 	case ERR_TMPFILE_FSTAT:
-		s = my_snprintf("Error fstat()-ing tmpfile: %s",
+		s = my_asprintf("Error fstat()-ing tmpfile: %s",
 		                my_strerror(r));
 		break;
 	case ERR_TMPFILE_MMAP:
-		s = my_snprintf("Error mmap()-ing tmpfile: %s", my_strerror(r));
+		s = my_asprintf("Error mmap()-ing tmpfile: %s", my_strerror(r));
 		break;
 	case ERR_URL_GLOBAL_INIT:
 		s = strdup("Cannot use URL functions");
@@ -302,13 +302,13 @@ result_to_str(result_t r)
 		s = strdup("Cannot allocate URL handle");
 		break;
 	case ERR_URL_PREPARE_SET_PART_SCHEME:
-		s = my_snprintf("Cannot set URL scheme: %s", url_error(r));
+		s = my_asprintf("Cannot set URL scheme: %s", url_error(r));
 		break;
 	case ERR_URL_PREPARE_SET_PART_HOST:
-		s = my_snprintf("Cannot set URL host: %s", url_error(r));
+		s = my_asprintf("Cannot set URL host: %s", url_error(r));
 		break;
 	case ERR_URL_PREPARE_SET_PART_PATH:
-		s = my_snprintf("Cannot set URL path: %s", url_error(r));
+		s = my_asprintf("Cannot set URL path: %s", url_error(r));
 		break;
 	case ERR_URL_DOWNLOAD_ALLOC:
 		s = strdup("Cannot allocate easy handle");
@@ -317,28 +317,28 @@ result_to_str(result_t r)
 		s = strdup("Cannot append string to HTTP headers");
 		break;
 	case ERR_URL_DOWNLOAD_SET_OPT_WRITEDATA:
-		s = my_snprintf("Cannot set WRITEDATA: %s", easy_error(r));
+		s = my_asprintf("Cannot set WRITEDATA: %s", easy_error(r));
 		break;
 	case ERR_URL_DOWNLOAD_SET_OPT_WRITEFUNCTION:
-		s = my_snprintf("Cannot set WRITEFUNCTION: %s", easy_error(r));
+		s = my_asprintf("Cannot set WRITEFUNCTION: %s", easy_error(r));
 		break;
 	case ERR_URL_DOWNLOAD_SET_OPT_USERAGENT:
-		s = my_snprintf("Cannot set User-Agent: %s", easy_error(r));
+		s = my_asprintf("Cannot set User-Agent: %s", easy_error(r));
 		break;
 	case ERR_URL_DOWNLOAD_SET_OPT_URL_STRING:
-		s = my_snprintf("Cannot set URL via string: %s", easy_error(r));
+		s = my_asprintf("Cannot set URL via string: %s", easy_error(r));
 		break;
 	case ERR_URL_DOWNLOAD_SET_OPT_URL_OBJECT:
-		s = my_snprintf("Cannot set URL via object: %s", easy_error(r));
+		s = my_asprintf("Cannot set URL via object: %s", easy_error(r));
 		break;
 	case ERR_URL_DOWNLOAD_SET_OPT_HTTP_HEADER:
-		s = my_snprintf("Cannot set HTTP headers: %s", easy_error(r));
+		s = my_asprintf("Cannot set HTTP headers: %s", easy_error(r));
 		break;
 	case ERR_URL_DOWNLOAD_SET_OPT_POST_BODY:
-		s = my_snprintf("Cannot set POST body: %s", easy_error(r));
+		s = my_asprintf("Cannot set POST body: %s", easy_error(r));
 		break;
 	case ERR_URL_DOWNLOAD_PERFORM:
-		s = my_snprintf("Error performing HTTP request: %s",
+		s = my_asprintf("Error performing HTTP request: %s",
 		                easy_error(r));
 		break;
 	case ERR_YOUTUBE_STREAM_URL_MISSING:
@@ -348,7 +348,7 @@ result_to_str(result_t r)
 		s = strdup("Cannot allocate ciphertext buffer");
 		break;
 	case ERR_YOUTUBE_N_PARAM_FIND_IN_QUERY:
-		s = my_snprintf("No n-parameter in query string: %s", r.msg);
+		s = my_asprintf("No n-parameter in query string: %s", r.msg);
 		break;
 	case ERR_YOUTUBE_VISITOR_DATA_HEADER_ALLOC:
 		s = strdup("Cannot allocate buffer for visitor data header");
