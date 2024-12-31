@@ -58,6 +58,7 @@ youtube_stream_init(const char *proof_of_origin, const char *visitor_data)
 	p->visitor_data = strdup(visitor_data);
 	check_oom(p->visitor_data);
 
+	// TODO: move during_inet_do_request out of youtube_setup_ops and into an optional-ish argument to this function, such that we can pass it to url_context_init() to avoid the warmup url_download() call actually invoking curl under unit tests and making ./tests/youtube.c unnecessarily slow (>2s default, >8s under QEMU VM)
 	url_context_init(&p->request_context);
 
 	return p;
