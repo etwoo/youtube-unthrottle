@@ -37,7 +37,7 @@ static const char FAKE_JS_RESPONSE[] =
 static const char *(*test_request_path_to_response)(const char *) = NULL;
 
 static WARN_UNUSED unsigned
-test_fixture_do_request(const char *path, int fd)
+test_fixture(const char *path, int fd)
 {
 	debug("Mocking request with url=%s, fd=%d", path, fd);
 
@@ -118,15 +118,14 @@ global_setup(void)
 	PASS();
 }
 
-#define youtube_stream_init()                                                  \
-	youtube_stream_init("POT", "VISITOR_DATA", test_fixture_do_request)
+#define do_test_init() youtube_stream_init("POT", "VISITOR_DATA", test_fixture)
 
 TEST
 stream_setup_with_redirected_network_io(const char *(*custom_fn)(const char *),
                                         const char *expected_audio_url,
                                         const char *expected_video_url)
 {
-	youtube_handle_t stream = youtube_stream_init();
+	youtube_handle_t stream = do_test_init();
 	ASSERT(stream);
 
 	test_request_path_to_response = custom_fn;
@@ -164,7 +163,7 @@ static const struct youtube_setup_ops NULLOP = {
 TEST
 stream_setup_with_null_ops(void)
 {
-	youtube_handle_t stream = youtube_stream_init();
+	youtube_handle_t stream = do_test_init();
 	ASSERT(stream);
 
 	auto_result err = youtube_stream_setup(stream, &NULLOP, NULL, FAKE_URL);
@@ -189,7 +188,7 @@ static const char YT_MISSING_ID[] = "https://www.youtube.com/watch?v=";
 TEST
 stream_setup_edge_cases_target_url_missing_stream_id(void)
 {
-	youtube_handle_t stream = youtube_stream_init();
+	youtube_handle_t stream = do_test_init();
 	ASSERT(stream);
 
 	auto_result err =
@@ -269,7 +268,7 @@ test_request_n_param_empty_or_missing(const char *path)
 TEST
 stream_setup_edge_cases_n_param_missing(void)
 {
-	youtube_handle_t stream = youtube_stream_init();
+	youtube_handle_t stream = do_test_init();
 	ASSERT(stream);
 
 	test_request_path_to_response = test_request_n_param_empty_or_missing;
@@ -294,7 +293,7 @@ test_request_entire_url_missing(const char *path)
 TEST
 stream_setup_edge_cases_entire_url_missing(void)
 {
-	youtube_handle_t stream = youtube_stream_init();
+	youtube_handle_t stream = do_test_init();
 	ASSERT(stream);
 
 	test_request_path_to_response = test_request_entire_url_missing;
