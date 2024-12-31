@@ -7,11 +7,10 @@ result_t youtube_global_init(void) __attribute__((warn_unused_result));
 void youtube_global_cleanup(void);
 
 typedef struct youtube_stream *youtube_handle_t;
-typedef unsigned (*youtube_stream_io)(const char *, int);
 
 youtube_handle_t youtube_stream_init(const char *proof_of_origin,
                                      const char *visitor_data,
-                                     youtube_stream_io io)
+                                     unsigned (*io)(const char *, int))
 	__attribute__((warn_unused_result));
 void youtube_stream_cleanup(youtube_handle_t h);
 
