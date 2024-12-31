@@ -7,16 +7,17 @@ result_t youtube_global_init(void) __attribute__((warn_unused_result));
 void youtube_global_cleanup(void);
 
 typedef struct youtube_stream *youtube_handle_t;
+typedef unsigned (*youtube_stream_io)(const char *, int);
 
 youtube_handle_t youtube_stream_init(const char *proof_of_origin,
-                                     const char *visitor_data)
+                                     const char *visitor_data,
+                                     youtube_stream_io io)
 	__attribute__((warn_unused_result));
 void youtube_stream_cleanup(youtube_handle_t h);
 
 struct youtube_setup_ops {
 	result_t (*before)(void *);
 	result_t (*before_inet)(void *);
-	unsigned (*during_inet_do_request)(const char *, int);
 	result_t (*after_inet)(void *);
 	result_t (*before_parse)(void *);
 	result_t (*during_parse_choose_quality)(const char *, void *);

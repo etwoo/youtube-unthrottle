@@ -81,7 +81,6 @@ parse_callback_noop(const char *val __attribute__((unused)),
 static const struct youtube_setup_ops NOOP = {
 	.before = setup_callback_noop,
 	.before_inet = setup_callback_noop,
-	.during_inet_do_request = test_fixture_do_request,
 	.after_inet = setup_callback_noop,
 	.before_parse = setup_callback_noop,
 	.during_parse_choose_quality = parse_callback_noop,
@@ -119,7 +118,8 @@ global_setup(void)
 	PASS();
 }
 
-#define youtube_stream_init() youtube_stream_init("POT", "VISITOR_DATA")
+#define youtube_stream_init()                                                  \
+	youtube_stream_init("POT", "VISITOR_DATA", test_fixture_do_request)
 
 TEST
 stream_setup_with_redirected_network_io(const char *(*custom_fn)(const char *),
@@ -152,7 +152,6 @@ stream_setup_with_redirected_network_io(const char *(*custom_fn)(const char *),
 static const struct youtube_setup_ops NULLOP = {
 	.before = NULL,
 	.before_inet = NULL,
-	.during_inet_do_request = test_fixture_do_request,
 	.after_inet = NULL,
 	.before_parse = NULL,
 	.during_parse_choose_quality = NULL,
