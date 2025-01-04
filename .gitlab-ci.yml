@@ -77,7 +77,7 @@ build:clang-coverage:
         coverage_format: cobertura
         path: ./build/coverage.xml
 
-lint:globals:
+lint:global-variables:
   stage: build
   before_script:
     - ${PACKAGE_CMD} ctags jq
