@@ -36,69 +36,41 @@ write_to_tmpfile(char *ptr, size_t size, size_t nmemb, void *userdata)
 	return real_size; /* always consider buffer entirely consumed */
 }
 
-static WARN_UNUSED CURL *
-get_easy_handle(void)
-{
-	static CURL *GLOBAL_CURL_EASY_HANDLE = NULL;
-	/*
-	 * If youtube-unthrottle ever becomes multithreaded, these static
-	 * variables will need retrofits for thread safety, like a module-level
-	 * mutex or callers who ensure that initialization happens while still
-	 * single-threaded.
-	 *
-	 * Ditto for callers of get_easy_handle() who use the resulting
-	 * (cached, shared) curl easy handle.
-	 */
-	if (!GLOBAL_CURL_EASY_HANDLE) {
-		GLOBAL_CURL_EASY_HANDLE = curl_easy_init();
-	}
-
-	curl_easy_reset(GLOBAL_CURL_EASY_HANDLE);
-	return GLOBAL_CURL_EASY_HANDLE;
-}
-
 result_t
 url_global_init(void)
 {
 	CURLcode res = curl_global_init(CURL_GLOBAL_DEFAULT);
 	check_if_num(res, ERR_URL_GLOBAL_INIT);
-
-	/*
-	 * Nudge curl into creating its DNS resolver thread(s) now, before the
-	 * the process sandbox closes and blocks the clone3() syscall.
-	 */
-	result_t err = url_download("https://www.youtube.com",
-	                            NULL,
-	                            NULL,
-	                            NULL,
-	                            NULL,
-	                            FD_DISCARD);
-	info_if(err.err, "Error creating early URL worker threads");
-
 	return RESULT_OK;
 }
 
 void
 url_global_cleanup(void)
 {
-	curl_easy_cleanup(get_easy_handle()); /* handles NULL gracefully */
 	curl_global_cleanup();
 }
 
-static WARN_UNUSED int
-wrap_curl_easy_perform(void *request,
-                       const char *path __attribute__((unused)),
-                       int fd __attribute__((unused)))
+void
+url_context_init(struct url_request_context *context)
 {
-	return curl_easy_perform(request);
+	/*
+	 * Nudge curl into creating its DNS resolver thread(s) now, before the
+	 * the process sandbox closes and blocks the clone3() syscall.
+	 */
+	auto_result err = url_download("https://www.youtube.com",
+	                               NULL,
+	                               NULL,
+	                               NULL,
+	                               NULL,
+	                               FD_DISCARD,
+	                               context);
+	info_if(err.err, "Error creating early URL worker threads");
 }
 
-int (*CURL_EASY_PERFORM)(void *, const char *, int) = wrap_curl_easy_perform;
-
 void
-url_global_set_request_handler(int (*handler)(void *, const char *, int))
+url_context_cleanup(struct url_request_context *context)
 {
-	CURL_EASY_PERFORM = handler;
+	curl_easy_cleanup(context->state); /* handles NULL gracefully */
 }
 
 static WARN_UNUSED result_t
@@ -141,12 +113,21 @@ url_download(const char *url_str,     /* maybe NULL */
              const char *path_str,    /* maybe NULL */
              const char *post_body,   /* maybe NULL */
              const char *post_header, /* maybe NULL */
-             int fd)
+             int fd,
+             struct url_request_context *context)
 {
 	CURLU *url = NULL;
 	struct curl_slist *headers = NULL;
 
-	CURL *curl = get_easy_handle();
+	if (context->state == NULL) {
+		context->state = curl_easy_init();
+		debug("Allocated easy handle: %p", context->state);
+	} else {
+		curl_easy_reset(context->state);
+		debug("Reset easy handle: %p", context->state);
+	}
+	CURL *curl = context->state;
+
 	CURLcode res = curl == NULL ? CURLE_OUT_OF_MEMORY : CURLE_OK;
 	check_if_num(res, ERR_URL_DOWNLOAD_ALLOC);
 
@@ -196,7 +177,8 @@ url_download(const char *url_str,     /* maybe NULL */
 		check_if_num(res, ERR_URL_DOWNLOAD_SET_OPT_HTTP_HEADER);
 	}
 
-	res = CURL_EASY_PERFORM(curl, url_fragment_or_path_str, fd);
+	url_handler fn = context->handler;
+	res = fn ? fn(url_fragment_or_path_str, fd) : curl_easy_perform(curl);
 	check_if_num(res, ERR_URL_DOWNLOAD_PERFORM);
 
 	curl_slist_free_all(headers); /* handles NULL gracefully */

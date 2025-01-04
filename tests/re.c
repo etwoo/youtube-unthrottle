@@ -13,15 +13,15 @@ capture_pattern_compile_fail(void)
 	const struct string_view hay = MAKE_TEST_STRING("");
 
 	struct string_view needle = {0};
-	result_t err = re_capture(pattern, &hay, &needle);
+	auto_result err = re_capture(pattern, &hay, &needle);
 
 	ASSERT_EQ(ERR_RE_COMPILE, err.err);
 	ASSERT_EQ(PCRE2_ERROR_MISSING_SQUARE_BRACKET, err.num);
 	ASSERT_STR_EQ(pattern, err.re.pattern);
 	ASSERT_EQ(10, err.re.offset);
+	auto_result_str str = result_to_str(err);
 	ASSERT_NEQ(NULL,
-	           strstr(result_to_str(err),
-	                  "missing terminating ] for character class"));
+	           strstr(str, "missing terminating ] for character class"));
 	ASSERT_EQ(NULL, needle.data);
 	ASSERT_EQ(0, needle.sz);
 	PASS();
@@ -33,9 +33,9 @@ capture_pattern_match_one(void)
 	const struct string_view hay = MAKE_TEST_STRING("bbbaaabbb");
 
 	struct string_view needle = {0};
-	result_t err = re_capture("b+(a+)b+", &hay, &needle);
+	auto_result err = re_capture("b+(a+)b+", &hay, &needle);
 
-	static const char expected[] = "aaa";
+	const char expected[] = "aaa";
 	ASSERT_EQ(OK, err.err);
 	ASSERT_EQ(strlen(expected), needle.sz);
 	ASSERT_STRN_EQ(expected, needle.data, needle.sz);
@@ -48,7 +48,7 @@ capture_pattern_mismatch(void)
 	const struct string_view hay = MAKE_TEST_STRING("bbbAAAbbb");
 
 	struct string_view needle = {0};
-	result_t err = re_capture("b+(a+)b+", &hay, &needle);
+	auto_result err = re_capture("b+(a+)b+", &hay, &needle);
 
 	ASSERT_EQ(OK, err.err);
 	ASSERT_EQ(NULL, needle.data);
@@ -62,7 +62,7 @@ capture_pattern_wrong_num_of_capture_groups(const char *pattern)
 	const struct string_view hay = MAKE_TEST_STRING("bbbaaabbb");
 
 	struct string_view needle = {0};
-	result_t err = re_capture(pattern, &hay, &needle);
+	auto_result err = re_capture(pattern, &hay, &needle);
 
 	ASSERT_EQ(ERR_RE_CAPTURE_GROUP_COUNT, err.err);
 	ASSERT_EQ(NULL, needle.data);
@@ -77,15 +77,15 @@ capture_pattern_match_fail_on_null_haystack(void)
 	const struct string_view hay = {.data = NULL, .sz = 8};
 
 	struct string_view needle = {0};
-	result_t err = re_capture(pattern, &hay, &needle);
+	auto_result err = re_capture(pattern, &hay, &needle);
 
 	ASSERT_EQ(ERR_RE_TRY_MATCH, err.err);
 	ASSERT_EQ(PCRE2_ERROR_NULL, err.num);
 	ASSERT_STR_EQ(pattern, err.re.pattern);
 	ASSERT_EQ(0, err.re.offset);
+	auto_result_str str = result_to_str(err);
 	ASSERT_NEQ(NULL,
-	           strstr(result_to_str(err),
-	                  "NULL argument passed with non-zero length"));
+	           strstr(str, "NULL argument passed with non-zero length"));
 	ASSERT_EQ(NULL, needle.data);
 	ASSERT_EQ(0, needle.sz);
 	PASS();

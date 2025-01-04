@@ -359,12 +359,14 @@ const unsigned SECCOMP_SANDBOX = 0x04;
 const unsigned SECCOMP_TMPFILE = 0x08;
 const unsigned SECCOMP_RPATH = 0x10;
 
-static struct seccomp_apply_handler {
+struct seccomp_apply_handler {
 	unsigned flag;
 	bool (*handle)(scmp_filter_ctx, const char **, size_t);
 	const char **syscalls;
 	size_t sz;
-} SECCOMP_APPLY_HANDLERS[] = {
+};
+
+static const struct seccomp_apply_handler SECCOMP_APPLY_HANDLERS[] = {
 	{
 		SECCOMP_STDIO,
 		seccomp_allow,
@@ -405,7 +407,8 @@ seccomp_apply_common(scmp_filter_ctx ctx, unsigned flags)
 	                            ARRAY_SIZE(SYSCALLS_SANDBOX_BASIS));
 
 	for (size_t i = 0; i < ARRAY_SIZE(SECCOMP_APPLY_HANDLERS); ++i) {
-		struct seccomp_apply_handler *h = SECCOMP_APPLY_HANDLERS + i;
+		const struct seccomp_apply_handler *h =
+			SECCOMP_APPLY_HANDLERS + i;
 
 		const bool match = (0 != (flags & h->flag));
 		if (!match) {

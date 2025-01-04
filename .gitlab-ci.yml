@@ -2,7 +2,7 @@ image: archlinux/archlinux:base-devel
 
 variables:
   PACKAGE_CMD: "pacman --noconfirm --needed -Sy"
-  PACKAGE_DEFAULT: "cmake clang curl duktape git jansson libseccomp pcre2"
+  PACKAGE_DEFAULT: "ada cmake clang curl duktape git jansson libseccomp pcre2"
   PACKAGE_PER_JOB: ""
   TESTS_FAIL_LACK_OF_LANDLOCK_API_IN_CI_RUNNERS: "^(cli-try-sandbox|cli-valid-args-invalid-hostname|landlock|sandbox|seccomp)$"
 
@@ -76,6 +76,13 @@ build:clang-coverage:
       coverage_report:
         coverage_format: cobertura
         path: ./build/coverage.xml
+
+lint:global-variables:
+  stage: build
+  before_script:
+    - ${PACKAGE_CMD} ctags jq
+  script:
+    - ./scripts/check-global-variables.sh
 
 #
 # Based on https://gitlab.com/gitlab-ci-utils/container-images/vale

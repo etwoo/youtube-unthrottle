@@ -15,7 +15,7 @@ parse_callback_noop(const char *val __attribute__((unused)),
 	return RESULT_OK;
 }
 
-static struct parse_ops NOOP = {
+static const struct parse_ops NOOP = {
 	.got_video = parse_callback_noop,
 	.got_video_userdata = NULL,
 	.got_audio = parse_callback_noop,
@@ -28,7 +28,7 @@ static WARN_UNUSED int
 parse(const char *str)
 {
 	struct string_view tmp = {.data = str, .sz = strlen(str)};
-	result_t err = parse_json(&tmp, &NOOP);
+	auto_result err = parse_json(&tmp, &NOOP);
 	return err.err;
 }
 
@@ -387,7 +387,7 @@ minimum_json_with_correct_shape(void)
 		.choose_quality = parse_callback_noop,
 		.choose_quality_userdata = NULL,
 	};
-	result_t err = parse_json(&json, &pops);
+	auto_result err = parse_json(&json, &pops);
 	ASSERT_EQ(OK, err.err);
 
 	ASSERT_STR_EQ("http://a.test", urls.audio);
@@ -417,7 +417,7 @@ extra_adaptiveFormats_elements(void)
 		.choose_quality = parse_callback_noop,
 		.choose_quality_userdata = NULL,
 	};
-	result_t err = parse_json(&json, &pops);
+	auto_result err = parse_json(&json, &pops);
 	ASSERT_EQ(OK, err.err);
 
 	ASSERT_STR_EQ("http://a.test", urls.audio);
@@ -468,7 +468,7 @@ choose_adaptiveFormats_elements(void)
 		.choose_quality = choose_quality_skip_marked_entries,
 		.choose_quality_userdata = "skip",
 	};
-	result_t err = parse_json(&json, &pops);
+	auto_result err = parse_json(&json, &pops);
 	ASSERT_EQ(OK, err.err);
 
 	ASSERT_STR_EQ("http://a.test", urls.audio);
@@ -489,7 +489,7 @@ find_base_js_url_negative(void)
 	struct string_view p = {0};
 	const struct string_view html = MAKE_TEST_STRING("<html/>");
 
-	result_t err = find_base_js_url(&html, &p);
+	auto_result err = find_base_js_url(&html, &p);
 	ASSERT_EQ(ERR_JS_BASEJS_URL_FIND, err.err);
 
 	ASSERT_EQ(NULL, p.data);
@@ -508,10 +508,10 @@ find_base_js_url_positive(void)
 		">"
 		"</script>");
 
-	result_t err = find_base_js_url(&html, &p);
+	auto_result err = find_base_js_url(&html, &p);
 	ASSERT_EQ(OK, err.err);
 
-	static const char expected[] =
+	const char expected[] =
 		"/s/player/deadbeef/player_ias.vflset/en_US/base.js";
 	ASSERT_EQ(strlen(expected), p.sz);
 	ASSERT_STRN_EQ(expected, p.data, p.sz);
@@ -525,7 +525,7 @@ find_js_timestamp_negative_re_pattern(void)
 		MAKE_TEST_STRING("{signatureTimestamp:\"foobar\"}");
 
 	long long int timestamp = -1;
-	result_t err = find_js_timestamp(&json, &timestamp);
+	auto_result err = find_js_timestamp(&json, &timestamp);
 
 	ASSERT_EQ(ERR_JS_TIMESTAMP_FIND, err.err);
 	ASSERT_GT(0, timestamp);
@@ -539,7 +539,7 @@ find_js_timestamp_negative_strtoll_erange(void)
 		MAKE_TEST_STRING("{signatureTimestamp:9223372036854775808}");
 
 	long long int timestamp = -1;
-	result_t err = find_js_timestamp(&json, &timestamp);
+	auto_result err = find_js_timestamp(&json, &timestamp);
 
 	ASSERT_EQ(ERR_JS_TIMESTAMP_PARSE_LL, err.err);
 	ASSERT_EQ(ERANGE, err.num);
@@ -555,7 +555,7 @@ find_js_timestamp_positive_strtoll_max(void)
 		MAKE_TEST_STRING("{signatureTimestamp:9223372036854775807}");
 
 	long long int timestamp = 0;
-	result_t err = find_js_timestamp(&json, &timestamp);
+	auto_result err = find_js_timestamp(&json, &timestamp);
 
 	ASSERT_EQ(OK, err.err);
 	ASSERT_EQ(LLONG_MAX, timestamp);
@@ -569,7 +569,7 @@ find_js_timestamp_positive_simple(void)
 		MAKE_TEST_STRING("{signatureTimestamp:19957}");
 
 	long long int timestamp = 0;
-	result_t err = find_js_timestamp(&json, &timestamp);
+	auto_result err = find_js_timestamp(&json, &timestamp);
 
 	ASSERT_EQ(OK, err.err);
 	ASSERT_EQ(19957, timestamp);
@@ -583,7 +583,7 @@ find_js_deobfuscator_magic_global_negative(void)
 
 	const struct string_view js =
 		MAKE_TEST_STRING("var magic=\"not an integer\";");
-	result_t err = find_js_deobfuscator_magic_global(&js, &magic);
+	auto_result err = find_js_deobfuscator_magic_global(&js, &magic);
 
 	ASSERT_EQ(ERR_JS_DEOBFUSCATOR_MAGIC_FIND, err.err);
 	ASSERT_EQ(NULL, magic.data);
@@ -597,7 +597,7 @@ find_js_deobfuscator_magic_global_positive(void)
 	struct string_view magic = {0};
 
 	const struct string_view js = MAKE_TEST_STRING("var magic=7777777;");
-	result_t err = find_js_deobfuscator_magic_global(&js, &magic);
+	auto_result err = find_js_deobfuscator_magic_global(&js, &magic);
 
 	ASSERT_EQ(OK, err.err);
 	ASSERT_EQ(js.sz - 1, magic.sz);
@@ -612,7 +612,7 @@ find_js_deobfuscator_negative_first_match_fail(void)
 
 	const struct string_view js = MAKE_TEST_STRING(
 		"var _yt_player={};(function(g){})(_yt_player);");
-	result_t err = find_js_deobfuscator(&js, &deobfuscator);
+	auto_result err = find_js_deobfuscator(&js, &deobfuscator);
 
 	ASSERT_EQ(ERR_JS_DEOB_FIND_FUNC_ONE, err.err);
 	ASSERT_EQ(NULL, deobfuscator.data);
@@ -626,7 +626,7 @@ find_js_deobfuscator_negative_second_match_fail(void)
 	struct string_view deobfuscator = {0};
 
 	const struct string_view js = MAKE_TEST_STRING("&&(c=ODa[0](c),");
-	result_t err = find_js_deobfuscator(&js, &deobfuscator);
+	auto_result err = find_js_deobfuscator(&js, &deobfuscator);
 
 	ASSERT_EQ(ERR_JS_DEOB_FIND_FUNC_TWO, err.err);
 	ASSERT_EQ(NULL, deobfuscator.data);
@@ -641,7 +641,7 @@ find_js_deobfuscator_negative_third_match_fail(void)
 
 	const struct string_view js =
 		MAKE_TEST_STRING("&&(c=ODa[0](c),\nvar ODa=[Pma];");
-	result_t err = find_js_deobfuscator(&js, &deobfuscator);
+	auto_result err = find_js_deobfuscator(&js, &deobfuscator);
 
 	ASSERT_EQ(ERR_JS_DEOB_FIND_FUNC_BODY, err.err);
 	ASSERT_EQ(NULL, deobfuscator.data);
@@ -657,10 +657,10 @@ find_js_deobfuscator_positive_simple(void)
 	const struct string_view js = MAKE_TEST_STRING(
 		"&&(c=ODa[0](c),\nvar ODa=[Pma];\nPma=function(a)"
 		"{return b.join(\"\")};");
-	result_t err = find_js_deobfuscator(&js, &deobfuscator);
+	auto_result err = find_js_deobfuscator(&js, &deobfuscator);
 	ASSERT_EQ(OK, err.err);
 
-	static const char expected[] = "function(a){return b.join(\"\")};";
+	const char expected[] = "function(a){return b.join(\"\")};";
 	ASSERT_EQ(strlen(expected), deobfuscator.sz);
 	ASSERT_STRN_EQ(expected, deobfuscator.data, deobfuscator.sz);
 	PASS();
@@ -674,10 +674,10 @@ find_js_deobfuscator_positive_with_escaping(void)
 	const struct string_view js = MAKE_TEST_STRING(
 		"&&(c=$aa[0](c),\nvar $aa=[$bb];\n$bb=function(a)"
 		"{return b.join(\"\")};");
-	result_t err = find_js_deobfuscator(&js, &deobfuscator);
+	auto_result err = find_js_deobfuscator(&js, &deobfuscator);
 	ASSERT_EQ(OK, err.err);
 
-	static const char expected[] = "function(a){return b.join(\"\")};";
+	const char expected[] = "function(a){return b.join(\"\")};";
 	ASSERT_EQ(strlen(expected), deobfuscator.sz);
 	ASSERT_STRN_EQ(expected, deobfuscator.data, deobfuscator.sz);
 	PASS();
@@ -708,7 +708,7 @@ call_with_duktape_pcompile_fail(void)
 	const struct string_view js =
 		MAKE_TEST_STRING("\"Not a valid function definition!\"");
 
-	result_t err = call_js_foreach(&MAGIC, &js, NULL, NULL, NULL);
+	auto_result err = call_js_foreach(&MAGIC, &js, NULL, NULL, NULL);
 	ASSERT_EQ(ERR_JS_CALL_COMPILE, err.err);
 	PASS();
 }
@@ -723,7 +723,7 @@ call_with_duktape_pcall_fail(void)
 	const struct string_view js =
 		MAKE_TEST_STRING("function(a){return not_defined;};");
 
-	result_t err = call_js_foreach(&MAGIC, &js, args, NULL, NULL);
+	auto_result err = call_js_foreach(&MAGIC, &js, args, NULL, NULL);
 	ASSERT_EQ(ERR_JS_CALL_INVOKE, err.err);
 	PASS();
 }
@@ -738,7 +738,7 @@ call_with_duktape_pcall_incorrect_result_type(void)
 	const struct string_view js =
 		MAKE_TEST_STRING("function(a){return true;};");
 
-	result_t err = call_js_foreach(&MAGIC, &js, args, NULL, NULL);
+	auto_result err = call_js_foreach(&MAGIC, &js, args, NULL, NULL);
 	ASSERT_EQ(ERR_JS_CALL_GET_RESULT, err.err);
 	PASS();
 }
@@ -782,7 +782,7 @@ call_with_duktape_minimum_valid_function(void)
 	const struct string_view js = MAKE_TEST_STRING(
 		"function(a){return a.toUpperCase() + \" \" + MY_MAGIC;};");
 
-	result_t err = call_js_foreach(&MAGIC, &js, args, &cops, &result);
+	auto_result err = call_js_foreach(&MAGIC, &js, args, &cops, &result);
 	ASSERT_EQ(OK, err.err);
 	ASSERT_STR_EQ("HELLO, WORLD! 123456", result.str);
 	PASS();

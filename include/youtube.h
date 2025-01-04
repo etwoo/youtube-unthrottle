@@ -9,7 +9,8 @@ void youtube_global_cleanup(void);
 typedef struct youtube_stream *youtube_handle_t;
 
 youtube_handle_t youtube_stream_init(const char *proof_of_origin,
-                                     const char *visitor_data)
+                                     const char *visitor_data,
+                                     unsigned (*io)(const char *, int))
 	__attribute__((warn_unused_result));
 void youtube_stream_cleanup(youtube_handle_t h);
 
@@ -26,12 +27,14 @@ struct youtube_setup_ops {
 };
 
 result_t youtube_stream_setup(youtube_handle_t h,
-                              struct youtube_setup_ops *ops,
+                              const struct youtube_setup_ops *ops,
                               void *userdata,
                               const char *target)
 	__attribute__((warn_unused_result));
 
-result_t youtube_stream_visitor(youtube_handle_t h, void (*visit)(const char *))
+result_t youtube_stream_visitor(youtube_handle_t h,
+                                void (*visit)(const char *, size_t, void *),
+                                void *userdata)
 	__attribute__((warn_unused_result));
 
 #endif

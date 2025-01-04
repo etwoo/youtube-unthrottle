@@ -51,8 +51,10 @@ to_stderr(const char *pattern, ...)
 static __attribute__((warn_unused_result)) int
 result_to_status(result_t r)
 {
-	if (r.err) {
-		to_stderr("%s", result_to_str(r));
+	auto_result owner = r;
+	if (owner.err) {
+		auto_result_str str = result_to_str(owner);
+		to_stderr("%s", str ? str : "[result_to_str() -> NULL]");
 		return EX_SOFTWARE;
 	}
 	return EX_OK;
@@ -152,9 +154,9 @@ during_parse_choose_quality(const char *val, void *userdata)
 }
 
 static void
-print_url(const char *url)
+print_url(const char *url, size_t sz, void *userdata __attribute((unused)))
 {
-	puts(url);
+	printf("%.*s\n", (int)sz, url);
 }
 
 static __attribute__((warn_unused_result)) result_t
@@ -165,10 +167,11 @@ unthrottle(const char *target,
            youtube_handle_t *stream)
 {
 	check(youtube_global_init());
-	check(sandbox_only_io_inet_tmpfile());
 
-	*stream = youtube_stream_init(proof_of_origin, visitor_data);
+	*stream = youtube_stream_init(proof_of_origin, visitor_data, NULL);
 	check_if(*stream == NULL, OK);
+
+	check(sandbox_only_io_inet_tmpfile());
 
 	struct youtube_setup_ops sops = {
 		.before = NULL,
@@ -182,7 +185,7 @@ unthrottle(const char *target,
 		.after = NULL,
 	};
 	check(youtube_stream_setup(*stream, &sops, q, target));
-	check(youtube_stream_visitor(*stream, print_url));
+	check(youtube_stream_visitor(*stream, print_url, NULL));
 	return RESULT_OK;
 }
 

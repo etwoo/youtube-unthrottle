@@ -18,7 +18,7 @@ before_landlock_filesystem(void)
 	ASSERT_EQ(0, rc);
 
 	int tmp = -1;
-	result_t err = tmpfd(&tmp);
+	auto_result err = tmpfd(&tmp);
 	ASSERT_EQ(OK, err.err);
 	ASSERT_LTE(0, tmp);
 	rc = close(tmp);
@@ -59,7 +59,7 @@ setup_partial_landlock(void)
 	const char *paths[] = {
 		P_tmpdir,
 	};
-	result_t err = landlock_apply(paths, 1, 443);
+	auto_result err = landlock_apply(paths, 1, 443);
 	ASSERT_EQ(OK, err.err);
 	PASS();
 }
@@ -71,7 +71,7 @@ partial_landlock_filesystem(void)
 	ASSERT_GT(0, fd);
 
 	int tmp = -1;
-	result_t err = tmpfd(&tmp);
+	auto_result err = tmpfd(&tmp);
 	ASSERT_EQ(OK, err.err);
 	ASSERT_LTE(0, tmp);
 	int rc = close(tmp);
@@ -90,7 +90,7 @@ SUITE(partial_landlock)
 TEST
 setup_full_landlock(void)
 {
-	result_t err = landlock_apply(NULL, 0, 0);
+	auto_result err = landlock_apply(NULL, 0, 0);
 	ASSERT_EQ(OK, err.err);
 	PASS();
 }
@@ -102,7 +102,7 @@ after_landlock_filesystem(void)
 	ASSERT_GT(0, fd);
 
 	int tmp = -1;
-	result_t err = tmpfd(&tmp);
+	auto_result err = tmpfd(&tmp);
 	ASSERT_EQ(ERR_TMPFILE, err.err);
 	ASSERT_GT(0, tmp);
 
