@@ -73,22 +73,16 @@ typedef struct {
 		ERR_URL_DOWNLOAD_SET_OPT_HTTP_HEADER,
 		ERR_URL_DOWNLOAD_SET_OPT_POST_BODY,
 		ERR_URL_DOWNLOAD_PERFORM,
+		ERR_YOUTUBE_STREAM_URL_MISSING,
 		ERR_YOUTUBE_N_PARAM_QUERY_ALLOC,
-		ERR_YOUTUBE_N_PARAM_QUERY_GET,
-		ERR_YOUTUBE_N_PARAM_QUERY_SET,
 		ERR_YOUTUBE_N_PARAM_FIND_IN_QUERY,
-		ERR_YOUTUBE_N_PARAM_KVPAIR_ALLOC,
-		ERR_YOUTUBE_N_PARAM_QUERY_APPEND,
-		ERR_YOUTUBE_POT_PARAM_KVPAIR_ALLOC,
-		ERR_YOUTUBE_POT_PARAM_QUERY_APPEND,
 		ERR_YOUTUBE_VISITOR_DATA_HEADER_ALLOC,
-		ERR_YOUTUBE_STREAM_VISITOR_GET_URL,
 	} err;
 	int num; /* may hold errno, CURLcode, CURLUcode, etc */
 	union {
-		const char *msg;
+		char *msg;
 		struct {
-			const char *pattern;
+			char *pattern;
 			size_t offset;
 		} re;
 	};
@@ -173,10 +167,30 @@ DECLARE_MAKERESULT_IMPL(re, int typ, int num, const char *pat, size_t off);
 #define check_if_num(val, err_type) check_if(val, err_type, (int)val)
 
 /*
+ * Convenience helper for use with __attribute__((cleanup))
+ */
+void result_cleanup(result_t *p);
+
+/*
+ * Take ownership of a result_t value and free() its members upon completion.
+ */
+#define auto_result result_t __attribute__((cleanup(result_cleanup)))
+
+/*
  * Convert a result_t into a human-readable error message.
  *
- * Note: the caller does not own the returned buffer.
+ * Note: caller has responsibility to free() the returned pointer.
  */
-const char *result_to_str(result_t r) __attribute__((warn_unused_result));
+char *result_to_str(result_t r) __attribute__((warn_unused_result));
+
+/*
+ * Convenience helper for use with __attribute__((cleanup))
+ */
+void result_str_cleanup(char **s);
+
+/*
+ * Take ownership of a result_to_str() value and free() it upon completion.
+ */
+#define auto_result_str char *__attribute__((cleanup(result_str_cleanup)))
 
 #endif

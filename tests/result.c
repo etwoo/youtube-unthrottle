@@ -6,34 +6,39 @@
 
 #define ASSERT_IN(haystack, needle)                                            \
 	do {                                                                   \
-		debug("Checking for \"%s\" in \"%s\"", needle, haystack);      \
-		ASSERT_NEQ(NULL, strstr(haystack, needle));                    \
+		auto_result_str owner = haystack;                              \
+		debug("Checking for \"%s\" in \"%s\"", needle, owner);         \
+		ASSERT_NEQ(NULL, strstr(owner, needle));                       \
 	} while (0)
 
-static WARN_UNUSED const char *
+static WARN_UNUSED char *
 make(int err_type)
 {
-	return result_to_str(make_result(err_type));
+	auto_result err = make_result(err_type);
+	return result_to_str(err);
 }
 
-static WARN_UNUSED const char *
+static WARN_UNUSED char *
 make_n(int err_type)
 {
-	return result_to_str(make_result(err_type, 0));
+	auto_result err = make_result(err_type, 0);
+	return result_to_str(err);
 }
 
 static const char MAKE_RESULT_PLACEHOLDER[] = "foobar";
 
-static WARN_UNUSED const char *
+static WARN_UNUSED char *
 make_s(int err_type)
 {
-	return result_to_str(make_result(err_type, MAKE_RESULT_PLACEHOLDER));
+	auto_result err = make_result(err_type, MAKE_RESULT_PLACEHOLDER);
+	return result_to_str(err);
 }
 
-static WARN_UNUSED const char *
+static WARN_UNUSED char *
 make_ns(int err_type)
 {
-	return result_to_str(make_result(err_type, 0, MAKE_RESULT_PLACEHOLDER));
+	auto_result err = make_result(err_type, 0, MAKE_RESULT_PLACEHOLDER);
+	return result_to_str(err);
 }
 
 static const char CANNOT_ALLOC[] = "Cannot allocate";
@@ -55,7 +60,7 @@ print_to_str_each_enum_value(void)
 	ASSERT_IN(make(ERR_JS_PARSE_JSON_ELEM_MIMETYPE), CANNOT_GET);
 	ASSERT_IN(make(ERR_JS_PARSE_JSON_ELEM_URL), CANNOT_GET);
 	ASSERT_IN(make_n(ERR_JS_PARSE_JSON_CALLBACK_GOT_CIPHERTEXT_URL),
-	          "Cannot set ciphertext URL");
+	          "Cannot parse ciphertext URL");
 	ASSERT_IN(make(ERR_JS_PARSE_JSON_CALLBACK_QUALITY), "Chose to skip");
 	ASSERT_IN(make(ERR_JS_MAKE_INNERTUBE_JSON_ID), CANNOT_FIND);
 	ASSERT_IN(make(ERR_JS_MAKE_INNERTUBE_JSON_ALLOC), CANNOT_ALLOC);
@@ -109,59 +114,14 @@ print_to_str_each_enum_value(void)
 	ASSERT_IN(make_n(ERR_URL_DOWNLOAD_SET_OPT_HTTP_HEADER), CANNOT_SET);
 	ASSERT_IN(make_n(ERR_URL_DOWNLOAD_SET_OPT_POST_BODY), CANNOT_SET);
 	ASSERT_IN(make_n(ERR_URL_DOWNLOAD_PERFORM), "Error performing");
+	ASSERT_IN(make(ERR_YOUTUBE_STREAM_URL_MISSING), "Missing stream URL");
 	ASSERT_IN(make(ERR_YOUTUBE_N_PARAM_QUERY_ALLOC), CANNOT_ALLOC);
-	ASSERT_IN(make_n(ERR_YOUTUBE_N_PARAM_QUERY_GET), CANNOT_GET);
-	ASSERT_IN(make(ERR_YOUTUBE_N_PARAM_QUERY_SET), "Cannot clear");
 	ASSERT_IN(make_s(ERR_YOUTUBE_N_PARAM_FIND_IN_QUERY), "No n-parameter");
-	ASSERT_IN(make(ERR_YOUTUBE_N_PARAM_KVPAIR_ALLOC), CANNOT_ALLOC);
-	ASSERT_IN(make_n(ERR_YOUTUBE_N_PARAM_QUERY_APPEND), CANNOT_APPEND);
-	ASSERT_IN(make(ERR_YOUTUBE_POT_PARAM_KVPAIR_ALLOC), CANNOT_ALLOC);
-	ASSERT_IN(make_n(ERR_YOUTUBE_POT_PARAM_QUERY_APPEND), CANNOT_APPEND);
 	ASSERT_IN(make(ERR_YOUTUBE_VISITOR_DATA_HEADER_ALLOC), CANNOT_ALLOC);
-	ASSERT_IN(make_n(ERR_YOUTUBE_STREAM_VISITOR_GET_URL), CANNOT_GET);
-	PASS();
-}
-
-TEST
-print_to_str_too_large(void)
-{
-	const size_t n = 8192;
-
-	char *s = malloc(n);
-	ASSERT_NEQ(NULL, s);
-
-	memset(s, 'L', n - 1);
-	s[n - 1] = '\0';
-
-	result_t err = make_result(ERR_YOUTUBE_N_PARAM_FIND_IN_QUERY, s);
-	free(s);
-
-	const char *actual = result_to_str(err);
-	ASSERT_IN(actual, "out of space");
-	PASS();
-}
-
-TEST
-print_to_str_too_many(void)
-{
-	const char *small = "foobar";
-
-	/*
-	 * Exhaust RESULT_HEAP with many small string allocations.
-	 */
-	result_t err = RESULT_OK;
-	for (size_t i = 0; i < 8192; ++i) {
-		err = make_result(ERR_YOUTUBE_N_PARAM_FIND_IN_QUERY, small);
-	}
-
-	const char *actual = result_to_str(err);
-	ASSERT_IN(actual, "out of space");
 	PASS();
 }
 
 SUITE(print_to_str)
 {
 	RUN_TEST(print_to_str_each_enum_value);
-	RUN_TEST(print_to_str_too_large);
-	RUN_TEST(print_to_str_too_many);
 }

@@ -53,7 +53,7 @@ TEST
 open_tmpfile_allowed(void)
 {
 	int tmp = -1;
-	result_t err = tmpfd(&tmp);
+	auto_result err = tmpfd(&tmp);
 	ASSERT_EQ(OK, err.err);
 	ASSERT_LTE(0, tmp);
 	int rc = close(tmp);
@@ -101,7 +101,7 @@ mmap_read_allowed(void)
 TEST
 setup_seccomp_apply(int flags)
 {
-	result_t err = seccomp_apply(flags);
+	auto_result err = seccomp_apply(flags);
 	ASSERT_EQ(OK, err.err);
 	PASS();
 }
@@ -124,7 +124,7 @@ TEST
 open_tmpfile_blocked(void)
 {
 	int tmp = -1;
-	result_t err = tmpfd(&tmp);
+	auto_result err = tmpfd(&tmp);
 	ASSERT_EQ(ERR_TMPFILE, err.err);
 	ASSERT_GT(0, tmp);
 	ASSERT_EQ(EACCES, errno);

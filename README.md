@@ -59,6 +59,7 @@ I've tested on 64-bit Arch Linux and 64-bit OpenBSD 7.5.
 ## Dependencies
 
 ```
+ada
 cmake
 curl
 duktape
@@ -72,6 +73,7 @@ many other versions would work as well):
 
 ```sh
 $ pacman -Q cmake curl duktape jansson libseccomp pcre2
+ada 2.9.0-2
 cmake 3.30.0-1
 curl 8.8.0-1
 duktape 2.7.0-6

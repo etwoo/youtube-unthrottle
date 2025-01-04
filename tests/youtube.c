@@ -10,7 +10,7 @@
 #include <unistd.h>
 
 static const char PATH_WANTS_JSON_RESPONSE[] = "/youtubei/v1/player";
-static const char FAKE_YT_URL[] = "https://www.youtube.com/watch?v=FOOBAR";
+static const char FAKE_URL[] = "https://www.youtube.com/watch?v=FOOBAR";
 static const char FAKE_HTML_RESPONSE[] = "\"/s/player/foobar/base.js\"";
 static const char FAKE_JSON_RESPONSE[] =
 	"{\"streamingData\": {\"adaptiveFormats\": ["
@@ -36,10 +36,10 @@ static const char FAKE_JS_RESPONSE[] =
 
 static const char *(*test_request_path_to_response)(const char *) = NULL;
 
-static WARN_UNUSED int
-test_fixture_request_handler(void *request, const char *path, int fd)
+static WARN_UNUSED unsigned
+test_fixture(const char *path, int fd)
 {
-	debug("Mocking request: CURL* %p, %s, fd=%d", request, path, fd);
+	debug("Mocking request with url=%s, fd=%d", path, fd);
 
 	const char *to_write = NULL;
 	if (test_request_path_to_response) {
@@ -78,7 +78,7 @@ parse_callback_noop(const char *val __attribute__((unused)),
 	return RESULT_OK;
 }
 
-struct youtube_setup_ops NOOP = {
+static const struct youtube_setup_ops NOOP = {
 	.before = setup_callback_noop,
 	.before_inet = setup_callback_noop,
 	.after_inet = setup_callback_noop,
@@ -90,19 +90,22 @@ struct youtube_setup_ops NOOP = {
 	.after = setup_callback_noop,
 };
 
-static bool GOT_CORRECT_URLS = true;
-static const char *EXPECTED_AUDIO_URL = NULL;
-static const char *EXPECTED_VIDEO_URL = NULL;
+struct check_url_state {
+	bool got_correct_urls;
+	const char *expected_audio_url;
+	const char *expected_video_url;
+};
 
 static void
-check_url(const char *url)
+check_url(const char *url, size_t sz, void *userdata)
 {
-	if (0 == strcmp(EXPECTED_AUDIO_URL, url)) {
+	struct check_url_state *p = (struct check_url_state *)userdata;
+	if (0 == strncmp(p->expected_audio_url, url, sz)) {
 		debug("Got expected audio URL: %s", url);
-	} else if (0 == strcmp(EXPECTED_VIDEO_URL, url)) {
+	} else if (0 == strncmp(p->expected_video_url, url, sz)) {
 		debug("Got expected video URL: %s", url);
 	} else {
-		GOT_CORRECT_URLS = false;
+		p->got_correct_urls = false;
 		info("check_url() fails: %s", url);
 	}
 }
@@ -110,44 +113,42 @@ check_url(const char *url)
 TEST
 global_setup(void)
 {
-	result_t err = youtube_global_init();
+	auto_result err = youtube_global_init();
 	ASSERT_EQ(OK, err.err);
 	PASS();
 }
 
-#define youtube_stream_init() youtube_stream_init("POT", "VISITOR_DATA")
+#define do_test_init() youtube_stream_init("POT", "VISITOR_DATA", test_fixture)
 
 TEST
 stream_setup_with_redirected_network_io(const char *(*custom_fn)(const char *),
                                         const char *expected_audio_url,
                                         const char *expected_video_url)
 {
-	youtube_handle_t stream = youtube_stream_init();
+	youtube_handle_t stream = do_test_init();
 	ASSERT(stream);
 
 	test_request_path_to_response = custom_fn;
-	result_t err = youtube_stream_setup(stream, &NOOP, NULL, FAKE_YT_URL);
+	auto_result err = youtube_stream_setup(stream, &NOOP, NULL, FAKE_URL);
 	test_request_path_to_response = NULL;
 
 	ASSERT_EQ(OK, err.err);
 
-	GOT_CORRECT_URLS = true;
-	EXPECTED_AUDIO_URL = expected_audio_url;
-	EXPECTED_VIDEO_URL = expected_video_url;
-
-	err = youtube_stream_visitor(stream, check_url);
-
-	EXPECTED_AUDIO_URL = NULL;
-	EXPECTED_VIDEO_URL = NULL;
+	struct check_url_state cus = {
+		.got_correct_urls = true,
+		.expected_audio_url = expected_audio_url,
+		.expected_video_url = expected_video_url,
+	};
+	err = youtube_stream_visitor(stream, check_url, &cus);
 
 	ASSERT_EQ(OK, err.err);
-	ASSERT(GOT_CORRECT_URLS);
+	ASSERT(cus.got_correct_urls);
 
 	youtube_stream_cleanup(stream);
 	PASS();
 }
 
-struct youtube_setup_ops NULLOP = {
+static const struct youtube_setup_ops NULLOP = {
 	.before = NULL,
 	.before_inet = NULL,
 	.after_inet = NULL,
@@ -162,10 +163,10 @@ struct youtube_setup_ops NULLOP = {
 TEST
 stream_setup_with_null_ops(void)
 {
-	youtube_handle_t stream = youtube_stream_init();
+	youtube_handle_t stream = do_test_init();
 	ASSERT(stream);
 
-	result_t err = youtube_stream_setup(stream, &NULLOP, NULL, FAKE_YT_URL);
+	auto_result err = youtube_stream_setup(stream, &NULLOP, NULL, FAKE_URL);
 	ASSERT_EQ(OK, err.err);
 
 	youtube_stream_cleanup(stream);
@@ -174,12 +175,11 @@ stream_setup_with_null_ops(void)
 
 SUITE(stream_setup_simple)
 {
-	url_global_set_request_handler(test_fixture_request_handler);
 	RUN_TEST(global_setup);
 	RUN_TESTp(stream_setup_with_redirected_network_io,
 	          NULL,
-	          "http://a.test/?pot=POT&n=AAA",
-	          "http://v.test/?pot=POT&n=VVV");
+	          "http://a.test/?n=AAA&pot=POT",
+	          "http://v.test/?n=VVV&pot=POT");
 	RUN_TEST(stream_setup_with_null_ops);
 }
 
@@ -188,10 +188,11 @@ static const char YT_MISSING_ID[] = "https://www.youtube.com/watch?v=";
 TEST
 stream_setup_edge_cases_target_url_missing_stream_id(void)
 {
-	youtube_handle_t stream = youtube_stream_init();
+	youtube_handle_t stream = do_test_init();
 	ASSERT(stream);
 
-	result_t err = youtube_stream_setup(stream, &NOOP, NULL, YT_MISSING_ID);
+	auto_result err =
+		youtube_stream_setup(stream, &NOOP, NULL, YT_MISSING_ID);
 	ASSERT_EQ(ERR_JS_MAKE_INNERTUBE_JSON_ID, err.err);
 
 	youtube_stream_cleanup(stream);
@@ -200,7 +201,6 @@ stream_setup_edge_cases_target_url_missing_stream_id(void)
 
 SUITE(stream_setup_target_url_variations)
 {
-	url_global_set_request_handler(test_fixture_request_handler);
 	RUN_TEST(global_setup);
 	RUN_TEST(stream_setup_edge_cases_target_url_missing_stream_id);
 }
@@ -268,11 +268,11 @@ test_request_n_param_empty_or_missing(const char *path)
 TEST
 stream_setup_edge_cases_n_param_missing(void)
 {
-	youtube_handle_t stream = youtube_stream_init();
+	youtube_handle_t stream = do_test_init();
 	ASSERT(stream);
 
 	test_request_path_to_response = test_request_n_param_empty_or_missing;
-	result_t err = youtube_stream_setup(stream, &NULLOP, NULL, FAKE_YT_URL);
+	auto_result err = youtube_stream_setup(stream, &NULLOP, NULL, FAKE_URL);
 	test_request_path_to_response = NULL;
 
 	ASSERT_EQ(ERR_YOUTUBE_N_PARAM_FIND_IN_QUERY, err.err);
@@ -293,14 +293,14 @@ test_request_entire_url_missing(const char *path)
 TEST
 stream_setup_edge_cases_entire_url_missing(void)
 {
-	youtube_handle_t stream = youtube_stream_init();
+	youtube_handle_t stream = do_test_init();
 	ASSERT(stream);
 
 	test_request_path_to_response = test_request_entire_url_missing;
-	result_t err = youtube_stream_setup(stream, &NULLOP, NULL, FAKE_YT_URL);
+	auto_result err = youtube_stream_setup(stream, &NULLOP, NULL, FAKE_URL);
 	test_request_path_to_response = NULL;
 
-	ASSERT_EQ(ERR_YOUTUBE_N_PARAM_QUERY_GET, err.err);
+	ASSERT_EQ(ERR_YOUTUBE_STREAM_URL_MISSING, err.err);
 
 	youtube_stream_cleanup(stream);
 	PASS();
@@ -308,20 +308,19 @@ stream_setup_edge_cases_entire_url_missing(void)
 
 SUITE(stream_setup_n_param_positions)
 {
-	url_global_set_request_handler(test_fixture_request_handler);
 	RUN_TEST(global_setup);
 	RUN_TESTp(stream_setup_with_redirected_network_io,
 	          test_request_n_param_pos_middle,
-	          "http://a.test/?first=foo&last=bar&pot=POT&n=AAA",
-	          "http://v.test/?first=foo&last=bar&pot=POT&n=VVV");
+	          "http://a.test/?first=foo&n=AAA&last=bar&pot=POT",
+	          "http://v.test/?first=foo&n=VVV&last=bar&pot=POT");
 	RUN_TESTp(stream_setup_with_redirected_network_io,
 	          test_request_n_param_pos_first,
-	          "http://a.test/?second=foo&third=bar&pot=POT&n=AAA",
-	          "http://v.test/?second=foo&third=bar&pot=POT&n=VVV");
+	          "http://a.test/?n=AAA&second=foo&third=bar&pot=POT",
+	          "http://v.test/?n=VVV&second=foo&third=bar&pot=POT");
 	RUN_TESTp(stream_setup_with_redirected_network_io,
 	          test_request_n_param_pos_last,
-	          "http://a.test/?first=foo&second=bar&pot=POT&n=AAA",
-	          "http://v.test/?first=foo&second=bar&pot=POT&n=VVV");
+	          "http://a.test/?first=foo&second=bar&n=AAA&pot=POT",
+	          "http://v.test/?first=foo&second=bar&n=VVV&pot=POT");
 	RUN_TEST(stream_setup_edge_cases_n_param_missing);
 	RUN_TEST(stream_setup_edge_cases_entire_url_missing);
 }
