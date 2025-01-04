@@ -5,7 +5,7 @@ set -euo pipefail
 function find_c_code
 {
 	find . -regextype egrep -regex '.*\.(h|c)' -and ! -path './build/*' \
-		| ctags -L- --output-format=json $@ \
+		| ctags -L- --output-format=json "$@" \
 		| jq -rM '.pattern | ltrimstr("/^") | rtrimstr("$/")'
 }
 
