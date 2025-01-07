@@ -54,7 +54,7 @@ I like to avoid python3 as well, which e.g. `yt-dlp` requires.
 
 ## Platforms
 
-I've tested on 64-bit Arch Linux and 64-bit OpenBSD 7.5.
+I've tested on 64-bit Arch Linux and 64-bit OpenBSD 7.6.
 
 ## Dependencies
 

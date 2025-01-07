@@ -46,22 +46,22 @@ add_test(NAME cli-dangling-quality COMMAND
 register_pass(cli-dangling-quality "requires an argument")
 
 add_test(NAME cli-invalid-arg COMMAND youtube-unthrottle --foobar)
-register_pass(cli-invalid-arg "unrecognized option")
+register_pass(cli-invalid-arg "un(recognized|known)")
 add_test(NAME cli-invalid-arg-overrides-valid-args COMMAND
 	youtube-unthrottle foobar.test --proof-of-origin p --visitor-data v
 	--foobar
 )
-register_pass(cli-invalid-arg-overrides-valid-args "unrecognized option")
+register_pass(cli-invalid-arg-overrides-valid-args "un(recognized|known)")
 add_test(NAME cli-invalid-arg-overrides-help COMMAND
 	youtube-unthrottle --help --foobar
 )
-register_pass(cli-invalid-arg-overrides-help "unrecognized option")
+register_pass(cli-invalid-arg-overrides-help "un(recognized|known)")
 add_test(NAME cli-invalid-arg-overrides-try-sandbox COMMAND
 	youtube-unthrottle --try-sandbox --foobar
 )
-register_pass(cli-invalid-arg-overrides-try-sandbox "unrecognized option")
+register_pass(cli-invalid-arg-overrides-try-sandbox "un(recognized|known)")
 
 add_test(NAME cli-valid-args-invalid-hostname COMMAND
 	youtube-unthrottle foobar.test --proof-of-origin p --visitor-data v
 )
-register_pass(cli-valid-args-invalid-hostname "Could not resolve hostname")
+register_pass(cli-valid-args-invalid-hostname "Could ?n.t resolve host ?name")

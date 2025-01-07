@@ -84,8 +84,7 @@ capture_pattern_match_fail_on_null_haystack(void)
 	ASSERT_STR_EQ(pattern, err.re.pattern);
 	ASSERT_EQ(0, err.re.offset);
 	auto_result_str str = result_to_str(err);
-	ASSERT_NEQ(NULL,
-	           strstr(str, "NULL argument passed with non-zero length"));
+	ASSERT_NEQ(NULL, strstr(str, "NULL argument passed"));
 	ASSERT_EQ(NULL, needle.data);
 	ASSERT_EQ(0, needle.sz);
 	PASS();
