@@ -93,6 +93,9 @@ print_to_str_each_enum_value(void)
 	ASSERT_IN(make_n(ERR_SANDBOX_LANDLOCK_RESTRICT_SELF),
 	          "Error in landlock");
 	ASSERT_IN(make_n(ERR_SANDBOX_SECCOMP_INIT), "Error in seccomp_init");
+	ASSERT_IN(make_n(ERR_SANDBOX_SECCOMP_RESOLVE_SYSCALL),
+	          "Cannot resolve");
+	ASSERT_IN(make_ns(ERR_SANDBOX_SECCOMP_RULE_ADD), "Error adding");
 	ASSERT_IN(make_n(ERR_SANDBOX_SECCOMP_LOAD), "Error in seccomp_load");
 	ASSERT_IN(make_n(ERR_TMPFILE), "Error in tmpfile");
 	ASSERT_IN(make_n(ERR_TMPFILE_FILENO), "Error fileno");

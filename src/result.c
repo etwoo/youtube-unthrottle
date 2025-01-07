@@ -275,6 +275,14 @@ result_to_str(result_t r)
 	case ERR_SANDBOX_SECCOMP_INIT:
 		s = my_asprintf("Error in seccomp_init(): %s", my_strerror(r));
 		break;
+	case ERR_SANDBOX_SECCOMP_RESOLVE_SYSCALL:
+		s = my_asprintf("Cannot resolve number of syscall: %s", r.msg);
+		break;
+	case ERR_SANDBOX_SECCOMP_RULE_ADD:
+		s = my_asprintf("Error adding seccomp rule for syscall %s: %s",
+		                r.msg,
+		                my_strerror(r));
+		break;
 	case ERR_SANDBOX_SECCOMP_LOAD:
 		s = my_asprintf("Error in seccomp_load(): %s", my_strerror(r));
 		break;
