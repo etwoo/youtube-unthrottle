@@ -22,6 +22,12 @@
 
 static const char NEVER_ALLOWED_CANARY[] = "/etc/passwd";
 
+static WARN_UNUSED int
+check_socket(void)
+{
+	return socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+}
+
 static void
 sandbox_verify(const char **paths,
                size_t paths_allowed,
@@ -74,12 +80,15 @@ sandbox_verify(const char **paths,
 
 	/* sanity-check sandbox: network connect() */
 
-	int sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (!connect_allowed) {
+		int sfd = check_socket();
 		assert(sfd < 0);
-		goto done;
+		debug("sandbox verify: blocked connect()");
+		return;
 	}
+
 	assert(connect_allowed);
+	int sfd = check_socket();
 	assert(sfd >= 0);
 
 	struct sockaddr_in sa;
@@ -93,10 +102,7 @@ sandbox_verify(const char **paths,
 
 	rc = close(sfd);
 	assert(rc == 0);
-
-done:
-	debug("sandbox verify: %s connect()",
-	      connect_allowed ? "allowed" : "blocked");
+	debug("sandbox verify: allowed connect()");
 }
 
 static const char *ALLOWED_PATHS[] = {

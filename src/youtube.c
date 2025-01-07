@@ -20,8 +20,8 @@ static const char ARG_N[] = "n";
 
 struct youtube_stream {
 	ada_url url[2];
-	char *proof_of_origin;
-	char *visitor_data;
+	const char *proof_of_origin;
+	const char *visitor_data;
 	struct url_request_context request_context;
 };
 
@@ -37,54 +37,34 @@ youtube_global_cleanup(void)
 	url_global_cleanup();
 }
 
-#define check_oom(p)                                                           \
-	if ((p) == NULL) {                                                     \
-		goto oom;                                                      \
-	}
-
 struct youtube_stream *
 youtube_stream_init(const char *proof_of_origin,
                     const char *visitor_data,
-                    unsigned (*io)(const char *, int))
+                    const char *(*io_simulator)(const char *))
 {
 	assert(proof_of_origin && visitor_data);
 
 	struct youtube_stream *p = malloc(sizeof(*p));
-	check_oom(p);
-
-	memset(p, 0, sizeof(*p)); /* zero early, just in case */
-
-	p->proof_of_origin = strdup(proof_of_origin);
-	check_oom(p->proof_of_origin);
-
-	p->visitor_data = strdup(visitor_data);
-	check_oom(p->visitor_data);
-
-	p->request_context.handler = io;
-	url_context_init(&p->request_context);
-
+	if (p) {
+		memset(p, 0, sizeof(*p)); /* zero early, just in case */
+		p->proof_of_origin = proof_of_origin;
+		p->visitor_data = visitor_data;
+		p->request_context.simulator = io_simulator;
+		url_context_init(&p->request_context);
+	}
 	return p;
-
-oom:
-	youtube_stream_cleanup(p);
-	return NULL;
 }
-
-#undef check_oom
 
 void
 youtube_stream_cleanup(struct youtube_stream *p)
 {
-	if (p == NULL) {
-		return;
+	if (p) {
+		for (size_t i = 0; i < ARRAY_SIZE(p->url); ++i) {
+			ada_free(p->url[i]); /* handles NULL gracefully */
+			p->url[i] = NULL;
+		}
+		url_context_cleanup(&p->request_context);
 	}
-	for (size_t i = 0; i < ARRAY_SIZE(p->url); ++i) {
-		ada_free(p->url[i]); /* handles NULL gracefully */
-		p->url[i] = NULL;
-	}
-	free(p->proof_of_origin);
-	free(p->visitor_data);
-	url_context_cleanup(&p->request_context);
 	free(p);
 }
 

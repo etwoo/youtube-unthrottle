@@ -19,7 +19,7 @@
 static const int FD_DISCARD = -1;
 
 static WARN_UNUSED size_t
-write_to_tmpfile(char *ptr, size_t size, size_t nmemb, void *userdata)
+write_to_tmpfile(const char *ptr, size_t size, size_t nmemb, void *userdata)
 {
 	const size_t real_size = size * nmemb;
 	const int *fd = (const int *)userdata;
@@ -34,6 +34,14 @@ write_to_tmpfile(char *ptr, size_t size, size_t nmemb, void *userdata)
 	info_m_if(written < 0, "Cannot write to tmpfile");
 
 	return real_size; /* always consider buffer entirely consumed */
+}
+
+static WARN_UNUSED CURLcode
+curl_simulate(const char *body, int fd)
+{
+	size_t x = write_to_tmpfile(body, strlen(body), sizeof(*body), &fd);
+	assert(x == strlen(body));
+	return CURLE_OK;
 }
 
 result_t
@@ -140,14 +148,14 @@ url_download(const char *url_str,     /* maybe NULL */
 	res = curl_easy_setopt(curl, CURLOPT_USERAGENT, BROWSER_USERAGENT);
 	check_if_num(res, ERR_URL_DOWNLOAD_SET_OPT_USERAGENT);
 
-	const char *url_fragment_or_path_str = NULL;
+	const char *url_or_path = NULL;
 	if (url_str) {
 		res = curl_easy_setopt(curl, CURLOPT_URL, url_str);
 		check_if_num(res, ERR_URL_DOWNLOAD_SET_OPT_URL_STRING);
 
-		url_fragment_or_path_str = strstr(url_str, DEFAULT_HOST_STR);
-		if (url_fragment_or_path_str) {
-			url_fragment_or_path_str += strlen(DEFAULT_HOST_STR);
+		url_or_path = strstr(url_str, DEFAULT_HOST_STR);
+		if (url_or_path) {
+			url_or_path += strlen(DEFAULT_HOST_STR);
 		}
 	} else {
 		assert(host_str != NULL && path_str != NULL);
@@ -157,7 +165,7 @@ url_download(const char *url_str,     /* maybe NULL */
 		res = curl_easy_setopt(curl, CURLOPT_CURLU, url);
 		check_if_num(res, ERR_URL_DOWNLOAD_SET_OPT_URL_OBJECT);
 
-		url_fragment_or_path_str = path_str;
+		url_or_path = path_str;
 	}
 
 	if (post_body) {
@@ -177,8 +185,8 @@ url_download(const char *url_str,     /* maybe NULL */
 		check_if_num(res, ERR_URL_DOWNLOAD_SET_OPT_HTTP_HEADER);
 	}
 
-	url_handler fn = context->handler;
-	res = fn ? fn(url_fragment_or_path_str, fd) : curl_easy_perform(curl);
+	url_simulator fn = context->simulator;
+	res = fn ? curl_simulate(fn(url_or_path), fd) : curl_easy_perform(curl);
 	check_if_num(res, ERR_URL_DOWNLOAD_PERFORM);
 
 	curl_slist_free_all(headers); /* handles NULL gracefully */

@@ -2,7 +2,6 @@
 
 #include "debug.h"
 #include "greatest.h"
-#include "url.h"
 #include "write.h"
 
 #include <assert.h>
@@ -36,10 +35,10 @@ static const char FAKE_JS_RESPONSE[] =
 
 static const char *(*test_request_path_to_response)(const char *) = NULL;
 
-static WARN_UNUSED unsigned
-test_fixture(const char *path, int fd)
+static WARN_UNUSED const char *
+url_simulate(const char *path)
 {
-	debug("Mocking request with url=%s, fd=%d", path, fd);
+	debug("Simulating request with url=%s", path);
 
 	const char *to_write = NULL;
 	if (test_request_path_to_response) {
@@ -49,7 +48,7 @@ test_fixture(const char *path, int fd)
 	if (to_write) {
 		/* got a custom value from test-specific handler */
 	} else if (path == NULL || 0 == strlen(path)) {
-		to_write = ""; /* handle thread warmup in url_global_init() */
+		to_write = ""; /* handle thread warmup in url_context_init() */
 	} else if (strstr(path, "/watch?v=")) {
 		to_write = FAKE_HTML_RESPONSE;
 	} else if (strstr(path, PATH_WANTS_JSON_RESPONSE)) {
@@ -59,10 +58,7 @@ test_fixture(const char *path, int fd)
 	}
 
 	assert(to_write && "Test logic bug? No fixture for given path!");
-
-	ssize_t written = write_with_retry(fd, to_write, strlen(to_write));
-	info_m_if(written < 0, "Cannot write to tmpfile");
-	return 0;
+	return to_write;
 }
 
 static WARN_UNUSED result_t
@@ -118,7 +114,7 @@ global_setup(void)
 	PASS();
 }
 
-#define do_test_init() youtube_stream_init("POT", "VISITOR_DATA", test_fixture)
+#define do_test_init() youtube_stream_init("POT", "VISITOR_DATA", url_simulate)
 
 TEST
 stream_setup_with_redirected_network_io(const char *(*custom_fn)(const char *),
