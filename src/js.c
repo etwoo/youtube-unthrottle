@@ -345,7 +345,9 @@ call_js_one(duk_context *ctx,
 	}
 
 	const char *result = duk_get_string(ctx, -1);
-	check_if(result == NULL, ERR_JS_CALL_GET_RESULT);
+	if (result == NULL) {
+		return make_result(ERR_JS_CALL_GET_RESULT);
+	}
 
 	debug("Got JavaScript function result: %s", result);
 	check(ops->got_result(result, js_pos, userdata));

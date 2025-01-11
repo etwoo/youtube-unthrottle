@@ -173,7 +173,7 @@ result_to_str(result_t r)
 	case ERR_JS_PARSE_JSON_ELEM_URL:
 		s = strdup("Cannot get url of adaptiveFormats element");
 		break;
-	case ERR_JS_PARSE_JSON_CALLBACK_GOT_CIPHERTEXT_URL:
+	case ERR_JS_PARSE_JSON_CALLBACK_INVALID_URL:
 		s = my_asprintf("Cannot parse ciphertext URL: %s", r.msg);
 		break;
 	case ERR_JS_PARSE_JSON_CALLBACK_QUALITY:
