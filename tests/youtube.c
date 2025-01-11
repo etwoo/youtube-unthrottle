@@ -195,10 +195,39 @@ stream_setup_edge_cases_target_url_missing_stream_id(void)
 	PASS();
 }
 
+static WARN_UNUSED const char *
+test_request_stream_url_cannot_parse(const char *path)
+{
+	if (NULL == strstr(path, PATH_WANTS_JSON_RESPONSE)) {
+		return NULL;
+	}
+	return "{\"streamingData\": {\"adaptiveFormats\": ["
+	       "{\"mimeType\": \"audio/foobar\",\"url\": \"http://a%test\"}"
+	       "]}}";
+}
+
+TEST
+stream_setup_edge_cases_stream_url_cannot_parse(void)
+{
+	youtube_handle_t stream = do_test_init();
+	ASSERT(stream);
+
+	test_request_path_to_response = test_request_stream_url_cannot_parse;
+	auto_result err = youtube_stream_setup(stream, &NOOP, NULL, FAKE_URL);
+	test_request_path_to_response = NULL;
+
+	ASSERT_EQ(ERR_JS_PARSE_JSON_CALLBACK_INVALID_URL, err.err);
+	ASSERT_STR_EQ("http://a%test", err.msg);
+
+	youtube_stream_cleanup(stream);
+	PASS();
+}
+
 SUITE(stream_setup_target_url_variations)
 {
 	RUN_TEST(global_setup);
 	RUN_TEST(stream_setup_edge_cases_target_url_missing_stream_id);
+	RUN_TEST(stream_setup_edge_cases_stream_url_cannot_parse);
 }
 
 static WARN_UNUSED const char *
@@ -268,7 +297,7 @@ stream_setup_edge_cases_n_param_missing(void)
 	ASSERT(stream);
 
 	test_request_path_to_response = test_request_n_param_empty_or_missing;
-	auto_result err = youtube_stream_setup(stream, &NULLOP, NULL, FAKE_URL);
+	auto_result err = youtube_stream_setup(stream, &NOOP, NULL, FAKE_URL);
 	test_request_path_to_response = NULL;
 
 	ASSERT_EQ(ERR_YOUTUBE_N_PARAM_FIND_IN_QUERY, err.err);
@@ -293,7 +322,7 @@ stream_setup_edge_cases_entire_url_missing(void)
 	ASSERT(stream);
 
 	test_request_path_to_response = test_request_entire_url_missing;
-	auto_result err = youtube_stream_setup(stream, &NULLOP, NULL, FAKE_URL);
+	auto_result err = youtube_stream_setup(stream, &NOOP, NULL, FAKE_URL);
 	test_request_path_to_response = NULL;
 
 	ASSERT_EQ(ERR_YOUTUBE_STREAM_URL_MISSING, err.err);

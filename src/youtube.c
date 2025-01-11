@@ -122,10 +122,11 @@ static WARN_UNUSED result_t
 youtube_stream_set_one(struct youtube_stream *p, int idx, const char *val)
 {
 	const size_t val_sz = strlen(val);
-	check_if(!ada_can_parse(val, val_sz),
-	         ERR_JS_PARSE_JSON_CALLBACK_GOT_CIPHERTEXT_URL,
-	         val,
-	         val_sz);
+	if (!ada_can_parse(val, val_sz)) {
+		return make_result(ERR_JS_PARSE_JSON_CALLBACK_INVALID_URL,
+		                   val,
+		                   val_sz);
+	}
 
 	assert(idx >= 0 && (unsigned int)idx < ARRAY_SIZE(p->url));
 	p->url[idx] = ada_parse(val, strlen(val));
@@ -170,8 +171,9 @@ copy_n_param_one(ada_url url, char **result)
 	ada_string q_str = ada_get_search(url);
 	ada_url_search_params q __attribute__((cleanup(free_search_params))) =
 		ada_parse_search_params(q_str.data, q_str.length);
-	check_if(!ada_search_params_has(q, ARG_N, strlen(ARG_N)),
-	         ERR_YOUTUBE_N_PARAM_FIND_IN_QUERY);
+	if (!ada_search_params_has(q, ARG_N, strlen(ARG_N))) {
+		return make_result(ERR_YOUTUBE_N_PARAM_FIND_IN_QUERY);
+	}
 
 	ada_string n_param = ada_search_params_get(q, ARG_N, strlen(ARG_N));
 	*result = strndup(n_param.data, n_param.length);
