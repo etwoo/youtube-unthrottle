@@ -236,7 +236,7 @@ result_t
 find_js_deobfuscator_magic_global(const struct string_view *js,
                                   struct string_view *magic)
 {
-	check(re_capture("(var [[:alpha:]]+=[-0-9]{6,});", js, magic));
+	check(re_capture("(var [[:alnum:]]+=[-0-9]{6,});", js, magic));
 	if (magic->data == NULL) {
 		return make_result(ERR_JS_DEOBFUSCATOR_MAGIC_FIND);
 	}
