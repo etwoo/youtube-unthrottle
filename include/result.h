@@ -122,7 +122,7 @@ DECLARE_MAKERESULT_IMPL(re, int typ, int num, const char *pat, size_t off);
 #define make_result_3arg(x, y, z)                                              \
 	_Generic(y, int: make_result_tis, make_result_str_arg(tss))(x, y, z)
 
-#define CHOOSE_MACRO_BY_ARGN(A0, A1, A3, A4, NAME, ...) NAME
+#define CHOOSE_MACRO_BY_ARGN(w, x, y, z, NAME, ...) NAME
 
 /*
  * Create a result_t by passing any of the following sets of arguments:
@@ -137,7 +137,8 @@ DECLARE_MAKERESULT_IMPL(re, int typ, int num, const char *pat, size_t off);
 	                     make_result_tiss,                                 \
 	                     make_result_3arg,                                 \
 	                     make_result_2arg,                                 \
-	                     make_result_t)                                    \
+	                     make_result_t,                                    \
+	                     make_result_sentinel)                             \
 	(__VA_ARGS__)
 
 /*
