@@ -6,7 +6,7 @@ callsite
 check_var
 ciphertext
 cmake
-codepath
+codepaths
 compiler_option
 const
 CURLcode
@@ -15,13 +15,14 @@ deobfuscate
 deobfuscation
 [dD]uktape
 endif
-envvar
+envvars
 errno
 eval
 expr
 fd
 func
 gcc
+glibc
 hostname
 jank
 [jJ]ansson
@@ -43,9 +44,11 @@ pkg_add
 plaintext
 result_t
 rusty_ytdl
-sandbox
+sandboxing
 seccomp
+seccomp_rule_add
 size_t
+ssize_t
 stdout
 stderr
 strace
@@ -53,6 +56,7 @@ strerror
 string_view
 superset
 syscall
+syscalls
 tmpfile
 TSan
 (ubs|UBS)an
