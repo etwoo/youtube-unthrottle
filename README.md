@@ -72,13 +72,13 @@ I developed with the following versions of these libraries (though I assume
 many other versions would work as well):
 
 ```sh
-$ pacman -Q cmake curl duktape jansson libseccomp pcre2
-ada 2.9.0-2
-cmake 3.30.0-1
-curl 8.8.0-1
-duktape 2.7.0-6
+$ pacman -Q ada cmake curl duktape jansson libseccomp pcre2
+ada 2.9.2-1
+cmake 3.31.5-1
+curl 8.11.1-3
+duktape 2.7.0-7
 jansson 2.14-4
-libseccomp 2.5.5-3
+libseccomp 2.5.5-4
 pcre2 10.44-1
 ```
 
