@@ -4,7 +4,7 @@ variables:
   PACKAGE_CMD: "pacman --noconfirm --needed -Sy"
   PACKAGE_DEFAULT: "ada cmake clang curl duktape git jansson libseccomp pcre2"
   PACKAGE_PER_JOB: ""
-  TESTS_FAIL_LACK_OF_LANDLOCK_API_IN_CI_RUNNERS: "^(cli-try-sandbox|cli-valid-args-invalid-hostname|landlock|sandbox|seccomp)$"
+  TESTS_FAIL_LACK_OF_LANDLOCK_API_IN_CI_RUNNERS: "^(cli-try-sandbox|landlock|sandbox|seccomp)$"
 
 .build_dependencies: &build_dependencies
   before_script:
@@ -113,9 +113,9 @@ lint:prose:
 lint:shell:
   stage: build
   before_script:
-    - ${PACKAGE_CMD} shellcheck
+    - ${PACKAGE_CMD} git shellcheck
   script:
-    - shellcheck --shell=bash ./scripts/*.sh
+    - git ls-files -z '**.sh' | xargs -0 shellcheck --shell=bash
 
 lint:tcl:
   stage: build
