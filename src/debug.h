@@ -35,10 +35,11 @@ debug_at_line(const char *fname, unsigned int lineno, const char *pattern, ...)
  * coverage looks more like a candidate for coverage of <cond> == true.
  */
 #define info_if(cond, pattern, ...)                                            \
-	while (cond) {                                                         \
-		info(pattern, ##__VA_ARGS__);                                  \
-		break;                                                         \
-	}
+	do {                                                                   \
+		if (cond) {                                                    \
+			info(pattern, ##__VA_ARGS__);                          \
+		}                                                              \
+	} while (0)
 /*
  * Like info_if(), with "%m" (aka strerror) appended to <pattern>.
  */
