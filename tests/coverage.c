@@ -38,7 +38,6 @@ coverage_write_and_close(int fd __attribute__((unused)))
 		if (cond) {                                                    \
 			perror(msg);                                           \
 		}                                                              \
-		break;                                                         \
 	} while (0)
 
 int __llvm_profile_runtime(void);
