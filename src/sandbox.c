@@ -95,7 +95,7 @@ sandbox_verify(const char **paths,
 	memset(&sa, 0, sizeof(sa));
 	sa.sin_family = AF_INET;
 	sa.sin_port = htons(443);
-	inet_pton(AF_INET, "93.184.215.14", &sa.sin_addr); /* example.com */
+	inet_pton(AF_INET, "23.192.228.68", &sa.sin_addr); /* example.com */
 
 	rc = connect(sfd, (struct sockaddr *)&sa, sizeof(sa));
 	assert(rc == 0);
