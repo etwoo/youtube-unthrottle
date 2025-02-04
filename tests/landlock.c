@@ -37,7 +37,7 @@ before_landlock_network(void)
 	memset(&sa, 0, sizeof(sa));
 	sa.sin_family = AF_INET;
 	sa.sin_port = htons(443);
-	inet_pton(AF_INET, "93.184.215.14", &sa.sin_addr); /* example.com */
+	inet_pton(AF_INET, "23.192.228.68", &sa.sin_addr); /* example.com */
 
 	const int connected = connect(sfd, (struct sockaddr *)&sa, sizeof(sa));
 	const int closed = close(sfd);
@@ -119,7 +119,7 @@ after_landlock_network(void)
 	memset(&sa, 0, sizeof(sa));
 	sa.sin_family = AF_INET;
 	sa.sin_port = htons(443);
-	inet_pton(AF_INET, "93.184.215.14", &sa.sin_addr); /* example.com */
+	inet_pton(AF_INET, "23.192.228.68", &sa.sin_addr); /* example.com */
 
 	const int connected = connect(sfd, (struct sockaddr *)&sa, sizeof(sa));
 	const int connected_errno = errno;
