@@ -7,89 +7,116 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <linux/seccomp.h> /* for SECCOMP_* constants */
+#include <stdbool.h>
 #include <sys/mman.h>
 #include <sys/socket.h>
 #include <sys/syscall.h>
 #include <unistd.h>
 
-TEST
-getpid_allowed(void)
+static enum greatest_test_res
+check_getpid(void)
 {
 	ASSERT_LT(0, getpid());
 	PASS();
 }
 
-TEST
-mmap_exec_allowed(void)
+static enum greatest_test_res
+check_mmap_exec(bool allowed)
 {
 	void *p = mmap(NULL, 4, PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-	ASSERT_NEQ(MAP_FAILED, p);
-	int rc = munmap(p, 4);
-	ASSERT_EQ(0, rc);
+	if (allowed) {
+		ASSERT_NEQ(MAP_FAILED, p);
+		int rc = munmap(p, 4);
+		ASSERT_EQ(0, rc);
+	} else {
+		ASSERT_EQ(MAP_FAILED, p);
+	}
 	PASS();
 }
 
-TEST
-socket_allowed(void)
+static enum greatest_test_res
+check_socket(bool allowed)
 {
 	int sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	ASSERT_LTE(0, sfd);
-	int rc = close(sfd);
-	ASSERT_EQ(0, rc);
+	if (allowed) {
+		ASSERT_LTE(0, sfd);
+		int rc = close(sfd);
+		ASSERT_EQ(0, rc);
+	} else {
+		if (sfd >= 0) {
+			/*
+			 * Make sure not to leak a file descriptor, even if
+			 * socket() unexpectedly succeeds.
+			 */
+			close(sfd);
+		}
+		ASSERT_GT(0, sfd);
+		ASSERT_EQ(EACCES, errno);
+	}
 	PASS();
 }
 
-TEST
-open_rdonly_allowed(void)
+static enum greatest_test_res
+check_open_rdonly(bool allowed)
 {
 	int fd = open(__FILE__, O_RDONLY);
-	ASSERT_LTE(0, fd);
-	int rc = close(fd);
-	ASSERT_EQ(0, rc);
+	if (allowed) {
+		ASSERT_LTE(0, fd);
+		int rc = close(fd);
+		ASSERT_EQ(0, rc);
+	} else {
+		ASSERT_GT(0, fd);
+		ASSERT_EQ(EACCES, errno);
+	}
 	PASS();
 }
 
-TEST
-open_tmpfile_allowed(void)
+static enum greatest_test_res
+check_open_tmpfile(bool allowed)
 {
 	int tmp = -1;
 	auto_result err = tmpfd(&tmp);
-	ASSERT_EQ(OK, err.err);
-	ASSERT_LTE(0, tmp);
-	int rc = close(tmp);
-	ASSERT_EQ(0, rc);
+	if (allowed) {
+		ASSERT_EQ(OK, err.err);
+		ASSERT_LTE(0, tmp);
+		int rc = close(tmp);
+		ASSERT_EQ(0, rc);
+	} else {
+		ASSERT_EQ(ERR_TMPFILE, err.err);
+		ASSERT_GT(0, tmp);
+		ASSERT_EQ(EACCES, errno);
+	}
 	PASS();
 }
 
-TEST
-seccomp_change_allowed(void)
+static enum greatest_test_res
+check_seccomp_change(bool allowed)
 {
 	uint32_t action = SECCOMP_RET_KILL_PROCESS;
 	int rc = syscall(__NR_seccomp, SECCOMP_GET_ACTION_AVAIL, 0, &action);
-	ASSERT_EQ(0, rc);
-	PASS();
-}
-
-SUITE(before_seccomp)
-{
-	RUN_TEST(getpid_allowed);
-	RUN_TEST(mmap_exec_allowed);
-	RUN_TEST(socket_allowed);
-	RUN_TEST(open_rdonly_allowed);
-	RUN_TEST(open_tmpfile_allowed);
-	RUN_TEST(seccomp_change_allowed);
-}
-
-TEST
-mmap_exec_blocked(void)
-{
-	void *p = mmap(NULL, 4, PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-	ASSERT_EQ(MAP_FAILED, p);
+	if (allowed) {
+		ASSERT_EQ(0, rc);
+	} else {
+		ASSERT_NEQ(0, rc);
+		ASSERT_EQ(EACCES, errno);
+	}
 	PASS();
 }
 
 TEST
-mmap_read_allowed(void)
+seccomp_none(void)
+{
+	CHECK_CALL(check_getpid());
+	CHECK_CALL(check_mmap_exec(true));
+	CHECK_CALL(check_socket(true));
+	CHECK_CALL(check_open_rdonly(true));
+	CHECK_CALL(check_open_tmpfile(true));
+	CHECK_CALL(check_seccomp_change(true));
+	PASS();
+}
+
+static enum greatest_test_res
+check_mmap_read(void)
 {
 	void *p = mmap(NULL, 4, PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 	ASSERT_NEQ(MAP_FAILED, p);
@@ -99,124 +126,100 @@ mmap_read_allowed(void)
 }
 
 TEST
-setup_seccomp_apply(int flags)
-{
-	auto_result err = seccomp_apply(flags);
-	ASSERT_EQ(OK, err.err);
-	PASS();
-}
-
-SUITE(seccomp_io_inet_tmpfile)
+seccomp_io_inet_tmpfile(void)
 {
 	const int flags = SECCOMP_SANDBOX | SECCOMP_STDIO | SECCOMP_INET |
 	                  SECCOMP_TMPFILE;
-	RUN_TESTp(setup_seccomp_apply, flags);
-	RUN_TEST(getpid_allowed);
-	RUN_TEST(mmap_exec_blocked);
-	RUN_TEST(mmap_read_allowed);
-	RUN_TEST(socket_allowed);
-	RUN_TEST(open_rdonly_allowed);
-	RUN_TEST(open_tmpfile_allowed);
-	RUN_TEST(seccomp_change_allowed);
-}
+	auto_result err = seccomp_apply(flags);
+	ASSERT_EQ(OK, err.err);
 
-TEST
-open_tmpfile_blocked(void)
-{
-	int tmp = -1;
-	auto_result err = tmpfd(&tmp);
-	ASSERT_EQ(ERR_TMPFILE, err.err);
-	ASSERT_GT(0, tmp);
-	ASSERT_EQ(EACCES, errno);
+	CHECK_CALL(check_getpid());
+	CHECK_CALL(check_mmap_exec(false));
+	CHECK_CALL(check_mmap_read());
+	CHECK_CALL(check_socket(true));
+	CHECK_CALL(check_open_rdonly(true));
+	CHECK_CALL(check_open_tmpfile(true));
+	CHECK_CALL(check_seccomp_change(true));
 	PASS();
 }
 
-SUITE(seccomp_io_inet_rpath)
+TEST
+seccomp_io_inet_rpath(void)
 {
 	const int flags =
 		SECCOMP_SANDBOX | SECCOMP_STDIO | SECCOMP_INET | SECCOMP_RPATH;
-	RUN_TESTp(setup_seccomp_apply, flags);
-	RUN_TEST(getpid_allowed);
-	RUN_TEST(mmap_exec_blocked);
-	RUN_TEST(mmap_read_allowed);
-	RUN_TEST(socket_allowed);
-	RUN_TEST(open_rdonly_allowed);
-	RUN_TEST(open_tmpfile_blocked);
-	RUN_TEST(seccomp_change_allowed);
-}
+	auto_result err = seccomp_apply(flags);
+	ASSERT_EQ(OK, err.err);
 
-TEST
-open_rdonly_blocked(void)
-{
-	int fd = open(__FILE__, O_RDONLY);
-	ASSERT_GT(0, fd);
-	ASSERT_EQ(EACCES, errno);
+	CHECK_CALL(check_getpid());
+	CHECK_CALL(check_mmap_exec(false));
+	CHECK_CALL(check_mmap_read());
+	CHECK_CALL(check_socket(true));
+	CHECK_CALL(check_open_rdonly(true));
+	CHECK_CALL(check_open_tmpfile(false));
+	CHECK_CALL(check_seccomp_change(true));
 	PASS();
 }
 
-SUITE(seccomp_io_inet)
+TEST
+seccomp_io_inet(void)
 {
 	const int flags = SECCOMP_SANDBOX | SECCOMP_STDIO | SECCOMP_INET;
-	RUN_TESTp(setup_seccomp_apply, flags);
-	RUN_TEST(getpid_allowed);
-	RUN_TEST(mmap_exec_blocked);
-	RUN_TEST(mmap_read_allowed);
-	RUN_TEST(socket_allowed);
-	RUN_TEST(open_rdonly_blocked);
-	RUN_TEST(open_tmpfile_blocked);
-	RUN_TEST(seccomp_change_allowed);
-}
+	auto_result err = seccomp_apply(flags);
+	ASSERT_EQ(OK, err.err);
 
-TEST
-socket_blocked(void)
-{
-	int sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	if (sfd >= 0) {
-		/*
-		 * Make sure not to leak a file descriptor, even if socket()
-		 * unexpectedly succeeds.
-		 * */
-		close(sfd);
-	}
-	ASSERT_GT(0, sfd);
-	ASSERT_EQ(EACCES, errno);
+	CHECK_CALL(check_getpid());
+	CHECK_CALL(check_mmap_exec(false));
+	CHECK_CALL(check_mmap_read());
+	CHECK_CALL(check_socket(true));
+	CHECK_CALL(check_open_rdonly(false));
+	CHECK_CALL(check_open_tmpfile(false));
+	CHECK_CALL(check_seccomp_change(true));
 	PASS();
 }
 
-SUITE(seccomp_io)
+TEST
+seccomp_io(void)
 {
 	const int flags = SECCOMP_SANDBOX | SECCOMP_STDIO;
-	RUN_TESTp(setup_seccomp_apply, flags);
-	RUN_TEST(getpid_allowed);
-	RUN_TEST(mmap_exec_blocked);
-	RUN_TEST(mmap_read_allowed);
-	RUN_TEST(socket_blocked);
-	RUN_TEST(open_rdonly_blocked);
-	RUN_TEST(open_tmpfile_blocked);
-	RUN_TEST(seccomp_change_allowed);
-}
+	auto_result err = seccomp_apply(flags);
+	ASSERT_EQ(OK, err.err);
 
-TEST
-seccomp_change_blocked(void)
-{
-	uint32_t action = SECCOMP_RET_KILL_PROCESS;
-	int rc = syscall(__NR_seccomp, SECCOMP_GET_ACTION_AVAIL, 0, &action);
-	ASSERT_NEQ(0, rc);
-	ASSERT_EQ(EACCES, errno);
+	CHECK_CALL(check_getpid());
+	CHECK_CALL(check_mmap_exec(false));
+	CHECK_CALL(check_mmap_read());
+	CHECK_CALL(check_socket(false));
+	CHECK_CALL(check_open_rdonly(false));
+	CHECK_CALL(check_open_tmpfile(false));
+	CHECK_CALL(check_seccomp_change(true));
 	PASS();
 }
 
-SUITE(seccomp_io_sealed_sandbox)
+TEST
+seccomp_io_sealed_sandbox(void)
 {
 	const int flags = SECCOMP_STDIO;
-	RUN_TESTp(setup_seccomp_apply, flags);
-	RUN_TEST(getpid_allowed);
-	RUN_TEST(mmap_exec_blocked);
-	RUN_TEST(mmap_read_allowed);
-	RUN_TEST(socket_blocked);
-	RUN_TEST(open_rdonly_blocked);
-	RUN_TEST(open_tmpfile_blocked);
-	RUN_TEST(seccomp_change_blocked);
+	auto_result err = seccomp_apply(flags);
+	ASSERT_EQ(OK, err.err);
+
+	CHECK_CALL(check_getpid());
+	CHECK_CALL(check_mmap_exec(false));
+	CHECK_CALL(check_mmap_read());
+	CHECK_CALL(check_socket(false));
+	CHECK_CALL(check_open_rdonly(false));
+	CHECK_CALL(check_open_tmpfile(false));
+	CHECK_CALL(check_seccomp_change(false));
+	PASS();
+}
+
+SUITE(seccomp_variants)
+{
+	RUN_TEST(seccomp_none);
+	RUN_TEST(seccomp_io_inet_tmpfile);
+	RUN_TEST(seccomp_io_inet_rpath);
+	RUN_TEST(seccomp_io_inet);
+	RUN_TEST(seccomp_io);
+	RUN_TEST(seccomp_io_sealed_sandbox);
 }
 
 /*
