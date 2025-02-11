@@ -167,7 +167,7 @@ DECLARE_MAKERESULT_IMPL(re, int typ, int num, const char *pat, size_t off);
  *
  * Note: <val> would typically originate from CURLcode, CURLUcode, or similar.
  */
-#define check_if_num(val, err_type) check_if(val, err_type, (int)val)
+#define check_if_num(val, err_type) check_if(val, err_type, (int)(val))
 
 /*
  * Convenience helper for use with __attribute__((cleanup))

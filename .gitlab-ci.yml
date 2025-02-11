@@ -126,3 +126,28 @@ lint:tcl:
     - tclfmt --in-place --indent=tab ./scripts/*.exp
     - git diff --exit-code ./scripts/*.exp
     - tclint ./scripts/*.exp
+
+#
+# Run the Clang Static Analyzer via clang-tidy: https://clang-analyzer.llvm.org
+#
+analyze:clang-tidy:
+  <<: *build_dependencies
+  stage: build
+  variables:
+    PACKAGE_PER_JOB: "jq"
+  script:
+    - cmake --preset clang -DCMAKE_EXPORT_COMPILE_COMMANDS=1
+    - cmake --build --preset default
+    - jq --raw-output0 .[].file ./build/compile_commands.json | xargs -0 clang-tidy -p ./build/
+
+#
+# Run the Infer static analyzer: https://fbinfer.com
+#
+analyze:fb-infer:
+  <<: *build_dependencies
+  stage: build
+  script:
+    - cmake --preset clang -DCMAKE_EXPORT_COMPILE_COMMANDS=1
+    - cmake --build --preset default
+    - curl -sSL https://github.com/facebook/infer/releases/download/v1.2.0/infer-linux-x86_64-v1.2.0.tar.xz | tar -C ./build/ -xJ
+    - ./build/infer-linux-x86_64-v1.2.0/bin/infer run

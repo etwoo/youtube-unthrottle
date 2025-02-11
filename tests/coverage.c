@@ -16,7 +16,7 @@ coverage_write_and_close(int fd __attribute__((unused)))
 #else
 
 #ifndef _GNU_SOURCE
-#define _GNU_SOURCE /* for O_PATH in open() */
+#define _GNU_SOURCE /* for O_PATH */ // NOLINT(bugprone-reserved-identifier)
 #endif
 #include <fcntl.h>
 #undef _GNU_SOURCE /* revert for any other includes */

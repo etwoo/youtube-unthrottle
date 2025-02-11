@@ -1,7 +1,7 @@
 #include "seccomp.h"
 
 #ifndef _GNU_SOURCE
-#define _GNU_SOURCE /* for O_TMPFILE in open() */
+#define _GNU_SOURCE /* for O_TMPFILE */ // NOLINT(bugprone-reserved-identifier)
 #endif
 #include <fcntl.h>
 #undef _GNU_SOURCE /* revert for any other includes */

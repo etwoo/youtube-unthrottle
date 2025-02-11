@@ -24,7 +24,8 @@
 #define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
 
-const char *__asan_default_options(void) __attribute__((used));
+const char *__asan_default_options(void) // NOLINT(bugprone-reserved-identifier)
+	__attribute__((used));
 const char *
 __asan_default_options(void)
 {
@@ -91,13 +92,12 @@ parse_quality_choices(const char *str, struct quality *q)
 {
 	assert(q->re == NULL && q->md == NULL);
 
-	const char *action = "preparing";
 	int rc = 0;
 	PCRE2_SIZE loc = 0;
 	PCRE2_SPTR pat = (PCRE2_SPTR)str;
 	PCRE2_UCHAR err[256];
 
-	action = "compiling";
+	const char *action = "compiling";
 	q->re = pcre2_compile(pat, PCRE2_ZERO_TERMINATED, 0, &rc, &loc, NULL);
 	if (q->re == NULL) {
 		goto err;

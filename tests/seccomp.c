@@ -93,7 +93,7 @@ static enum greatest_test_res
 check_seccomp_change(bool allowed)
 {
 	uint32_t action = SECCOMP_RET_KILL_PROCESS;
-	int rc = syscall(__NR_seccomp, SECCOMP_GET_ACTION_AVAIL, 0, &action);
+	long rc = syscall(__NR_seccomp, SECCOMP_GET_ACTION_AVAIL, 0, &action);
 	if (allowed) {
 		ASSERT_EQ(0, rc);
 	} else {
@@ -128,8 +128,8 @@ check_mmap_read(void)
 TEST
 seccomp_io_inet_tmpfile(void)
 {
-	const int flags = SECCOMP_SANDBOX | SECCOMP_STDIO | SECCOMP_INET |
-	                  SECCOMP_TMPFILE;
+	const unsigned flags = SECCOMP_SANDBOX | SECCOMP_STDIO | SECCOMP_INET |
+	                       SECCOMP_TMPFILE;
 	auto_result err = seccomp_apply(flags);
 	ASSERT_EQ(OK, err.err);
 
@@ -146,7 +146,7 @@ seccomp_io_inet_tmpfile(void)
 TEST
 seccomp_io_inet_rpath(void)
 {
-	const int flags =
+	const unsigned flags =
 		SECCOMP_SANDBOX | SECCOMP_STDIO | SECCOMP_INET | SECCOMP_RPATH;
 	auto_result err = seccomp_apply(flags);
 	ASSERT_EQ(OK, err.err);
@@ -164,7 +164,7 @@ seccomp_io_inet_rpath(void)
 TEST
 seccomp_io_inet(void)
 {
-	const int flags = SECCOMP_SANDBOX | SECCOMP_STDIO | SECCOMP_INET;
+	const unsigned flags = SECCOMP_SANDBOX | SECCOMP_STDIO | SECCOMP_INET;
 	auto_result err = seccomp_apply(flags);
 	ASSERT_EQ(OK, err.err);
 
@@ -181,7 +181,7 @@ seccomp_io_inet(void)
 TEST
 seccomp_io(void)
 {
-	const int flags = SECCOMP_SANDBOX | SECCOMP_STDIO;
+	const unsigned flags = SECCOMP_SANDBOX | SECCOMP_STDIO;
 	auto_result err = seccomp_apply(flags);
 	ASSERT_EQ(OK, err.err);
 
@@ -198,7 +198,7 @@ seccomp_io(void)
 TEST
 seccomp_io_sealed_sandbox(void)
 {
-	const int flags = SECCOMP_STDIO;
+	const unsigned flags = SECCOMP_STDIO;
 	auto_result err = seccomp_apply(flags);
 	ASSERT_EQ(OK, err.err);
 

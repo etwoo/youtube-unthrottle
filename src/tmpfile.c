@@ -32,7 +32,7 @@ tmpfd(int *fd)
 	 * stream in this way avoids leaking the FILE* itself.
 	 */
 
-	int inner_fd = fileno(fs);
+	int inner_fd = fileno(fs); // NOLINT(clang-analyzer-unix.Stream)
 	check_if(inner_fd < 0, ERR_TMPFILE_FILENO, errno);
 
 	int dup_fd = dup(inner_fd);

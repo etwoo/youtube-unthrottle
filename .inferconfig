@@ -1,0 +1,6 @@
+{
+  "compilation-database": ["./build/compile_commands.json"],
+  "fail-on-issue": true,
+  "results-dir": "./build/infer-out",
+  "liveness": false
+}
