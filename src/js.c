@@ -316,7 +316,7 @@ static WARN_UNUSED result_t
 call_js_one(duk_context *ctx,
             const char *js_arg,
             size_t js_pos,
-            struct call_ops *ops,
+            const struct call_ops *ops,
             void *userdata)
 {
 	/*
@@ -359,7 +359,7 @@ result_t
 call_js_foreach(const struct string_view *magic,
                 const struct string_view *code,
                 char **args,
-                struct call_ops *ops,
+                const struct call_ops *ops,
                 void *userdata)
 {
 	duk_context *ctx __attribute__((cleanup(destroy_heap))) =

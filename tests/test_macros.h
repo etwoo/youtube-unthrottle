@@ -8,6 +8,6 @@
  *
  * Note: lack of type safety makes this macro suitable for test code only.
  */
-#define MAKE_TEST_STRING(lit) {.data = lit, .sz = sizeof(lit) - 1}
+#define MAKE_TEST_STRING(lit) {.data = (lit), .sz = sizeof(lit) - 1}
 
 #endif

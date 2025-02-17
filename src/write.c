@@ -1,9 +1,12 @@
 #include "write.h"
 
+#include <assert.h>
+#include <limits.h>
+
 ssize_t
 write_with_retry(int fd, const char *buf, size_t nbyte)
 {
-	const ssize_t expected = nbyte;
+	const size_t expected = nbyte;
 
 	while (nbyte > 0) {
 		const ssize_t written = write(fd, buf, nbyte);
@@ -14,5 +17,6 @@ write_with_retry(int fd, const char *buf, size_t nbyte)
 		nbyte -= written;
 	}
 
-	return expected;
+	assert(expected <= SSIZE_MAX);
+	return (ssize_t)expected;
 }

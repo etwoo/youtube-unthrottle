@@ -702,13 +702,29 @@ SUITE(find_with_pcre)
 
 static const struct string_view MAGIC = MAKE_TEST_STRING("var MY_MAGIC=123456");
 
+static WARN_UNUSED result_t
+got_result_noop(const char *val __attribute__((unused)),
+                size_t pos __attribute__((unused)),
+                void *userdata __attribute__((unused)))
+{
+	return RESULT_OK;
+}
+
+static const struct call_ops CALL_NOOP = {
+	.got_result = got_result_noop,
+};
+
 TEST
 call_with_duktape_pcompile_fail(void)
 {
+	char *args[2];
+	args[0] = "Hello, World!";
+	args[1] = NULL;
+
 	const struct string_view js =
 		MAKE_TEST_STRING("\"Not a valid function definition!\"");
 
-	auto_result err = call_js_foreach(&MAGIC, &js, NULL, NULL, NULL);
+	auto_result err = call_js_foreach(&MAGIC, &js, args, &CALL_NOOP, NULL);
 	ASSERT_EQ(ERR_JS_CALL_COMPILE, err.err);
 	PASS();
 }
@@ -723,7 +739,7 @@ call_with_duktape_pcall_fail(void)
 	const struct string_view js =
 		MAKE_TEST_STRING("function(a){return not_defined;};");
 
-	auto_result err = call_js_foreach(&MAGIC, &js, args, NULL, NULL);
+	auto_result err = call_js_foreach(&MAGIC, &js, args, &CALL_NOOP, NULL);
 	ASSERT_EQ(ERR_JS_CALL_INVOKE, err.err);
 	PASS();
 }
@@ -738,7 +754,7 @@ call_with_duktape_pcall_incorrect_result_type(void)
 	const struct string_view js =
 		MAKE_TEST_STRING("function(a){return true;};");
 
-	auto_result err = call_js_foreach(&MAGIC, &js, args, NULL, NULL);
+	auto_result err = call_js_foreach(&MAGIC, &js, args, &CALL_NOOP, NULL);
 	ASSERT_EQ(ERR_JS_CALL_GET_RESULT, err.err);
 	PASS();
 }

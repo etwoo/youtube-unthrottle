@@ -19,7 +19,7 @@ for filename ; do # iterate over remaining positional parameters
 	int ${entrypoint}(int argc, char **argv);
 	int ${entrypoint}(int argc, char **argv)
 	{
-	    int fd __attribute__((cleanup(coverage_cleanup))) = coverage_open();
+	    int fd __attribute__((cleanup(coverage_cleanup))) = coverage_open(); // NOLINT(clang-analyzer-deadcode.DeadStores)
 	    GREATEST_MAIN_BEGIN();
 	$(sed -n 's@^SUITE(\(.*\))@    RUN_SUITE(\1);@p' "$filename")
 	    GREATEST_MAIN_END();
