@@ -228,7 +228,7 @@ result_to_str(result_t r)
 		break;
 	case ERR_RE_COMPILE:
 		s = my_asprintf("Error in pcre2_compile() with "
-		                "regex \"%s\" at offset %zd: %s",
+		                "regex \"%s\" at offset %zu: %s",
 		                r.re.pattern,
 		                r.re.offset,
 		                regex_error(r, err, sizeof(err)));
@@ -241,7 +241,7 @@ result_to_str(result_t r)
 		break;
 	case ERR_RE_TRY_MATCH:
 		s = my_asprintf("Error in pcre2_match() with "
-		                "regex \"%s\" at offset %zd: %s",
+		                "regex \"%s\" at offset %zu: %s",
 		                r.re.pattern,
 		                r.re.offset,
 		                regex_error(r, err, sizeof(err)));

@@ -426,8 +426,7 @@ extra_adaptiveFormats_elements(void)
 }
 
 static WARN_UNUSED result_t
-choose_quality_skip_marked_entries(const char *val,
-                                   void *userdata __attribute__((unused)))
+choose_quality_skip_marked_entries(const char *val, void *userdata)
 {
 	const char *skip_pattern = (const char *)userdata;
 	if (0 == strcmp(skip_pattern, val)) {

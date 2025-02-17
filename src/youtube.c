@@ -277,7 +277,7 @@ ciphertexts_cleanup(char *ciphertexts[][3])
 			++free_count;
 		}
 	}
-	debug("free()-d %zd n-param ciphertext bufs", free_count);
+	debug("free()-d %zu n-param ciphertext bufs", free_count);
 }
 
 result_t

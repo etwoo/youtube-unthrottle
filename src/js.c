@@ -46,7 +46,7 @@ result_t
 parse_json(const struct string_view *json, const struct parse_ops *ops)
 {
 	// debug("Got JSON blob: %.*s", json->sz, json->data);
-	debug("Got JSON blob of size %zd", json->sz);
+	debug("Got JSON blob of size %zu", json->sz);
 
 	json_error_t json_error;
 
@@ -308,7 +308,7 @@ find_js_deobfuscator(const struct string_view *js,
 	}
 
 	// debug("Got func body: %.*s", deobfuscator->sz, deobfuscator->data);
-	debug("Got function body of size %zd", deobfuscator->sz);
+	debug("Got function body of size %zu", deobfuscator->sz);
 	return RESULT_OK;
 }
 

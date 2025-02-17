@@ -56,9 +56,9 @@ re_capture(const char *pattern_in,
 	PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(md);
 	assert(ovector != NULL); /* non-NULL <md> implies non-NULL <ovector> */
 
-	debug("Regex \"%s\" matched at offset %zd within subject of size %zd",
+	debug("Regex \"%s\" matched at offset %zu within subject of size %zu",
 	      pattern_in,
-	      (size_t)ovector[0],
+	      ovector[0],
 	      subject_in->sz);
 
 	capture->data = subject_in->data + ovector[2];

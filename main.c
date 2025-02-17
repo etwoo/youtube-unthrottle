@@ -117,7 +117,7 @@ err:
 		return false;
 	}
 
-	to_stderr("%s \"%s\" at offset %zd: %s", action, str, (size_t)loc, err);
+	to_stderr("%s \"%s\" at offset %zu: %s", action, str, loc, err);
 	return false;
 }
 

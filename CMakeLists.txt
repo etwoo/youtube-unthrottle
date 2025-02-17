@@ -85,6 +85,7 @@ check_target_compile_options(my_cflags -Wimplicit-fallthrough=5)
 check_target_compile_options(my_cflags -Wduplicated-branches)
 check_target_compile_options(my_cflags -Wduplicated-cond)
 check_target_compile_options(my_cflags -Wformat=2)
+check_target_compile_options(my_cflags -Wformat-signedness)
 check_target_compile_options(my_cflags -Wlogical-op)
 check_target_compile_options(my_cflags -Wshadow)
 
