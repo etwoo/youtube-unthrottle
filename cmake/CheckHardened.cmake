@@ -2,6 +2,7 @@ include_guard(GLOBAL)
 
 include(CMakePushCheckState)
 include(CheckCCompilerFlag)
+include(CheckTargetCompileOptions)
 
 macro(my_msg str)
 	message(STATUS "Detecting -fhardened" ${str})
@@ -30,9 +31,17 @@ macro(check_hardened lib)
 			-Wl,-z,relro
 			-fstack-protector-strong
 			-fstack-clash-protection
-			-fcf-protection=full
 		)
+		# enable amd64-only option conditionally (disable under arm64)
+		check_target_compile_options(${lib} -fcf-protection=full)
 	endif (CFLAG_HARDENED)
+
+	#
+	# enable arm64-only hardening option conditionally
+	#
+	# note: remove this if -fhardened ever includes -mbranch-protection
+	#
+	check_target_compile_options(${lib} -mbranch-protection=standard)
 
 	target_compile_options(${lib} INTERFACE -O2) # for _FORTIFY_SOURCE
 endmacro()
