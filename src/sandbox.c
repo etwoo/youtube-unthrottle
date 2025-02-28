@@ -79,7 +79,7 @@ sandbox_verify(const char **paths,
 	{
 		int fd = open(NEVER_ALLOWED_CANARY, 0);
 		assert(fd < 0);
-		assert(errno == EACCES || errno == ENOENT);
+		assert(errno == EACCES || errno == ENOENT || errno == EPERM);
 		debug("sandbox verify: blocked %s", NEVER_ALLOWED_CANARY);
 	}
 #endif
@@ -88,14 +88,35 @@ sandbox_verify(const char **paths,
 
 	if (!connect_allowed) {
 		int sfd = check_socket();
+#if 0
 		assert(sfd < 0);
+#endif
+		struct sockaddr_in sa;
+		memset(&sa, 0, sizeof(sa));
+		sa.sin_family = AF_INET;
+		sa.sin_port = htons(443);
+		inet_pton(AF_INET, "23.192.228.68", &sa.sin_addr); /* example.com */
+
+		rc = connect(sfd, (struct sockaddr *)&sa, sizeof(sa));
+		assert(rc < 0);
+
+		rc = close(sfd);
+		assert(rc == 0);
+
 		debug("sandbox verify: blocked connect()");
 		return;
 	}
 
-	assert(connect_allowed);
 	int sfd = check_socket();
-	assert(sfd >= 0);
+	if (connect_allowed) {
+		assert(sfd >= 0);
+	}
+#if !defined(__APPLE__)
+	else {
+		assert(sfd < 0);
+		return;
+	}
+#endif
 
 	struct sockaddr_in sa;
 	memset(&sa, 0, sizeof(sa));
@@ -104,11 +125,19 @@ sandbox_verify(const char **paths,
 	inet_pton(AF_INET, "23.192.228.68", &sa.sin_addr); /* example.com */
 
 	rc = connect(sfd, (struct sockaddr *)&sa, sizeof(sa));
-	assert(rc == 0);
+	if (connect_allowed) {
+		assert(rc == 0);
+	}
+#if defined(__APPLE__)
+	else {
+		assert(rc != 0);
+	}
+#endif
 
 	rc = close(sfd);
 	assert(rc == 0);
-	debug("sandbox verify: allowed connect()");
+	debug("sandbox verify: %s connect()",
+	      connect_allowed ? "allowed" : "blocked");
 }
 
 static const char *ALLOWED_PATHS[] = {
@@ -149,16 +178,19 @@ static const char MACOS_SEATBELT_POLICY[] =
 	"(deny iokit-get-properties)\n"
 	"(deny file-map-executable)\n"
 	"(allow file-read*\n"
-	"  (subpath \"" P_tmpdir "\")\n"
+	// TODO: actually no-op? -- "  (subpath \"" P_tmpdir "\")\n"
 	"  (extension \"com.apple.app-sandbox.read\"))\n"
 	"(allow file-read* file-write*\n"
-	"  (subpath \"" P_tmpdir "\")\n"
+	// TODO: actually no-op? -- "  (subpath \"" P_tmpdir "\")\n"
 	"  (extension \"com.apple.app-sandbox.write\"))\n"
+	// TODO: "(deny file-read* (literal \"/private/etc/passwd\"))\n"
 	"(allow network-outbound\n"
-	"  (control-name \"com.apple.netsrc\")\n"
-	"  (literal \"/private/var/run/mDNSResponder\")\n"
-	"  (remote tcp)\n"
-	"  (extension \"com.apple.security.network.client\"))\n";
+	"  (require-all\n"
+	"    (require-any\n"
+	"      (control-name \"com.apple.netsrc\")\n"
+	"      (literal \"/private/var/run/mDNSResponder\")\n"
+	"      (remote tcp))\n"
+	"    (extension \"com.apple.security.network.client\")))\n";
 
 char *sandbox_extension_issue_generic(const char *eclass, uint32_t flags);
 int64_t sandbox_extension_consume(const char *extension_token);
