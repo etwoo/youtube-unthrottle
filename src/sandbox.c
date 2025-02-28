@@ -126,6 +126,11 @@ static const char *ALLOWED_PATHS[] = {
 #elif defined(__OpenBSD__)
 	/* for outbound HTTPS */
 	"/etc/ssl/cert.pem",
+#elif defined(__APPLE__)
+	/* check other potential locations for temporary files */
+	"/private/tmp",
+	"/private/var/tmp",
+	"/tmp",
 #endif
 };
 
@@ -156,14 +161,20 @@ static const char MACOS_SEATBELT_POLICY[] =
 	"(allow file-read*\n"
 	"  (require-all\n"
 	"    (require-any\n"
+	"      (subpath \"/private/tmp\")\n"
+	"      (subpath \"/private/var/tmp\")\n"
+	"      (literal \"/tmp\")\n"
 	"      (literal \"/var\")\n"
-	"      (subpath \"/private/var/tmp\"))\n"
+	"      (literal \"/var/tmp\"))\n"
 	"    (extension \"com.apple.app-sandbox.read\")))\n"
 	"(allow file-read* file-write*\n"
 	"  (require-all\n"
 	"    (require-any\n"
+	"      (subpath \"/private/tmp\")\n"
+	"      (subpath \"/private/var/tmp\")\n"
+	"      (literal \"/tmp\")\n"
 	"      (literal \"/var\")\n"
-	"      (subpath \"/private/var/tmp\"))\n"
+	"      (literal \"/var/tmp\"))\n"
 	"    (extension \"com.apple.app-sandbox.write\")))\n"
 	"(allow network-outbound\n"
 	"  (require-all\n"
