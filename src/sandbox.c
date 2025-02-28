@@ -74,15 +74,12 @@ sandbox_verify(const char **paths,
 		debug("sandbox verify: blocked %s", paths[i]);
 	}
 
-	// TODO: restore NEVER_ALLOWED_CANARY check
-#if 0
 	{
 		int fd = open(NEVER_ALLOWED_CANARY, 0);
 		assert(fd < 0);
 		assert(errno == EACCES || errno == ENOENT || errno == EPERM);
 		debug("sandbox verify: blocked %s", NEVER_ALLOWED_CANARY);
 	}
-#endif
 
 	/* sanity-check sandbox: network connect() */
 
@@ -178,12 +175,17 @@ static const char MACOS_SEATBELT_POLICY[] =
 	"(deny iokit-get-properties)\n"
 	"(deny file-map-executable)\n"
 	"(allow file-read*\n"
-	// TODO: actually no-op? -- "  (subpath \"" P_tmpdir "\")\n"
-	"  (extension \"com.apple.app-sandbox.read\"))\n"
+	"  (require-all\n"
+	"    (require-any\n"
+	"      (literal \"/var\")\n"
+	"      (subpath \"/private/var/tmp\"))\n"
+	"    (extension \"com.apple.app-sandbox.read\")))\n"
 	"(allow file-read* file-write*\n"
-	// TODO: actually no-op? -- "  (subpath \"" P_tmpdir "\")\n"
-	"  (extension \"com.apple.app-sandbox.write\"))\n"
-	// TODO: "(deny file-read* (literal \"/private/etc/passwd\"))\n"
+	"  (require-all\n"
+	"    (require-any\n"
+	"      (literal \"/var\")\n"
+	"      (subpath \"/private/var/tmp\"))\n"
+	"    (extension \"com.apple.app-sandbox.write\")))\n"
 	"(allow network-outbound\n"
 	"  (require-all\n"
 	"    (require-any\n"
