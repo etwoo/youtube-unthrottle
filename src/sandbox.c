@@ -208,6 +208,7 @@ sandbox_only_io(void)
 		err(EX_OSERR, "Error in pledge()");
 	}
 #elif defined(__APPLE__) && defined(__MACH__)
+	// TODO: i think (?) we cannot call sandbox_init() N+1 times to restrict earlier calls; maybe insetad, sandbox_extension_issue* and sandbox_extension_consume() for network IO, creating tmpfiles, etc in first call to any sandbox function, then successively sandbox_extension_release() to drop these extra privileges in second/third/etc calls to sandbox functions
 	char *ep = NULL;
 	if (sandbox_init(MACOS_SANDBOX_POLICY_ONLY_IO, 0, &ep) < 0) {
 		err(EX_OSERR, "Error in Seatbelt sandbox_init(): %s", ep);
