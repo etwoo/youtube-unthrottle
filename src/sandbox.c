@@ -136,31 +136,41 @@ static const char *ALLOWED_PATHS[] = {
  * https://github.com/steven-michaud/SandboxMirror/blob/master/app-sandbox.md
  * https://github.com/kristapsdz/oconfigure/blob/master/test-sandbox_init.c
  */
-static const char MACOS_SANDBOX_POLICY_ONLY_IO[] =
+static const char MACOS_SEATBELT_POLICY_PLUS_EXTENSIONS[] =
 	"(version 1)\n"
 	"(deny default)\n"
 	/* not already covered by (deny default) */
 	"(deny process-info*)\n"
 	"(deny nvram*)\n"
 	"(deny iokit-get-properties)\n"
-	"(deny file-map-executable)\n";
+	"(deny file-map-executable)\n"
+	"(allow file-write*\n"
+	"  (subpath \"/private/tmp\")\n"
+	"  (extension \"com.apple.app-sandbox.write\"))\n";
 
 int sandbox_init(const char *profile, uint64_t flags, char **errorbuf);
 void sandbox_free_error(char *errorbuf);
 
+const unsigned MACOS_SEATBELT_TMPFILE = 0x01;
+const unsigned MACOS_SEATBELT_RPATH = 0x02;
+
 #endif
 
 static WARN_UNUSED result_t
-sandbox_with(unsigned flags, const char *promises)
+sandbox_with(
+#if defined(__linux__) || defined(__APPLE__)
+	unsigned flags
+#elif defined(__OpenBSD__)
+	const char *promises
+#endif
+	)
 {
 	const size_t sz = ARRAY_SIZE(ALLOWED_PATHS);
 #if defined(__linux__)
-	(void)promises; /* unused */
 	check(landlock_apply(ALLOWED_PATHS, sz, 443));
 	check(seccomp_apply(SECCOMP_STDIO | SECCOMP_INET | SECCOMP_SANDBOX |
 	                    flags));
 #elif defined(__OpenBSD__)
-	(void)flags; /* unused */
 	for (size_t i = 0; i < sz; ++i) {
 		if (unveil(ALLOWED_PATHS[i], "r") < 0) {
 			err(EX_OSERR, "Error in unveil()");
@@ -170,7 +180,17 @@ sandbox_with(unsigned flags, const char *promises)
 		err(EX_OSERR, "Error in pledge()");
 	}
 #elif defined(__APPLE__)
-	// TODO
+	if (0 != (flags & MACOS_SEATBELT_TMPFILE)) {
+		// TODO: issue and consume extension, or release extension?
+	}
+	if (0 != (flags & MACOS_SEATBELT_RPATH)) {
+		// TODO: issue and consume extension, or release extension?
+	}
+	char *ep = NULL;
+	if (sandbox_init(MACOS_SEATBELT_POLICY_PLUS_EXTENSIONS, 0, &ep) < 0) {
+		err(EX_OSERR, "Error in macOS Seatbelt init");
+		sandbox_free_error(ep);
+	}
 #endif
 	sandbox_verify(ALLOWED_PATHS, sz, sz, true);
 	return RESULT_OK;
@@ -179,8 +199,17 @@ sandbox_with(unsigned flags, const char *promises)
 result_t
 sandbox_only_io_inet_tmpfile(void)
 {
-	const char *promises = "dns inet rpath stdio tmppath unveil";
-	check(sandbox_with(SECCOMP_TMPFILE, promises));
+	result_t tmp = sandbox_with(
+#if defined(__linux__)
+			   SECCOMP_TMPFILE
+#elif defined(__OpenBSD__)
+			   "dns inet rpath stdio tmppath unveil"
+#elif defined(__APPLE__)
+			   MACOS_SEATBELT_TMPFILE
+#endif
+	);
+	check(tmp);
+
 	debug("%s() succeeded", __func__);
 	return RESULT_OK;
 }
@@ -188,8 +217,17 @@ sandbox_only_io_inet_tmpfile(void)
 result_t
 sandbox_only_io_inet_rpath(void)
 {
-	const char *promises = "dns inet rpath stdio unveil";
-	check(sandbox_with(SECCOMP_RPATH, promises));
+	result_t tmp = sandbox_with(
+#if defined(__linux__)
+			   SECCOMP_RPATH
+#elif defined(__OpenBSD__)
+			   "dns inet rpath stdio unveil"
+#elif defined(__APPLE__)
+			   MACOS_SEATBELT_RPATH
+#endif
+	);
+	check(tmp);
+
 	debug("%s() succeeded", __func__);
 	return RESULT_OK;
 }
@@ -209,11 +247,6 @@ sandbox_only_io(void)
 	}
 #elif defined(__APPLE__)
 	// TODO: i think (?) we cannot call sandbox_init() N+1 times to restrict earlier calls; maybe insetad, sandbox_extension_issue* and sandbox_extension_consume() for network IO, creating tmpfiles, etc in first call to any sandbox function, then successively sandbox_extension_release() to drop these extra privileges in second/third/etc calls to sandbox functions
-	char *ep = NULL;
-	if (sandbox_init(MACOS_SANDBOX_POLICY_ONLY_IO, 0, &ep) < 0) {
-		err(EX_OSERR, "Error in Seatbelt sandbox_init(): %s", ep);
-		sandbox_free_error(ep);
-	}
 #endif
 
 #if defined(__OpenBSD__)
