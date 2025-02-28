@@ -70,7 +70,7 @@ sandbox_verify(const char **paths,
 	for (i = paths_allowed; i < paths_total; ++i) {
 		int fd = open(paths[i], 0);
 		assert(fd < 0);
-		assert(errno == EACCES || errno == ENOENT);
+		assert(errno == EACCES || errno == ENOENT || errno == EPERM);
 		debug("sandbox verify: blocked %s", paths[i]);
 	}
 
@@ -148,16 +148,17 @@ static const char MACOS_SEATBELT_POLICY[] =
 	"(deny nvram*)\n"
 	"(deny iokit-get-properties)\n"
 	"(deny file-map-executable)\n"
-	"(allow network-outbound\n"
-	"  (control-name \"com.apple.netsrc\")\n"
-	"  (literal \"/private/var/run/mDNSResponder\")\n"
-	"  (remote tcp))\n"
 	"(allow file-read*\n"
 	"  (subpath \"" P_tmpdir "\")\n"
 	"  (extension \"com.apple.app-sandbox.read\"))\n"
 	"(allow file-read* file-write*\n"
 	"  (subpath \"" P_tmpdir "\")\n"
-	"  (extension \"com.apple.app-sandbox.write\"))\n";
+	"  (extension \"com.apple.app-sandbox.write\"))\n"
+	"(allow network-outbound\n"
+	"  (control-name \"com.apple.netsrc\")\n"
+	"  (literal \"/private/var/run/mDNSResponder\")\n"
+	"  (remote tcp)\n"
+	"  (extension \"com.apple.security.network.client\"))\n";
 
 char *sandbox_extension_issue_generic(const char *eclass, uint32_t flags);
 int64_t sandbox_extension_consume(const char *extension_token);
@@ -167,6 +168,7 @@ void sandbox_free_error(char *errorbuf);
 
 const unsigned MACOS_SEATBELT_TMPFILE = 0x01;
 const unsigned MACOS_SEATBELT_RPATH = 0x02;
+const unsigned MACOS_SEATBELT_INET = 0x04;
 
 #define sandbox_extend(x) sandbox_extension_issue_generic(x, 0)
 
@@ -174,6 +176,7 @@ const unsigned MACOS_SEATBELT_RPATH = 0x02;
 
 static int64_t X_TMPFILE = -1;
 static int64_t X_RPATH = -1;
+static int64_t X_INET = -1;
 
 static WARN_UNUSED result_t
 sandbox_with(
@@ -203,24 +206,42 @@ sandbox_with(
 	if (0 != (flags & MACOS_SEATBELT_TMPFILE) && X_TMPFILE < 0) {
 		token_tmpfile = sandbox_extend("com.apple.app-sandbox.write");
 		if (token_tmpfile == NULL) {
-			err(EX_OSERR, "Error in Seatbelt extension create");
+			err(EX_OSERR, "Error in Seatbelt extension create tmpfile");
 		}
 	} else if (0 == (flags & MACOS_SEATBELT_TMPFILE) && X_TMPFILE >= 0) {
 		if (sandbox_extension_release(X_TMPFILE) < 0) {
-			err(EX_OSERR, "Error in Seatbelt extension release");
+			err(EX_OSERR, "Error in Seatbelt extension release tmpfile");
 		}
+		X_TMPFILE = -1;
+		debug("Seatbelt tmpfile extension release succeeded");
 	}
 	// TODO: dedup copy-pasta below
 	char *token_rpath = NULL;
 	if (0 != (flags & (MACOS_SEATBELT_RPATH|MACOS_SEATBELT_TMPFILE)) && X_RPATH < 0) {
 		token_rpath = sandbox_extend("com.apple.app-sandbox.read");
 		if (token_rpath == NULL) {
-			err(EX_OSERR, "Error in Seatbelt extension create");
+			err(EX_OSERR, "Error in Seatbelt extension create rpath");
 		}
 	} else if (0 == (flags & MACOS_SEATBELT_RPATH) && X_RPATH >= 0) {
 		if (sandbox_extension_release(X_RPATH) < 0) {
-			err(EX_OSERR, "Error in Seatbelt extension release");
+			err(EX_OSERR, "Error in Seatbelt extension release rpath");
 		}
+		debug("Seatbelt rpath extension release succeeded");
+		X_RPATH = -1;
+	}
+	// TODO: dedup copy-pasta below
+	char *token_inet = NULL;
+	if (0 != (flags & MACOS_SEATBELT_INET) && X_INET < 0) {
+		token_inet = sandbox_extend("com.apple.security.network.client");
+		if (token_inet == NULL) {
+			err(EX_OSERR, "Error in Seatbelt extension create inet");
+		}
+	} else if (0 == (flags & MACOS_SEATBELT_INET) && X_INET >= 0) {
+		if (sandbox_extension_release(X_INET) < 0) {
+			err(EX_OSERR, "Error in Seatbelt extension release inet");
+		}
+		debug("Seatbelt inet extension release succeeded");
+		X_INET = -1;
 	}
 
 	static bool seatbelt_init = false; // TODO: convert to context variable passed into sandbox functions, to avoid mutable global state
@@ -234,7 +255,7 @@ sandbox_with(
 		if (token_tmpfile) {
 			X_TMPFILE = sandbox_extension_consume(token_tmpfile);
 			if (X_TMPFILE < 0) {
-				err(EX_OSERR, "Error in Seatbelt consume");
+				err(EX_OSERR, "Error in Seatbelt consume tmpfile");
 			}
 			debug("Seatbelt tmpfile extension consume succeeded");
 		}
@@ -242,14 +263,23 @@ sandbox_with(
 		if (token_rpath) {
 			X_RPATH = sandbox_extension_consume(token_rpath);
 			if (X_RPATH < 0) {
-				err(EX_OSERR, "Error in Seatbelt consume");
+				err(EX_OSERR, "Error in Seatbelt consume rpath");
 			}
 			debug("Seatbelt rpath extension consume succeeded");
+		}
+		// TODO: dedup copy-pasta below
+		if (token_inet) {
+			X_INET = sandbox_extension_consume(token_inet);
+			if (X_INET < 0) {
+				err(EX_OSERR, "Error in Seatbelt consume inet");
+			}
+			debug("Seatbelt inet extension consume succeeded");
 		}
 		seatbelt_init = true;
 	}
 #endif
-	sandbox_verify(ALLOWED_PATHS, sz, sz, true);
+	// TODO: consolidate with sandbox_verify() invocation in sandbox_only_io(), avoid verifying sandbox twice when calling sandbox_only_io()
+	sandbox_verify(ALLOWED_PATHS, (flags != 0) ? sz : 0, sz, flags != 0);
 	return RESULT_OK;
 }
 
@@ -262,7 +292,7 @@ sandbox_only_io_inet_tmpfile(void)
 #elif defined(__OpenBSD__)
 			   "dns inet rpath stdio tmppath unveil"
 #elif defined(__APPLE__)
-			   MACOS_SEATBELT_TMPFILE
+			   MACOS_SEATBELT_INET|MACOS_SEATBELT_TMPFILE
 #endif
 	);
 	check(tmp);
@@ -280,7 +310,7 @@ sandbox_only_io_inet_rpath(void)
 #elif defined(__OpenBSD__)
 			   "dns inet rpath stdio unveil"
 #elif defined(__APPLE__)
-			   MACOS_SEATBELT_RPATH
+			   MACOS_SEATBELT_INET|MACOS_SEATBELT_RPATH
 #endif
 	);
 	check(tmp);
@@ -303,7 +333,7 @@ sandbox_only_io(void)
 		err(EX_OSERR, "Error in pledge()");
 	}
 #elif defined(__APPLE__)
-	// TODO: i think (?) we cannot call sandbox_init() N+1 times to restrict earlier calls; maybe insetad, sandbox_extension_issue* and sandbox_extension_consume() for network IO, creating tmpfiles, etc in first call to any sandbox function, then successively sandbox_extension_release() to drop these extra privileges in second/third/etc calls to sandbox functions
+	check(sandbox_with(0));
 #endif
 
 #if defined(__OpenBSD__)
