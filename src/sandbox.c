@@ -83,27 +83,6 @@ sandbox_verify(const char **paths,
 
 	/* sanity-check sandbox: network connect() */
 
-	if (!connect_allowed) {
-		int sfd = check_socket();
-#if 0
-		assert(sfd < 0);
-#endif
-		struct sockaddr_in sa;
-		memset(&sa, 0, sizeof(sa));
-		sa.sin_family = AF_INET;
-		sa.sin_port = htons(443);
-		inet_pton(AF_INET, "23.192.228.68", &sa.sin_addr); /* example.com */
-
-		rc = connect(sfd, (struct sockaddr *)&sa, sizeof(sa));
-		assert(rc < 0);
-
-		rc = close(sfd);
-		assert(rc == 0);
-
-		debug("sandbox verify: blocked connect()");
-		return;
-	}
-
 	int sfd = check_socket();
 	if (connect_allowed) {
 		assert(sfd >= 0);
