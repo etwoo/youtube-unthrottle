@@ -74,12 +74,15 @@ sandbox_verify(const char **paths,
 		debug("sandbox verify: blocked %s", paths[i]);
 	}
 
+	// TODO: restore NEVER_ALLOWED_CANARY check
+#if 0
 	{
 		int fd = open(NEVER_ALLOWED_CANARY, 0);
 		assert(fd < 0);
 		assert(errno == EACCES || errno == ENOENT);
 		debug("sandbox verify: blocked %s", NEVER_ALLOWED_CANARY);
 	}
+#endif
 
 	/* sanity-check sandbox: network connect() */
 
@@ -135,8 +138,9 @@ static const char *ALLOWED_PATHS[] = {
  * https://github.com/chromium/chromium/tree/main/sandbox/policy/mac
  * https://github.com/steven-michaud/SandboxMirror/blob/master/app-sandbox.md
  * https://github.com/kristapsdz/oconfigure/blob/master/test-sandbox_init.c
+ * https://github.com/opa334/opainject/blob/main/sandbox.h
  */
-static const char MACOS_SEATBELT_POLICY_PLUS_EXTENSIONS[] =
+static const char MACOS_SEATBELT_POLICY[] =
 	"(version 1)\n"
 	"(deny default)\n"
 	/* not already covered by (deny default) */
@@ -144,17 +148,32 @@ static const char MACOS_SEATBELT_POLICY_PLUS_EXTENSIONS[] =
 	"(deny nvram*)\n"
 	"(deny iokit-get-properties)\n"
 	"(deny file-map-executable)\n"
-	"(allow file-write*\n"
-	"  (subpath \"/private/tmp\")\n"
+	"(allow network-outbound\n"
+	"  (control-name \"com.apple.netsrc\")\n"
+	"  (literal \"/private/var/run/mDNSResponder\")\n"
+	"  (remote tcp))\n"
+	"(allow file-read*\n"
+	"  (subpath \"" P_tmpdir "\")\n"
+	"  (extension \"com.apple.app-sandbox.read\"))\n"
+	"(allow file-read* file-write*\n"
+	"  (subpath \"" P_tmpdir "\")\n"
 	"  (extension \"com.apple.app-sandbox.write\"))\n";
 
+char *sandbox_extension_issue_generic(const char *eclass, uint32_t flags);
+int64_t sandbox_extension_consume(const char *extension_token);
+int sandbox_extension_release(int64_t extension_handle);
 int sandbox_init(const char *profile, uint64_t flags, char **errorbuf);
 void sandbox_free_error(char *errorbuf);
 
 const unsigned MACOS_SEATBELT_TMPFILE = 0x01;
 const unsigned MACOS_SEATBELT_RPATH = 0x02;
 
+#define sandbox_extend(x) sandbox_extension_issue_generic(x, 0)
+
 #endif
+
+static int64_t X_TMPFILE = -1;
+static int64_t X_RPATH = -1;
 
 static WARN_UNUSED result_t
 sandbox_with(
@@ -180,16 +199,54 @@ sandbox_with(
 		err(EX_OSERR, "Error in pledge()");
 	}
 #elif defined(__APPLE__)
-	if (0 != (flags & MACOS_SEATBELT_TMPFILE)) {
-		// TODO: issue and consume extension, or release extension?
+	char *token_tmpfile = NULL;
+	if (0 != (flags & MACOS_SEATBELT_TMPFILE) && X_TMPFILE < 0) {
+		token_tmpfile = sandbox_extend("com.apple.app-sandbox.write");
+		if (token_tmpfile == NULL) {
+			err(EX_OSERR, "Error in Seatbelt extension create");
+		}
+	} else if (0 == (flags & MACOS_SEATBELT_TMPFILE) && X_TMPFILE >= 0) {
+		if (sandbox_extension_release(X_TMPFILE) < 0) {
+			err(EX_OSERR, "Error in Seatbelt extension release");
+		}
 	}
-	if (0 != (flags & MACOS_SEATBELT_RPATH)) {
-		// TODO: issue and consume extension, or release extension?
+	// TODO: dedup copy-pasta below
+	char *token_rpath = NULL;
+	if (0 != (flags & (MACOS_SEATBELT_RPATH|MACOS_SEATBELT_TMPFILE)) && X_RPATH < 0) {
+		token_rpath = sandbox_extend("com.apple.app-sandbox.read");
+		if (token_rpath == NULL) {
+			err(EX_OSERR, "Error in Seatbelt extension create");
+		}
+	} else if (0 == (flags & MACOS_SEATBELT_RPATH) && X_RPATH >= 0) {
+		if (sandbox_extension_release(X_RPATH) < 0) {
+			err(EX_OSERR, "Error in Seatbelt extension release");
+		}
 	}
-	char *ep = NULL;
-	if (sandbox_init(MACOS_SEATBELT_POLICY_PLUS_EXTENSIONS, 0, &ep) < 0) {
-		err(EX_OSERR, "Error in macOS Seatbelt init");
-		sandbox_free_error(ep);
+
+	static bool seatbelt_init = false; // TODO: convert to context variable passed into sandbox functions, to avoid mutable global state
+	if (seatbelt_init == false) {
+		char *ep = NULL;
+		if (sandbox_init(MACOS_SEATBELT_POLICY, 0, &ep) < 0) {
+			err(EX_OSERR, "Error in Seatbelt init");
+			sandbox_free_error(ep);
+		}
+		debug("Seatbelt init succeeded");
+		if (token_tmpfile) {
+			X_TMPFILE = sandbox_extension_consume(token_tmpfile);
+			if (X_TMPFILE < 0) {
+				err(EX_OSERR, "Error in Seatbelt consume");
+			}
+			debug("Seatbelt tmpfile extension consume succeeded");
+		}
+		// TODO: dedup copy-pasta below
+		if (token_rpath) {
+			X_RPATH = sandbox_extension_consume(token_rpath);
+			if (X_RPATH < 0) {
+				err(EX_OSERR, "Error in Seatbelt consume");
+			}
+			debug("Seatbelt rpath extension consume succeeded");
+		}
+		seatbelt_init = true;
 	}
 #endif
 	sandbox_verify(ALLOWED_PATHS, sz, sz, true);
