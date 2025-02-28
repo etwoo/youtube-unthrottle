@@ -163,6 +163,7 @@ static const char MACOS_SEATBELT_POLICY[] =
 	"(allow file-read*\n"
 	"  (require-all\n"
 	"    (require-any\n"
+	"      (subpath \"/private/var/folders/dx/6qgrvh094sd06s66_4yjtnrm0000gn/T/\")\n" // TODO: replace with $TMPDIR
 	"      (subpath \"/private/tmp\")\n"
 	"      (subpath \"/private/var/tmp\")\n"
 	"      (literal \"/tmp\")\n"
@@ -173,6 +174,7 @@ static const char MACOS_SEATBELT_POLICY[] =
 	"(allow file-read* file-write*\n"
 	"  (require-all\n"
 	"    (require-any\n"
+	"      (subpath \"/private/var/folders/dx/6qgrvh094sd06s66_4yjtnrm0000gn/T/\")\n" // TODO: replace with $TMPDIR
 	"      (subpath \"/private/tmp\")\n"
 	"      (subpath \"/private/var/tmp\")\n"
 	"      (literal \"/tmp\")\n"
