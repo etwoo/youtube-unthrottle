@@ -121,7 +121,7 @@ static const char *ALLOWED_PATHS[] = {
 #endif
 };
 
-#if defined(__APPLE__) && defined(__MACH__)
+#if defined(__APPLE__)
 
 /*
  * Some helpful macOS sandbox (aka Seatbelt) references:
@@ -169,7 +169,7 @@ sandbox_with(unsigned flags, const char *promises)
 	if (pledge(promises, NULL) < 0) {
 		err(EX_OSERR, "Error in pledge()");
 	}
-#elif defined(__APPLE__) && defined(__MACH__)
+#elif defined(__APPLE__)
 	// TODO
 #endif
 	sandbox_verify(ALLOWED_PATHS, sz, sz, true);
@@ -207,7 +207,7 @@ sandbox_only_io(void)
 	if (pledge("stdio", NULL) < 0) {
 		err(EX_OSERR, "Error in pledge()");
 	}
-#elif defined(__APPLE__) && defined(__MACH__)
+#elif defined(__APPLE__)
 	// TODO: i think (?) we cannot call sandbox_init() N+1 times to restrict earlier calls; maybe insetad, sandbox_extension_issue* and sandbox_extension_consume() for network IO, creating tmpfiles, etc in first call to any sandbox function, then successively sandbox_extension_release() to drop these extra privileges in second/third/etc calls to sandbox functions
 	char *ep = NULL;
 	if (sandbox_init(MACOS_SANDBOX_POLICY_ONLY_IO, 0, &ep) < 0) {
