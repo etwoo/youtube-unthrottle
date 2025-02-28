@@ -146,6 +146,7 @@ static const char *ALLOWED_PATHS[] = {
  * https://searchfox.org/mozilla-central/source/security/sandbox/mac/
  * https://github.com/chromium/chromium/tree/main/sandbox/mac
  * https://github.com/chromium/chromium/tree/main/sandbox/policy/mac
+ * https://github.com/chromium/chromium/blob/main/sandbox/policy/mac/network.sb
  * https://github.com/steven-michaud/SandboxMirror/blob/master/app-sandbox.md
  * https://github.com/kristapsdz/oconfigure/blob/master/test-sandbox_init.c
  * https://github.com/opa334/opainject/blob/main/sandbox.h
@@ -188,7 +189,15 @@ static const char MACOS_SEATBELT_POLICY[] =
 	"      (control-name \"com.apple.netsrc\")\n"
 	"      (literal \"/private/var/run/mDNSResponder\")\n"
 	"      (remote tcp))\n"
-	"    (extension \"com.apple.security.network.client\")))\n";
+	"    (extension \"com.apple.security.network.client\")))\n"
+	"\n"
+	"(allow mach-lookup"
+	"  (global-name \"com.apple.SecurityServer\")\n"
+	"  (global-name \"com.apple.networkd\")\n"
+	"  (global-name \"com.apple.ocspd\")\n"
+	"  (global-name \"com.apple.trustd.agent\")\n"
+	"  (global-name \"com.apple.SystemConfiguration.DNSConfiguration\")\n"
+	"  (global-name \"com.apple.SystemConfiguration.configd\"))";
 
 char *sandbox_extension_issue_generic(const char *eclass, uint32_t flags);
 int64_t sandbox_extension_consume(const char *extension_token);
