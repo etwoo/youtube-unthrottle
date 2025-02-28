@@ -152,12 +152,14 @@ static const char *ALLOWED_PATHS[] = {
  */
 static const char MACOS_SEATBELT_POLICY[] =
 	"(version 1)\n"
+	"\n"
 	"(deny default)\n"
 	/* not already covered by (deny default) */
 	"(deny process-info*)\n"
 	"(deny nvram*)\n"
 	"(deny iokit-get-properties)\n"
 	"(deny file-map-executable)\n"
+	"\n"
 	"(allow file-read*\n"
 	"  (require-all\n"
 	"    (require-any\n"
@@ -167,6 +169,7 @@ static const char MACOS_SEATBELT_POLICY[] =
 	"      (literal \"/var\")\n"
 	"      (literal \"/var/tmp\"))\n"
 	"    (extension \"com.apple.app-sandbox.read\")))\n"
+	"\n"
 	"(allow file-read* file-write*\n"
 	"  (require-all\n"
 	"    (require-any\n"
@@ -176,6 +179,7 @@ static const char MACOS_SEATBELT_POLICY[] =
 	"      (literal \"/var\")\n"
 	"      (literal \"/var/tmp\"))\n"
 	"    (extension \"com.apple.app-sandbox.write\")))\n"
+	"\n"
 	"(allow network-outbound\n"
 	"  (require-all\n"
 	"    (require-any\n"
