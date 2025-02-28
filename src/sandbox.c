@@ -7,11 +7,14 @@
 
 #include <arpa/inet.h>
 #include <assert.h>
-#if defined(__OpenBSD__)
+#if defined(__OpenBSD__) || defined(__APPLE__)
 #include <err.h> /* for err() */
 #endif
 #include <fcntl.h>
 #include <netdb.h>
+#if defined(__APPLE__)
+#include <sandbox.h>
+#endif
 #include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -118,6 +121,35 @@ static const char *ALLOWED_PATHS[] = {
 #endif
 };
 
+#if defined(__APPLE__) && defined(__MACH__)
+
+/*
+ * Some helpful macOS sandbox (aka Seatbelt) references:
+ *
+ * https://newosxbook.com/files/HITSB.pdf
+ * https://reverse.put.as/2011/09/14/apple-sandbox-guide-v1-0/
+ * http://www.semantiscope.com/research/BHDC2011/BHDC2011-Paper.pdf
+ * https://bdash.net.nz/posts/sandboxing-on-macos/
+ * https://searchfox.org/mozilla-central/source/security/sandbox/mac/
+ * https://github.com/chromium/chromium/tree/main/sandbox/mac
+ * https://github.com/chromium/chromium/tree/main/sandbox/policy/mac
+ * https://github.com/steven-michaud/SandboxMirror/blob/master/app-sandbox.md
+ * https://github.com/kristapsdz/oconfigure/blob/master/test-sandbox_init.c
+ */
+static const char MACOS_SANDBOX_POLICY_ONLY_IO[] =
+	"(version 1)\n"
+	"(deny default)\n"
+	/* not already covered by (deny default) */
+	"(deny process-info*)\n"
+	"(deny nvram*)\n"
+	"(deny iokit-get-properties)\n"
+	"(deny file-map-executable)\n";
+
+int sandbox_init(const char *profile, uint64_t flags, char **errorbuf);
+void sandbox_free_error(char *errorbuf);
+
+#endif
+
 static WARN_UNUSED result_t
 sandbox_with(unsigned flags, const char *promises)
 {
@@ -137,6 +169,8 @@ sandbox_with(unsigned flags, const char *promises)
 	if (pledge(promises, NULL) < 0) {
 		err(EX_OSERR, "Error in pledge()");
 	}
+#elif defined(__APPLE__) && defined(__MACH__)
+	// TODO
 #endif
 	sandbox_verify(ALLOWED_PATHS, sz, sz, true);
 	return RESULT_OK;
@@ -166,7 +200,6 @@ sandbox_only_io(void)
 #if defined(__linux__)
 	check(landlock_apply(NULL, 0, 0));
 	check(seccomp_apply(SECCOMP_STDIO));
-	sandbox_verify(ALLOWED_PATHS, 0, ARRAY_SIZE(ALLOWED_PATHS), false);
 #elif defined(__OpenBSD__)
 	if (unveil(NULL, NULL) < 0) {
 		err(EX_OSERR, "Error in final unveil()");
@@ -174,8 +207,20 @@ sandbox_only_io(void)
 	if (pledge("stdio", NULL) < 0) {
 		err(EX_OSERR, "Error in pledge()");
 	}
-	/* sandbox_verify() would abort() here due to pledge() restrictions */
+#elif defined(__APPLE__) && defined(__MACH__)
+	char *ep = NULL;
+	if (sandbox_init(MACOS_SANDBOX_POLICY_ONLY_IO, 0, &ep) < 0) {
+		err(EX_OSERR, "Error in Seatbelt sandbox_init(): %s", ep);
+		sandbox_free_error(ep);
+	}
 #endif
+
+#if defined(__OpenBSD__)
+	/* skip -- sandbox_verify() would abort() due to pledge() restriction */
+#else
+	sandbox_verify(ALLOWED_PATHS, 0, ARRAY_SIZE(ALLOWED_PATHS), false);
+#endif
+
 	debug("%s() succeeded", __func__);
 	return RESULT_OK;
 }
