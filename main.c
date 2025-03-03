@@ -73,13 +73,22 @@ try_sandbox(void)
 static __attribute__((warn_unused_result)) result_t
 before_inet(void *userdata __attribute__((unused)))
 {
+#if defined(__APPLE__)
+	/* macOS sandbox can drop filesystem access entirely at this point */
+	return sandbox_only_io();
+#else
 	return sandbox_only_io_inet_rpath();
+#endif
 }
 
 static __attribute__((warn_unused_result)) result_t
 after_inet(void *userdata __attribute__((unused)))
 {
+#if defined(__APPLE__)
+	return RESULT_OK;
+#else
 	return sandbox_only_io();
+#endif
 }
 
 struct quality {
