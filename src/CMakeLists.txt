@@ -28,7 +28,21 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
 	target_link_libraries(youtube PRIVATE
 		seccomp
 	)
-endif (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+	file(READ seatbelt_policy.scm SEATBELT_POLICY)
+	set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+		seatbelt_policy.scm
+	)
+
+	string(REPLACE "\n" "\\\\n" SEATBELT_POLICY "${SEATBELT_POLICY}")
+	string(REPLACE "\\\\" "\\" SEATBELT_POLICY_SCM "${SEATBELT_POLICY}")
+	configure_file(seatbelt_policy.c.in seatbelt_policy.c ESCAPE_QUOTES)
+
+	target_sources(youtube PRIVATE
+		seatbelt_policy.c
+		seatbelt.c
+	)
+endif ()
 
 if (CMAKE_BUILD_TYPE STREQUAL Debug)
 	message(STATUS "Enabling runtime debug output")

@@ -272,6 +272,43 @@ result_to_str(result_t r)
 		s = my_asprintf("Error in landlock_restrict_self(): %s",
 		                my_strerror(r));
 		break;
+	case ERR_SANDBOX_SEATBELT_GETENV_TMPDIR:
+		s = strdup("Seatbelt requires TMPDIR environment variable");
+		break;
+	case ERR_SANDBOX_SEATBELT_REALPATH_TMPDIR:
+		s = strdup("Error resolving realpath of TMPDIR value");
+		break;
+	case ERR_SANDBOX_SEATBELT_INIT:
+		s = my_asprintf("Error in macOS Seatbelt sandbox_init(): %s",
+		                my_strerror(r));
+		break;
+	case ERR_SANDBOX_SEATBELT_ISSUE_INET:
+		s = strdup("Error issuing Seatbelt extension: inet");
+		break;
+	case ERR_SANDBOX_SEATBELT_ISSUE_TMPFILE:
+		s = strdup("Error issuing Seatbelt extension: tmpfile");
+		break;
+	case ERR_SANDBOX_SEATBELT_ISSUE_RPATH:
+		s = strdup("Error issuing Seatbelt extension: rpath");
+		break;
+	case ERR_SANDBOX_SEATBELT_CONSUME_INET:
+		s = strdup("Error consuming Seatbelt extension: inet");
+		break;
+	case ERR_SANDBOX_SEATBELT_CONSUME_TMPFILE:
+		s = strdup("Error consuming Seatbelt extension: tmpfile");
+		break;
+	case ERR_SANDBOX_SEATBELT_CONSUME_RPATH:
+		s = strdup("Error consuming Seatbelt extension: rpath");
+		break;
+	case ERR_SANDBOX_SEATBELT_RELEASE_INET:
+		s = strdup("Error releasing Seatbelt extension: inet");
+		break;
+	case ERR_SANDBOX_SEATBELT_RELEASE_TMPFILE:
+		s = strdup("Error releasing Seatbelt extension: tmpfile");
+		break;
+	case ERR_SANDBOX_SEATBELT_RELEASE_RPATH:
+		s = strdup("Error releasing Seatbelt extension: rpath");
+		break;
 	case ERR_SANDBOX_SECCOMP_INIT:
 		s = my_asprintf("Error in seccomp_init(): %s", my_strerror(r));
 		break;

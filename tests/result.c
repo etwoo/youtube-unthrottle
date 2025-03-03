@@ -46,6 +46,9 @@ static const char CANNOT_APPEND[] = "Cannot append";
 static const char CANNOT_FIND[] = "Cannot find";
 static const char CANNOT_GET[] = "Cannot get";
 static const char CANNOT_SET[] = "Cannot set";
+static const char CANNOT_ISSUE[] = "Error issuing";
+static const char CANNOT_CONSUME[] = "Error consuming";
+static const char CANNOT_RELEASE[] = "Error releasing";
 
 TEST
 print_to_str_each_enum_value(void)
@@ -92,6 +95,21 @@ print_to_str_each_enum_value(void)
 	          "Error in prctl");
 	ASSERT_IN(make_n(ERR_SANDBOX_LANDLOCK_RESTRICT_SELF),
 	          "Error in landlock");
+	ASSERT_IN(make(ERR_SANDBOX_SEATBELT_GETENV_TMPDIR),
+	          "Seatbelt requires TMPDIR");
+	ASSERT_IN(make(ERR_SANDBOX_SEATBELT_REALPATH_TMPDIR),
+	          "Error resolving realpath");
+	ASSERT_IN(make_n(ERR_SANDBOX_SEATBELT_INIT),
+	          "Error in macOS Seatbelt sandbox_init");
+	ASSERT_IN(make(ERR_SANDBOX_SEATBELT_ISSUE_INET), CANNOT_ISSUE);
+	ASSERT_IN(make(ERR_SANDBOX_SEATBELT_ISSUE_TMPFILE), CANNOT_ISSUE);
+	ASSERT_IN(make(ERR_SANDBOX_SEATBELT_ISSUE_RPATH), CANNOT_ISSUE);
+	ASSERT_IN(make(ERR_SANDBOX_SEATBELT_CONSUME_INET), CANNOT_CONSUME);
+	ASSERT_IN(make(ERR_SANDBOX_SEATBELT_CONSUME_TMPFILE), CANNOT_CONSUME);
+	ASSERT_IN(make(ERR_SANDBOX_SEATBELT_CONSUME_RPATH), CANNOT_CONSUME);
+	ASSERT_IN(make(ERR_SANDBOX_SEATBELT_RELEASE_INET), CANNOT_RELEASE);
+	ASSERT_IN(make(ERR_SANDBOX_SEATBELT_RELEASE_TMPFILE), CANNOT_RELEASE);
+	ASSERT_IN(make(ERR_SANDBOX_SEATBELT_RELEASE_RPATH), CANNOT_RELEASE);
 	ASSERT_IN(make_n(ERR_SANDBOX_SECCOMP_INIT), "Error in seccomp_init");
 	ASSERT_IN(make_n(ERR_SANDBOX_SECCOMP_RESOLVE_SYSCALL),
 	          "Cannot resolve");

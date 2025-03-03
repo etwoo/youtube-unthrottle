@@ -3,6 +3,7 @@
 #include "array.h"
 #include "debug.h"
 #include "landlock.h"
+#include "seatbelt.h"
 #include "seccomp.h"
 
 #include <arpa/inet.h>
@@ -21,12 +22,6 @@
 #include <unistd.h>
 
 static const char NEVER_ALLOWED_CANARY[] = "/etc/passwd";
-
-static WARN_UNUSED int
-check_socket(void)
-{
-	return socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-}
 
 static void
 sandbox_verify(const char **paths,
@@ -67,29 +62,33 @@ sandbox_verify(const char **paths,
 	for (i = paths_allowed; i < paths_total; ++i) {
 		int fd = open(paths[i], 0);
 		assert(fd < 0);
-		assert(errno == EACCES || errno == ENOENT);
+		assert(errno == EACCES || errno == ENOENT || errno == EPERM);
 		debug("sandbox verify: blocked %s", paths[i]);
 	}
 
 	{
 		int fd = open(NEVER_ALLOWED_CANARY, 0);
 		assert(fd < 0);
-		assert(errno == EACCES || errno == ENOENT);
+		assert(errno == EACCES || errno == ENOENT || errno == EPERM);
 		debug("sandbox verify: blocked %s", NEVER_ALLOWED_CANARY);
 	}
 
 	/* sanity-check sandbox: network connect() */
 
-	if (!connect_allowed) {
-		int sfd = check_socket();
+	int sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	if (connect_allowed) {
+		assert(sfd >= 0);
+	}
+#if !defined(__APPLE__)
+	else {
+		/*
+		 * On most platforms, sandboxing blocks socket() entirely.
+		 */
 		assert(sfd < 0);
 		debug("sandbox verify: blocked connect()");
 		return;
 	}
-
-	assert(connect_allowed);
-	int sfd = check_socket();
-	assert(sfd >= 0);
+#endif
 
 	struct sockaddr_in sa;
 	memset(&sa, 0, sizeof(sa));
@@ -98,37 +97,57 @@ sandbox_verify(const char **paths,
 	inet_pton(AF_INET, "23.192.228.68", &sa.sin_addr); /* example.com */
 
 	rc = connect(sfd, (struct sockaddr *)&sa, sizeof(sa));
-	assert(rc == 0);
+	if (connect_allowed) {
+		assert(rc == 0);
+	}
+#if defined(__APPLE__)
+	else {
+		/*
+		 * On macOS, sandboxing allows socket(), then blocks connect().
+		 */
+		assert(rc != 0);
+	}
+#endif
 
 	rc = close(sfd);
 	assert(rc == 0);
-	debug("sandbox verify: allowed connect()");
+	debug("sandbox verify: %s connect()",
+	      connect_allowed ? "allowed" : "blocked");
 }
 
 static const char *ALLOWED_PATHS[] = {
 	/* for temporary files */
 	P_tmpdir,
-#if defined(__linux__)
+#if defined(__OpenBSD__)
+	/* for outbound HTTPS */
+	"/etc/ssl/cert.pem",
+#elif defined(__linux__)
 	/* for outbound HTTPS */
 	"/etc/resolv.conf",
 	"/etc/ssl/certs/ca-certificates.crt",
-#elif defined(__OpenBSD__)
-	/* for outbound HTTPS */
-	"/etc/ssl/cert.pem",
+#elif defined(__APPLE__)
+	/* for other potential locations of temporary files */
+	"/private/tmp",
+	"/private/var/tmp",
+	"/tmp",
 #endif
 };
 
+#if defined(__APPLE__)
+static struct seatbelt_context SEATBELT_CONTEXT = {0};
+#endif
+
 static WARN_UNUSED result_t
-sandbox_with(unsigned flags, const char *promises)
+sandbox_with(
+#if defined(__OpenBSD__)
+	const char *promises
+#else
+	unsigned flags
+#endif
+)
 {
 	const size_t sz = ARRAY_SIZE(ALLOWED_PATHS);
-#if defined(__linux__)
-	(void)promises; /* unused */
-	check(landlock_apply(ALLOWED_PATHS, sz, 443));
-	check(seccomp_apply(SECCOMP_STDIO | SECCOMP_INET | SECCOMP_SANDBOX |
-	                    flags));
-#elif defined(__OpenBSD__)
-	(void)flags; /* unused */
+#if defined(__OpenBSD__)
 	for (size_t i = 0; i < sz; ++i) {
 		if (unveil(ALLOWED_PATHS[i], "r") < 0) {
 			err(EX_OSERR, "Error in unveil()");
@@ -137,6 +156,12 @@ sandbox_with(unsigned flags, const char *promises)
 	if (pledge(promises, NULL) < 0) {
 		err(EX_OSERR, "Error in pledge()");
 	}
+#elif defined(__linux__)
+	check(landlock_apply(ALLOWED_PATHS, sz, 443));
+	check(seccomp_apply(flags));
+#elif defined(__APPLE__)
+	check(seatbelt_init(&SEATBELT_CONTEXT));
+	check(seatbelt_revoke(&SEATBELT_CONTEXT, ~flags));
 #endif
 	sandbox_verify(ALLOWED_PATHS, sz, sz, true);
 	return RESULT_OK;
@@ -145,8 +170,17 @@ sandbox_with(unsigned flags, const char *promises)
 result_t
 sandbox_only_io_inet_tmpfile(void)
 {
-	const char *promises = "dns inet rpath stdio tmppath unveil";
-	check(sandbox_with(SECCOMP_TMPFILE, promises));
+	result_t tmp = sandbox_with(
+#if defined(__OpenBSD__)
+		"dns inet rpath stdio tmppath unveil"
+#elif defined(__linux__)
+		SECCOMP_STDIO | SECCOMP_INET | SECCOMP_SANDBOX | SECCOMP_TMPFILE
+#elif defined(__APPLE__)
+		SEATBELT_INET | SEATBELT_TMPFILE | SEATBELT_RPATH
+#endif
+	);
+	check(tmp);
+
 	debug("%s() succeeded", __func__);
 	return RESULT_OK;
 }
@@ -154,8 +188,17 @@ sandbox_only_io_inet_tmpfile(void)
 result_t
 sandbox_only_io_inet_rpath(void)
 {
-	const char *promises = "dns inet rpath stdio unveil";
-	check(sandbox_with(SECCOMP_RPATH, promises));
+	result_t tmp = sandbox_with(
+#if defined(__OpenBSD__)
+		"dns inet rpath stdio unveil"
+#elif defined(__linux__)
+		SECCOMP_STDIO | SECCOMP_INET | SECCOMP_SANDBOX | SECCOMP_RPATH
+#elif defined(__APPLE__)
+		SEATBELT_INET | SEATBELT_RPATH
+#endif
+	);
+	check(tmp);
+
 	debug("%s() succeeded", __func__);
 	return RESULT_OK;
 }
@@ -163,19 +206,27 @@ sandbox_only_io_inet_rpath(void)
 result_t
 sandbox_only_io(void)
 {
-#if defined(__linux__)
-	check(landlock_apply(NULL, 0, 0));
-	check(seccomp_apply(SECCOMP_STDIO));
-	sandbox_verify(ALLOWED_PATHS, 0, ARRAY_SIZE(ALLOWED_PATHS), false);
-#elif defined(__OpenBSD__)
+#if defined(__OpenBSD__)
 	if (unveil(NULL, NULL) < 0) {
 		err(EX_OSERR, "Error in final unveil()");
 	}
 	if (pledge("stdio", NULL) < 0) {
 		err(EX_OSERR, "Error in pledge()");
 	}
-	/* sandbox_verify() would abort() here due to pledge() restrictions */
+#elif defined(__linux__)
+	check(landlock_apply(NULL, 0, 0));
+	check(seccomp_apply(SECCOMP_STDIO));
+#elif defined(__APPLE__)
+	check(seatbelt_init(&SEATBELT_CONTEXT));
+	check(seatbelt_revoke(&SEATBELT_CONTEXT, 0xFFFFFFFF));
 #endif
+
+#if defined(__OpenBSD__)
+	/* skip -- sandbox_verify() would abort() due to pledge() restriction */
+#else
+	sandbox_verify(ALLOWED_PATHS, 0, ARRAY_SIZE(ALLOWED_PATHS), false);
+#endif
+
 	debug("%s() succeeded", __func__);
 	return RESULT_OK;
 }

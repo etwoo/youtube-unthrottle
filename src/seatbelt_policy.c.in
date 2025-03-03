@@ -1,0 +1,1 @@
+const char *SEATBELT_POLICY = "@SEATBELT_POLICY_SCM@";
