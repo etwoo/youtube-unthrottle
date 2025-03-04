@@ -1,4 +1,4 @@
-#include "re.h"
+#include "lib/re.h"
 
 #include "greatest.h"
 #include "test_macros.h"

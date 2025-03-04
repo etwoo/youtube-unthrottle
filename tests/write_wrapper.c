@@ -1,5 +1,5 @@
 #include "greatest.h"
-#include "write.h"
+#include "sys/write.h"
 
 #include <errno.h>
 

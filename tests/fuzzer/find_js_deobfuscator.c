@@ -1,4 +1,4 @@
-#include "js.h"
+#include "lib/js.h"
 
 int LLVMFuzzerTestOneInput(const char *data, size_t sz);
 

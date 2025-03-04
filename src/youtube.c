@@ -1,11 +1,11 @@
 #include "youtube.h"
 
-#include "array.h"
-#include "debug.h"
-#include "js.h"
-#include "re.h"
-#include "tmpfile.h"
-#include "url.h"
+#include "lib/js.h"
+#include "lib/re.h"
+#include "lib/url.h"
+#include "sys/array.h"
+#include "sys/debug.h"
+#include "sys/tmpfile.h"
 
 #include <ada_c.h>
 #include <assert.h>

@@ -1,8 +1,8 @@
 #ifndef SECCOMP_H
 #define SECCOMP_H
 
-#include "compiler_features.h"
 #include "result.h"
+#include "sys/compiler_features.h"
 
 extern const unsigned SECCOMP_STDIO;
 extern const unsigned SECCOMP_INET;

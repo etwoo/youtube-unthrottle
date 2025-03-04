@@ -1,9 +1,9 @@
 #ifndef JAVASCRIPT_H
 #define JAVASCRIPT_H
 
-#include "compiler_features.h"
 #include "result.h"
-#include "string_view.h"
+#include "sys/compiler_features.h"
+#include "sys/string_view.h"
 
 struct parse_ops {
 	result_t (*got_video)(const char *, void *);

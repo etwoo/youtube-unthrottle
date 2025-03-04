@@ -1,5 +1,5 @@
-#include "array.h"
-#include "js.h"
+#include "lib/js.h"
+#include "sys/array.h"
 #include "test_macros.h"
 
 static WARN_UNUSED result_t

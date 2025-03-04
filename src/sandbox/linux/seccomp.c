@@ -1,4 +1,4 @@
-#include "seccomp.h"
+#include "sandbox/linux/seccomp.h"
 
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE /* for O_TMPFILE */ // NOLINT(bugprone-reserved-identifier)
@@ -6,8 +6,8 @@
 #include <fcntl.h>
 #undef _GNU_SOURCE /* revert for any other includes */
 
-#include "array.h"
-#include "debug.h"
+#include "sys/array.h"
+#include "sys/debug.h"
 
 #include <assert.h>
 #include <linux/magic.h> /* for OVERLAYFS_SUPER_MAGIC */

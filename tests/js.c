@@ -1,8 +1,8 @@
-#include "js.h"
+#include "lib/js.h"
 
-#include "array.h"
-#include "debug.h"
 #include "greatest.h"
+#include "sys/array.h"
+#include "sys/debug.h"
 #include "test_macros.h"
 
 #include <assert.h>

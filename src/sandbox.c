@@ -1,10 +1,14 @@
 #include "sandbox.h"
 
-#include "array.h"
-#include "debug.h"
-#include "landlock.h"
-#include "seatbelt.h"
-#include "seccomp.h"
+#if defined(__linux__)
+#include "sandbox/linux/landlock.h"
+#include "sandbox/linux/seccomp.h"
+#elif defined(__APPLE__)
+#include "sandbox/darwin/seatbelt.h"
+#endif
+#include "sys/array.h"
+#include "sys/compiler_features.h"
+#include "sys/debug.h"
 
 #include <arpa/inet.h>
 #include <assert.h>

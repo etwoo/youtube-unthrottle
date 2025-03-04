@@ -1,7 +1,7 @@
-#include "url.h"
+#include "lib/url.h"
 
-#include "debug.h"
-#include "write.h"
+#include "sys/debug.h"
+#include "sys/write.h"
 
 #include <assert.h>
 #include <unistd.h>

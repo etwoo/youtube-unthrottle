@@ -1,7 +1,7 @@
-#include "seatbelt.h"
+#include "sandbox/darwin/seatbelt.h"
 
 #include "greatest.h"
-#include "tmpfile.h"
+#include "sys/tmpfile.h"
 
 #include <arpa/inet.h>
 #include <errno.h>
