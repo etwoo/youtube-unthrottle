@@ -60,8 +60,8 @@ landlock_restrict_self(const int ruleset_fd, const __u32 flags)
 
 #undef _GNU_SOURCE /* revert for any other includes */
 
-#include "debug.h"
-#include "landlock.h"
+#include "sandbox/linux/landlock.h"
+#include "sys/debug.h"
 
 #include <fcntl.h>
 #include <linux/prctl.h>

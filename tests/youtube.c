@@ -1,8 +1,8 @@
 #include "youtube.h"
 
-#include "debug.h"
 #include "greatest.h"
-#include "write.h"
+#include "sys/debug.h"
+#include "sys/write.h"
 
 #include <assert.h>
 #include <stdbool.h>

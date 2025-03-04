@@ -1,8 +1,8 @@
-#include "seatbelt.h"
+#include "sandbox/darwin/seatbelt.h"
 
-#include "array.h"
-#include "debug.h"
-#include "seatbelt_os_api.h"
+#include "sandbox/darwin/seatbelt_os_api.h"
+#include "sys/array.h"
+#include "sys/debug.h"
 
 #include <assert.h>
 #include <limits.h>

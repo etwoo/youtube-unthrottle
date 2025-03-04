@@ -1,7 +1,7 @@
-#include "seccomp.h"
+#include "sandbox/linux/seccomp.h"
 
 #include "greatest.h"
-#include "tmpfile.h"
+#include "sys/tmpfile.h"
 
 #include <arpa/inet.h>
 #include <errno.h>

@@ -1,6 +1,6 @@
-#include "tmpfile.h"
+#include "sys/tmpfile.h"
 
-#include "debug.h"
+#include "sys/debug.h"
 
 #include <assert.h>
 #include <fcntl.h>

@@ -1,4 +1,4 @@
-#include "js.h"
+#include "lib/js.h"
 
 static WARN_UNUSED result_t
 got_video(const char *val __attribute__((unused)),

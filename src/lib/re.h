@@ -1,9 +1,9 @@
 #ifndef REGEX_H
 #define REGEX_H
 
-#include "compiler_features.h"
 #include "result.h"
-#include "string_view.h"
+#include "sys/compiler_features.h"
+#include "sys/string_view.h"
 
 /*
  * Find <pattern_in> within <subject_in>.

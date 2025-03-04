@@ -1,7 +1,7 @@
-#include "landlock.h"
+#include "sandbox/linux/landlock.h"
 
 #include "greatest.h"
-#include "tmpfile.h"
+#include "sys/tmpfile.h"
 
 #include <arpa/inet.h>
 #include <errno.h>

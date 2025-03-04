@@ -1,8 +1,8 @@
-#include "js.h"
+#include "lib/js.h"
 
-#include "array.h"
-#include "debug.h"
-#include "re.h"
+#include "lib/re.h"
+#include "sys/array.h"
+#include "sys/debug.h"
 
 #include <assert.h>
 #include <stdbool.h>

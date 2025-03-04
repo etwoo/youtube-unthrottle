@@ -1,8 +1,8 @@
 #include "result.h"
 
-#include "compiler_features.h"
-#include "debug.h"
 #include "greatest.h"
+#include "sys/compiler_features.h"
+#include "sys/debug.h"
 
 #define ASSERT_IN(haystack, needle)                                            \
 	do {                                                                   \

@@ -1,6 +1,6 @@
-#include "re.h"
+#include "lib/re.h"
 
-#include "debug.h"
+#include "sys/debug.h"
 
 #include <assert.h>
 

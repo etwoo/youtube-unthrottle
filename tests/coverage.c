@@ -21,9 +21,9 @@ coverage_write_and_close(int fd __attribute__((unused)))
 #include <fcntl.h>
 #undef _GNU_SOURCE /* revert for any other includes */
 
-#include "array.h"
-#include "debug.h"
-#include "write.h"
+#include "sys/array.h"
+#include "sys/debug.h"
+#include "sys/write.h"
 
 #include <stdbool.h>
 #include <stdint.h>
