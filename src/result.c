@@ -4,6 +4,7 @@
 
 #include <assert.h>
 #include <curl/curl.h>
+#include <stdarg.h>
 #include <string.h> /* for strerror() */
 
 #define PCRE2_CODE_UNIT_WIDTH 8

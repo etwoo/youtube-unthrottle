@@ -1,0 +1,75 @@
+name: multi-platform
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  # required by cpp-linter/cpp-linter-action@v2 for files-changed-only: false
+  contents: read
+  # required by EnricoMi/publish-unit-test-result-action@v2
+  checks: write
+  pull-requests: write
+
+jobs:
+  build-all:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, macos-13]
+        toolchain:
+          - compiler: gcc
+            package: gcc
+            preset: default
+          - compiler: clang
+            package: llvm
+            preset: default
+    uses: ./.github/workflows/cmake-build.yml
+    with:
+      os: ${{ matrix.os }}
+      compiler: ${{ matrix.toolchain.compiler }}
+      package: ${{ matrix.toolchain.package }}
+      preset: ${{ matrix.toolchain.preset }}
+  lint:
+    uses: ./.github/workflows/cmake-build.yml
+    with:
+      os: ubuntu-latest
+      compiler: clang
+      package: llvm
+      preset: default
+      action: lint
+  coverage:
+    uses: ./.github/workflows/cmake-build.yml
+    with:
+      os: ubuntu-latest
+      compiler: clang
+      package: llvm
+      preset: coverage
+      action: coverage
+  
+  build-openbsd:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Build and test
+      uses: vmactions/openbsd-vm@v1
+      with:
+        prepare: pkg_add cmake git ada curl duktape jansson pcre2
+        run: >
+          cmake --preset default &&
+          cmake --build --preset default &&
+          ctest --preset default
+    - name: Gather LastTest.log
+      uses: actions/upload-artifact@v4
+      with:
+        name: LastTest.log-openbsd
+        path: ./build/Testing/Temporary/LastTest.log
+    - name: Gather test results
+      uses: EnricoMi/publish-unit-test-result-action@v2
+      if: always()
+      with:
+        check_name: Test Report for openbsd
+        comment_mode: 'off'
+        files: ./build/junit.xml

@@ -10,6 +10,8 @@
  * disappear despite their deprecation status.
  */
 
+#include <stdint.h>
+
 int sandbox_init_with_parameters(const char *,
                                  uint64_t,
                                  const char **const,
