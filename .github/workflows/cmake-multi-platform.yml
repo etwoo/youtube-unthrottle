@@ -26,28 +26,72 @@ jobs:
           - compiler: clang
             package: llvm
             preset: default
-    uses: ./.github/workflows/cmake-build.yml
-    with:
-      os: ${{ matrix.os }}
-      compiler: ${{ matrix.toolchain.compiler }}
-      package: ${{ matrix.toolchain.package }}
-      preset: ${{ matrix.toolchain.preset }}
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v4
+    - uses: ./.github/actions/make-homebrew-devenv
+      with:
+        os: ${{ matrix.os }}
+        compiler: ${{ matrix.toolchain.compiler }}
+        package: ${{ matrix.toolchain.package }}
+        preset: ${{ matrix.toolchain.preset }}
+    - uses: ./.github/actions/cmake-build-and-test
+      with:
+        os: ${{ matrix.os }}
+  
   lint:
-    uses: ./.github/workflows/cmake-build.yml
-    with:
-      os: ubuntu-latest
-      compiler: clang
-      package: llvm
-      preset: default
-      action: lint
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: ./.github/actions/make-homebrew-devenv
+      with:
+        os: ubuntu-latest
+        compiler: clang
+        package: llvm
+        preset: default
+    - name: Run clang-format and clang-tidy, including clang-analyzer checks
+      id: lint
+      uses: cpp-linter/cpp-linter-action@v2
+      with:
+        style: 'file'   # use .clang-format
+        tidy-checks: '' # use .clang-tidy
+        version: 19     # use clang-{format,tidy}-19
+        database: ./build/
+        ignore: ./build/
+        files-changed-only: false
+        file-annotations: true
+        step-summary: true
+    - name: Fail job if clang-format or clang-tidy found problems
+      if: steps.lint.outputs.checks-failed > 0
+      run: exit 1
+  
   coverage:
-    uses: ./.github/workflows/cmake-build.yml
-    with:
-      os: ubuntu-latest
-      compiler: clang
-      package: llvm
-      preset: coverage
-      action: coverage
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: ./.github/actions/make-homebrew-devenv
+      with:
+        os: ubuntu-latest
+        compiler: clang
+        package: llvm
+        preset: coverage
+    - uses: ./.github/actions/cmake-build-and-test
+      with:
+        os: ubuntu-latest
+    - name: Gather code coverage data
+      run: |
+        echo '```' >> "$GITHUB_STEP_SUMMARY"
+        ./scripts/coverage.sh       \
+          -E 'main.c|linuxbrew'     \
+          coverage.profraw ./build/coverage.xml >> "$GITHUB_STEP_SUMMARY"
+        echo >> "$GITHUB_STEP_SUMMARY"
+        echo '```' >> "$GITHUB_STEP_SUMMARY"
+    - name: Fail job if code coverage falls below threshold
+      uses: VeryGoodOpenSource/very_good_coverage@v2
+      with:
+        path: ./build/coverage.lcov
+        min_coverage: 100
+        exclude: '/home/linuxbrew/.linuxbrew/include/** **/main.c'
   
   build-openbsd:
     runs-on: ubuntu-latest
@@ -61,15 +105,9 @@ jobs:
           cmake --preset default &&
           cmake --build --preset default &&
           ctest --preset default
-    - name: Gather LastTest.log
-      uses: actions/upload-artifact@v4
+    - name: Compute a unique ID for openbsd job
+      run: |
+        echo "ID=openbsd" >> "$GITHUB_ENV"
+    - uses: ./.github/actions/gather-test-artifacts
       with:
-        name: LastTest.log-openbsd
-        path: ./build/Testing/Temporary/LastTest.log
-    - name: Gather test results
-      uses: EnricoMi/publish-unit-test-result-action@v2
-      if: always()
-      with:
-        check_name: Test Report for openbsd
-        comment_mode: 'off'
-        files: ./build/junit.xml
+        os: openbsd

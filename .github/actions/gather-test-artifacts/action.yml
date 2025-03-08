@@ -1,0 +1,36 @@
+name: gather-test-artifacts
+description: 'Gather LastTest.log and junit.xml'
+inputs:
+  os:
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Check preconditions
+      shell: bash
+      run: |
+        if [ -z "$ID" ] ; then
+          echo "ID envvar is undefined"
+          exit 1
+        fi
+    - name: Gather LastTest.log
+      uses: actions/upload-artifact@v4
+      with:
+        name: LastTest.log-${{ env.ID }}
+        path: ./build/Testing/Temporary/LastTest.log
+    - name: Gather test results (Linux)
+      uses: EnricoMi/publish-unit-test-result-action@v2
+      if: startsWith(inputs.os, 'ubuntu-') || inputs.os == 'openbsd'
+      with:
+        check_name: Test Report for ${{ env.ID }}
+        comment_mode: 'off'
+        files: ./build/junit.xml
+        report_individual_runs: true
+    - name: Gather test results (macOS)
+      uses: EnricoMi/publish-unit-test-result-action/macos@v2
+      if: startsWith(inputs.os, 'macos-')
+      with:
+        check_name: Test Report for ${{ env.ID }}
+        comment_mode: 'off'
+        files: ./build/junit.xml
+        report_individual_runs: true
