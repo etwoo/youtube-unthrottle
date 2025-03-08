@@ -13,6 +13,7 @@ runs:
   using: "composite"
   steps:
     - name: Compute a unique ID for this job
+      shell: bash
       run: |
         echo -n "ID=" >> "$GITHUB_ENV"
         if [ "${{ inputs.os }}" = "macos-13" ] ; then
@@ -23,6 +24,7 @@ runs:
         echo "-${{ inputs.compiler }}-${{ inputs.preset }}" >> "$GITHUB_ENV"
     - uses: Homebrew/actions/setup-homebrew@master
     - name: Kludge for Homebrew cache filetype issues
+      shell: bash
       if: startsWith(inputs.os, 'macos-')
       run: |
         sudo rm -rf                             \
@@ -36,15 +38,18 @@ runs:
         tools: ${{ inputs.package }} cmake ada-url curl duktape jansson pcre2
         key: BUMP=0
     - name: Kludge for Homebrew cache permission issues, and install OS-specific packages
+      shell: bash
       if: startsWith(inputs.os, 'ubuntu-')
       run: |
         sudo chown -R runner /home/linuxbrew/.linuxbrew/
         brew install libseccomp
     - name: Change $SHELL to bash on Ubuntu
+      shell: bash
       if: startsWith(inputs.os, 'ubuntu-')
       run: |
         sudo rm -f /bin/sh && sudo ln -s /bin/{bash,sh}
     - name: Determine Homebrew prefix
+      shell: bash
       run: |
         if [ -n "$(brew --prefix)" ] ; then
           echo "PREFIX=$(brew --prefix)"
@@ -52,6 +57,7 @@ runs:
           echo "PREFIX=/usr/local"
         fi >> "$GITHUB_ENV"
     - name: Determine CC, accounting for Homebrew weirdness
+      shell: bash
       run: |
         X="$(ls $PREFIX/bin/${{ inputs.compiler }}* | head -1)"
         Y="$(ls $(brew --prefix llvm)/bin/${{ inputs.compiler }}* | head -1)"

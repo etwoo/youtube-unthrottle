@@ -7,6 +7,7 @@ runs:
   using: "composite"
   steps:
     - name: Check preconditions
+      shell: bash
       run: |
         if [ -z "$PREFIX" ] ; then
           echo "PREFIX envvar is undefined"
@@ -17,6 +18,7 @@ runs:
         fi
         fi
     - name: Configure via cmake
+      shell: bash
       run: >
         CFLAGS="-I$PREFIX/include"
         LDFLAGS="-L$PREFIX/lib"

@@ -7,6 +7,7 @@ runs:
   using: "composite"
   steps:
     - name: Check preconditions
+      shell: bash
       run: |
         if [ -z "$PREFIX" ] ; then
           echo "PREFIX envvar is undefined"
@@ -16,8 +17,10 @@ runs:
           exit 1
         fi
     - name: Build
+      shell: bash
       run: cmake --build --preset default --parallel
     - name: Test
+      shell: bash
       run: >
         LD_LIBRARY_PATH="$PREFIX/lib"
         COVERAGE_PROFILE_DIR=coverage.profraw
