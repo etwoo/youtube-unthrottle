@@ -12,9 +12,6 @@ runs:
         if [ -z "$PREFIX" ] ; then
           echo "PREFIX envvar is undefined"
           exit 1
-        elif [ -z "$ID" ] ; then
-          echo "ID envvar is undefined"
-          exit 1
         fi
     - name: Build
       shell: bash

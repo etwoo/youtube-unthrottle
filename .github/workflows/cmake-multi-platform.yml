@@ -75,7 +75,7 @@ jobs:
         compiler: clang
         package: llvm
         preset: coverage
-    - uses: ./github/actions/cmake-build-and-test
+    - uses: ./.github/actions/cmake-build-and-test
       with:
         os: ubuntu-latest
     - name: Gather code coverage data
