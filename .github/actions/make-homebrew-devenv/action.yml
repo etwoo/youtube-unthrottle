@@ -59,13 +59,19 @@ runs:
     - name: Determine CC, accounting for Homebrew weirdness
       shell: bash
       run: |
-        X="$(ls $PREFIX/bin/${{ inputs.compiler }}-[0-9]*)"
-        Y="$(ls $(brew --prefix llvm)/bin/${{ inputs.compiler }}-[0-9]*)"
-        if [ -n "$X" ] ; then
-          echo "CC=$X"
-        elif [ -n "$Y" ] ; then
-          echo "CC=$Y"
-        fi >> "$GITHUB_ENV"
+        # For reference on this idiom for checking if a glob matched, see:
+        #   https://unix.stackexchange.com/a/298302
+        shopt -s nullglob
+        for match in $PREFIX/bin/${{ inputs.compiler }}-[0-9]* ; do
+          echo "CC=$match" >> "$GITHUB_ENV"
+          exit 0
+        done
+        for match in $(brew --prefix llvm)/bin/${{ inputs.compiler }}-[0-9]* ; do
+          echo "CC=$match" >> "$GITHUB_ENV"
+          exit 0
+        done
+        echo "No CC found"
+        exit 1
     - uses: ./.github/actions/cmake-configure
       with:
         preset: ${{ inputs.preset }}
