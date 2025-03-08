@@ -16,7 +16,6 @@ runs:
           echo "CC envvar is undefined (explicit CC value is expected)"
           exit 1
         fi
-        fi
     - name: Configure via cmake
       shell: bash
       run: >
