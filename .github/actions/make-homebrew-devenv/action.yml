@@ -59,8 +59,8 @@ runs:
     - name: Determine CC, accounting for Homebrew weirdness
       shell: bash
       run: |
-        X="$(ls $PREFIX/bin/${{ inputs.compiler }}* | head -1)"
-        Y="$(ls $(brew --prefix llvm)/bin/${{ inputs.compiler }}* | head -1)"
+        X="$(ls $PREFIX/bin/${{ inputs.compiler }}-[0-9]*)"
+        Y="$(ls $(brew --prefix llvm)/bin/${{ inputs.compiler }}-[0-9]*)"
         if [ -n "$X" ] ; then
           echo "CC=$X"
         elif [ -n "$Y" ] ; then
