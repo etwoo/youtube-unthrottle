@@ -20,7 +20,7 @@ runs:
         path: ./build/Testing/Temporary/LastTest.log
     - name: Gather test results (Linux)
       uses: EnricoMi/publish-unit-test-result-action@v2
-      if: startsWith(inputs.os, 'ubuntu-')
+      if: startsWith(inputs.os, 'ubuntu-') || inputs.os == 'openbsd'
       with:
         check_name: Test Report for ${{ env.ID }}
         comment_mode: 'off'
