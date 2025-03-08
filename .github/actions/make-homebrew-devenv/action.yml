@@ -60,7 +60,6 @@ runs:
         elif [ -n "$Y" ] ; then
           echo "CC=$Y"
         fi >> "$GITHUB_ENV"
-    - uses: actions/checkout@v4
     - uses: ./.github/actions/cmake-configure
       with:
         preset: ${{ inputs.preset }}
