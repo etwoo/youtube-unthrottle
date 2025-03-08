@@ -1,0 +1,27 @@
+name: cmake-build-and-test
+description: 'Run cmake --build && ctest'
+inputs:
+  os:
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Check preconditions
+      run: |
+        if [ -z "$PREFIX" ] ; then
+          echo "PREFIX envvar is undefined"
+          exit 1
+        elif [ -z "$ID" ] ; then
+          echo "ID envvar is undefined"
+          exit 1
+        fi
+    - name: Build
+      run: cmake --build --preset default --parallel
+    - name: Test
+      run: >
+        LD_LIBRARY_PATH="$PREFIX/lib"
+        COVERAGE_PROFILE_DIR=coverage.profraw
+        ctest --preset default
+    - uses: ./.github/actions/gather-test-artifacts
+      with:
+        os: ${{ inputs.os }}

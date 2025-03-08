@@ -1,0 +1,66 @@
+name: make-homebrew-devenv
+description: 'Make and configure a Homebrew-based dev environment'
+inputs:
+  os:
+    required: true
+  compiler:
+    required: true
+  package:
+    required: true
+  preset:
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Compute a unique ID for this job
+      run: |
+        echo -n "ID=" >> "$GITHUB_ENV"
+        if [ "${{ inputs.os }}" = "macos-13" ] ; then
+          echo -n "macos-amd64"
+        else
+          echo -n "${{ inputs.os }}"
+        fi >> "$GITHUB_ENV"
+        echo "-${{ inputs.compiler }}-${{ inputs.preset }}" >> "$GITHUB_ENV"
+    - uses: Homebrew/actions/setup-homebrew@master
+    - name: Kludge for Homebrew cache filetype issues
+      if: startsWith(inputs.os, 'macos-')
+      run: |
+        sudo rm -rf                             \
+          /opt/homebrew/share/gdb/auto-load/opt \
+          /opt/homebrew/share/gettext/projects  \
+          /opt/homebrew/share/gettext/schema    \
+          /opt/homebrew/share/gettext/styles    \
+          /opt/homebrew/share/gettext/po
+    - uses: tecolicom/actions-use-homebrew-tools@v1
+      with:
+        tools: ${{ inputs.package }} cmake ada-url curl duktape jansson pcre2
+        key: BUMP=0
+    - name: Kludge for Homebrew cache permission issues, and install OS-specific packages
+      if: startsWith(inputs.os, 'ubuntu-')
+      run: |
+        sudo chown -R runner /home/linuxbrew/.linuxbrew/
+        brew install libseccomp
+    - name: Change $SHELL to bash on Ubuntu
+      if: startsWith(inputs.os, 'ubuntu-')
+      run: |
+        sudo rm -f /bin/sh && sudo ln -s /bin/{bash,sh}
+    - name: Determine Homebrew prefix
+      run: |
+        if [ -n "$(brew --prefix)" ] ; then
+          echo "PREFIX=$(brew --prefix)"
+        else
+          echo "PREFIX=/usr/local"
+        fi >> "$GITHUB_ENV"
+    - name: Determine CC, accounting for Homebrew weirdness
+      run: |
+        X="$(ls $PREFIX/bin/${{ inputs.compiler }}* | head -1)"
+        Y="$(ls $(brew --prefix llvm)/bin/${{ inputs.compiler }}* | head -1)"
+        if [ -n "$X" ] ; then
+          echo "CC=$X"
+        elif [ -n "$Y" ] ; then
+          echo "CC=$Y"
+        fi >> "$GITHUB_ENV"
+    - uses: actions/checkout@v4
+    - uses: ./.github/actions/cmake-configure
+      with:
+        preset: ${{ inputs.preset }}

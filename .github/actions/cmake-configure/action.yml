@@ -1,0 +1,25 @@
+name: cmake-configure
+description: 'Run cmake (configure)'
+inputs:
+  preset:
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Check preconditions
+      run: |
+        if [ -z "$PREFIX" ] ; then
+          echo "PREFIX envvar is undefined"
+          exit 1
+        elif [ -z "$CC" ] ; then
+          echo "CC envvar is undefined (explicit CC value is expected)"
+          exit 1
+        fi
+        fi
+    - name: Configure via cmake
+      run: >
+        CFLAGS="-I$PREFIX/include"
+        LDFLAGS="-L$PREFIX/lib"
+        cmake --preset ${{ inputs.preset }}
+        -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=1
