@@ -35,7 +35,7 @@ jobs:
         compiler: ${{ matrix.toolchain.compiler }}
         package: ${{ matrix.toolchain.package }}
         preset: ${{ matrix.toolchain.preset }}
-    - uses: ./github/actions/cmake-build-and-test
+    - uses: ./.github/actions/cmake-build-and-test
       with:
         os: ${{ matrix.os }}
   
