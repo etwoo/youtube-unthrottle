@@ -9,9 +9,6 @@ on:
 permissions:
   # required by cpp-linter/cpp-linter-action@v2 for files-changed-only: false
   contents: read
-  # required by EnricoMi/publish-unit-test-result-action@v2
-  checks: write
-  pull-requests: write
 
 jobs:
   build-all:
@@ -22,38 +19,76 @@ jobs:
         toolchain:
           - compiler: gcc
             package: gcc
-            preset: default
           - compiler: clang
             package: llvm
-            preset: default
-    uses: ./.github/workflows/cmake-build.yml
-    with:
-      os: ${{ matrix.os }}
-      compiler: ${{ matrix.toolchain.compiler }}
-      package: ${{ matrix.toolchain.package }}
-      preset: ${{ matrix.toolchain.preset }}
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v4
+    - uses: ./.github/actions/make-homebrew-devenv
+      with:
+        os: ${{ matrix.os }}
+        compiler: ${{ matrix.toolchain.compiler }}
+        package: ${{ matrix.toolchain.package }}
+    - name: Configure, build, and test
+      run: >
+        cmake --preset default -DCMAKE_COMPILE_WARNING_AS_ERROR=ON &&
+        cmake --build --preset default --parallel &&
+        ctest --preset default
+    - uses: ./.github/actions/collect-ctest-logs
+      if: failure()
+      with:
+        unique-suffix: ${{ matrix.os }}-${{ matrix.toolchain.compiler }}
+
   lint:
-    uses: ./.github/workflows/cmake-build.yml
-    with:
-      os: ubuntu-latest
-      compiler: clang
-      package: llvm
-      preset: default
-      action: lint
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: ./.github/actions/make-homebrew-devenv
+    - name: Configure
+      run: >
+        cmake --preset default
+        -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=1
+    - name: Run clang-format and clang-tidy, including clang-analyzer checks
+      id: lint
+      uses: cpp-linter/cpp-linter-action@v2
+      with:
+        style: 'file'   # use .clang-format
+        tidy-checks: '' # use .clang-tidy
+        version: 19     # use clang-{format,tidy}-19
+        database: ./build/
+        ignore: ./build/
+        files-changed-only: false
+        file-annotations: true
+        step-summary: true
+    - name: Fail job if clang-format or clang-tidy found problems
+      if: steps.lint.outputs.checks-failed > 0
+      run: exit 1
+
   coverage:
-    uses: ./.github/workflows/cmake-build.yml
-    with:
-      os: ubuntu-latest
-      compiler: clang
-      package: llvm
-      preset: coverage
-      action: coverage
-  
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: ./.github/actions/make-homebrew-devenv
+    - name: Configure, build, and test
+      run: >
+        cmake --preset coverage -DCMAKE_COMPILE_WARNING_AS_ERROR=ON &&
+        cmake --build --preset default --parallel &&
+        COVERAGE_PROFILE_DIR=coverage.profraw ctest --preset default
+    - uses: ./.github/actions/collect-ctest-logs
+      if: failure()
+      with:
+        unique-suffix: coverage
+    - name: Gather code coverage data
+      run: >
+        ./scripts/coverage.sh -E 'main.c|linuxbrew' coverage.profraw ./build/coverage.xml
+        | sed 's@^@    @g' >> "$GITHUB_STEP_SUMMARY"
+
   build-openbsd:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - name: Build and test
+    - name: Configure, build, and test
       uses: vmactions/openbsd-vm@v1
       with:
         prepare: pkg_add cmake git ada curl duktape jansson pcre2
@@ -61,15 +96,7 @@ jobs:
           cmake --preset default &&
           cmake --build --preset default &&
           ctest --preset default
-    - name: Gather LastTest.log
-      uses: actions/upload-artifact@v4
+    - uses: ./.github/actions/collect-ctest-logs
+      if: failure()
       with:
-        name: LastTest.log-openbsd
-        path: ./build/Testing/Temporary/LastTest.log
-    - name: Gather test results
-      uses: EnricoMi/publish-unit-test-result-action@v2
-      if: always()
-      with:
-        check_name: Test Report for openbsd
-        comment_mode: 'off'
-        files: ./build/junit.xml
+        unique-suffix: openbsd
