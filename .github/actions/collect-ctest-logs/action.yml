@@ -1,0 +1,12 @@
+name: collect-ctest-logs
+description: 'Collect LastTest.log produced by ctest'
+inputs:
+  unique-suffix:
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/upload-artifact@v4
+      with:
+        name: LastTest.log-${{ inputs.unique-suffix }}
+        path: ./build/Testing/Temporary/LastTest.log

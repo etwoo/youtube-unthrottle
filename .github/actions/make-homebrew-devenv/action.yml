@@ -1,0 +1,45 @@
+name: make-homebrew-devenv
+description: 'Make a Homebrew-based dev environment'
+inputs:
+  os:
+    required: false
+    default: 'ubuntu-latest'
+  compiler:
+    required: false
+    default: 'clang'
+  package:
+    required: false
+    default: 'llvm'
+runs:
+  using: "composite"
+  steps:
+    - uses: Homebrew/actions/setup-homebrew@master
+    - name: Determine Homebrew prefix
+      shell: bash
+      run: |
+        PREFIX="$(brew --prefix)"
+        if [ -z "$PREFIX" ] ; then
+          PREFIX=/usr/local
+        fi
+        echo "PREFIX=$PREFIX" >> "$GITHUB_ENV"
+    - name: Download cached Homebrew content diff
+      id: homebrew-cache-restore
+      uses: actions/cache/restore@v4
+      with:
+        path: ./homebrew-diff.tar
+        key: homebrew-${{ inputs.os }}-${{ inputs.package }}
+        fail-on-cache-miss: false
+    - name: Install packages, using either cache or Homebrew itself
+      shell: bash
+      run: >
+        ./scripts/homebrew-install-and-cache.sh $PREFIX ./homebrew-diff.tar ${{ inputs.package }}
+    - name: On cache miss, upload new Homebrew content diff to cache
+      uses: actions/cache/save@v4
+      if: steps.homebrew-cache-restore.outputs.cache-hit != 'true'
+      with:
+        path: ./homebrew-diff.tar
+        key: homebrew-${{ inputs.os }}-${{ inputs.package }}
+    - name: Determine CC/CFLAGS/LDFLAGS/etc, accounting for Homebrew idiosyncracies
+      shell: bash
+      run: >
+        ./scripts/homebrew-envvars.sh $PREFIX ${{ inputs.compiler }} >> "$GITHUB_ENV"
