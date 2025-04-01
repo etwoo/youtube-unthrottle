@@ -19,8 +19,18 @@ LLVMFuzzerTestOneInput(const char *data, size_t sz)
 		.got_result = got_result,
 	};
 
-	const struct string_view magic = MAKE_TEST_STRING("var magic=123");
-	const struct string_view js = {.data = data, .sz = sz};
+	struct deobfuscator d = {
+		.magic =
+			{
+				MAKE_TEST_STRING("var m1=123"),
+				MAKE_TEST_STRING("var m2='mmm'"),
+			},
+		.code =
+			{
+				.data = data,
+				.sz = sz,
+			},
+	};
 
 	char *args[8];
 	args[0] = "fPaFSFklkyAP8IeVM1C";
@@ -32,6 +42,6 @@ LLVMFuzzerTestOneInput(const char *data, size_t sz)
 	args[6] = "t2yEuJMA6mZh68xBzwE";
 	args[7] = NULL;
 
-	(void)call_js_foreach(&magic, &js, args, &cops, NULL);
+	(void)call_js_foreach(&d, args, &cops, NULL);
 	return 0;
 }
