@@ -25,13 +25,14 @@ static const char FAKE_JSON_RESPONSE[] =
 	"}"
 	"]}}";
 static const char FAKE_JS_RESPONSE[] =
+	"'use strict';var zzz=666666,aaa,bbb,ccc,ddd,eee,fff,ggg,hhh;"
 	"{signatureTimestamp:12345}"
 	"var mmm=88888888;"
 	"&&(c=X[0](c),\nvar X=[Y];\n"
 	"Y=function(a){"
 	"if (typeof mmm === \"undefined\") { return \"FAIL_MAGIC_TYPEOF\"; }"
 	"b=[a.toUpperCase()]; return b.join(\"\")"
-	"};";
+	"};\nnext_global=0";
 
 static const char *(*test_request_path_to_response)(const char *) = NULL;
 

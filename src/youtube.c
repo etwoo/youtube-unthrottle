@@ -390,11 +390,9 @@ youtube_stream_setup(struct youtube_stream *p,
 		check(ops->before_eval(userdata));
 	}
 
-	struct string_view magic = {0};
-	check(find_js_deobfuscator_magic_global(&js.data, &magic));
-
-	struct string_view deobfuscator = {0};
-	check(find_js_deobfuscator(&js.data, &deobfuscator));
+	struct deobfuscator d = {0};
+	check(find_js_deobfuscator_magic_global(&js.data, &d));
+	check(find_js_deobfuscator(&js.data, &d));
 
 	char *ciphertexts[ARRAY_SIZE(p->url) + 1]
 		__attribute__((cleanup(ciphertexts_cleanup))) = {NULL};
@@ -403,7 +401,7 @@ youtube_stream_setup(struct youtube_stream *p,
 	struct call_ops cops = {
 		.got_result = youtube_stream_update_n_param,
 	};
-	check(call_js_foreach(&magic, &deobfuscator, ciphertexts, &cops, p));
+	check(call_js_foreach(&d, ciphertexts, &cops, p));
 
 	if (ops && ops->after_eval) {
 		check(ops->after_eval(userdata));

@@ -200,8 +200,11 @@ result_to_str(result_t r)
 		                r.msg,
 		                my_strerror(r));
 		break;
-	case ERR_JS_DEOBFUSCATOR_MAGIC_FIND:
-		s = strdup("Cannot find deobfuscator magic in base.js");
+	case ERR_JS_DEOB_FIND_MAGIC_ONE:
+		s = strdup("Cannot find first deobfuscator magic in base.js");
+		break;
+	case ERR_JS_DEOB_FIND_MAGIC_TWO:
+		s = strdup("Cannot find second deobfuscator magic in base.js");
 		break;
 	case ERR_JS_DEOBFUSCATOR_ALLOC:
 		s = strdup("Cannot allocate asprintf buffer");
@@ -217,6 +220,9 @@ result_to_str(result_t r)
 		break;
 	case ERR_JS_CALL_ALLOC:
 		s = strdup("Cannot allocate JavaScript interpreter heap");
+		break;
+	case ERR_JS_CALL_EVAL_MAGIC:
+		s = my_asprintf("Error in duk_peval_lstring(): %s", r.msg);
 		break;
 	case ERR_JS_CALL_COMPILE:
 		s = my_asprintf("Error in duk_pcompile(): %s", r.msg);

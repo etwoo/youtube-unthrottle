@@ -39,6 +39,43 @@ destroy_heap(duk_context **ctx)
 	duk_destroy_heap(*ctx); /* handles NULL gracefully */
 }
 
+static void
+str_free(char **strp)
+{
+	free(*strp);
+}
+
+/*
+ * Copy <in> to <out>, while excluding newlines.
+ */
+static void
+pretty_print_code(struct string_view in /* note: pass by value */, char **out)
+{
+#ifdef WITH_DEBUG_OUTPUT
+	char *buffer = malloc((in.sz + 1) * sizeof(*buffer));
+	*out = buffer;
+	while (buffer) {
+		const char *src_end = memchr(in.data, '\n', in.sz);
+		if (src_end == NULL) {
+			memcpy(buffer, in.data, in.sz);
+			buffer[in.sz] = '\0';
+			break;
+		}
+
+		size_t n = src_end - in.data;
+		memcpy(buffer, in.data, n);
+
+		buffer += n;
+		n++; /* skip newline char in <in.data> */
+		in.data += n;
+		in.sz -= n;
+	}
+#else
+	(void)in;
+	*out = strdup("PRETTY_PRINT_NOT_IMPLEMENTED");
+#endif
+}
+
 static const char MTVIDEO[] = "video/";
 static const char MTAUDIO[] = "audio/";
 
@@ -234,21 +271,31 @@ find_js_timestamp(const struct string_view *js, long long int *value)
 
 result_t
 find_js_deobfuscator_magic_global(const struct string_view *js,
-                                  struct string_view *magic)
+                                  struct deobfuscator *d)
 {
-	check(re_capture("(var [^ =]+=[-0-9]{6,});", js, magic));
-	if (magic->data == NULL) {
-		return make_result(ERR_JS_DEOBFUSCATOR_MAGIC_FIND);
+	check(re_capture("(var [^\\s=]+=[-0-9]{6,});", js, d->magic));
+	if (d->magic[0].data == NULL) {
+		return make_result(ERR_JS_DEOB_FIND_MAGIC_ONE);
 	}
 
-	debug("Parsed deobfuscator magic: %.*s", (int)magic->sz, magic->data);
-	return RESULT_OK;
-}
+	debug("Parsed magic 1: %.*s", (int)d->magic[0].sz, d->magic[0].data);
 
-static void
-asprintf_free(char **strp)
-{
-	free(*strp);
+	check(re_capture("(?s)use strict[^;];"
+	                 "(.*?),\\n?"   /* Lazily capture all JavaScript code */
+	                 "(?:"          /* ... until we hit a long enough run */
+	                 "[^\\s]{2,3}," /* of consecutive var declarations.   */
+	                 "){7}",        /* Current threshold: 7 variables     */
+	                 js,
+	                 d->magic + 1));
+	if (d->magic[1].data == NULL) {
+		return make_result(ERR_JS_DEOB_FIND_MAGIC_TWO);
+	}
+
+	char *pretty_print __attribute__((cleanup(str_free))) = NULL;
+	pretty_print_code(d->magic[1], &pretty_print);
+	debug("Parsed magic 2: %s", pretty_print);
+
+	return RESULT_OK;
 }
 
 /*
@@ -266,8 +313,7 @@ asprintf_free(char **strp)
  * 5) use return value from step 4 as decoded n-parameter
  */
 result_t
-find_js_deobfuscator(const struct string_view *js,
-                     struct string_view *deobfuscator)
+find_js_deobfuscator(const struct string_view *js, struct deobfuscator *d)
 {
 	int rc = 0;
 	struct string_view n = {0};
@@ -280,7 +326,7 @@ find_js_deobfuscator(const struct string_view *js,
 	}
 	debug("Got function name 1: %.*s", (int)n.sz, n.data);
 
-	char *p2 __attribute__((cleanup(asprintf_free))) = NULL;
+	char *p2 __attribute__((cleanup(str_free))) = NULL;
 	rc = asprintf(&p2, "var \\Q%.*s\\E=\\[([^\\]]+)\\]", (int)n.sz, n.data);
 	check_if(rc < 0, ERR_JS_DEOBFUSCATOR_ALLOC);
 
@@ -290,25 +336,27 @@ find_js_deobfuscator(const struct string_view *js,
 	}
 	debug("Got function name 2: %.*s", (int)n.sz, n.data);
 
-	char *p3 __attribute__((cleanup(asprintf_free))) = NULL;
+	char *p3 __attribute__((cleanup(str_free))) = NULL;
 	rc = asprintf(&p3,
 	              "(?s)\\n\\Q%.*s\\E=("
-	              "function\\([[:alpha:]]\\){.*"
-	              "(?!\\n[^=\\n]+=)" /* stop before next global var decl */
-	              "return [[:alpha:]]\\.join\\(\"\"\\)"
+	              "function\\([[:alpha:]]\\){"
+	              ".*?" /* lazy (not greedy) quantifier: `*?` */
 	              "};"
-	              ")",
+	              ")"
+	              "\\n[^\\s=]+=", /* stop before next global var decl */
 	              (int)n.sz,
 	              n.data);
 	check_if(rc < 0, ERR_JS_DEOBFUSCATOR_ALLOC);
 
-	check(re_capture(p3, js, deobfuscator));
-	if (deobfuscator->data == NULL) {
+	check(re_capture(p3, js, &d->code));
+	if (d->code.data == NULL) {
 		return make_result(ERR_JS_DEOB_FIND_FUNC_BODY, n.data, n.sz);
 	}
 
-	// debug("Got func body: %.*s", deobfuscator->sz, deobfuscator->data);
-	debug("Got function body of size %zu", deobfuscator->sz);
+	char *pretty_print __attribute__((cleanup(str_free))) = NULL;
+	pretty_print_code(d->code, &pretty_print);
+	debug("Got function body of %.*s=%s", (int)n.sz, n.data, pretty_print);
+
 	return RESULT_OK;
 }
 
@@ -332,7 +380,8 @@ call_js_one(duk_context *ctx,
 	 */
 	duk_dup_top(ctx);
 
-	duk_context *guard __attribute__((cleanup(pop))) = ctx;
+	duk_context *guard // NOLINT(clang-analyzer-deadcode.DeadStores)
+		__attribute__((cleanup(pop))) = ctx;
 
 	/*
 	 * Push supplied argument onto the Duktape stack, and then call the
@@ -356,8 +405,7 @@ call_js_one(duk_context *ctx,
 }
 
 result_t
-call_js_foreach(const struct string_view *magic,
-                const struct string_view *code,
+call_js_foreach(const struct deobfuscator *d,
                 char **args,
                 const struct call_ops *ops,
                 void *userdata)
@@ -366,9 +414,20 @@ call_js_foreach(const struct string_view *magic,
 		duk_create_heap_default(); /* may return NULL! */
 	check_if(ctx == NULL, ERR_JS_CALL_ALLOC);
 
-	duk_eval_lstring_noresult(ctx, magic->data, magic->sz);
+	for (size_t i = 0; i < ARRAY_SIZE(d->magic); ++i) {
+		const struct string_view *m = d->magic + i;
+		debug("eval()-ing magic %zu", i + 1);
 
-	duk_push_lstring(ctx, code->data, code->sz);
+		duk_context *guard // NOLINT(clang-analyzer-deadcode.DeadStores)
+			__attribute__((cleanup(pop))) = ctx;
+
+		if (duk_peval_lstring(ctx, m->data, m->sz) != 0) {
+			return make_result(ERR_JS_CALL_EVAL_MAGIC, peek(ctx));
+		}
+	}
+	debug("eval()-ed %zu magic variables", ARRAY_SIZE(d->magic));
+
+	duk_push_lstring(ctx, d->code.data, d->code.sz);
 	assert(duk_get_type(ctx, -1) == DUK_TYPE_STRING);
 
 	duk_push_string(ctx, __func__);
