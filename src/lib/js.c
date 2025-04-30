@@ -242,6 +242,18 @@ find_base_js_url(const struct string_view *html, struct string_view *basejs)
 }
 
 result_t
+find_sabr_url(const struct string_view *html, struct string_view *sabr)
+{
+	check(re_capture("\"serverAbrStreamingUrl\":\"([^\"]+)\"", html, sabr));
+	if (sabr->data == NULL) {
+		return make_result(ERR_JS_SABR_URL_FIND);
+	}
+
+	debug("Parsed SABR URI: %.*s", (int)sabr->sz, sabr->data);
+	return RESULT_OK;
+}
+
+result_t
 find_js_timestamp(const struct string_view *js, long long int *value)
 {
 	struct string_view ts = {0};

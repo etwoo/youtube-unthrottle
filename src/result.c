@@ -192,6 +192,12 @@ result_to_str(result_t r)
 	case ERR_JS_BASEJS_URL_ALLOC:
 		s = strdup("Cannot strndup() base.js URL");
 		break;
+	case ERR_JS_SABR_URL_FIND:
+		s = strdup("Cannot find SABR URL in HTML document");
+		break;
+	case ERR_JS_SABR_URL_ALLOC:
+		s = strdup("Cannot strndup() SABR URL");
+		break;
 	case ERR_JS_TIMESTAMP_FIND:
 		s = strdup("Cannot find timestamp in base.js");
 		break;

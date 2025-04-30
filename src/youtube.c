@@ -225,6 +225,35 @@ download_and_mmap_tmpfd(const char *url,
 	return RESULT_OK;
 }
 
+static const char AMPERSAND[] = "\\u0026"; // URI-encoded ampersand character
+static const size_t AMPERSAND_SZ = strlen(AMPERSAND);
+
+static void
+decode_ampersands(struct string_view in /* note: pass by value */, char **out)
+{
+	char *buffer = malloc((in.sz + 1) * sizeof(*buffer));
+	*out = buffer;
+	while (buffer) {
+		const char *src_end = strnstr(in.data, AMPERSAND, in.sz);
+		if (src_end == NULL) {
+			memcpy(buffer, in.data, in.sz);
+			buffer[in.sz] = '\0';
+			break;
+		}
+
+		size_t n = src_end - in.data;
+		memcpy(buffer, in.data, n);
+
+		buffer += n;
+		*buffer = '&';
+		buffer += 1;
+
+		n += AMPERSAND_SZ; /* skip URI-encoded ampersand in <in.data> */
+		in.data += n;
+		in.sz -= n;
+	}
+}
+
 static const char INNERTUBE_URI[] =
 	"https://www.youtube.com/youtubei/v1/player";
 
@@ -325,6 +354,15 @@ youtube_stream_setup(struct youtube_stream *p,
 	}
 	check_if(null_terminated_basejs == NULL, ERR_JS_BASEJS_URL_ALLOC);
 
+	char *null_terminated_sabr __attribute__((cleanup(str_free))) = NULL;
+	{
+		struct string_view sabr = {0};
+		check(find_sabr_url(&html.data, &sabr));
+		decode_ampersands(sabr, &null_terminated_sabr);
+	}
+	check_if(null_terminated_sabr == NULL, ERR_JS_SABR_URL_ALLOC);
+	debug("Decoded SABR URL: %s", null_terminated_sabr);
+
 	check(download_and_mmap_tmpfd(NULL,
 	                              "www.youtube.com",
 	                              null_terminated_basejs,
@@ -363,6 +401,9 @@ youtube_stream_setup(struct youtube_stream *p,
 		check(ops->before_parse(userdata));
 	}
 
+	check(youtube_stream_set_video(null_terminated_sabr, p));
+	check(youtube_stream_set_audio(null_terminated_sabr, p));
+#if 0 // TODO: restore parse_json()
 	struct parse_ops pops = {
 		.got_video = youtube_stream_set_video,
 		.got_video_userdata = p,
@@ -375,6 +416,7 @@ youtube_stream_setup(struct youtube_stream *p,
 		pops.choose_quality = youtube_stream_choose_quality_any;
 	}
 	check(parse_json(&json.data, &pops));
+#endif
 
 	for (size_t i = 0; i < ARRAY_SIZE(p->url); ++i) {
 		if (p->url[i] == NULL) {

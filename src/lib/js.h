@@ -24,6 +24,8 @@ result_t make_innertube_json(const char *target_url,
 
 result_t find_base_js_url(const struct string_view *html,
                           struct string_view *basejs) WARN_UNUSED;
+result_t find_sabr_url(const struct string_view *html,
+                       struct string_view *sabr) WARN_UNUSED;
 result_t find_js_timestamp(const struct string_view *js,
                            long long int *value) WARN_UNUSED;
 
