@@ -360,7 +360,7 @@ youtube_stream_setup(struct youtube_stream *p,
 		check(find_sabr_url(&html.data, &sabr));
 		decode_ampersands(sabr, &null_terminated_sabr);
 
-		// TODO: add videoPlaybackUstreamerConfig as GET param to sabr
+		// TODO: add videoPlaybackUstreamerConfig as GET param to sabr: https://github.com/coletdjnz/yt-dlp-ytse/blob/main/yt_dlp_plugins/extractor/ytse.py#L124
 	}
 	check_if(null_terminated_sabr == NULL, ERR_JS_SABR_URL_ALLOC);
 	debug("Decoded SABR URL: %s", null_terminated_sabr);
