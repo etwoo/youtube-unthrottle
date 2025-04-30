@@ -359,6 +359,8 @@ youtube_stream_setup(struct youtube_stream *p,
 		struct string_view sabr = {0};
 		check(find_sabr_url(&html.data, &sabr));
 		decode_ampersands(sabr, &null_terminated_sabr);
+
+		// TODO: add videoPlaybackUstreamerConfig as GET param to sabr
 	}
 	check_if(null_terminated_sabr == NULL, ERR_JS_SABR_URL_ALLOC);
 	debug("Decoded SABR URL: %s", null_terminated_sabr);
@@ -403,6 +405,8 @@ youtube_stream_setup(struct youtube_stream *p,
 
 	check(youtube_stream_set_video(null_terminated_sabr, p));
 	check(youtube_stream_set_audio(null_terminated_sabr, p));
+	// TODO: assuming mpv does not understand SABR response, try to parse manually: https://github.com/gsuberland/UMP_Format/blob/main/UMP_Format.md
+
 #if 0 // TODO: restore parse_json()
 	struct parse_ops pops = {
 		.got_video = youtube_stream_set_video,
