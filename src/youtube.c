@@ -394,6 +394,7 @@ youtube_stream_setup(struct youtube_stream *p,
 	                              json.fd,
 	                              &json.data,
 	                              &p->request_context));
+	debug("Got JSON blob: %.*s", (int)json.data.sz, json.data.data); // TODO: remove extra debug logging
 
 	if (ops && ops->after_inet) {
 		check(ops->after_inet(userdata));
