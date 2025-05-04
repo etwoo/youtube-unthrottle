@@ -359,8 +359,6 @@ youtube_stream_setup(struct youtube_stream *p,
 		struct string_view sabr = {0};
 		check(find_sabr_url(&html.data, &sabr));
 		decode_ampersands(sabr, &null_terminated_sabr);
-
-		// TODO: add videoPlaybackUstreamerConfig as GET param to sabr: https://github.com/coletdjnz/yt-dlp-ytse/blob/main/yt_dlp_plugins/extractor/ytse.py#L124
 	}
 	check_if(null_terminated_sabr == NULL, ERR_JS_SABR_URL_ALLOC);
 	debug("Decoded SABR URL: %s", null_terminated_sabr);
@@ -459,7 +457,7 @@ youtube_stream_setup(struct youtube_stream *p,
 	}
 
 	char *sabr_post __attribute__((cleanup(str_free))) = NULL;
-	// TODO: use protoc-c plus https://github.com/davidzeng0/innertube/blob/main/protos/video_streaming/client_abr_state.proto to generate SABR POST body?
+	// TODO: use protoc-c plus https://github.com/davidzeng0/innertube/blob/main/protos/video_streaming/client_abr_state.proto to generate SABR POST body, including videoPlaybackUstreamerConfig blob
 
 	ada_string url_with_deobfuscated_n_param = ada_get_href(p->url[i]);
 	check(download_and_mmap_tmpfd(url_with_deobfuscated_n_param.data, // TODO: might not be NULL terminated?
