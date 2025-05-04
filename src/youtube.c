@@ -315,11 +315,11 @@ youtube_stream_setup(struct youtube_stream *p,
                      void *userdata,
                      const char *target)
 {
-	struct downloaded json __attribute__((cleanup(downloaded_cleanup)));
+	struct downloaded protobuf __attribute__((cleanup(downloaded_cleanup)));
 	struct downloaded html __attribute__((cleanup(downloaded_cleanup)));
 	struct downloaded js __attribute__((cleanup(downloaded_cleanup)));
 
-	downloaded_init(&json, "JSON tmpfile");
+	downloaded_init(&protobuf, "ProtoBuf tmpfile");
 	downloaded_init(&html, "HTML tmpfile");
 	downloaded_init(&js, "JavaScript tmpfile");
 
@@ -327,7 +327,7 @@ youtube_stream_setup(struct youtube_stream *p,
 		check(ops->before(userdata));
 	}
 
-	check(tmpfd(&json.fd));
+	check(tmpfd(&protobuf.fd));
 	check(tmpfd(&html.fd));
 	check(tmpfd(&js.fd));
 
@@ -377,6 +377,7 @@ youtube_stream_setup(struct youtube_stream *p,
 	long long int timestamp = 0;
 	check(find_js_timestamp(&js.data, &timestamp));
 
+#if 0
 	char *innertube_post __attribute__((cleanup(str_free))) = NULL;
 	check(make_innertube_json(target,
 	                          p->proof_of_origin,
@@ -394,7 +395,7 @@ youtube_stream_setup(struct youtube_stream *p,
 	                              json.fd,
 	                              &json.data,
 	                              &p->request_context));
-	debug("Got JSON blob: %.*s", (int)json.data.sz, json.data.data); // TODO: remove extra debug logging
+#endif
 
 	if (ops && ops->after_inet) {
 		check(ops->after_inet(userdata));
@@ -406,7 +407,6 @@ youtube_stream_setup(struct youtube_stream *p,
 
 	check(youtube_stream_set_video(null_terminated_sabr, p));
 	check(youtube_stream_set_audio(null_terminated_sabr, p));
-	// TODO: assuming mpv does not understand SABR response, try to parse manually: https://github.com/gsuberland/UMP_Format/blob/main/UMP_Format.md
 
 #if 0 // TODO: restore parse_json()
 	struct parse_ops pops = {
@@ -457,6 +457,20 @@ youtube_stream_setup(struct youtube_stream *p,
 	if (ops && ops->after) {
 		check(ops->after(userdata));
 	}
+
+	char *sabr_post __attribute__((cleanup(str_free))) = NULL;
+	// TODO: use protoc-c plus https://github.com/davidzeng0/innertube/blob/main/protos/video_streaming/client_abr_state.proto to generate SABR POST body?
+
+	ada_string url_with_deobfuscated_n_param = ada_get_href(p->url[i]);
+	check(download_and_mmap_tmpfd(url_with_deobfuscated_n_param.data, // TODO: might not be NULL terminated?
+	                              NULL,
+	                              NULL,
+	                              sabr_post,
+	                              NULL,
+	                              json.fd,
+	                              &json.data,
+	                              &p->request_context));
+	debug("Got protobuf blob: %.*s", (int)json.data.sz, json.data.data); // TODO: decode protobuf response?
 
 	return RESULT_OK;
 }
