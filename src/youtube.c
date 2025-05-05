@@ -459,16 +459,18 @@ youtube_stream_setup(struct youtube_stream *p,
 	char *sabr_post __attribute__((cleanup(str_free))) = NULL;
 	// TODO: use protoc-c plus https://github.com/davidzeng0/innertube/blob/main/protos/video_streaming/client_abr_state.proto to generate SABR POST body, including videoPlaybackUstreamerConfig blob
 
-	ada_string url_with_deobfuscated_n_param = ada_get_href(p->url[i]);
+	ada_string url_with_deobfuscated_n_param = ada_get_href(p->url[0]);
 	check(download_and_mmap_tmpfd(url_with_deobfuscated_n_param.data, // TODO: might not be NULL terminated?
 	                              NULL,
 	                              NULL,
 	                              sabr_post,
 	                              NULL,
-	                              json.fd,
-	                              &json.data,
+	                              protobuf.fd,
+	                              &protobuf.data,
 	                              &p->request_context));
-	debug("Got protobuf blob: %.*s", (int)json.data.sz, json.data.data); // TODO: decode protobuf response?
+	debug("Got protobuf blob: %.*s",
+	      (int)protobuf.data.sz,
+	      protobuf.data.data); // TODO: decode protobuf response?
 
 	return RESULT_OK;
 }

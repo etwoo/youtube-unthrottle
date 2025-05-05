@@ -2,7 +2,7 @@ add_library(youtube)
 
 target_include_directories(youtube PUBLIC ${PROJECT_SOURCE_DIR}/include)
 target_include_directories(youtube PRIVATE ${PROJECT_SOURCE_DIR}/src)
-target_link_libraries(youtube PRIVATE my_cflags)
+target_link_libraries(youtube PRIVATE my_cflags youtube-protobufs)
 
 add_subdirectory(lib)
 add_subdirectory(sandbox)
