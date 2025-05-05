@@ -10,13 +10,6 @@ include(get_cpm)
 
 add_subdirectory(src)
 
-CPMAddPackage(
-	NAME innertube
-	GITHUB_REPOSITORY davidzeng0/innertube
-	GIT_TAG 75781439c4b4de5b10dbae4fb6645a17c85c1d0c
-	DOWNLOAD_ONLY YES
-)
-
 if (BUILD_TESTING)
 	CPMAddPackage(
 		NAME greatest

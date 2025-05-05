@@ -1,0 +1,397 @@
+/*
+ * From https://github.com/davidzeng0/innertube
+ *
+ * MIT License
+ *
+ * Copyright (c) 2024 David Zeng
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to
+ * deal in the Software without restriction, including without limitation the
+ * rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+ * sell copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ */
+
+import "google/protobuf/any.proto";
+
+enum DetailedNetworkType {
+	DETAILED_NETWORK_TYPE_UNKNOWN = 0;
+	DETAILED_NETWORK_TYPE_EDGE = 101;
+	DETAILED_NETWORK_TYPE_GPRS = 102;
+	DETAILED_NETWORK_TYPE_1_X_RTT = 103;
+	DETAILED_NETWORK_TYPE_CDMA = 104;
+	DETAILED_NETWORK_TYPE_EVDO_0 = 105;
+	DETAILED_NETWORK_TYPE_EVDO_A = 106;
+	DETAILED_NETWORK_TYPE_HSDPA = 107;
+	DETAILED_NETWORK_TYPE_HSPA = 108;
+	DETAILED_NETWORK_TYPE_HSUPA = 109;
+	DETAILED_NETWORK_TYPE_IDEN = 110;
+	DETAILED_NETWORK_TYPE_UMTS = 111;
+	DETAILED_NETWORK_TYPE_EVDO_B = 112;
+	DETAILED_NETWORK_TYPE_EHRPD = 113;
+	DETAILED_NETWORK_TYPE_HSPAP = 114;
+	DETAILED_NETWORK_TYPE_LTE = 115;
+	DETAILED_NETWORK_TYPE_WIFI = 116;
+	DETAILED_NETWORK_TYPE_BLUETOOTH = 117;
+	DETAILED_NETWORK_TYPE_ETHERNET = 118;
+	DETAILED_NETWORK_TYPE_WIMAX = 119;
+	DETAILED_NETWORK_TYPE_MOBILE_UNKNOWN = 120;
+	DETAILED_NETWORK_TYPE_NON_MOBILE_UNKNOWN = 121;
+	DETAILED_NETWORK_TYPE_DISCONNECTED = 122;
+	DETAILED_NETWORK_TYPE_APP_WIFI_HOTSPOT = 123;
+	DETAILED_NETWORK_TYPE_INTERNAL_WIFI_IMPAIRED = 124;
+	DETAILED_NETWORK_TYPE_NR_SA = 125;
+	DETAILED_NETWORK_TYPE_NR_NSA = 126;
+}
+
+enum AudioQuality {
+	AUDIO_QUALITY_UNKNOWN = 0;
+	AUDIO_QUALITY_ULTRALOW = 5;
+	AUDIO_QUALITY_LOW = 10;
+	AUDIO_QUALITY_MEDIUM = 20;
+	AUDIO_QUALITY_HIGH = 30;
+}
+
+enum VideoQualitySetting {
+	VIDEO_QUALITY_SETTING_UNKNOWN = 0;
+	VIDEO_QUALITY_SETTING_HIGHER_QUALITY = 1;
+	VIDEO_QUALITY_SETTING_DATA_SAVER = 2;
+	VIDEO_QUALITY_SETTING_ADVANCED_MENU = 3;
+}
+
+enum PlaybackAudioRouteOutputType {
+	PLAYBACK_AUDIO_ROUTE_OUTPUT_TYPE_UNKNOWN = 0;
+	PLAYBACK_AUDIO_ROUTE_OUTPUT_TYPE_LINE_OUT = 1;
+	PLAYBACK_AUDIO_ROUTE_OUTPUT_TYPE_HEADPHONES = 2;
+	PLAYBACK_AUDIO_ROUTE_OUTPUT_TYPE_BLUETOOTH_A2DP = 3;
+	PLAYBACK_AUDIO_ROUTE_OUTPUT_TYPE_BUILT_IN_RECEIVER = 4;
+	PLAYBACK_AUDIO_ROUTE_OUTPUT_TYPE_BUILT_IN_SPEAKER = 5;
+	PLAYBACK_AUDIO_ROUTE_OUTPUT_TYPE_HDMI = 6;
+	PLAYBACK_AUDIO_ROUTE_OUTPUT_TYPE_AIR_PLAY = 7;
+	PLAYBACK_AUDIO_ROUTE_OUTPUT_TYPE_BLUETOOTH_LE = 8;
+	PLAYBACK_AUDIO_ROUTE_OUTPUT_TYPE_BLUETOOTH_HFP = 9;
+	PLAYBACK_AUDIO_ROUTE_OUTPUT_TYPE_USB_AUDIO = 10;
+	PLAYBACK_AUDIO_ROUTE_OUTPUT_TYPE_CAR_PLAY = 11;
+	PLAYBACK_AUDIO_ROUTE_OUTPUT_TYPE_ANDROID_AUDIO = 12;
+}
+
+enum NetworkMeteredState {
+	NETWORK_METERED_STATE_UNKNOWN = 0;
+	NETWORK_METERED_STATE_UNMETERED = 1;
+	NETWORK_METERED_STATE_METERED = 2;
+}
+
+message PerPlaybackAttributes {
+	repeated int32 itag_denylist = 1;
+}
+
+message FormatDescription {
+	message Audio {
+		enum Codec {
+			UNKNOWN_CODEC = 0;
+			AAC = 1;
+			VORBIS = 2;
+			OPUS = 3;
+			DTSHD = 4;
+			EAC3 = 5;
+			PCM = 6;
+			AC3 = 7;
+			SPEEX = 8;
+			MP3 = 9;
+			MP2 = 10;
+			AMR = 11;
+			IAMF = 13;
+			XHEAAC = 14;
+		}
+
+		optional Codec codec = 1;
+
+		enum Quality {
+			UNKNOWN_QUALITY = 0;
+			ULTRALOW = 5;
+			LOW = 10;
+			MED = 20;
+			HIGH = 30;
+		}
+
+		optional Quality quality = 2;
+
+		enum Channels {
+			UNKNOWN_CHANNELS = 0;
+			STEREO = 2;
+			FIVE_ONE = 20;
+			SEVEN_ONE = 40;
+			AMBISONICS = 100;
+		}
+
+		optional Channels channels = 3;
+	}
+
+	optional Audio audio = 2;
+
+	message Video {
+		enum Codec {
+			UNKNOWN_CODEC = 0;
+			H263 = 1;
+			H264 = 2;
+			VP8 = 3;
+			VP9 = 4;
+			H262 = 5;
+			VP6 = 6;
+			MPEG4 = 7;
+			AV1 = 8;
+			H265 = 9;
+			FLV1 = 10;
+		}
+
+		optional Codec codec = 1;
+
+		enum Resolution {
+			UNKNOWN_RESOLUTION = 0;
+			R72P = 72;
+			R144P = 144;
+			R240P = 240;
+			R360P = 360;
+			R384P = 384;
+			R480P = 480;
+			R512P = 512;
+			R540P = 540;
+			R576P = 576;
+			R608P = 608;
+			R720P = 720;
+			R896P = 896;
+			R1024P = 1024;
+			R1080P = 1080;
+			R2K = 1440;
+			R1536P = 1536;
+			R2048P = 2048;
+			R4K = 2160;
+			R8K = 4320;
+			HIGHRES = 999999;
+		}
+
+		optional Resolution resolution = 2;
+
+		enum Quality {
+			UNKNOWN_QUALITY = 0;
+			LOWEST = 1;
+			ULTRALOW = 2;
+			LOW = 3;
+			MED = 4;
+			HIGH = 5;
+			HIGHER = 6;
+			ULTRA_HIGH = 7;
+			MULTI = 8;
+			ULTRALOW_LQ = 9;
+		}
+
+		optional Quality quality = 3;
+
+		enum FrameRate {
+			UNKNOWN_FRAME_RATE = 0;
+			SFR = 1;
+			HFR = 2;
+			UHFR = 3;
+		}
+
+		optional FrameRate framerate = 4;
+
+		enum LuminanceRange {
+			option allow_alias = true;
+
+			UNKNOWN_LUMINANCE_RANGE = 0;
+			STANDARD_LUMINANCE_RANGE = 0;
+			HDR = 1;
+			HDR_DOLBY_VISION = 2;
+		}
+
+		optional LuminanceRange luminance = 5;
+	}
+
+	optional Video video = 3;
+
+	enum Encryption {
+		option allow_alias = true;
+
+		UNKNOWN_ENCRYPTION = 0;
+		CLEAR = 0;
+		CENC = 1;
+		FAIRPLAY = 2;
+		FLASHACCESS = 3;
+		WIDEVINE = 4;
+	}
+
+	optional Encryption encryption = 4;
+
+	enum StreamingProtocol {
+		UNKNOWN_STREAMING_PROTOCOL = 0;
+		DASH = 1;
+		HLS = 2;
+	}
+
+	repeated StreamingProtocol protocols = 5;
+
+	message Captions {
+		enum Codec {
+			UNKNOWN_CODEC = 0;
+			SRV3 = 1;
+			WEBVTT = 2;
+			CEA_608 = 3;
+		}
+
+		optional Codec codec = 1;
+	}
+
+	optional Captions captions = 6;
+
+	enum Scheme {
+		SCHEME_UNKNOWN = 0;
+		SCHEME_CENC = 1;
+		SCHEME_CBC1 = 2;
+		SCHEME_CENS = 3;
+		SCHEME_CBCS = 4;
+	}
+
+	optional Scheme scheme = 7;
+}
+
+message MediaCapabilities {
+	message VideoFormatCapability {
+		optional FormatDescription.Video.Codec video_codec = 1;
+		optional bool efficient = 2;
+		optional int32 max_height = 3;
+		optional int32 max_width = 4;
+		optional int32 min_height = 5;
+		optional int32 min_width = 6;
+		optional int32 max_portrait_height = 7;
+		optional int32 max_portrait_width = 8;
+		optional int32 min_portrait_height = 9;
+		optional int32 min_portrait_width = 10;
+		optional int32 max_framerate = 11;
+		optional int32 max_bitrate_bps = 12;
+
+		enum Profile {
+			UNKNOWN_PROFILE = 0;
+			MPEG4_SIMPLE = 1;
+			MPEG4_SIMPLE_0 = 2;
+			INTERMEDIATE = 3;
+			AVC_BASELINE = 4;
+			AVC_BASELINE_30 = 5;
+			AVC_BASELINE_31 = 6;
+			AVC_MAIN = 7;
+			AVC_MAIN_31 = 8;
+			AVC_HIGH = 9;
+			AVC_HIGH_30 = 10;
+			AVC_HIGH_31 = 11;
+			AVC_HIGH_32 = 12;
+			AVC_HIGH_41 = 13;
+		}
+
+		repeated Profile profiles_supported = 13;
+
+		message DrmCapabilities {
+			optional bool supports_widevine_l1 = 1;
+			optional bool supports_widevine_l3 = 2;
+			optional bool supports_fairplay = 3;
+			optional bool supports_playready = 4;
+			optional bool supports_hdcp = 5;
+		}
+
+		optional DrmCapabilities drm_capabilities = 14;
+		optional bool is_10_bit_supported = 15;
+		optional int32 drm_capability = 16;
+	}
+
+	repeated VideoFormatCapability video_format_capabilities = 1;
+
+	message AudioFormatCapability {
+		optional FormatDescription.Audio.Codec audio_codec = 1;
+		optional int32 num_channels = 2;
+		optional int32 max_bitrate_bps = 3;
+
+		message SpatialAudioCapabilities {
+			optional bool supports_multichannel_spatial_audio = 1;
+			optional bool supports_stereo_spatial_audio = 2;
+		}
+
+		optional SpatialAudioCapabilities spatial_audio_capabilities = 4;
+		optional int32 drm_capability = 5;
+		optional int32 spatial_capability_bitmask = 6;
+	}
+
+	repeated AudioFormatCapability audio_format_capabilities = 2;
+
+	enum HdrTransferFunction {
+		HDR_TRANSFER_FUNCTION_UNKNOWN = 0;
+		HDR_TRANSFER_FUNCTION_HLG = 1;
+		HDR_TRANSFER_FUNCTION_HDR_10 = 2;
+		HDR_TRANSFER_FUNCTION_HDR_10_PLUS = 3;
+	}
+
+	repeated HdrTransferFunction hdr_transfer_functions = 3;
+	optional PerPlaybackAttributes per_playback_attributes = 4;
+	optional int32 hdr_mode_bitmask = 5;
+}
+
+enum DrmTrackType {
+	DRM_TRACK_TYPE_UNSPECIFIED = 0;
+	DRM_TRACK_TYPE_AUDIO = 1;
+	DRM_TRACK_TYPE_SD = 2;
+	DRM_TRACK_TYPE_HD = 3;
+	DRM_TRACK_TYPE_UHD1 = 4;
+	DRM_TRACK_TYPE_UHD2 = 5;
+}
+
+message ClientAbrState {
+	optional int64 time_since_last_manual_format_selection_ms = 13;
+	optional sint32 last_manual_direction = 14;
+	optional int32 last_manual_selected_resolution = 16;
+	optional DetailedNetworkType detailed_network_type = 17;
+	optional int32 client_viewport_width = 18;
+	optional int32 client_viewport_height = 19;
+	optional int64 client_bitrate_cap_bytes_per_sec = 20;
+	optional int32 sticky_resolution = 21;
+	optional bool client_viewport_is_flexible = 22;
+	optional int64 bandwidth_estimate_bytes_per_sec = 23;
+	optional AudioQuality min_audio_quality = 24;
+	optional AudioQuality max_audio_quality = 25;
+	optional VideoQualitySetting video_quality_setting = 26;
+	optional PlaybackAudioRouteOutputType audio_route = 27;
+	optional int64 player_time_ms = 28;
+	optional int64 time_since_last_seek_or_join_ms = 29;
+	optional bool low_power_mode = 30;
+	optional NetworkMeteredState network_metered_state = 32;
+	optional int32 visibility = 34;
+	optional float playback_rate = 35;
+	optional int64 elapsed_wall_time_ms = 36;
+	optional MediaCapabilities media_capabilities = 38;
+	optional int64 time_since_last_action_ms = 39;
+	optional int32 enabled_track_types_bitfield = 40;
+	optional int32 max_pacing_rate_bytes_per_sec = 43;
+	optional bool drc_enabled = 46;
+	repeated DrmTrackType authorized_drm_track_types = 55;
+
+	/* protogen: field name not specified */
+	optional string unnamed_field_69 = 69;
+
+	/* protogen: field name not specified */
+	optional google.protobuf.Any unnamed_field_70 = 70;
+
+	/* protogen: field name not specified */
+	optional AudioQuality unnamed_field_73 = 73;
+
+	/* protogen: field name not specified */
+	optional int32 unnamed_field_77 = 77;
+}
