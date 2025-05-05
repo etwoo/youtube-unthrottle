@@ -1,0 +1,112 @@
+diff -ru a/protos/video_streaming/client_abr_state.proto b/protos/video_streaming/client_abr_state.proto
+--- a/protos/video_streaming/client_abr_state.proto	2025-05-05 00:54:42
++++ b/protos/video_streaming/client_abr_state.proto	2025-05-05 01:05:25
+@@ -4,6 +4,7 @@
+ 
+ package video_streaming;
+ 
++import "google/protobuf/any.proto";
+ import "youtube/api/innertube/detailed_network_type.proto";
+ import "youtube/api/innertube/audio_quality.proto";
+ import "youtube/api/innertube/video_quality_setting.proto";
+@@ -11,7 +12,6 @@
+ import "youtube/api/innertube/network_metered_state.proto";
+ import "video_streaming/media_capabilities.proto";
+ import "youtube/api/innertube/drm_track_type.proto";
+-import "unknown/youtube/unnamed8338.proto";
+ 
+ option java_package = "com.google.android.apps.youtube.proto";
+ option java_multiple_files = true;
+@@ -52,7 +52,7 @@
+ 	optional string unnamed_field_69 = 69;
+ 
+ 	/* protogen: field name not specified */
+-	optional unknown.youtube.Unnamed8338 unnamed_field_70 = 70;
++	optional google.protobuf.Any unnamed_field_70 = 70;
+ 
+ 	/* protogen: field name not specified */
+ 	optional youtube.api.innertube.AudioQuality unnamed_field_73 = 73;
+diff -ru a/protos/youtube/api/innertube/client_info.proto b/protos/youtube/api/innertube/client_info.proto
+--- a/protos/youtube/api/innertube/client_info.proto	2025-05-05 00:54:42
++++ b/protos/youtube/api/innertube/client_info.proto	2025-05-05 01:08:10
+@@ -4,22 +4,10 @@
+ 
+ package youtube.api.innertube;
+ 
++import "google/protobuf/any.proto";
+ import "youtube/api/innertube/player_type.proto";
+ import "youtube/api/innertube/mobile_data_plan_info.proto";
+-import "youtube/api/innertube/client_connection_type.proto";
+-import "youtube/api/innertube/config_groups_client_info.proto";
+-import "youtube/api/innertube/unplugged_location_info.proto";
+-import "youtube/api/innertube/kids_app_info.proto";
+-import "youtube/api/innertube/music_app_info.proto";
+-import "youtube/api/innertube/unplugged_app_info.proto";
+-import "youtube/api/innertube/location_info.proto";
+ import "youtube/api/innertube/user_interface_theme.proto";
+-import "experiments/heterodyne/experiment_ids.proto";
+-import "youtube/api/innertube/notification_permission_info.proto";
+-import "youtube/api/innertube/client_store_info.proto";
+-import "youtube/api/innertube/srs_data_push_version.proto";
+-import "youtube/api/innertube/player_data_push_version.proto";
+-import "youtube/api/innertube/connected_client_info.proto";
+ 
+ option java_package = "com.google.protos.youtube.api.innertube";
+ option java_multiple_files = true;
+@@ -190,19 +178,19 @@
+ 	optional string experiments_token = 54;
+ 	optional int32 window_width_points = 55;
+ 	optional int32 window_height_points = 56;
+-	optional ClientConnectionType connection_type = 61;
+-	optional ConfigGroupsClientInfo config_info = 62;
+-	optional UnpluggedLocationInfo unplugged_location_info = 63;
++	optional google.protobuf.Any connection_type = 61;
++	optional google.protobuf.Any config_info = 62;
++	optional google.protobuf.Any unplugged_location_info = 63;
+ 	optional int32 android_sdk_version = 64;
+ 	optional float screen_density_float = 65;
+ 	repeated int32 first_time_sign_in_experiment_ids = 66;
+ 	optional int32 utc_offset_minutes = 67;
+ 	optional bool animated_webp_support = 68;
+-	optional KidsAppInfo kids_app_info = 69;
+-	optional MusicAppInfo music_app_info = 70;
++	optional google.protobuf.Any kids_app_info = 69;
++	optional google.protobuf.Any music_app_info = 70;
+ 	optional string internal_geo_ip = 72;
+-	optional UnpluggedAppInfo unplugged_app_info = 73;
+-	optional LocationInfo location_info = 74;
++	optional google.protobuf.Any unplugged_app_info = 73;
++	optional google.protobuf.Any location_info = 74;
+ 
+ 	oneof text_scale_adjustment {
+ 		string content_size_category = 76;
+@@ -213,7 +201,7 @@
+ 	optional string time_zone = 80;
+ 	optional bytes eml_template_context = 84;
+ 	optional bytes cold_app_bundle_config_data = 85;
+-	repeated experiments.heterodyne.ExperimentIds heterodyne_ids = 86;
++	repeated google.protobuf.Any heterodyne_ids = 86;
+ 	optional string browser_name = 87;
+ 	optional string browser_version = 88;
+ 	optional string location_playability_token = 89;
+@@ -221,15 +209,15 @@
+ 	optional string chipset = 92;
+ 	optional string firmware_version = 93;
+ 	optional int64 memory_total_kbytes = 95;
+-	optional NotificationPermissionInfo notification_permission_info = 97;
++	optional google.protobuf.Any notification_permission_info = 97;
+ 	optional string device_brand = 98;
+-	optional ClientStoreInfo client_store_info = 99;
+-	repeated SRSDataPushVersion srs_datapush_build_ids = 100;
+-	repeated PlayerDataPushVersion player_datapush_build_ids = 101;
++	optional google.protobuf.Any client_store_info = 99;
++	repeated google.protobuf.Any srs_datapush_build_ids = 100;
++	repeated google.protobuf.Any player_datapush_build_ids = 101;
+ 	optional string accept_header = 103;
+ 	optional string device_experiment_id = 104;
+ 	optional int64 encoded_hacks = 105;
+ 	optional bool is_supervised_device = 107;
+ 	optional string rollout_token = 108;
+-	optional ConnectedClientInfo connected_client_info = 109;
++	optional google.protobuf.Any connected_client_info = 109;
+ }
