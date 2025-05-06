@@ -15,6 +15,8 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "video_streaming/video_playback_request_proto.pb-c.h"
+
 static const char ARG_POT[] = "pot";
 static const char ARG_N[] = "n";
 
@@ -363,6 +365,9 @@ youtube_stream_setup(struct youtube_stream *p,
 	check_if(null_terminated_sabr == NULL, ERR_JS_SABR_URL_ALLOC);
 	debug("Decoded SABR URL: %s", null_terminated_sabr);
 
+	struct string_view playback_config = {0};
+	check(find_playback_config(&html.data, &playback_config));
+
 	check(download_and_mmap_tmpfd(NULL,
 	                              "www.youtube.com",
 	                              null_terminated_basejs,
@@ -456,8 +461,23 @@ youtube_stream_setup(struct youtube_stream *p,
 		check(ops->after(userdata));
 	}
 
-	char *sabr_post __attribute__((cleanup(str_free))) = NULL;
-	// TODO: use protoc-c plus https://github.com/davidzeng0/innertube/blob/main/protos/video_streaming/client_abr_state.proto to generate SABR POST body, including videoPlaybackUstreamerConfig blob
+	VideoStreaming__VideoPlaybackRequestProto req;
+	video_streaming__video_playback_request_proto__init(&req);
+	req.has_video_playback_ustreamer_config = true;
+	req.video_playback_ustreamer_config.len = playback_config.sz;
+	req.video_playback_ustreamer_config.data = playback_config.data;
+	req.has_player_time_ms = true;
+	req.player_time_ms = 0;
+
+	size_t sabr_packed_sz =
+		video_streaming__video_playback_request_proto__get_packed_size(
+			&req
+		);
+
+	char *sabr_post __attribute__((cleanup(str_free))) =
+		malloc(sabr_packed_sz * sizeof(*sabr_post));
+	// TODO: handle malloc failure
+	video_streaming__video_playback_request_proto__pack(&req, sabr_post);
 
 	ada_string url_with_deobfuscated_n_param = ada_get_href(p->url[0]);
 	check(download_and_mmap_tmpfd(url_with_deobfuscated_n_param.data, // TODO: might not be NULL terminated?

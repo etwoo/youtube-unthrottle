@@ -254,6 +254,20 @@ find_sabr_url(const struct string_view *html, struct string_view *sabr)
 }
 
 result_t
+find_playback_config(const struct string_view *html, struct string_view *config)
+{
+	check(re_capture("\"videoPlaybackUstreamerConfig\":\"([^\"]+)\"",
+	                 html,
+	                 config));
+	if (config->data == NULL) {
+		return make_result(ERR_JS_PLAYBACK_CONFIG_FIND);
+	}
+
+	debug("Parsed playback config: %.*s", (int)config->sz, config->data);
+	return RESULT_OK;
+}
+
+result_t
 find_js_timestamp(const struct string_view *js, long long int *value)
 {
 	struct string_view ts = {0};
