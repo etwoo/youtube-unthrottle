@@ -464,6 +464,7 @@ youtube_stream_setup(struct youtube_stream *p,
 	VideoStreaming__VideoPlaybackRequestProto req;
 	video_streaming__video_playback_request_proto__init(&req);
 	req.has_video_playback_ustreamer_config = true;
+	// TODO: set base64-decoded version of config in protobuf
 	req.video_playback_ustreamer_config.len = playback_config.sz;
 	req.video_playback_ustreamer_config.data = playback_config.data;
 	req.has_player_time_ms = true;
@@ -486,8 +487,6 @@ youtube_stream_setup(struct youtube_stream *p,
 		null_terminated_sabr_url = strndup(tmp.data, tmp.length);
 		// TODO: handle malloc failure
 	}
-	debug("Using serverAbrStreamingUrl with solved n-param: %s",
-	      null_terminated_sabr_url);
 	check(download_and_mmap_tmpfd(null_terminated_sabr_url,
 	                              NULL,
 	                              NULL,
