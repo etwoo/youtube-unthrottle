@@ -377,6 +377,7 @@ youtube_stream_setup(struct youtube_stream *p,
 		check_if(null_terminated == NULL, ERR_JS_PLAYBACK_CONFIG_ALLOC);
 		debug("src size %d", strlen(null_terminated)); // TODO: remove debug msg
 
+		// TODO: switch from b64_pton() to something else; other b64 implementations seem to accept data that this function currently rejects (or i'm somehow messing up the invocation to determine the decoded length)
 		decoded_config_sz = b64_pton(null_terminated, NULL, 0);
 		debug("dst size %d", decoded_config_sz); // TODO: remove debug msg
 		check_if(decoded_config_sz < 0, ERR_JS_PLAYBACK_CONFIG_ALLOC);
