@@ -10,6 +10,7 @@
 #include <ada_c.h>
 #include <assert.h>
 #include <errno.h>
+#include <resolv.h> /* for b64_pton() */
 #include <stdio.h> /* for asprintf() */
 #include <stdlib.h>
 #include <string.h>
@@ -465,6 +466,7 @@ youtube_stream_setup(struct youtube_stream *p,
 	video_streaming__video_playback_request_proto__init(&req);
 	req.has_video_playback_ustreamer_config = true;
 	// TODO: set base64-decoded version of config in protobuf
+	// TODO: use b64_pton() with target=NULL to size buffer, then call again witha llocated buffer to get decoded value
 	req.video_playback_ustreamer_config.len = playback_config.sz;
 	req.video_playback_ustreamer_config.data = playback_config.data;
 	req.has_player_time_ms = true;
