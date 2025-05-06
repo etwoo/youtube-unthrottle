@@ -479,8 +479,16 @@ youtube_stream_setup(struct youtube_stream *p,
 	// TODO: handle malloc failure
 	video_streaming__video_playback_request_proto__pack(&req, sabr_post);
 
-	ada_string url_with_deobfuscated_n_param = ada_get_href(p->url[0]);
-	check(download_and_mmap_tmpfd(url_with_deobfuscated_n_param.data, // TODO: might not be NULL terminated?
+	char *null_terminated_sabr_url __attribute__((cleanup(str_free))) =
+		NULL;
+	{
+		ada_string tmp = ada_get_href(p->url[0]);
+		null_terminated_sabr_url = strndup(tmp.data, tmp.length);
+		// TODO: handle malloc failure
+	}
+	debug("Using serverAbrStreamingUrl with solved n-param: %s",
+	      null_terminated_sabr_url);
+	check(download_and_mmap_tmpfd(null_terminated_sabr_url,
 	                              NULL,
 	                              NULL,
 	                              sabr_post,

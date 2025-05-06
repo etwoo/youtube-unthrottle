@@ -75,7 +75,8 @@ before_inet(void *userdata __attribute__((unused)))
 {
 #if defined(__APPLE__)
 	/* macOS sandbox can drop filesystem access entirely at this point */
-	return sandbox_only_io();
+	return RESULT_OK; // sandbox_only_io();
+	// TODO: restore sandbox; currently disabled to allow late SABR POST
 #else
 	return sandbox_only_io_inet_rpath();
 #endif
