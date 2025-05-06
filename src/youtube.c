@@ -366,8 +366,29 @@ youtube_stream_setup(struct youtube_stream *p,
 	check_if(null_terminated_sabr == NULL, ERR_JS_SABR_URL_ALLOC);
 	debug("Decoded SABR URL: %s", null_terminated_sabr);
 
-	struct string_view playback_config = {0};
-	check(find_playback_config(&html.data, &playback_config));
+	char *decoded_config __attribute__((cleanup(str_free))) = NULL;
+	int decoded_config_sz = 0;
+	{
+		struct string_view config = {0};
+		check(find_playback_config(&html.data, &config));
+
+		char *null_terminated __attribute__((cleanup(str_free))) =
+			strndup(config.data, config.sz);
+		check_if(null_terminated == NULL, ERR_JS_PLAYBACK_CONFIG_ALLOC);
+		debug("src size %d", strlen(null_terminated)); // TODO: remove debug msg
+
+		decoded_config_sz = b64_pton(null_terminated, NULL, 0);
+		debug("dst size %d", decoded_config_sz); // TODO: remove debug msg
+		check_if(decoded_config_sz < 0, ERR_JS_PLAYBACK_CONFIG_ALLOC);
+		decoded_config = malloc(decoded_config_sz);
+		check_if(decoded_config == NULL, ERR_JS_PLAYBACK_CONFIG_ALLOC);
+
+		int x = b64_pton(null_terminated, decoded_config, decoded_config_sz);
+		if (x < 0) {
+			// TODO: return err indicated b64 decoding failure
+		}
+		debug("b64_pton() returned %d", x); // TODO: remove debug msg
+	}
 
 	check(download_and_mmap_tmpfd(NULL,
 	                              "www.youtube.com",
@@ -465,10 +486,8 @@ youtube_stream_setup(struct youtube_stream *p,
 	VideoStreaming__VideoPlaybackRequestProto req;
 	video_streaming__video_playback_request_proto__init(&req);
 	req.has_video_playback_ustreamer_config = true;
-	// TODO: set base64-decoded version of config in protobuf
-	// TODO: use b64_pton() with target=NULL to size buffer, then call again witha llocated buffer to get decoded value
-	req.video_playback_ustreamer_config.len = playback_config.sz;
-	req.video_playback_ustreamer_config.data = playback_config.data;
+	req.video_playback_ustreamer_config.len = decoded_config_sz;
+	req.video_playback_ustreamer_config.data = decoded_config;
 	req.has_player_time_ms = true;
 	req.player_time_ms = 0;
 
@@ -481,6 +500,8 @@ youtube_stream_setup(struct youtube_stream *p,
 		malloc(sabr_packed_sz * sizeof(*sabr_post));
 	// TODO: handle malloc failure
 	video_streaming__video_playback_request_proto__pack(&req, sabr_post);
+	debug("Sending config blob: %s", decoded_config);
+	debug("Sending protobuf blob: %s", sabr_post);
 
 	char *null_terminated_sabr_url __attribute__((cleanup(str_free))) =
 		NULL;

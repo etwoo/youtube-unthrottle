@@ -201,6 +201,9 @@ result_to_str(result_t r)
 	case ERR_JS_PLAYBACK_CONFIG_FIND:
 		s = strdup("Cannot find playback config in HTML document");
 		break;
+	case ERR_JS_PLAYBACK_CONFIG_ALLOC:
+		s = strdup("Cannot allocate decoded playback config buffer");
+		break;
 	case ERR_JS_TIMESTAMP_FIND:
 		s = strdup("Cannot find timestamp in base.js");
 		break;
