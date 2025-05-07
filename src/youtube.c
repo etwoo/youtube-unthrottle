@@ -7,6 +7,7 @@
 #include "sys/array.h"
 #include "sys/debug.h"
 #include "sys/tmpfile.h"
+#include "video_streaming/video_playback_request_proto.pb-c.h"
 
 #include <ada_c.h>
 #include <assert.h>
@@ -15,8 +16,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-
-#include "video_streaming/video_playback_request_proto.pb-c.h"
 
 static const char ARG_POT[] = "pot";
 static const char ARG_N[] = "n";
@@ -496,22 +495,28 @@ youtube_stream_setup(struct youtube_stream *p,
 	};
 
 	VideoStreaming__MediaCapabilities__VideoFormatCapability v_capability;
-	video_streaming__media_capabilities__video_format_capability__init(&v_capability);
+	video_streaming__media_capabilities__video_format_capability__init(
+		&v_capability);
 	v_capability.has_video_codec = true;
-	v_capability.video_codec = VIDEO__STORAGE__FORMAT_DESCRIPTION__VIDEO__CODEC__AV1;
+	v_capability.video_codec =
+		VIDEO__STORAGE__FORMAT_DESCRIPTION__VIDEO__CODEC__AV1;
 	v_capability.profiles_supported = vfcp;
 	v_capability.n_profiles_supported = 13;
 
-	VideoStreaming__MediaCapabilities__VideoFormatCapability *vp = &v_capability;
-	VideoStreaming__MediaCapabilities__VideoFormatCapability **vpp = { &vp };
+	VideoStreaming__MediaCapabilities__VideoFormatCapability *vp =
+		&v_capability;
+	VideoStreaming__MediaCapabilities__VideoFormatCapability **vpp = {&vp};
 
 	VideoStreaming__MediaCapabilities__AudioFormatCapability a_capability;
-	video_streaming__media_capabilities__audio_format_capability__init(&a_capability);
+	video_streaming__media_capabilities__audio_format_capability__init(
+		&a_capability);
 	a_capability.has_audio_codec = true;
-	a_capability.audio_codec = VIDEO__STORAGE__FORMAT_DESCRIPTION__AUDIO__CODEC__OPUS;
+	a_capability.audio_codec =
+		VIDEO__STORAGE__FORMAT_DESCRIPTION__AUDIO__CODEC__OPUS;
 
-	VideoStreaming__MediaCapabilities__AudioFormatCapability *ap = &a_capability;
-	VideoStreaming__MediaCapabilities__AudioFormatCapability **app = { &ap };
+	VideoStreaming__MediaCapabilities__AudioFormatCapability *ap =
+		&a_capability;
+	VideoStreaming__MediaCapabilities__AudioFormatCapability **app = {&ap};
 
 	VideoStreaming__MediaCapabilities media_capabilities;
 	video_streaming__media_capabilities__init(&media_capabilities);
@@ -523,7 +528,8 @@ youtube_stream_setup(struct youtube_stream *p,
 	VideoStreaming__ClientAbrState abr_state;
 	video_streaming__client_abr_state__init(&abr_state);
 	abr_state.has_detailed_network_type = true;
-	abr_state.detailed_network_type = YOUTUBE__API__INNERTUBE__DETAILED_NETWORK_TYPE__DETAILED_NETWORK_TYPE_ETHERNET;
+	abr_state.detailed_network_type =
+		YOUTUBE__API__INNERTUBE__DETAILED_NETWORK_TYPE__DETAILED_NETWORK_TYPE_ETHERNET;
 	abr_state.has_client_viewport_width = true;
 	abr_state.client_viewport_width = 1920;
 	abr_state.has_client_viewport_height = true;
@@ -531,15 +537,19 @@ youtube_stream_setup(struct youtube_stream *p,
 	abr_state.has_bandwidth_estimate_bytes_per_sec = true;
 	abr_state.bandwidth_estimate_bytes_per_sec = 7340032; // 7MBps
 	abr_state.has_min_audio_quality = true;
-	abr_state.min_audio_quality = YOUTUBE__API__INNERTUBE__AUDIO_QUALITY__AUDIO_QUALITY_LOW;
+	abr_state.min_audio_quality =
+		YOUTUBE__API__INNERTUBE__AUDIO_QUALITY__AUDIO_QUALITY_LOW;
 	abr_state.has_max_audio_quality = true;
-	abr_state.max_audio_quality = YOUTUBE__API__INNERTUBE__AUDIO_QUALITY__AUDIO_QUALITY_HIGH;
+	abr_state.max_audio_quality =
+		YOUTUBE__API__INNERTUBE__AUDIO_QUALITY__AUDIO_QUALITY_HIGH;
 	abr_state.has_video_quality_setting = true;
-	abr_state.video_quality_setting = YOUTUBE__API__INNERTUBE__VIDEO_QUALITY_SETTING__VIDEO_QUALITY_SETTING_HIGHER_QUALITY;
+	abr_state.video_quality_setting =
+		YOUTUBE__API__INNERTUBE__VIDEO_QUALITY_SETTING__VIDEO_QUALITY_SETTING_HIGHER_QUALITY;
 	abr_state.has_player_time_ms = true;
 	abr_state.player_time_ms = 0;
 	abr_state.has_network_metered_state = true;
-	abr_state.network_metered_state = YOUTUBE__API__INNERTUBE__NETWORK_METERED_STATE__NETWORK_METERED_STATE_METERED;
+	abr_state.network_metered_state =
+		YOUTUBE__API__INNERTUBE__NETWORK_METERED_STATE__NETWORK_METERED_STATE_METERED;
 	abr_state.has_playback_rate = true;
 	abr_state.playback_rate = 1.0;
 	abr_state.has_elapsed_wall_time_ms = true;
@@ -616,8 +626,7 @@ youtube_stream_setup(struct youtube_stream *p,
 
 	const size_t sabr_packed_sz =
 		video_streaming__video_playback_request_proto__get_packed_size(
-			&req
-		);
+			&req);
 
 	char *sabr_post __attribute__((cleanup(str_free))) =
 		malloc(sabr_packed_sz * sizeof(*sabr_post));
