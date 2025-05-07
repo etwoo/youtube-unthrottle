@@ -587,9 +587,9 @@ youtube_stream_setup(struct youtube_stream *p,
 		&req,
 		(unsigned char *)sabr_post);
 
-	debug("Sending protobuf blob"); // TODO remove debug msg
+	debug("Sending protobuf blob of sz=%zu", sabr_packed_sz);
 	for (size_t i = 0; i < sabr_packed_sz; ++i) {
-		debug("%02X", (unsigned char)sabr_post[i]);
+		debug("%02X", (unsigned char)sabr_post[i]); // TODO remove
 	}
 
 	char *null_terminated_sabr_deobuscated_n_param
@@ -609,7 +609,8 @@ youtube_stream_setup(struct youtube_stream *p,
 	                              protobuf.fd,
 	                              &protobuf.data,
 	                              &p->request_context));
-	debug("Got protobuf blob: %.*s",
+	debug("Got protobuf blob of sz=%zu: %.*s",
+	      protobuf.data.sz,
 	      (int)protobuf.data.sz,
 	      protobuf.data.data); // TODO: decode protobuf response?
 
