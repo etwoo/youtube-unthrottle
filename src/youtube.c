@@ -381,13 +381,13 @@ youtube_stream_setup(struct youtube_stream *p,
 		 *
 		 * https://datatracker.ietf.org/doc/html/rfc4648#section-5
 		 */
-		for (char *p = tmp; *p; ++p) {
-			switch (*p) {
+		for (char *c = tmp; *c; ++c) {
+			switch (*c) {
 			case '-':
-				*p = '+';
+				*c = '+';
 				break;
 			case '_':
-				*p = '/';
+				*c = '/';
 				break;
 			}
 		}
@@ -494,11 +494,7 @@ youtube_stream_setup(struct youtube_stream *p,
 		check(ops->after(userdata));
 	}
 
-	VideoStreaming__MediaCapabilities media_capabilities;
-	video_streaming__media_capabilities__init(&media_capabilities);
-	// TODO, maybe: media_capabilities.video_format_capabilities
-	// TODO, maybe: media_capabilities.n_video_format_capabilities
-	media_capabilities.profiles_supported = {
+	VideoStreaming__MediaCapabilities__VideoFormatCapability__Profile vfcp[] = {
 		VIDEO_STREAMING__MEDIA_CAPABILITIES__VIDEO_FORMAT_CAPABILITY__PROFILE__MPEG4_SIMPLE,
 		VIDEO_STREAMING__MEDIA_CAPABILITIES__VIDEO_FORMAT_CAPABILITY__PROFILE__MPEG4_SIMPLE_0,
 		VIDEO_STREAMING__MEDIA_CAPABILITIES__VIDEO_FORMAT_CAPABILITY__PROFILE__INTERMEDIATE,
@@ -513,8 +509,31 @@ youtube_stream_setup(struct youtube_stream *p,
 		VIDEO_STREAMING__MEDIA_CAPABILITIES__VIDEO_FORMAT_CAPABILITY__PROFILE__AVC_HIGH_32,
 		VIDEO_STREAMING__MEDIA_CAPABILITIES__VIDEO_FORMAT_CAPABILITY__PROFILE__AVC_HIGH_41,
 	};
-	media_capabilities.n_profiles_supported =
-		ARRAY_SIZE(media_capabilities.profiles_supported);
+
+	VideoStreaming__MediaCapabilities__VideoFormatCapability v_capability;
+	video_streaming__media_capabilities__video_format_capability__init(&v_capability);
+	v_capability.has_video_codec = true;
+	v_capability.video_codec = VIDEO__STORAGE__FORMAT_DESCRIPTION__VIDEO__CODEC__AV1;
+	v_capability.profiles_supported = vfcp;
+	v_capability.n_profiles_supported = 13;
+
+	VideoStreaming__MediaCapabilities__VideoFormatCapability *vp = &v_capability;
+	VideoStreaming__MediaCapabilities__VideoFormatCapability **vpp = { &vp };
+
+	VideoStreaming__MediaCapabilities__AudioFormatCapability a_capability;
+	video_streaming__media_capabilities__audio_format_capability__init(&a_capability);
+	a_capability.has_audio_codec = true;
+	a_capability.audio_codec = VIDEO__STORAGE__FORMAT_DESCRIPTION__AUDIO__CODEC__OPUS;
+
+	VideoStreaming__MediaCapabilities__AudioFormatCapability *ap = &a_capability;
+	VideoStreaming__MediaCapabilities__AudioFormatCapability **app = { &ap };
+
+	VideoStreaming__MediaCapabilities media_capabilities;
+	video_streaming__media_capabilities__init(&media_capabilities);
+	media_capabilities.video_format_capabilities = vpp;
+	media_capabilities.n_video_format_capabilities = 1;
+	media_capabilities.audio_format_capabilities = app;
+	media_capabilities.n_audio_format_capabilities = 1;
 
 	VideoStreaming__ClientAbrState abr_state;
 	video_streaming__client_abr_state__init(&abr_state);
@@ -546,7 +565,7 @@ youtube_stream_setup(struct youtube_stream *p,
 	youtube__api__innertube__client_info__init(&client);
 	client.hl = "en";
 	client.gl = "US";
-	client.visitor_data = p->visitor_data;
+	client.visitor_data = strdup(p->visitor_data); // TODO: free when done?
 	client.user_agent =
 		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
 		"(KHTML, like Gecko) Chrome/87.0.4280.101 Safari/537.36";
@@ -582,7 +601,7 @@ youtube_stream_setup(struct youtube_stream *p,
 	video_streaming__video_playback_request_proto__pack(&req, sabr_post);
 
 	debug("Sending protobuf blob"); // TODO remove debug msg
-	for (int i = 0; i < sabr_packed_sz; ++i) {
+	for (size_t i = 0; i < sabr_packed_sz; ++i) {
 		debug("%02X", (unsigned char)sabr_post[i]);
 	}
 
