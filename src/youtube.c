@@ -152,14 +152,6 @@ youtube_stream_set_audio(const char *val, void *userdata)
 	return youtube_stream_set_one(p, 0, val);
 }
 
-static WARN_UNUSED result_t
-youtube_stream_choose_quality_any(const char *val,
-                                  void *userdata __attribute__((unused)))
-{
-	debug("Any quality allowed: %s", val);
-	return RESULT_OK;
-}
-
 /*
  * Copy n-parameter value from query string in <url>.
  *
@@ -256,18 +248,6 @@ decode_ampersands(struct string_view in /* note: pass by value */, char **out)
 	}
 }
 
-static const char INNERTUBE_URI[] =
-	"https://www.youtube.com/youtubei/v1/player";
-
-static WARN_UNUSED result_t
-make_http_header_visitor_id(const char *visitor_data, char **strp)
-{
-	const int rc = asprintf(strp, "X-Goog-Visitor-Id: %s", visitor_data);
-	check_if(rc < 0, ERR_YOUTUBE_VISITOR_DATA_HEADER_ALLOC);
-	debug("Formatted InnerTube header: %s", *strp);
-	return RESULT_OK;
-}
-
 struct downloaded {
 	const char *description; /* does not own */
 	int fd;
@@ -293,6 +273,12 @@ downloaded_cleanup(struct downloaded *d)
 
 static void
 str_free(char **strp)
+{
+	free(*strp);
+}
+
+static void
+ustr_free(unsigned char **strp)
 {
 	free(*strp);
 }
@@ -397,26 +383,6 @@ youtube_stream_setup(struct youtube_stream *p,
 	long long int timestamp = 0;
 	check(find_js_timestamp(&js.data, &timestamp));
 
-#if 0
-	char *innertube_post __attribute__((cleanup(str_free))) = NULL;
-	check(make_innertube_json(target,
-	                          p->proof_of_origin,
-	                          timestamp,
-	                          &innertube_post));
-
-	char *innertube_header __attribute__((cleanup(str_free))) = NULL;
-	check(make_http_header_visitor_id(p->visitor_data, &innertube_header));
-
-	check(download_and_mmap_tmpfd(INNERTUBE_URI,
-	                              NULL,
-	                              NULL,
-	                              innertube_post,
-	                              innertube_header,
-	                              json.fd,
-	                              &json.data,
-	                              &p->request_context));
-#endif
-
 	if (ops && ops->after_inet) {
 		check(ops->after_inet(userdata));
 	}
@@ -427,21 +393,6 @@ youtube_stream_setup(struct youtube_stream *p,
 
 	check(youtube_stream_set_video(null_terminated_sabr, p));
 	check(youtube_stream_set_audio(null_terminated_sabr, p));
-
-#if 0 // TODO: restore parse_json()
-	struct parse_ops pops = {
-		.got_video = youtube_stream_set_video,
-		.got_video_userdata = p,
-		.got_audio = youtube_stream_set_audio,
-		.got_audio_userdata = p,
-		.choose_quality = ops ? ops->during_parse_choose_quality : NULL,
-		.choose_quality_userdata = userdata,
-	};
-	if (pops.choose_quality == NULL) {
-		pops.choose_quality = youtube_stream_choose_quality_any;
-	}
-	check(parse_json(&json.data, &pops));
-#endif
 
 	for (size_t i = 0; i < ARRAY_SIZE(p->url); ++i) {
 		if (p->url[i] == NULL) {
@@ -574,7 +525,7 @@ youtube_stream_setup(struct youtube_stream *p,
 	video_streaming__streamer_context__init(&context);
 	context.client = &client;
 	context.has_unnamed_field_2 = true;
-	char *decoded_pot __attribute__((cleanup(str_free))) = NULL;
+	unsigned char *decoded_pot __attribute__((cleanup(ustr_free))) = NULL;
 	{
 		int decoded_sz = 0;
 
@@ -598,7 +549,8 @@ youtube_stream_setup(struct youtube_stream *p,
 	video_streaming__video_playback_request_proto__init(&req);
 	req.abr_state = &abr_state;
 	req.has_video_playback_ustreamer_config = true;
-	char *decoded_config __attribute__((cleanup(str_free))) = NULL;
+	unsigned char *decoded_config __attribute__((cleanup(ustr_free))) =
+		NULL;
 	{
 		int decoded_sz = 0;
 
@@ -631,7 +583,7 @@ youtube_stream_setup(struct youtube_stream *p,
 	char *sabr_post __attribute__((cleanup(str_free))) =
 		malloc(sabr_packed_sz * sizeof(*sabr_post));
 	check_if(sabr_post == NULL, ERR_JS_SABR_POST_BODY_ALLOC);
-	video_streaming__video_playback_request_proto__pack(&req, sabr_post);
+	video_streaming__video_playback_request_proto__pack(&req, (unsigned char*)sabr_post);
 
 	debug("Sending protobuf blob"); // TODO remove debug msg
 	for (size_t i = 0; i < sabr_packed_sz; ++i) {
