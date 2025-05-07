@@ -367,21 +367,21 @@ youtube_stream_setup(struct youtube_stream *p,
 	debug("Decoded SABR URL: %s", null_terminated_sabr);
 
 	char *decoded_config __attribute__((cleanup(str_free))) = NULL;
-	int decoded_config_sz = 0;
+	int decoded_sz = 0;
 	{
 		struct string_view config = {0};
 		check(find_playback_config(&html.data, &config));
 
-		char *null_terminated __attribute__((cleanup(str_free))) =
+		char *tmp __attribute__((cleanup(str_free))) =
 			strndup(config.data, config.sz);
-		check_if(null_terminated == NULL, ERR_JS_PLAYBACK_CONFIG_ALLOC);
-		debug("src size %d", strlen(null_terminated)); // TODO: remove debug msg
+		check_if(tmp == NULL, ERR_JS_PLAYBACK_CONFIG_ALLOC);
+
 		/*
 		 * Convert base64url to standard base64.
 		 *
 		 * https://datatracker.ietf.org/doc/html/rfc4648#section-5
 		 */
-		for (char *p = null_terminated; *p; ++p) {
+		for (char *p = tmp; *p; ++p) {
 			switch (*p) {
 			case '-':
 				*p = '+';
@@ -392,20 +392,13 @@ youtube_stream_setup(struct youtube_stream *p,
 			}
 		}
 
-		decoded_config_sz = base64_decode(null_terminated, NULL, 0);
-		debug("dst size %d", decoded_config_sz); // TODO: remove debug msg
-		check_if(decoded_config_sz < 0, ERR_JS_PLAYBACK_CONFIG_ALLOC);
-		decoded_config = malloc(decoded_config_sz);
+		decoded_sz = base64_decode(tmp, NULL, 0);
+		check_if(decoded_sz < 0, ERR_JS_PLAYBACK_CONFIG_BASE64_DECODE);
+		decoded_config = malloc(decoded_sz);
 		check_if(decoded_config == NULL, ERR_JS_PLAYBACK_CONFIG_ALLOC);
 
-		int x = base64_decode(null_terminated, decoded_config, decoded_config_sz);
-		if (x < 0) {
-			// TODO: return err indicated b64 decoding failure
-		}
-		debug("base64_decode() result"); // TODO remove debug msg
-		for (int i = 0; i < decoded_config_sz; ++i) {
-			debug("%02X", (unsigned char)decoded_config[i]);
-		}
+		const int rc = base64_decode(tmp, decoded_config, decoded_sz);
+		check_if(rc < 0, ERR_JS_PLAYBACK_CONFIG_BASE64_DECODE);
 	}
 
 	check(download_and_mmap_tmpfd(NULL,
@@ -504,7 +497,7 @@ youtube_stream_setup(struct youtube_stream *p,
 	VideoStreaming__VideoPlaybackRequestProto req;
 	video_streaming__video_playback_request_proto__init(&req);
 	req.has_video_playback_ustreamer_config = true;
-	req.video_playback_ustreamer_config.len = decoded_config_sz;
+	req.video_playback_ustreamer_config.len = decoded_sz;
 	req.video_playback_ustreamer_config.data = decoded_config;
 	req.has_player_time_ms = true;
 	req.player_time_ms = 0;
@@ -517,6 +510,7 @@ youtube_stream_setup(struct youtube_stream *p,
 	char *sabr_post __attribute__((cleanup(str_free))) =
 		malloc(sabr_packed_sz * sizeof(*sabr_post));
 	// TODO: handle malloc failure
+	// TODO: cleanup with video_streaming__video_playback_request_proto__free_unpacked instead of str_free
 	video_streaming__video_playback_request_proto__pack(&req, sabr_post);
 
 	debug("Sending protobuf blob"); // TODO remove debug msg
