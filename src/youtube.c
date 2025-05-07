@@ -496,7 +496,25 @@ youtube_stream_setup(struct youtube_stream *p,
 
 	VideoStreaming__MediaCapabilities media_capabilities;
 	video_streaming__media_capabilities__init(&media_capabilities);
-	// TODO: populate media_capabilities
+	// TODO, maybe: media_capabilities.video_format_capabilities
+	// TODO, maybe: media_capabilities.n_video_format_capabilities
+	media_capabilities.profiles_supported = {
+		VIDEO_STREAMING__MEDIA_CAPABILITIES__VIDEO_FORMAT_CAPABILITY__PROFILE__MPEG4_SIMPLE,
+		VIDEO_STREAMING__MEDIA_CAPABILITIES__VIDEO_FORMAT_CAPABILITY__PROFILE__MPEG4_SIMPLE_0,
+		VIDEO_STREAMING__MEDIA_CAPABILITIES__VIDEO_FORMAT_CAPABILITY__PROFILE__INTERMEDIATE,
+		VIDEO_STREAMING__MEDIA_CAPABILITIES__VIDEO_FORMAT_CAPABILITY__PROFILE__AVC_BASELINE,
+		VIDEO_STREAMING__MEDIA_CAPABILITIES__VIDEO_FORMAT_CAPABILITY__PROFILE__AVC_BASELINE_30,
+		VIDEO_STREAMING__MEDIA_CAPABILITIES__VIDEO_FORMAT_CAPABILITY__PROFILE__AVC_BASELINE_31,
+		VIDEO_STREAMING__MEDIA_CAPABILITIES__VIDEO_FORMAT_CAPABILITY__PROFILE__AVC_MAIN,
+		VIDEO_STREAMING__MEDIA_CAPABILITIES__VIDEO_FORMAT_CAPABILITY__PROFILE__AVC_MAIN_31,
+		VIDEO_STREAMING__MEDIA_CAPABILITIES__VIDEO_FORMAT_CAPABILITY__PROFILE__AVC_HIGH,
+		VIDEO_STREAMING__MEDIA_CAPABILITIES__VIDEO_FORMAT_CAPABILITY__PROFILE__AVC_HIGH_30,
+		VIDEO_STREAMING__MEDIA_CAPABILITIES__VIDEO_FORMAT_CAPABILITY__PROFILE__AVC_HIGH_31,
+		VIDEO_STREAMING__MEDIA_CAPABILITIES__VIDEO_FORMAT_CAPABILITY__PROFILE__AVC_HIGH_32,
+		VIDEO_STREAMING__MEDIA_CAPABILITIES__VIDEO_FORMAT_CAPABILITY__PROFILE__AVC_HIGH_41,
+	};
+	media_capabilities.n_profiles_supported =
+		ARRAY_SIZE(media_capabilities.profiles_supported);
 
 	VideoStreaming__ClientAbrState abr_state;
 	video_streaming__client_abr_state__init(&abr_state);
@@ -526,7 +544,17 @@ youtube_stream_setup(struct youtube_stream *p,
 
 	Youtube__Api__Innertube__ClientInfo client;
 	youtube__api__innertube__client_info__init(&client);
-	// TODO: populate client
+	client.hl = "en";
+	client.gl = "US";
+	client.visitor_data = p->visitor_data;
+	client.user_agent =
+		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+		"(KHTML, like Gecko) Chrome/87.0.4280.101 Safari/537.36";
+	client.has_client_name = true;
+	client.client_name =
+		YOUTUBE__API__INNERTUBE__CLIENT_INFO__CLIENT_NAME__WEB;
+	client.client_version = "2.20240726.00.00";
+	client.time_zone = "UTC";
 
 	VideoStreaming__StreamerContext context;
 	video_streaming__streamer_context__init(&context);
