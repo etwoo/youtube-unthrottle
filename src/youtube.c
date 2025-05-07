@@ -504,7 +504,7 @@ youtube_stream_setup(struct youtube_stream *p,
 	abr_state.detailed_network_type = YOUTUBE__API__INNERTUBE__DETAILED_NETWORK_TYPE__DETAILED_NETWORK_TYPE_ETHERNET;
 	abr_state.has_client_viewport_width = true;
 	abr_state.client_viewport_width = 1920;
-	abr_state.has_client_viewport_height = true
+	abr_state.has_client_viewport_height = true;
 	abr_state.client_viewport_height = 1080;
 	abr_state.has_bandwidth_estimate_bytes_per_sec = true;
 	abr_state.bandwidth_estimate_bytes_per_sec = 7340032; // 7MBps
