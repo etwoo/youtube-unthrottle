@@ -213,6 +213,9 @@ result_to_str(result_t r)
 	case ERR_JS_PROOF_OF_ORIGIN_ALLOC:
 		s = strdup("Cannot allocate decoded proof of origin buffer");
 		break;
+	case ERR_JS_SABR_POST_BODY_ALLOC:
+		s = strdup("Cannot allocate SABR POST body");
+		break;
 	case ERR_JS_TIMESTAMP_FIND:
 		s = strdup("Cannot find timestamp in base.js");
 		break;

@@ -630,8 +630,7 @@ youtube_stream_setup(struct youtube_stream *p,
 
 	char *sabr_post __attribute__((cleanup(str_free))) =
 		malloc(sabr_packed_sz * sizeof(*sabr_post));
-	// TODO: handle malloc failure
-	// TODO: cleanup with video_streaming__video_playback_request_proto__free_unpacked instead of str_free
+	check_if(sabr_post == NULL, ERR_JS_SABR_POST_BODY_ALLOC);
 	video_streaming__video_playback_request_proto__pack(&req, sabr_post);
 
 	debug("Sending protobuf blob"); // TODO remove debug msg
