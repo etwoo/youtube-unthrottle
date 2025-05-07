@@ -494,15 +494,29 @@ youtube_stream_setup(struct youtube_stream *p,
 		check(ops->after(userdata));
 	}
 
+	VideoStreaming__ClientAbrState abr_state;
+	video_streaming__client_abr_state__init(&abr_state);
+	// TODO: populate abr_state
+
+	Youtube__Api__Innertube__ClientInfo client;
+	youtube__api__innertube__client_info__init(&client);
+	// TODO: populate client
+
+	VideoStreaming__StreamerContext context;
+	video_streaming__streamer_context__init(&context);
+	context.client = &client;
+
 	VideoStreaming__VideoPlaybackRequestProto req;
 	video_streaming__video_playback_request_proto__init(&req);
+	req.abr_state = &abr_state;
 	req.has_video_playback_ustreamer_config = true;
 	req.video_playback_ustreamer_config.len = decoded_sz;
 	req.video_playback_ustreamer_config.data = decoded_config;
 	req.has_player_time_ms = true;
 	req.player_time_ms = 0;
+	req.streamer_context = &context;
 
-	size_t sabr_packed_sz =
+	const size_t sabr_packed_sz =
 		video_streaming__video_playback_request_proto__get_packed_size(
 			&req
 		);
