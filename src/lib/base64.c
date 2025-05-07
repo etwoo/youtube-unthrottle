@@ -44,16 +44,14 @@
 
 #include "base64.h"
 
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
 #include <arpa/inet.h>
-
 #include <ctype.h>
+#include <netinet/in.h>
 #include <resolv.h>
-
 #include <stdlib.h>
 #include <string.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 
 static const char Base64[] =
 	"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -112,14 +110,14 @@ static const char Pad64 = '=';
 
        (1) the final quantum of encoding input is an integral
            multiple of 24 bits; here, the final unit of encoded
-	   output will be an integral multiple of 4 characters
-	   with no "=" padding,
+           output will be an integral multiple of 4 characters
+           with no "=" padding,
        (2) the final quantum of encoding input is exactly 8 bits;
            here, the final unit of encoded output will be two
-	   characters followed by two "=" padding characters, or
+           characters followed by two "=" padding characters, or
        (3) the final quantum of encoding input is exactly 16 bits;
            here, the final unit of encoded output will be three
-	   characters followed by one "=" padding character.
+           characters followed by one "=" padding character.
    */
 
 #if 0
@@ -196,14 +194,14 @@ base64_decode(char const *src, unsigned char *target, size_t targsize)
 	tarindex = 0;
 
 	while ((ch = (unsigned char)*src++) != '\0') {
-		if (isspace(ch))	/* Skip whitespace anywhere. */
+		if (isspace(ch)) /* Skip whitespace anywhere. */
 			continue;
 
 		if (ch == Pad64)
 			break;
 
 		pos = strchr(Base64, ch);
-		if (pos == 0)		/* A non-base64 character. */
+		if (pos == 0) /* A non-base64 character. */
 			return (-1);
 
 		switch (state) {
@@ -219,10 +217,10 @@ base64_decode(char const *src, unsigned char *target, size_t targsize)
 			if (target) {
 				if (tarindex >= targsize)
 					return (-1);
-				target[tarindex]   |=  (pos - Base64) >> 4;
+				target[tarindex] |= (pos - Base64) >> 4;
 				nextbyte = ((pos - Base64) & 0x0f) << 4;
 				if (tarindex + 1 < targsize)
-					target[tarindex+1] = nextbyte;
+					target[tarindex + 1] = nextbyte;
 				else if (nextbyte)
 					return (-1);
 			}
@@ -233,10 +231,10 @@ base64_decode(char const *src, unsigned char *target, size_t targsize)
 			if (target) {
 				if (tarindex >= targsize)
 					return (-1);
-				target[tarindex]   |=  (pos - Base64) >> 2;
+				target[tarindex] |= (pos - Base64) >> 2;
 				nextbyte = ((pos - Base64) & 0x03) << 6;
 				if (tarindex + 1 < targsize)
-					target[tarindex+1] = nextbyte;
+					target[tarindex + 1] = nextbyte;
 				else if (nextbyte)
 					return (-1);
 			}
@@ -260,14 +258,14 @@ base64_decode(char const *src, unsigned char *target, size_t targsize)
 	 * on a byte boundary, and/or with erroneous trailing characters.
 	 */
 
-	if (ch == Pad64) {			/* We got a pad char. */
-		ch = (unsigned char)*src++;	/* Skip it, get next. */
+	if (ch == Pad64) {                  /* We got a pad char. */
+		ch = (unsigned char)*src++; /* Skip it, get next. */
 		switch (state) {
-		case 0:		/* Invalid = in first position */
-		case 1:		/* Invalid = in second position */
+		case 0: /* Invalid = in first position */
+		case 1: /* Invalid = in second position */
 			return (-1);
 
-		case 2:		/* Valid, means one byte of info */
+		case 2: /* Valid, means one byte of info */
 			/* Skip any number of spaces. */
 			for (; ch != '\0'; ch = (unsigned char)*src++)
 				if (!isspace(ch))
@@ -275,11 +273,11 @@ base64_decode(char const *src, unsigned char *target, size_t targsize)
 			/* Make sure there is another trailing = sign. */
 			if (ch != Pad64)
 				return (-1);
-			ch = (unsigned char)*src++;		/* Skip the = */
+			ch = (unsigned char)*src++; /* Skip the = */
 			/* Fall through to "single trailing =" case. */
 			/* FALLTHROUGH */
 
-		case 3:		/* Valid, means two bytes of info */
+		case 3: /* Valid, means two bytes of info */
 			/*
 			 * We know this char is an =.  Is there anything but
 			 * whitespace after it?
