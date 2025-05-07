@@ -511,7 +511,7 @@ youtube_stream_setup(struct youtube_stream *p,
 	youtube__api__innertube__client_info__init(&client);
 	client.hl = "en";
 	client.gl = "US";
-	client.visitor_data = strdup(p->visitor_data); // TODO: free when done?
+	client.visitor_data = (char *)p->visitor_data; // XXX: cast away const
 	client.user_agent =
 		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
 		"(KHTML, like Gecko) Chrome/87.0.4280.101 Safari/537.36";
@@ -592,14 +592,16 @@ youtube_stream_setup(struct youtube_stream *p,
 		debug("%02X", (unsigned char)sabr_post[i]);
 	}
 
-	char *null_terminated_sabr_url __attribute__((cleanup(str_free))) =
-		NULL;
+	char *null_terminated_sabr_deobuscated_n_param
+		__attribute__((cleanup(str_free))) = NULL;
 	{
 		ada_string tmp = ada_get_href(p->url[0]);
-		null_terminated_sabr_url = strndup(tmp.data, tmp.length);
-		// TODO: handle malloc failure
+		null_terminated_sabr_deobuscated_n_param =
+			strndup(tmp.data, tmp.length);
+		check_if(null_terminated_sabr_deobuscated_n_param == NULL,
+		         ERR_JS_SABR_URL_ALLOC);
 	}
-	check(download_and_mmap_tmpfd(null_terminated_sabr_url,
+	check(download_and_mmap_tmpfd(null_terminated_sabr_deobuscated_n_param,
 	                              NULL,
 	                              NULL,
 	                              sabr_post,
