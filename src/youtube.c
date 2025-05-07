@@ -1,5 +1,6 @@
 #include "youtube.h"
 
+#include "lib/base64.h"
 #include "lib/js.h"
 #include "lib/re.h"
 #include "lib/url.h"
@@ -10,7 +11,6 @@
 #include <ada_c.h>
 #include <assert.h>
 #include <errno.h>
-#include <resolv.h> /* for b64_pton() */
 #include <stdio.h> /* for asprintf() */
 #include <stdlib.h>
 #include <string.h>
@@ -376,19 +376,36 @@ youtube_stream_setup(struct youtube_stream *p,
 			strndup(config.data, config.sz);
 		check_if(null_terminated == NULL, ERR_JS_PLAYBACK_CONFIG_ALLOC);
 		debug("src size %d", strlen(null_terminated)); // TODO: remove debug msg
+		/*
+		 * Convert base64url to standard base64.
+		 *
+		 * https://datatracker.ietf.org/doc/html/rfc4648#section-5
+		 */
+		for (char *p = null_terminated; *p; ++p) {
+			switch (*p) {
+			case '-':
+				*p = '+';
+				break;
+			case '_':
+				*p = '/';
+				break;
+			}
+		}
 
-		// TODO: switch from b64_pton() to something else; other b64 implementations seem to accept data that this function currently rejects (or i'm somehow messing up the invocation to determine the decoded length)
-		decoded_config_sz = b64_pton(null_terminated, NULL, 0);
+		decoded_config_sz = base64_decode(null_terminated, NULL, 0);
 		debug("dst size %d", decoded_config_sz); // TODO: remove debug msg
 		check_if(decoded_config_sz < 0, ERR_JS_PLAYBACK_CONFIG_ALLOC);
 		decoded_config = malloc(decoded_config_sz);
 		check_if(decoded_config == NULL, ERR_JS_PLAYBACK_CONFIG_ALLOC);
 
-		int x = b64_pton(null_terminated, decoded_config, decoded_config_sz);
+		int x = base64_decode(null_terminated, decoded_config, decoded_config_sz);
 		if (x < 0) {
 			// TODO: return err indicated b64 decoding failure
 		}
-		debug("b64_pton() returned %d", x); // TODO: remove debug msg
+		debug("base64_decode() result"); // TODO remove debug msg
+		for (int i = 0; i < decoded_config_sz; ++i) {
+			debug("%02X", (unsigned char)decoded_config[i]);
+		}
 	}
 
 	check(download_and_mmap_tmpfd(NULL,
@@ -501,8 +518,11 @@ youtube_stream_setup(struct youtube_stream *p,
 		malloc(sabr_packed_sz * sizeof(*sabr_post));
 	// TODO: handle malloc failure
 	video_streaming__video_playback_request_proto__pack(&req, sabr_post);
-	debug("Sending config blob: %s", decoded_config);
-	debug("Sending protobuf blob: %s", sabr_post);
+
+	debug("Sending protobuf blob"); // TODO remove debug msg
+	for (int i = 0; i < sabr_packed_sz; ++i) {
+		debug("%02X", (unsigned char)sabr_post[i]);
+	}
 
 	char *null_terminated_sabr_url __attribute__((cleanup(str_free))) =
 		NULL;

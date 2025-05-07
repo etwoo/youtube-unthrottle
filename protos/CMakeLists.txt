@@ -8,10 +8,23 @@ CPMAddPackage(
 
 add_custom_command(
 	OUTPUT
-		video_streaming/client_abr_state.pb-c.h
+		google/protobuf/any.pb-c.c
+		video/storage/format_description.pb-c.c
 		video_streaming/client_abr_state.pb-c.c
-		video_streaming/video_playback_request_proto.pb-c.h
+		video_streaming/media_capabilities.pb-c.c
+		video_streaming/per_playback_attributes.pb-c.c
+		video_streaming/streamer_context.pb-c.c
 		video_streaming/video_playback_request_proto.pb-c.c
+		youtube/api/innertube/audio_quality.pb-c.c
+		youtube/api/innertube/client_info.pb-c.c
+		youtube/api/innertube/detailed_network_type.pb-c.c
+		youtube/api/innertube/drm_track_type.pb-c.c
+		youtube/api/innertube/mobile_data_plan_info.pb-c.c
+		youtube/api/innertube/network_metered_state.pb-c.c
+		youtube/api/innertube/playback_audio_route_output_type.pb-c.c
+		youtube/api/innertube/player_type.pb-c.c
+		youtube/api/innertube/user_interface_theme.pb-c.c
+		youtube/api/innertube/video_quality_setting.pb-c.c
 	COMMAND protoc
 		--proto_path=${innertube_SOURCE_DIR}/protos
 		--c_out=${CMAKE_CURRENT_BINARY_DIR}
