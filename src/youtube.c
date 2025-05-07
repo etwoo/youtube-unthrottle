@@ -312,6 +312,26 @@ ciphertexts_cleanup(char *ciphertexts[][3])
 	debug("free()-d %zu n-param ciphertext bufs", free_count);
 }
 
+/*
+ * Convert base64url-encoded content to standard base64 format.
+ *
+ * https://datatracker.ietf.org/doc/html/rfc4648#section-5
+ */
+static void
+base64url_to_standard_base64(char *buf)
+{
+	for (char *c = buf; *c; ++c) {
+		switch (*c) {
+		case '-':
+			*c = '+';
+			break;
+		case '_':
+			*c = '/';
+			break;
+		}
+	}
+}
+
 result_t
 youtube_stream_setup(struct youtube_stream *p,
                      const struct youtube_setup_ops *ops,
@@ -365,41 +385,6 @@ youtube_stream_setup(struct youtube_stream *p,
 	}
 	check_if(null_terminated_sabr == NULL, ERR_JS_SABR_URL_ALLOC);
 	debug("Decoded SABR URL: %s", null_terminated_sabr);
-
-	char *decoded_config __attribute__((cleanup(str_free))) = NULL;
-	int decoded_sz = 0;
-	{
-		struct string_view config = {0};
-		check(find_playback_config(&html.data, &config));
-
-		char *tmp __attribute__((cleanup(str_free))) =
-			strndup(config.data, config.sz);
-		check_if(tmp == NULL, ERR_JS_PLAYBACK_CONFIG_ALLOC);
-
-		/*
-		 * Convert base64url to standard base64.
-		 *
-		 * https://datatracker.ietf.org/doc/html/rfc4648#section-5
-		 */
-		for (char *c = tmp; *c; ++c) {
-			switch (*c) {
-			case '-':
-				*c = '+';
-				break;
-			case '_':
-				*c = '/';
-				break;
-			}
-		}
-
-		decoded_sz = base64_decode(tmp, NULL, 0);
-		check_if(decoded_sz < 0, ERR_JS_PLAYBACK_CONFIG_BASE64_DECODE);
-		decoded_config = malloc(decoded_sz);
-		check_if(decoded_config == NULL, ERR_JS_PLAYBACK_CONFIG_ALLOC);
-
-		const int rc = base64_decode(tmp, decoded_config, decoded_sz);
-		check_if(rc < 0, ERR_JS_PLAYBACK_CONFIG_BASE64_DECODE);
-	}
 
 	check(download_and_mmap_tmpfd(NULL,
 	                              "www.youtube.com",
@@ -578,12 +563,52 @@ youtube_stream_setup(struct youtube_stream *p,
 	VideoStreaming__StreamerContext context;
 	video_streaming__streamer_context__init(&context);
 	context.client = &client;
+	context.has_unnamed_field_2 = true;
+	char *decoded_pot __attribute__((cleanup(str_free))) = NULL;
+	{
+		int decoded_sz = 0;
+
+		char *tmp __attribute__((cleanup(str_free))) =
+			strdup(p->proof_of_origin);
+		check_if(tmp == NULL, ERR_JS_PROOF_OF_ORIGIN_ALLOC);
+		base64url_to_standard_base64(tmp);
+		decoded_sz = base64_decode(tmp, NULL, 0);
+		check_if(decoded_sz < 0, ERR_JS_PROOF_OF_ORIGIN_BASE64_DECODE);
+		decoded_pot = malloc(decoded_sz);
+		check_if(decoded_pot == NULL, ERR_JS_PROOF_OF_ORIGIN_ALLOC);
+
+		const int rc = base64_decode(tmp, decoded_pot, decoded_sz);
+		check_if(rc < 0, ERR_JS_PROOF_OF_ORIGIN_BASE64_DECODE);
+
+		context.unnamed_field_2.len = decoded_sz;
+	}
+	context.unnamed_field_2.data = decoded_pot;
 
 	VideoStreaming__VideoPlaybackRequestProto req;
 	video_streaming__video_playback_request_proto__init(&req);
 	req.abr_state = &abr_state;
 	req.has_video_playback_ustreamer_config = true;
-	req.video_playback_ustreamer_config.len = decoded_sz;
+	char *decoded_config __attribute__((cleanup(str_free))) = NULL;
+	{
+		int decoded_sz = 0;
+
+		struct string_view config = {0};
+		check(find_playback_config(&html.data, &config));
+
+		char *tmp __attribute__((cleanup(str_free))) =
+			strndup(config.data, config.sz);
+		check_if(tmp == NULL, ERR_JS_PLAYBACK_CONFIG_ALLOC);
+		base64url_to_standard_base64(tmp);
+		decoded_sz = base64_decode(tmp, NULL, 0);
+		check_if(decoded_sz < 0, ERR_JS_PLAYBACK_CONFIG_BASE64_DECODE);
+		decoded_config = malloc(decoded_sz);
+		check_if(decoded_config == NULL, ERR_JS_PLAYBACK_CONFIG_ALLOC);
+
+		const int rc = base64_decode(tmp, decoded_config, decoded_sz);
+		check_if(rc < 0, ERR_JS_PLAYBACK_CONFIG_BASE64_DECODE);
+
+		req.video_playback_ustreamer_config.len = decoded_sz;
+	}
 	req.video_playback_ustreamer_config.data = decoded_config;
 	req.has_player_time_ms = true;
 	req.player_time_ms = 0;
