@@ -550,6 +550,7 @@ youtube_stream_setup(struct youtube_stream *p,
 	char *null_terminated_sabr_deobuscated_n_param
 		__attribute__((cleanup(str_free))) = NULL;
 	{
+		ada_search_params_set_helper(p->url[0], "rn", "0"); // TODO: increment request number for each segment downloaded (or attempted)
 		ada_string tmp = ada_get_href(p->url[0]);
 		null_terminated_sabr_deobuscated_n_param =
 			strndup(tmp.data, tmp.length);
