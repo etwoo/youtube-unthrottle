@@ -7,7 +7,7 @@
 #include "sys/array.h"
 #include "sys/debug.h"
 #include "sys/tmpfile.h"
-#include "video_streaming/video_playback_request_proto.pb-c.h"
+#include "video_streaming/video_playback_abr_request.pb-c.h"
 
 #include <ada_c.h>
 #include <assert.h>
@@ -429,89 +429,35 @@ youtube_stream_setup(struct youtube_stream *p,
 		check(ops->after(userdata));
 	}
 
-	VideoStreaming__MediaCapabilities__VideoFormatCapability__Profile vfcp[] = {
-		VIDEO_STREAMING__MEDIA_CAPABILITIES__VIDEO_FORMAT_CAPABILITY__PROFILE__MPEG4_SIMPLE,
-		VIDEO_STREAMING__MEDIA_CAPABILITIES__VIDEO_FORMAT_CAPABILITY__PROFILE__MPEG4_SIMPLE_0,
-		VIDEO_STREAMING__MEDIA_CAPABILITIES__VIDEO_FORMAT_CAPABILITY__PROFILE__INTERMEDIATE,
-		VIDEO_STREAMING__MEDIA_CAPABILITIES__VIDEO_FORMAT_CAPABILITY__PROFILE__AVC_BASELINE,
-		VIDEO_STREAMING__MEDIA_CAPABILITIES__VIDEO_FORMAT_CAPABILITY__PROFILE__AVC_BASELINE_30,
-		VIDEO_STREAMING__MEDIA_CAPABILITIES__VIDEO_FORMAT_CAPABILITY__PROFILE__AVC_BASELINE_31,
-		VIDEO_STREAMING__MEDIA_CAPABILITIES__VIDEO_FORMAT_CAPABILITY__PROFILE__AVC_MAIN,
-		VIDEO_STREAMING__MEDIA_CAPABILITIES__VIDEO_FORMAT_CAPABILITY__PROFILE__AVC_MAIN_31,
-		VIDEO_STREAMING__MEDIA_CAPABILITIES__VIDEO_FORMAT_CAPABILITY__PROFILE__AVC_HIGH,
-		VIDEO_STREAMING__MEDIA_CAPABILITIES__VIDEO_FORMAT_CAPABILITY__PROFILE__AVC_HIGH_30,
-		VIDEO_STREAMING__MEDIA_CAPABILITIES__VIDEO_FORMAT_CAPABILITY__PROFILE__AVC_HIGH_31,
-		VIDEO_STREAMING__MEDIA_CAPABILITIES__VIDEO_FORMAT_CAPABILITY__PROFILE__AVC_HIGH_32,
-		VIDEO_STREAMING__MEDIA_CAPABILITIES__VIDEO_FORMAT_CAPABILITY__PROFILE__AVC_HIGH_41,
-	};
-
-	VideoStreaming__MediaCapabilities__VideoFormatCapability v_capability;
-	video_streaming__media_capabilities__video_format_capability__init(
-		&v_capability);
-	v_capability.has_video_codec = true;
-	v_capability.video_codec =
-		VIDEO__STORAGE__FORMAT_DESCRIPTION__VIDEO__CODEC__AV1;
-	v_capability.profiles_supported = vfcp;
-	v_capability.n_profiles_supported = 13;
-
-	VideoStreaming__MediaCapabilities__VideoFormatCapability *vp =
-		&v_capability;
-	VideoStreaming__MediaCapabilities__VideoFormatCapability **vpp = {&vp};
-
-	VideoStreaming__MediaCapabilities__AudioFormatCapability a_capability;
-	video_streaming__media_capabilities__audio_format_capability__init(
-		&a_capability);
-	a_capability.has_audio_codec = true;
-	a_capability.audio_codec =
-		VIDEO__STORAGE__FORMAT_DESCRIPTION__AUDIO__CODEC__OPUS;
-
-	VideoStreaming__MediaCapabilities__AudioFormatCapability *ap =
-		&a_capability;
-	VideoStreaming__MediaCapabilities__AudioFormatCapability **app = {&ap};
-
-	VideoStreaming__MediaCapabilities media_capabilities;
-	video_streaming__media_capabilities__init(&media_capabilities);
-	media_capabilities.video_format_capabilities = vpp;
-	media_capabilities.n_video_format_capabilities = 1;
-	media_capabilities.audio_format_capabilities = app;
-	media_capabilities.n_audio_format_capabilities = 1;
-
 	VideoStreaming__ClientAbrState abr_state;
 	video_streaming__client_abr_state__init(&abr_state);
+	abr_state.has_time_since_last_manual_format_selection_ms = true;
+	abr_state.time_since_last_manual_format_selection_ms = 0;
 	abr_state.has_last_manual_direction = true;
 	abr_state.last_manual_direction = 0;
 	abr_state.has_last_manual_selected_resolution = true;
-	abr_state.last_manual_selected_resolution = 1080;
+	abr_state.last_manual_selected_resolution = 720; // TODO: 720->1080
 	abr_state.has_sticky_resolution = true;
-	abr_state.sticky_resolution = 1080;
+	abr_state.sticky_resolution = 720; // TODO: 720->1080
 	abr_state.has_player_time_ms = true;
 	abr_state.player_time_ms = 0;
-	abr_state.has_time_since_last_seek_or_join_ms = true;
-	abr_state.time_since_last_seek_or_join_ms = 0;
 	abr_state.has_visibility = true;
 	abr_state.visibility = 0;
 	abr_state.has_enabled_track_types_bitfield = true;
 	abr_state.enabled_track_types_bitfield = 0;
-	abr_state.media_capabilities = &media_capabilities;
 
-	Youtube__Api__Innertube__ClientInfo client;
-	youtube__api__innertube__client_info__init(&client);
-	client.hl = "en";
-	client.gl = "US";
-	client.visitor_data = (char *)p->visitor_data; // XXX: cast away const
-	client.user_agent =
-		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-		"(KHTML, like Gecko) Chrome/87.0.4280.101 Safari/537.36";
-	client.has_client_name = true;
-	client.client_name =
-		YOUTUBE__API__INNERTUBE__CLIENT_INFO__CLIENT_NAME__WEB;
-	client.client_version = "2.20240726.00.00";
-	client.time_zone = "UTC";
+	VideoStreaming__StreamerContext__ClientInfo info;
+	video_streaming__streamer_context__client_info__init(&info);
+	info.has_client_name = true;
+	info.client_name = 1;
+	info.client_version = "2.2040620.05.00";
+	info.os_name = "Windows";
+	info.os_version = "10.0";
 
 	VideoStreaming__StreamerContext context;
 	video_streaming__streamer_context__init(&context);
-	context.client = &client;
-	context.has_unnamed_field_2 = true;
+	context.client_info = &info;
+	context.has_po_token = true;
 	unsigned char *decoded_pot __attribute__((cleanup(ustr_free))) = NULL;
 	{
 		int decoded_sz = 0;
@@ -528,13 +474,29 @@ youtube_stream_setup(struct youtube_stream *p,
 		const int rc = base64_decode(tmp, decoded_pot, decoded_sz);
 		check_if(rc < 0, ERR_JS_PROOF_OF_ORIGIN_BASE64_DECODE);
 
-		context.unnamed_field_2.len = decoded_sz;
+		context.po_token.len = decoded_sz;
 	}
-	context.unnamed_field_2.data = decoded_pot;
+	context.po_token.data = decoded_pot;
 
-	VideoStreaming__VideoPlaybackRequestProto req;
-	video_streaming__video_playback_request_proto__init(&req);
-	req.abr_state = &abr_state;
+	Misc__FormatId selected_audio_format;
+	misc__format_id__init(&selected_audio_format);
+	selected_audio_format.has_itag = true;
+	selected_audio_format.itag = 251;
+	selected_audio_format.has_last_modified = true;
+	selected_audio_format.last_modified = 1745895945004617;
+	Misc__FormatId *selected_audio_format_p = &selected_audio_format;
+
+	Misc__FormatId selected_video_format;
+	misc__format_id__init(&selected_video_format);
+	selected_video_format.has_itag = true;
+	selected_video_format.itag = 247; // TODO: change to 1080p 60fps
+	selected_video_format.has_last_modified = true;
+	selected_video_format.last_modified = 1745936239581117;
+	Misc__FormatId *selected_video_format_p = &selected_video_format;
+
+	VideoStreaming__VideoPlaybackAbrRequest req;
+	video_streaming__video_playback_abr_request__init(&req);
+	req.client_abr_state = &abr_state;
 	req.has_video_playback_ustreamer_config = true;
 	unsigned char *decoded_config __attribute__((cleanup(ustr_free))) =
 		NULL;
@@ -559,18 +521,24 @@ youtube_stream_setup(struct youtube_stream *p,
 		req.video_playback_ustreamer_config.len = decoded_sz;
 	}
 	req.video_playback_ustreamer_config.data = decoded_config;
-	req.has_player_time_ms = true;
-	req.player_time_ms = 0;
+	req.n_selected_audio_format_ids = 1;
+	req.selected_audio_format_ids = (Misc__FormatId **){
+		&selected_audio_format_p
+	};
+	req.n_selected_video_format_ids = 1;
+	req.selected_video_format_ids = (Misc__FormatId **){
+		&selected_video_format_p
+	};
 	req.streamer_context = &context;
 
 	const size_t sabr_packed_sz =
-		video_streaming__video_playback_request_proto__get_packed_size(
+		video_streaming__video_playback_abr_request__get_packed_size(
 			&req);
 
 	char *sabr_post __attribute__((cleanup(str_free))) =
 		malloc(sabr_packed_sz * sizeof(*sabr_post));
 	check_if(sabr_post == NULL, ERR_JS_SABR_POST_BODY_ALLOC);
-	video_streaming__video_playback_request_proto__pack(
+	video_streaming__video_playback_abr_request__pack(
 		&req,
 		(unsigned char *)sabr_post);
 
