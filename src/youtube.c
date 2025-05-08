@@ -450,7 +450,7 @@ youtube_stream_setup(struct youtube_stream *p,
 	video_streaming__streamer_context__client_info__init(&info);
 	info.has_client_name = true;
 	info.client_name = 1;
-	info.client_version = "2.2040620.05.00";
+	info.client_version = "2.20250312.04.00";
 	info.os_name = "Windows";
 	info.os_version = "10.0";
 
