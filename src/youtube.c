@@ -560,11 +560,11 @@ youtube_stream_setup(struct youtube_stream *p,
 	                              NULL,
 	                              NULL,
 	                              sabr_post,
-	                              NULL,
+	                              "Content-Type: application/x-protobuf",
 	                              protobuf.fd,
 	                              &protobuf.data,
 	                              &p->request_context));
-	debug("Got protobuf blob of sz=%zu: %.*s",
+	debug("Got reponse protobuf blob of sz=%zu: %.*s",
 	      protobuf.data.sz,
 	      (int)protobuf.data.sz,
 	      protobuf.data.data); // TODO: decode protobuf response?
