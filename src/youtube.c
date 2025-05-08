@@ -478,33 +478,20 @@ youtube_stream_setup(struct youtube_stream *p,
 
 	VideoStreaming__ClientAbrState abr_state;
 	video_streaming__client_abr_state__init(&abr_state);
-	abr_state.has_detailed_network_type = true;
-	abr_state.detailed_network_type =
-		YOUTUBE__API__INNERTUBE__DETAILED_NETWORK_TYPE__DETAILED_NETWORK_TYPE_ETHERNET;
-	abr_state.has_client_viewport_width = true;
-	abr_state.client_viewport_width = 1920;
-	abr_state.has_client_viewport_height = true;
-	abr_state.client_viewport_height = 1080;
-	abr_state.has_bandwidth_estimate_bytes_per_sec = true;
-	abr_state.bandwidth_estimate_bytes_per_sec = 7340032; // 7MBps
-	abr_state.has_min_audio_quality = true;
-	abr_state.min_audio_quality =
-		YOUTUBE__API__INNERTUBE__AUDIO_QUALITY__AUDIO_QUALITY_LOW;
-	abr_state.has_max_audio_quality = true;
-	abr_state.max_audio_quality =
-		YOUTUBE__API__INNERTUBE__AUDIO_QUALITY__AUDIO_QUALITY_HIGH;
-	abr_state.has_video_quality_setting = true;
-	abr_state.video_quality_setting =
-		YOUTUBE__API__INNERTUBE__VIDEO_QUALITY_SETTING__VIDEO_QUALITY_SETTING_HIGHER_QUALITY;
+	abr_state.has_last_manual_direction = true;
+	abr_state.last_manual_direction = 0;
+	abr_state.has_last_manual_selected_resolution = true;
+	abr_state.last_manual_selected_resolution = 1080;
+	abr_state.has_sticky_resolution = true;
+	abr_state.sticky_resolution = 1080;
 	abr_state.has_player_time_ms = true;
 	abr_state.player_time_ms = 0;
-	abr_state.has_network_metered_state = true;
-	abr_state.network_metered_state =
-		YOUTUBE__API__INNERTUBE__NETWORK_METERED_STATE__NETWORK_METERED_STATE_METERED;
-	abr_state.has_playback_rate = true;
-	abr_state.playback_rate = 1.0;
-	abr_state.has_elapsed_wall_time_ms = true;
-	abr_state.elapsed_wall_time_ms = 0;
+	abr_state.has_time_since_last_seek_or_join_ms = true;
+	abr_state.time_since_last_seek_or_join_ms = 0;
+	abr_state.has_visibility = true;
+	abr_state.visibility = 0;
+	abr_state.has_enabled_track_types_bitfield = true;
+	abr_state.enabled_track_types_bitfield = 0;
 	abr_state.media_capabilities = &media_capabilities;
 
 	Youtube__Api__Innertube__ClientInfo client;
