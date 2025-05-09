@@ -1,3 +1,5 @@
+# TODO: move to cmake/ scripts directory and invoke from base CMakeLists, thereby avoid creating a new top-level project directory; adjust use of CMAKE_CURRENT_BINARY_DIR and target_include_directories() accordingly
+
 CPMAddPackage(
 	NAME googlevideo
 	GITHUB_REPOSITORY LuanRT/googlevideo
