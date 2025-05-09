@@ -142,6 +142,8 @@ url_download(const char *url_str,     /* maybe NULL */
 	CURLcode res = curl == NULL ? CURLE_OUT_OF_MEMORY : CURLE_OK;
 	check_if_num(res, ERR_URL_DOWNLOAD_ALLOC);
 
+	res = curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L); // TODO remove, or if retaining permanently, add error handling
+
 	res = curl_easy_setopt(curl, CURLOPT_WRITEDATA, &fd);
 	check_if_num(res, ERR_URL_DOWNLOAD_SET_OPT_WRITEDATA);
 

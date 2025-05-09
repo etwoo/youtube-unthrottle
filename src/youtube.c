@@ -563,10 +563,13 @@ youtube_stream_setup(struct youtube_stream *p,
 	                              protobuf.fd,
 	                              &protobuf.data,
 	                              &p->request_context));
-	debug("Got response protobuf blob of sz=%zu: %.*s",
-	      protobuf.data.sz,
-	      (int)protobuf.data.sz,
-	      protobuf.data.data); // TODO: decode protobuf response?
+
+	debug("Got protobuf blob of sz=%zu", protobuf.data.sz);
+	for (size_t i = 0; i < protobuf.data.sz; ++i) {
+		debug("%02X", (unsigned char)protobuf.data.data[i]); // TODO remove
+	}
+
+	// TODO: parse protobuf.data as UMP blob, rename variables as well; reference: https://github.com/LuanRT/yt-sabr-shaka-demo/blob/af2fa6c2325a8f076c2f9a8670a014b7f77bb64d/src/utils/sabrUmpParser.ts#L102
 
 	return RESULT_OK;
 }
