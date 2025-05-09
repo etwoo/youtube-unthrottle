@@ -1,4 +1,4 @@
-# TODO: move to cmake/ scripts directory and invoke from base CMakeLists, thereby avoid creating a new top-level project directory; adjust use of CMAKE_CURRENT_BINARY_DIR and target_include_directories() accordingly
+# TODO: isolate all protobuf code to src/lib/protobuf.{h,c} and move all of this cmake boilerplate into src/lib/CMakeLists.txt, thereby avoiding a new top-level project directory `protos`; adjust use of CMAKE_CURRENT_BINARY_DIR and target_include_directories() accordingly
 
 CPMAddPackage(
 	NAME googlevideo
