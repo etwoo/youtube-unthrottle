@@ -132,7 +132,7 @@ youtube_stream_set_one(struct youtube_stream *p, int idx, const char *val)
 
 	assert(idx >= 0 && (unsigned int)idx < ARRAY_SIZE(p->url));
 	p->url[idx] = ada_parse(val, strlen(val));
-	ada_search_params_set_helper(p->url[idx], ARG_POT, p->proof_of_origin);
+	// ada_search_params_set_helper(p->url[idx], ARG_POT, p->proof_of_origin); // TODO: seems that proof of origin no longer needed in URL itself, only in protobuf body
 	return RESULT_OK;
 }
 
@@ -436,9 +436,9 @@ youtube_stream_setup(struct youtube_stream *p,
 	abr_state.has_last_manual_direction = true;
 	abr_state.last_manual_direction = 0;
 	abr_state.has_last_manual_selected_resolution = true;
-	abr_state.last_manual_selected_resolution = 720; // TODO: 720->1080
+	abr_state.last_manual_selected_resolution = 1080;
 	abr_state.has_sticky_resolution = true;
-	abr_state.sticky_resolution = 720; // TODO: 720->1080
+	abr_state.sticky_resolution = 1080;
 	abr_state.has_player_time_ms = true;
 	abr_state.player_time_ms = 0;
 	abr_state.has_visibility = true;
@@ -483,15 +483,15 @@ youtube_stream_setup(struct youtube_stream *p,
 	selected_audio_format.has_itag = true;
 	selected_audio_format.itag = 251;
 	selected_audio_format.has_last_modified = true;
-	selected_audio_format.last_modified = 1745895945004617;
+	selected_audio_format.last_modified = 1746444978562940;
 	Misc__FormatId *selected_audio_format_p = &selected_audio_format;
 
 	Misc__FormatId selected_video_format;
 	misc__format_id__init(&selected_video_format);
 	selected_video_format.has_itag = true;
-	selected_video_format.itag = 247; // TODO: change to 1080p 60fps
+	selected_video_format.itag = 299;
 	selected_video_format.has_last_modified = true;
-	selected_video_format.last_modified = 1745936239581117;
+	selected_video_format.last_modified = 1746446915598707;
 	Misc__FormatId *selected_video_format_p = &selected_video_format;
 
 	VideoStreaming__VideoPlaybackAbrRequest req;
@@ -522,13 +522,11 @@ youtube_stream_setup(struct youtube_stream *p,
 	}
 	req.video_playback_ustreamer_config.data = decoded_config;
 	req.n_selected_audio_format_ids = 1;
-	req.selected_audio_format_ids = (Misc__FormatId **){
-		&selected_audio_format_p
-	};
+	req.selected_audio_format_ids =
+		(Misc__FormatId **){&selected_audio_format_p};
 	req.n_selected_video_format_ids = 1;
-	req.selected_video_format_ids = (Misc__FormatId **){
-		&selected_video_format_p
-	};
+	req.selected_video_format_ids =
+		(Misc__FormatId **){&selected_video_format_p};
 	req.streamer_context = &context;
 
 	const size_t sabr_packed_sz =
@@ -550,7 +548,6 @@ youtube_stream_setup(struct youtube_stream *p,
 	char *null_terminated_sabr_deobuscated_n_param
 		__attribute__((cleanup(str_free))) = NULL;
 	{
-		ada_search_params_set_helper(p->url[0], "rn", "0"); // TODO: increment request number for each segment downloaded (or attempted)
 		ada_string tmp = ada_get_href(p->url[0]);
 		null_terminated_sabr_deobuscated_n_param =
 			strndup(tmp.data, tmp.length);
