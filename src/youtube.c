@@ -431,20 +431,10 @@ youtube_stream_setup(struct youtube_stream *p,
 
 	VideoStreaming__ClientAbrState abr_state;
 	video_streaming__client_abr_state__init(&abr_state);
-	abr_state.has_time_since_last_manual_format_selection_ms = true;
-	abr_state.time_since_last_manual_format_selection_ms = 0;
-	abr_state.has_last_manual_direction = true;
-	abr_state.last_manual_direction = 0;
 	abr_state.has_last_manual_selected_resolution = true;
 	abr_state.last_manual_selected_resolution = 1080;
 	abr_state.has_sticky_resolution = true;
 	abr_state.sticky_resolution = 1080;
-	abr_state.has_player_time_ms = true;
-	abr_state.player_time_ms = 0;
-	abr_state.has_visibility = true;
-	abr_state.visibility = 0;
-	abr_state.has_enabled_track_types_bitfield = true;
-	abr_state.enabled_track_types_bitfield = 0;
 
 	VideoStreaming__StreamerContext__ClientInfo info;
 	video_streaming__streamer_context__client_info__init(&info);
