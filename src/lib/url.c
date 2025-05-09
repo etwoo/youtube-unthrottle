@@ -69,6 +69,7 @@ url_context_init(struct url_request_context *context)
 	                               NULL,
 	                               NULL,
 	                               NULL,
+	                               0,
 	                               NULL,
 	                               FD_DISCARD,
 	                               context);
@@ -112,7 +113,8 @@ url_list_append(struct curl_slist **list, const char *str)
 static const char BROWSER_USERAGENT[] =
 	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, "
 	"like Gecko) Chrome/87.0.4280.101 Safari/537.36";
-static const char CONTENT_TYPE_JSON[] = "Content-Type: application/json";
+static const char CONTENT_TYPE_PROTOBUF[] =
+	"Content-Type: application/x-protobuf";
 static const char DEFAULT_HOST_STR[] = "www.youtube.com";
 
 result_t
@@ -120,6 +122,7 @@ url_download(const char *url_str,     /* maybe NULL */
              const char *host_str,    /* maybe NULL */
              const char *path_str,    /* maybe NULL */
              const char *post_body,   /* maybe NULL */
+             size_t post_body_size,   /* meaningful iff post_body != NULL */
              const char *post_header, /* maybe NULL */
              int fd,
              struct url_request_context *context)
@@ -169,11 +172,16 @@ url_download(const char *url_str,     /* maybe NULL */
 	}
 
 	if (post_body) {
-		check(url_list_append(&headers, CONTENT_TYPE_JSON));
+		check(url_list_append(&headers, CONTENT_TYPE_PROTOBUF));
 
 		res = curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_body);
 		/* Note: libcurl does not copy <post_body> */
 		check_if_num(res, ERR_URL_DOWNLOAD_SET_OPT_POST_BODY);
+
+		res = curl_easy_setopt(curl,
+		                       CURLOPT_POSTFIELDSIZE_LARGE,
+		                       post_body_size);
+		check_if_num(res, ERR_URL_DOWNLOAD_SET_OPT_POST_BODY); // TODO: create a new dedicated errtype
 	}
 
 	if (post_header) {
