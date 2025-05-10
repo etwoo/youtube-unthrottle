@@ -19,7 +19,7 @@
  *
  *   https://jansson.readthedocs.io/en/latest/apiref.html
  */
-#include <jansson.h>
+#include <jansson.h> // TODO: remove jansson dependency here plus cmake, CI
 
 static WARN_UNUSED const char *
 peek(duk_context *ctx)
