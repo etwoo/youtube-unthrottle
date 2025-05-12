@@ -12,12 +12,12 @@
 #include <ada_c.h>
 #include <assert.h>
 #include <errno.h>
+#include <inttypes.h>
 #include <stdio.h> /* for asprintf() */
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
-static const char ARG_POT[] = "pot";
 static const char ARG_N[] = "n";
 
 struct youtube_stream {
@@ -132,7 +132,6 @@ youtube_stream_set_one(struct youtube_stream *p, int idx, const char *val)
 
 	assert(idx >= 0 && (unsigned int)idx < ARRAY_SIZE(p->url));
 	p->url[idx] = ada_parse(val, strlen(val));
-	// ada_search_params_set_helper(p->url[idx], ARG_POT, p->proof_of_origin); // TODO: seems that proof of origin no longer needed in URL itself, only in protobuf body
 	return RESULT_OK;
 }
 
@@ -323,6 +322,98 @@ base64url_to_standard_base64(char *buf)
 			break;
 		}
 	}
+}
+
+static const unsigned char CHAR_BIT_0 = 0x80; // bit pattern: 10000000
+static const unsigned char CHAR_BIT_1 = 0x40; // bit pattern: 01000000
+static const unsigned char CHAR_BIT_2 = 0x20; // bit pattern: 00100000
+static const unsigned char CHAR_BIT_3 = 0x10; // bit pattern: 00010000
+static const unsigned char CHAR_BIT_4 = 0x08; // bit pattern: 00001000
+
+static void
+ump_read_vle(const unsigned char first_byte,
+             size_t *bytes_to_read,
+             unsigned char *first_byte_mask)
+{
+	*bytes_to_read = 1;
+	*first_byte_mask = 0xFF; // bit pattern: 11111111
+	if (0 == (first_byte & CHAR_BIT_0)) {
+		return;
+	}
+
+	++*bytes_to_read;
+	*first_byte_mask ^= CHAR_BIT_0;
+	*first_byte_mask ^= CHAR_BIT_1;
+
+	if (0 == (first_byte & CHAR_BIT_1)) {
+		return;
+	}
+
+	++*bytes_to_read;
+	*first_byte_mask ^= CHAR_BIT_2;
+
+	if (0 == (first_byte & CHAR_BIT_2)) {
+		return;
+	}
+
+	++*bytes_to_read;
+	*first_byte_mask ^= CHAR_BIT_3;
+
+	if (0 == (first_byte & CHAR_BIT_3)) {
+		return;
+	}
+
+	++*bytes_to_read;
+	*first_byte_mask ^= CHAR_BIT_4;
+}
+
+static result_t
+ump_varint_read(const struct string_view *protobuf,
+                size_t *cursor,
+                uint64_t *value)
+{
+	assert(*cursor < protobuf->sz);
+
+	size_t bytes_to_read = 0;
+	unsigned char first_byte_mask = 0xFF;
+	ump_read_vle(protobuf->data[*cursor], &bytes_to_read, &first_byte_mask);
+	debug("Got bytes_to_read=%zu, first_byte_mask=%02X",
+	      bytes_to_read,
+	      first_byte_mask);
+
+	check_if(*cursor <= SIZE_MAX - bytes_to_read &&
+	                 *cursor + bytes_to_read >= protobuf->sz,
+	         1); // TOOD: ERR_YOUTUBE_CURSOR_EXCEEDS_PROTOBUF_DATA
+
+	uint64_t parsed[5] = {0};
+	switch (bytes_to_read) {
+	case 5:
+		parsed[4] = protobuf->data[*cursor + 4] << 24;
+		__attribute__((fallthrough));
+	case 4:
+		parsed[3] = protobuf->data[*cursor + 3] << 16;
+		__attribute__((fallthrough));
+	case 3:
+		parsed[2] = protobuf->data[*cursor + 2] << 8;
+		__attribute__((fallthrough));
+	case 2:
+		parsed[1] = protobuf->data[*cursor + 1] << (8 - bytes_to_read);
+		__attribute__((fallthrough));
+	case 1:
+		parsed[0] = protobuf->data[*cursor] & first_byte_mask;
+		break;
+	default:
+		assert(false);
+		break;
+	}
+	*cursor += bytes_to_read;
+
+	*value = 0;
+	for (size_t i = 0; i < ARRAY_SIZE(parsed); ++i) {
+		*value += parsed[i];
+	}
+
+	return RESULT_OK;
 }
 
 result_t
@@ -566,10 +657,28 @@ youtube_stream_setup(struct youtube_stream *p,
 
 	debug("Got protobuf blob of sz=%zu", protobuf.data.sz);
 	for (size_t i = 0; i < protobuf.data.sz; ++i) {
-		debug("%02X", (unsigned char)protobuf.data.data[i]); // TODO remove
+		debug("%02X",
+		      (unsigned char)protobuf.data.data[i]); // TODO remove
 	}
 
-	// TODO: parse protobuf.data as UMP blob, rename variables as well; reference: https://github.com/LuanRT/yt-sabr-shaka-demo/blob/af2fa6c2325a8f076c2f9a8670a014b7f77bb64d/src/utils/sabrUmpParser.ts#L102
+	size_t cursor = 0;
+	while (cursor < protobuf.data.sz) {
+		uint64_t part_type = 0;
+		check(ump_varint_read(&protobuf.data, &cursor, &part_type));
+
+		uint64_t part_size = 0;
+		check(ump_varint_read(&protobuf.data, &cursor, &part_size));
+
+		debug("Got part_type=%" PRIu64 ", part_size=%" PRIu64,
+		      part_type,
+		      part_size);
+
+		if (part_type == 35) { /* NEXT_REQUEST_POLICY*/
+			foobar;
+		}
+
+		cursor += part_size;
+	}
 
 	return RESULT_OK;
 }
