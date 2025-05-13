@@ -368,39 +368,37 @@ ump_read_vle(const unsigned char first_byte,
 }
 
 static result_t
-ump_varint_read(const struct string_view *protobuf,
-                size_t *cursor,
-                uint64_t *value)
+ump_varint_read(const struct string_view *ump, size_t *cursor, uint64_t *value)
 {
-	assert(*cursor < protobuf->sz);
+	assert(*cursor < ump->sz);
 
 	size_t bytes_to_read = 0;
 	unsigned char first_byte_mask = 0xFF;
-	ump_read_vle(protobuf->data[*cursor], &bytes_to_read, &first_byte_mask);
+	ump_read_vle(ump->data[*cursor], &bytes_to_read, &first_byte_mask);
 	debug("Got bytes_to_read=%zu, first_byte_mask=%02X",
 	      bytes_to_read,
 	      first_byte_mask);
 
 	check_if(*cursor <= SIZE_MAX - bytes_to_read &&
-	                 *cursor + bytes_to_read >= protobuf->sz,
-	         1); // TOOD: ERR_YOUTUBE_CURSOR_EXCEEDS_PROTOBUF_DATA
+	                 *cursor + bytes_to_read >= ump->sz,
+	         1); // TOOD: ERR_YOUTUBE_CURSOR_EXCEEDS_UMP_DATA
 
 	uint64_t parsed[5] = {0};
 	switch (bytes_to_read) {
 	case 5:
-		parsed[4] = protobuf->data[*cursor + 4] << 24;
+		parsed[4] = ump->data[*cursor + 4] << 24;
 		__attribute__((fallthrough));
 	case 4:
-		parsed[3] = protobuf->data[*cursor + 3] << 16;
+		parsed[3] = ump->data[*cursor + 3] << 16;
 		__attribute__((fallthrough));
 	case 3:
-		parsed[2] = protobuf->data[*cursor + 2] << 8;
+		parsed[2] = ump->data[*cursor + 2] << 8;
 		__attribute__((fallthrough));
 	case 2:
-		parsed[1] = protobuf->data[*cursor + 1] << (8 - bytes_to_read);
+		parsed[1] = ump->data[*cursor + 1] << (8 - bytes_to_read);
 		__attribute__((fallthrough));
 	case 1:
-		parsed[0] = protobuf->data[*cursor] & first_byte_mask;
+		parsed[0] = ump->data[*cursor] & first_byte_mask;
 		break;
 	default:
 		assert(false);
@@ -422,11 +420,11 @@ youtube_stream_setup(struct youtube_stream *p,
                      void *userdata,
                      const char *target)
 {
-	struct downloaded protobuf __attribute__((cleanup(downloaded_cleanup)));
+	struct downloaded ump __attribute__((cleanup(downloaded_cleanup)));
 	struct downloaded html __attribute__((cleanup(downloaded_cleanup)));
 	struct downloaded js __attribute__((cleanup(downloaded_cleanup)));
 
-	downloaded_init(&protobuf, "ProtoBuf tmpfile");
+	downloaded_init(&ump, "UMP response tmpfile");
 	downloaded_init(&html, "HTML tmpfile");
 	downloaded_init(&js, "JavaScript tmpfile");
 
@@ -434,7 +432,7 @@ youtube_stream_setup(struct youtube_stream *p,
 		check(ops->before(userdata));
 	}
 
-	check(tmpfd(&protobuf.fd));
+	check(tmpfd(&ump.fd));
 	check(tmpfd(&html.fd));
 	check(tmpfd(&js.fd));
 
@@ -651,23 +649,22 @@ youtube_stream_setup(struct youtube_stream *p,
 	                              sabr_post,
 	                              sabr_packed_sz,
 	                              NULL,
-	                              protobuf.fd,
-	                              &protobuf.data,
+	                              ump.fd,
+	                              &ump.data,
 	                              &p->request_context));
 
-	debug("Got protobuf blob of sz=%zu", protobuf.data.sz);
-	for (size_t i = 0; i < protobuf.data.sz; ++i) {
-		debug("%02X",
-		      (unsigned char)protobuf.data.data[i]); // TODO remove
+	debug("Got UMP response of sz=%zu", ump.data.sz);
+	for (size_t i = 0; i < ump.data.sz; ++i) {
+		debug("%02X", (unsigned char)ump.data.data[i]); // TODO remove
 	}
 
 	size_t cursor = 0;
-	while (cursor < protobuf.data.sz) {
+	while (cursor < ump.data.sz) {
 		uint64_t part_type = 0;
-		check(ump_varint_read(&protobuf.data, &cursor, &part_type));
+		check(ump_varint_read(&ump.data, &cursor, &part_type));
 
 		uint64_t part_size = 0;
-		check(ump_varint_read(&protobuf.data, &cursor, &part_size));
+		check(ump_varint_read(&ump.data, &cursor, &part_size));
 
 		debug("Got part_type=%" PRIu64 ", part_size=%" PRIu64,
 		      part_type,
