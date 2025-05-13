@@ -673,8 +673,8 @@ youtube_stream_setup(struct youtube_stream *p,
 		      part_type,
 		      part_size);
 
-		if (part_type == 35) { /* NEXT_REQUEST_POLICY*/
-			foobar;
+		if (part_type == 42) { /* FORMAT_INITIALIZATION_METADATA */
+			// TODO: we do not receive this part in UMP response
 		}
 
 		cursor += part_size;
