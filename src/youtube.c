@@ -573,7 +573,6 @@ youtube_stream_setup(struct youtube_stream *p,
 	selected_audio_format.itag = 251;
 	selected_audio_format.has_last_modified = true;
 	selected_audio_format.last_modified = 1746444978562940;
-	Misc__FormatId *selected_audio_format_p = &selected_audio_format;
 
 	Misc__FormatId selected_video_format;
 	misc__format_id__init(&selected_video_format);
@@ -581,7 +580,6 @@ youtube_stream_setup(struct youtube_stream *p,
 	selected_video_format.itag = 299;
 	selected_video_format.has_last_modified = true;
 	selected_video_format.last_modified = 1746446915598707;
-	Misc__FormatId *selected_video_format_p = &selected_video_format;
 
 	VideoStreaming__VideoPlaybackAbrRequest req;
 	video_streaming__video_playback_abr_request__init(&req);
@@ -612,10 +610,10 @@ youtube_stream_setup(struct youtube_stream *p,
 	req.video_playback_ustreamer_config.data = decoded_config;
 	req.n_selected_audio_format_ids = 1;
 	req.selected_audio_format_ids =
-		(Misc__FormatId **){&selected_audio_format_p};
+		(Misc__FormatId *[]){&selected_audio_format};
 	req.n_selected_video_format_ids = 1;
 	req.selected_video_format_ids =
-		(Misc__FormatId **){&selected_video_format_p};
+		(Misc__FormatId *[]){&selected_video_format};
 	req.streamer_context = &context;
 
 	const size_t sabr_packed_sz =
@@ -672,6 +670,9 @@ youtube_stream_setup(struct youtube_stream *p,
 
 		if (part_type == 42) { /* FORMAT_INITIALIZATION_METADATA */
 			// TODO: we do not receive this part in UMP response
+			// TODO: UMP response in general is too small, only 65
+			// bytes instead of ~1.5MB received by downloader demo
+			// in its first response
 		}
 
 		cursor += part_size;
