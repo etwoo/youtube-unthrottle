@@ -10,6 +10,7 @@
 #include "sys/write.h"
 #include "video_streaming/format_initialization_metadata.pb-c.h"
 #include "video_streaming/media_header.pb-c.h"
+#include "video_streaming/sabr_redirect.pb-c.h"
 #include "video_streaming/video_playback_abr_request.pb-c.h"
 
 #include <ada_c.h>
@@ -324,6 +325,12 @@ ump_formats_free(VideoStreaming__FormatInitializationMetadata **format_init)
 		NULL);
 }
 
+static void
+sabr_redirect_free(VideoStreaming__SabrRedirect **redirect)
+{
+	video_streaming__sabr_redirect__free_unpacked(*redirect, NULL);
+}
+
 /*
  * Convert base64url-encoded content to standard base64 format.
  *
@@ -416,7 +423,7 @@ ump_varint_read(const struct string_view *ump, size_t *cursor, uint64_t *value)
 		parsed[2] = ump->data[*cursor + 2] << 8;
 		__attribute__((fallthrough));
 	case 2:
-		parsed[1] = ump->data[*cursor + 1] << (8 - bytes_to_read);
+		parsed[1] = (unsigned char)ump->data[*cursor + 1] << (8 - bytes_to_read);
 		__attribute__((fallthrough));
 	case 1:
 		parsed[0] = ump->data[*cursor] & first_byte_mask;
@@ -440,6 +447,7 @@ ump_part_parse(uint64_t part_type,
 	       uint64_t part_size,
 	       const struct string_view *ump,
 	       size_t *cursor,
+	       ada_url *url,
 	       VideoStreaming__BufferedRange *buffered_audio_range,
 	       VideoStreaming__BufferedRange *buffered_video_range,
 	       bool *done_early)
@@ -448,6 +456,8 @@ ump_part_parse(uint64_t part_type,
 		__attribute__((cleanup(ump_header_free))) = NULL;
 	VideoStreaming__FormatInitializationMetadata *fmt
 		__attribute__((cleanup(ump_formats_free))) = NULL;
+	VideoStreaming__SabrRedirect *redirect
+		__attribute__((cleanup(sabr_redirect_free))) = NULL;
 	uint64_t header_id = 0;
 	ssize_t written = -1;
 
@@ -570,6 +580,16 @@ ump_part_parse(uint64_t part_type,
 #endif
 
 		break;
+	case 43: /* SABR_REDIRECT */
+		redirect = video_streaming__sabr_redirect__unpack(
+			NULL,
+			part_size,
+			ump->data + *cursor);
+		assert(redirect); // TODO: error out on misparse
+		// TODO: handle ada_set_href() returns false
+		ada_set_href(url, redirect->url, strlen(redirect->url));
+		debug("Got redirect to new SABR url: %s", redirect->url);
+		break;
 	}
 
 	return RESULT_OK;
@@ -577,6 +597,7 @@ ump_part_parse(uint64_t part_type,
 
 static result_t
 ump_parse(const struct string_view *ump,
+          ada_url *url,
           VideoStreaming__BufferedRange *buffered_audio_range,
           VideoStreaming__BufferedRange *buffered_video_range)
 {
@@ -606,6 +627,7 @@ ump_parse(const struct string_view *ump,
 		                     part_size,
 		                     ump,
 		                     &cursor,
+		                     url,
 		                     buffered_video_range,
 		                     buffered_audio_range,
 				     &done_early));
@@ -872,6 +894,7 @@ youtube_stream_setup(struct youtube_stream *p,
 	                              &ump.data,
 	                              &p->request_context));
 	check(ump_parse(&ump.data,
+	                &p->url[0],
 	                &buffered_audio_range,
 	                &buffered_video_range));
 
