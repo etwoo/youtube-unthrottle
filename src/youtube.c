@@ -431,6 +431,87 @@ ump_varint_read(const struct string_view *ump, size_t *cursor, uint64_t *value)
 	return RESULT_OK;
 }
 
+static result_t
+ump_part_parse(uint64_t part_type,
+	       uint64_t part_size,
+	       const struct string_view *ump,
+	       size_t cursor)
+{
+	VideoStreaming__MediaHeader *header
+		__attribute__((cleanup(ump_header_free))) = NULL;
+	VideoStreaming__FormatInitializationMetadata *formats
+		__attribute__((cleanup(ump_formats_free))) = NULL;
+	uint64_t header_id = 0;
+	ssize_t written = -1;
+
+	switch (part_type) {
+	case 20: /* MEDIA_HEADER */
+		header = video_streaming__media_header__unpack(
+			NULL,
+			part_size,
+			ump->data + cursor);
+		assert(header); // TODO: error out on misparse
+		debug("Got header header_id=%" PRIu32
+		      ", video=%s, itag=%d, xtags=%s"
+		      ", seq=%" PRIi64 ", duration=%d",
+		      header->header_id,
+		      header->video_id,
+		      header->has_itag ? header->itag : -1,
+		      header->xtags,
+		      header->has_sequence_number
+			      ? header->sequence_number
+			      : -1,
+		      header->has_duration_ms ? header->duration_ms
+			                      : -1);
+		break;
+	case 21: /* MEDIA */
+		// TODO: raise more specific error for header_id
+		check(ump_varint_read(ump, &cursor, &header_id));
+		debug("Got media blob header_id=%" PRIu64
+		      ", cursor=%zu, remaining_bytes=%zu",
+		      header_id,
+		      cursor,
+		      ump->sz - cursor);
+		written = write_with_retry(STDOUT_FILENO,
+			                   ump->data + cursor,
+			                   ump->sz - cursor);
+		info_m_if(written < 0, "Cannot write media to stdout");
+		break;
+	case 42: /* FORMAT_INITIALIZATION_METADATA */
+		formats =
+			video_streaming__format_initialization_metadata__unpack(
+				NULL,
+				part_size,
+				ump->data + cursor);
+		assert(formats); // TODO: error out on misparse
+		debug("Got format video=%s, itag=%d, "
+		      "duration=%d"
+		      ", init_start=%d, init_end=%d"
+		      ", index_start=%d, index_end=%d",
+		      formats->video_id,
+		      formats->format_id->has_itag
+			      ? formats->format_id->itag
+			      : -1,
+		      (formats->has_duration_ms ? formats->duration_ms
+			                        : -1),
+		      (formats->init_range->has_start
+			       ? formats->init_range->start
+			       : -1),
+		      (formats->init_range->has_end
+			       ? formats->init_range->end
+			       : -1),
+		      (formats->index_range->has_start
+			       ? formats->index_range->start
+			       : -1),
+		      (formats->index_range->has_end
+			       ? formats->index_range->end
+			       : -1));
+		break;
+	}
+
+	return RESULT_OK;
+}
+
 result_t
 youtube_stream_setup(struct youtube_stream *p,
                      const struct youtube_setup_ops *ops,
@@ -669,9 +750,11 @@ youtube_stream_setup(struct youtube_stream *p,
 	                              &p->request_context));
 
 	debug("Got UMP response of sz=%zu", ump.data.sz);
+#if 0
 	for (size_t i = 0; i < ump.data.sz; ++i) {
 		debug("%02X", (unsigned char)ump.data.data[i]); // TODO remove
 	}
+#endif
 
 	size_t cursor = 0;
 	while (cursor < ump.data.sz) {
@@ -683,88 +766,17 @@ youtube_stream_setup(struct youtube_stream *p,
 		// TODO: raise more specific error for part_size
 		check(ump_varint_read(&ump.data, &cursor, &part_size));
 
-		uint64_t header_id = 0;
-		ssize_t written = -1;
-
-		debug("Got part_type=%" PRIu64 ", part_size=%" PRIu64,
+		// TODO: why UINT64_MAX - 1059 ...?
+		const bool use_remainder = part_size >= 18446744073709550556u;
+		debug("Got part_type=%" PRIu64 ", part_size=%" PRIu64 "%s",
 		      part_type,
-		      part_size);
+		      part_size,
+		      use_remainder ? " (remainder)" : "");
 
-		VideoStreaming__MediaHeader *header
-			__attribute__((cleanup(ump_header_free))) = NULL;
-		VideoStreaming__FormatInitializationMetadata *formats
-			__attribute__((cleanup(ump_formats_free))) = NULL;
-
-		bool need_cursor_update = true;
-
-		switch (part_type) {
-		case 20: /* MEDIA_HEADER */
-			header = video_streaming__media_header__unpack(
-				NULL,
-				part_size,
-				ump.data.data + cursor);
-			assert(header); // TODO: error out on misparse
-			debug("Got header header_id=%" PRIu32
-			      ", video=%s, itag=%d, xtags=%s"
-			      ", seq=%" PRIi64 ", duration=%d",
-			      header->header_id,
-			      header->video_id,
-			      header->has_itag ? header->itag : -1,
-			      header->xtags,
-			      header->has_sequence_number
-			              ? header->sequence_number
-			              : -1,
-			      header->has_duration_ms ? header->duration_ms
-			                              : -1);
-			break;
-		case 21: /* MEDIA */
-			// TODO: raise more specific error for header_id
-			check(ump_varint_read(&ump.data, &cursor, &header_id));
-			debug("Got media blob header_id=%" PRIu64
-			      ", cursor=%zu, remaining_bytes=%zu",
-			      header_id,
-			      cursor,
-			      ump.data.sz - cursor);
-			written = write_with_retry(STDOUT_FILENO,
-			                           ump.data.data + cursor,
-			                           ump.data.sz - cursor);
-			info_m_if(written < 0, "Cannot write media to stdout");
-			cursor = ump.data.sz; // consumed remainder of buffer
-			need_cursor_update = false;
-			break;
-		case 42: /* FORMAT_INITIALIZATION_METADATA */
-			formats =
-				video_streaming__format_initialization_metadata__unpack(
-					NULL,
-					part_size,
-					ump.data.data + cursor);
-			assert(formats); // TODO: error out on misparse
-			debug("Got format video=%s, itag=%d, "
-			      "duration=%d"
-			      ", init_start=%d, init_end=%d"
-			      ", index_start=%d, index_end=%d",
-			      formats->video_id,
-			      formats->format_id->has_itag
-			              ? formats->format_id->itag
-			              : -1,
-			      (formats->has_duration_ms ? formats->duration_ms
-			                                : -1),
-			      (formats->init_range->has_start
-			               ? formats->init_range->start
-			               : -1),
-			      (formats->init_range->has_end
-			               ? formats->init_range->end
-			               : -1),
-			      (formats->index_range->has_start
-			               ? formats->index_range->start
-			               : -1),
-			      (formats->index_range->has_end
-			               ? formats->index_range->end
-			               : -1));
-			break;
-		}
-
-		if (need_cursor_update) {
+		check(ump_part_parse(part_type, part_size, &ump.data, cursor));
+		if (use_remainder) {
+			cursor = ump.data.sz;
+		} else {
 			cursor += part_size;
 		}
 	}
