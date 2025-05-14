@@ -21,6 +21,9 @@
 #include <string.h>
 #include <unistd.h>
 
+#define min(x, y) (x < y ? x : y) // TODO: reuse some systemwide define?
+#define max(x, y) (x > y ? x : y) // TODO: reuse some systemwide define?
+
 static const char ARG_N[] = "n";
 
 struct youtube_stream {
@@ -435,11 +438,14 @@ static result_t
 ump_part_parse(uint64_t part_type,
 	       uint64_t part_size,
 	       const struct string_view *ump,
-	       size_t cursor)
+	       size_t *cursor,
+	       VideoStreaming__BufferedRange *buffered_audio_range,
+	       VideoStreaming__BufferedRange *buffered_video_range,
+	       bool *done_early)
 {
 	VideoStreaming__MediaHeader *header
 		__attribute__((cleanup(ump_header_free))) = NULL;
-	VideoStreaming__FormatInitializationMetadata *formats
+	VideoStreaming__FormatInitializationMetadata *fmt
 		__attribute__((cleanup(ump_formats_free))) = NULL;
 	uint64_t header_id = 0;
 	ssize_t written = -1;
@@ -449,63 +455,117 @@ ump_part_parse(uint64_t part_type,
 		header = video_streaming__media_header__unpack(
 			NULL,
 			part_size,
-			ump->data + cursor);
+			ump->data + *cursor);
 		assert(header); // TODO: error out on misparse
 		debug("Got header header_id=%" PRIu32
 		      ", video=%s, itag=%d, xtags=%s"
-		      ", seq=%" PRIi64 ", duration=%d",
+		      ", start_data_range=%d, is_init_seg=%d"
+		      ", seq=%" PRIi64 ", start_ms=%d, duration_ms=%d"
+		      ", content_length=%" PRIi64
+		      ", time_range.start=%" PRIi64
+		      ", time_range.duration=%" PRIi64
+		      ", time_range.timescale=%" PRIi32,
 		      header->header_id,
 		      header->video_id,
 		      header->has_itag ? header->itag : -1,
 		      header->xtags,
+		      header->has_start_data_range
+			      ? header->start_data_range
+			      : -1,
+		      header->has_is_init_seg ? header->is_init_seg : -1,
 		      header->has_sequence_number
 			      ? header->sequence_number
 			      : -1,
-		      header->has_duration_ms ? header->duration_ms
-			                      : -1);
+		      header->has_start_ms ? header->start_ms : -1,
+		      header->has_duration_ms ? header->duration_ms : -1,
+		      header->has_content_length ? header->content_length : -1,
+		      (header->time_range && header->time_range->has_start
+			       ? header->time_range->start
+			       : -1),
+		      (header->time_range && header->time_range->has_duration
+			       ? header->time_range->duration
+			       : -1),
+		      (header->time_range && header->time_range->has_timescale
+			       ? header->time_range->timescale
+			       : -1));
+#if 0
+		if (header->has_is_init_seg && header->is_init_seg) {
+			debug("Early exit on is_init_seg=1");
+			*done_early = true;
+			return RESULT_OK;
+		}
+#endif
+		switch (header->itag) {
+		case 251:
+			buffered_audio_range->duration_ms = header->duration_ms;
+			buffered_audio_range->start_segment_index =
+				header->sequence_number;
+			buffered_audio_range->end_segment_index =
+				header->sequence_number + 1;
+			debug("Setting buffered_audio_range duration_ms=%" PRIi64
+			      ", start_segment_index=%d, end_segment_index=%d",
+			      buffered_audio_range->duration_ms,
+			      buffered_audio_range->start_segment_index,
+			      buffered_audio_range->end_segment_index);
+			break;
+		case 299:
+			buffered_video_range->duration_ms = header->duration_ms;
+			buffered_video_range->start_segment_index =
+				header->sequence_number;
+			buffered_video_range->end_segment_index =
+				header->sequence_number + 1;
+			debug("Setting buffered_video_range duration_ms=%" PRIi64
+			      ", start_segment_index=%d, end_segment_index=%d",
+			      buffered_video_range->duration_ms,
+			      buffered_video_range->start_segment_index,
+			      buffered_video_range->end_segment_index);
+			break;
+		}
 		break;
 	case 21: /* MEDIA */
 		// TODO: raise more specific error for header_id
-		check(ump_varint_read(ump, &cursor, &header_id));
+		check(ump_varint_read(ump, cursor, &header_id));
 		debug("Got media blob header_id=%" PRIu64
 		      ", cursor=%zu, remaining_bytes=%zu",
 		      header_id,
-		      cursor,
-		      ump->sz - cursor);
+		      *cursor,
+		      ump->sz - *cursor);
 		written = write_with_retry(STDOUT_FILENO,
-			                   ump->data + cursor,
-			                   ump->sz - cursor);
+			                   ump->data + *cursor,
+			                   ump->sz - *cursor);
 		info_m_if(written < 0, "Cannot write media to stdout");
+		debug("Wrote media blob bytes=%zd to stdout", written);
+		*done_early = true;
 		break;
 	case 42: /* FORMAT_INITIALIZATION_METADATA */
-		formats =
-			video_streaming__format_initialization_metadata__unpack(
-				NULL,
-				part_size,
-				ump->data + cursor);
-		assert(formats); // TODO: error out on misparse
+		fmt = video_streaming__format_initialization_metadata__unpack(
+			NULL,
+			part_size,
+			ump->data + *cursor);
+		assert(fmt); // TODO: error out on misparse
 		debug("Got format video=%s, itag=%d, "
 		      "duration=%d"
 		      ", init_start=%d, init_end=%d"
 		      ", index_start=%d, index_end=%d",
-		      formats->video_id,
-		      formats->format_id->has_itag
-			      ? formats->format_id->itag
-			      : -1,
-		      (formats->has_duration_ms ? formats->duration_ms
-			                        : -1),
-		      (formats->init_range->has_start
-			       ? formats->init_range->start
+		      fmt->video_id,
+		      fmt->format_id->has_itag ? fmt->format_id->itag : -1,
+		      (fmt->has_duration_ms ? fmt->duration_ms : -1),
+		      (fmt->init_range->has_start
+			       ? fmt->init_range->start
 			       : -1),
-		      (formats->init_range->has_end
-			       ? formats->init_range->end
+		      (fmt->init_range->has_end ? fmt->init_range->end : -1),
+		      (fmt->index_range->has_start
+			       ? fmt->index_range->start
 			       : -1),
-		      (formats->index_range->has_start
-			       ? formats->index_range->start
-			       : -1),
-		      (formats->index_range->has_end
-			       ? formats->index_range->end
-			       : -1));
+		      (fmt->index_range->has_end ? fmt->index_range->end : -1));
+#if 0
+		written = write_with_retry(STDOUT_FILENO,
+			                   ump->data + *cursor + fmt->init_range->start,
+			                   fmt->init_range->end - fmt->init_range->start);
+		info_m_if(written < 0, "Cannot write media header to stdout");
+		debug("Wrote media header bytes=%zd to stdout", written);
+#endif
+
 		break;
 	}
 
@@ -513,7 +573,9 @@ ump_part_parse(uint64_t part_type,
 }
 
 static result_t
-ump_parse(const struct string_view *ump)
+ump_parse(const struct string_view *ump,
+          VideoStreaming__BufferedRange *buffered_audio_range,
+          VideoStreaming__BufferedRange *buffered_video_range)
 {
 	debug("Got UMP response of sz=%zu", ump->sz);
 #if 0
@@ -532,19 +594,23 @@ ump_parse(const struct string_view *ump)
 		// TODO: raise more specific error for part_size
 		check(ump_varint_read(ump, &cursor, &part_size));
 
-		// TODO: why UINT64_MAX - 1059 ...?
-		const bool use_remainder = part_size >= 18446744073709550556u;
-		debug("Got part_type=%" PRIu64 ", part_size=%" PRIu64 "%s",
+		debug("Got part_type=%" PRIu64 ", part_size=%" PRIu64,
 		      part_type,
-		      part_size,
-		      use_remainder ? " (remainder)" : "");
+		      part_size);
 
-		check(ump_part_parse(part_type, part_size, ump, cursor));
-		if (use_remainder) {
-			cursor = ump->sz;
-		} else {
-			cursor += part_size;
+		bool done_early = false;
+		check(ump_part_parse(part_type,
+		                     part_size,
+		                     ump,
+		                     &cursor,
+		                     buffered_video_range,
+		                     buffered_audio_range,
+				     &done_early));
+		if (done_early) {
+			break;
 		}
+
+		cursor += part_size;
 	}
 
 	return RESULT_OK;
@@ -556,11 +622,9 @@ youtube_stream_setup(struct youtube_stream *p,
                      void *userdata,
                      const char *target)
 {
-	struct downloaded ump __attribute__((cleanup(downloaded_cleanup)));
 	struct downloaded html __attribute__((cleanup(downloaded_cleanup)));
 	struct downloaded js __attribute__((cleanup(downloaded_cleanup)));
 
-	downloaded_init(&ump, "UMP response tmpfile");
 	downloaded_init(&html, "HTML tmpfile");
 	downloaded_init(&js, "JavaScript tmpfile");
 
@@ -568,7 +632,6 @@ youtube_stream_setup(struct youtube_stream *p,
 		check(ops->before(userdata));
 	}
 
-	check(tmpfd(&ump.fd));
 	check(tmpfd(&html.fd));
 	check(tmpfd(&js.fd));
 
@@ -717,6 +780,20 @@ youtube_stream_setup(struct youtube_stream *p,
 	selected_video_format.has_last_modified = true;
 	selected_video_format.last_modified = 1746446915598707;
 
+	VideoStreaming__BufferedRange buffered_audio_range;
+	video_streaming__buffered_range__init(&buffered_audio_range);
+	buffered_audio_range.format_id = &selected_audio_format;
+	buffered_audio_range.duration_ms = 0;
+	buffered_audio_range.start_segment_index = 0;
+	buffered_audio_range.end_segment_index = 0;
+
+	VideoStreaming__BufferedRange buffered_video_range;
+	video_streaming__buffered_range__init(&buffered_video_range);
+	buffered_video_range.format_id = &selected_video_format;
+	buffered_video_range.duration_ms = 0;
+	buffered_video_range.start_segment_index = 0;
+	buffered_video_range.end_segment_index = 0;
+
 	VideoStreaming__VideoPlaybackAbrRequest req;
 	video_streaming__video_playback_abr_request__init(&req);
 	req.client_abr_state = &abr_state;
@@ -752,6 +829,7 @@ youtube_stream_setup(struct youtube_stream *p,
 		(Misc__FormatId *[]){&selected_video_format};
 	req.streamer_context = &context;
 
+	for (size_t requests = 0; requests < 3; ++requests) {
 	const size_t sabr_packed_sz =
 		video_streaming__video_playback_abr_request__get_packed_size(
 			&req);
@@ -777,6 +855,10 @@ youtube_stream_setup(struct youtube_stream *p,
 		check_if(null_terminated_sabr_deobuscated_n_param == NULL,
 		         ERR_JS_SABR_URL_ALLOC);
 	}
+
+	struct downloaded ump __attribute__((cleanup(downloaded_cleanup)));
+	downloaded_init(&ump, "UMP response tmpfile");
+	check(tmpfd(&ump.fd));
 	check(download_and_mmap_tmpfd(null_terminated_sabr_deobuscated_n_param,
 	                              NULL,
 	                              NULL,
@@ -786,7 +868,27 @@ youtube_stream_setup(struct youtube_stream *p,
 	                              ump.fd,
 	                              &ump.data,
 	                              &p->request_context));
-	check(ump_parse(&ump.data));
+	check(ump_parse(&ump.data,
+	                &buffered_audio_range,
+	                &buffered_video_range));
+
+	req.n_selected_format_ids = 2;
+	req.selected_format_ids = (Misc__FormatId *[]){
+		&selected_audio_format,
+		&selected_video_format,
+	};
+	req.n_buffered_ranges = 2;
+	req.buffered_ranges = (VideoStreaming__BufferedRange *[]) {
+		&buffered_audio_range,
+		&buffered_video_range,
+	};
+
+#if 0
+	abr_state.player_time_ms += min(buffered_audio_range.duration_ms,
+				        buffered_video_range.duration_ms);
+#endif
+
+	}
 
 	return RESULT_OK;
 }
