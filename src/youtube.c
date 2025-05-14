@@ -512,6 +512,44 @@ ump_part_parse(uint64_t part_type,
 	return RESULT_OK;
 }
 
+static result_t
+ump_parse(const struct string_view *ump)
+{
+	debug("Got UMP response of sz=%zu", ump->sz);
+#if 0
+	for (size_t i = 0; i < ump->sz; ++i) {
+		debug("%02X", (unsigned char)ump->data[i]); // TODO remove
+	}
+#endif
+
+	size_t cursor = 0;
+	while (cursor < ump->sz) {
+		uint64_t part_type = 0;
+		// TODO: raise more specific error for part_type
+		check(ump_varint_read(ump, &cursor, &part_type));
+
+		uint64_t part_size = 0;
+		// TODO: raise more specific error for part_size
+		check(ump_varint_read(ump, &cursor, &part_size));
+
+		// TODO: why UINT64_MAX - 1059 ...?
+		const bool use_remainder = part_size >= 18446744073709550556u;
+		debug("Got part_type=%" PRIu64 ", part_size=%" PRIu64 "%s",
+		      part_type,
+		      part_size,
+		      use_remainder ? " (remainder)" : "");
+
+		check(ump_part_parse(part_type, part_size, ump, cursor));
+		if (use_remainder) {
+			cursor = ump->sz;
+		} else {
+			cursor += part_size;
+		}
+	}
+
+	return RESULT_OK;
+}
+
 result_t
 youtube_stream_setup(struct youtube_stream *p,
                      const struct youtube_setup_ops *ops,
@@ -748,38 +786,7 @@ youtube_stream_setup(struct youtube_stream *p,
 	                              ump.fd,
 	                              &ump.data,
 	                              &p->request_context));
-
-	debug("Got UMP response of sz=%zu", ump.data.sz);
-#if 0
-	for (size_t i = 0; i < ump.data.sz; ++i) {
-		debug("%02X", (unsigned char)ump.data.data[i]); // TODO remove
-	}
-#endif
-
-	size_t cursor = 0;
-	while (cursor < ump.data.sz) {
-		uint64_t part_type = 0;
-		// TODO: raise more specific error for part_type
-		check(ump_varint_read(&ump.data, &cursor, &part_type));
-
-		uint64_t part_size = 0;
-		// TODO: raise more specific error for part_size
-		check(ump_varint_read(&ump.data, &cursor, &part_size));
-
-		// TODO: why UINT64_MAX - 1059 ...?
-		const bool use_remainder = part_size >= 18446744073709550556u;
-		debug("Got part_type=%" PRIu64 ", part_size=%" PRIu64 "%s",
-		      part_type,
-		      part_size,
-		      use_remainder ? " (remainder)" : "");
-
-		check(ump_part_parse(part_type, part_size, &ump.data, cursor));
-		if (use_remainder) {
-			cursor = ump.data.sz;
-		} else {
-			cursor += part_size;
-		}
-	}
+	check(ump_parse(&ump.data));
 
 	return RESULT_OK;
 }
