@@ -566,7 +566,7 @@ ump_part_parse(uint64_t part_type,
 		// TODO: write audio and video streams to different FDs
 		written = write_with_retry(*header_chosen_fd,
 		                           ump->data + *cursor,
-		                           part_size);
+		                           part_size - 1); // omit header byte
 		info_m_if(written < 0, "Cannot write media to stdout");
 		debug("Wrote media blob bytes=%zd to fd=%d",
 		      written,
