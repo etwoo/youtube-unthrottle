@@ -413,14 +413,14 @@ ump_varint_read(const struct string_view *ump, size_t *cursor, uint64_t *value)
 
 	uint64_t parsed[5] = {0};
 	switch (bytes_to_read) {
-	case 5:
+	case 5: // TODO: bytes_to_read=5 is probably broken
 		parsed[4] = ump->data[*cursor + 4] << 24;
 		__attribute__((fallthrough));
-	case 4:
+	case 4: // TODO: bytes_to_read=4 is probably broken
 		parsed[3] = ump->data[*cursor + 3] << 16;
 		__attribute__((fallthrough));
 	case 3:
-		parsed[2] = ump->data[*cursor + 2] << 8;
+		parsed[2] = ump->data[*cursor + 2] << (8 + (8 - bytes_to_read));
 		__attribute__((fallthrough));
 	case 2:
 		parsed[1] = (unsigned char)ump->data[*cursor + 1] << (8 - bytes_to_read);
@@ -548,6 +548,7 @@ ump_part_parse(uint64_t part_type,
 			                   part_size);
 		info_m_if(written < 0, "Cannot write media to stdout");
 		debug("Wrote media blob bytes=%zd to stdout", written);
+		*cursor -= 1; // rewind cursor, let caller update
 		// *done_early = true;
 		break;
 	case 42: /* FORMAT_INITIALIZATION_METADATA */
