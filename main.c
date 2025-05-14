@@ -13,6 +13,7 @@
 #include "youtube.h"
 
 #include <assert.h>
+#include <fcntl.h> /* for open() */
 #include <getopt.h> /* for getopt_long() */
 #include <stdarg.h>
 #include <stdbool.h>
@@ -178,7 +179,12 @@ unthrottle(const char *target,
 {
 	check(youtube_global_init());
 
-	*stream = youtube_stream_init(proof_of_origin, visitor_data, NULL);
+	int fd[2] = {0};
+	fd[0] = open("audio.out", O_CREAT | O_TRUNC | O_WRONLY);
+	fd[1] = open("video.out", O_CREAT | O_TRUNC | O_WRONLY);
+	// TODO: fail-fast on open() error
+
+	*stream = youtube_stream_init(proof_of_origin, visitor_data, NULL, fd);
 	check_if(*stream == NULL, OK);
 
 	check(sandbox_only_io_inet_tmpfile());

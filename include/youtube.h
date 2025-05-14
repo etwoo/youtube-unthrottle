@@ -17,7 +17,8 @@ typedef struct youtube_stream *youtube_handle_t;
  */
 youtube_handle_t youtube_stream_init(const char *proof_of_origin,
                                      const char *visitor_data,
-                                     const char *(*io_simulator)(const char *))
+                                     const char *(*io_simulator)(const char *),
+                                     int fd[2])
 	__attribute__((warn_unused_result));
 void youtube_stream_cleanup(youtube_handle_t h);
 
