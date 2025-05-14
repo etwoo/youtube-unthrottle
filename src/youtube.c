@@ -355,27 +355,36 @@ ump_read_vle(const unsigned char first_byte,
              size_t *bytes_to_read,
              unsigned char *first_byte_mask)
 {
-	*bytes_to_read = first_byte < 128 ? 1 : first_byte < 192 ? 2 : first_byte < 224 ? 3 : first_byte < 240 ? 4 : 5;
-
+	*bytes_to_read = 1;
 	*first_byte_mask = 0xFF; // bit pattern: 11111111
-	switch (*bytes_to_read) {
-	case 5:
-		*first_byte_mask ^= CHAR_BIT_4;
-		__attribute__((fallthrough));
-	case 4:
-		*first_byte_mask ^= CHAR_BIT_3;
-		__attribute__((fallthrough));
-	case 3:
-		*first_byte_mask ^= CHAR_BIT_2;
-		__attribute__((fallthrough));
-	case 2:
-		*first_byte_mask ^= CHAR_BIT_0;
-		*first_byte_mask ^= CHAR_BIT_1;
-		break;
-	default:
-		assert(*bytes_to_read == 1);
-		break;
+	if (0 == (first_byte & CHAR_BIT_0)) {
+		return;
 	}
+
+	++*bytes_to_read;
+	*first_byte_mask ^= CHAR_BIT_0;
+	*first_byte_mask ^= CHAR_BIT_1;
+
+	if (0 == (first_byte & CHAR_BIT_1)) {
+		return;
+	}
+
+	++*bytes_to_read;
+	*first_byte_mask ^= CHAR_BIT_2;
+
+	if (0 == (first_byte & CHAR_BIT_2)) {
+		return;
+	}
+
+	++*bytes_to_read;
+	*first_byte_mask ^= CHAR_BIT_3;
+
+	if (0 == (first_byte & CHAR_BIT_3)) {
+		return;
+	}
+
+	++*bytes_to_read;
+	*first_byte_mask ^= CHAR_BIT_4;
 }
 
 static result_t
@@ -386,7 +395,7 @@ ump_varint_read(const struct string_view *ump, size_t *cursor, uint64_t *value)
 	size_t bytes_to_read = 0;
 	unsigned char first_byte_mask = 0xFF;
 	ump_read_vle(ump->data[*cursor], &bytes_to_read, &first_byte_mask);
-	debug("Got first_byte=%d, bytes_to_read=%zu, first_byte_mask=%02X",
+	debug("Got first_byte=%hhu, bytes_to_read=%zu, first_byte_mask=%02X",
 	      ump->data[*cursor],
 	      bytes_to_read,
 	      first_byte_mask);
