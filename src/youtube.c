@@ -463,9 +463,7 @@ ump_part_parse(uint64_t part_type,
                VideoStreaming__BufferedRange *buffered_audio_range,
                VideoStreaming__BufferedRange *buffered_video_range,
                bool *done_early,
-               int *header_chosen_fd,
-               int64_t *greatest_seq_audio, // assumes in-order seq's
-               int64_t *greatest_seq_video) // assumes in-order seq's
+               int *header_chosen_fd)
 {
 	VideoStreaming__MediaHeader *header
 		__attribute__((cleanup(ump_header_free))) = NULL;
@@ -524,16 +522,12 @@ ump_part_parse(uint64_t part_type,
 			*header_chosen_fd = stream->fd[0];
 			debug("Header switch to audio fd=%d",
 			      *header_chosen_fd);
-			if (header->has_sequence_number &&
-			    *greatest_seq_audio < header->sequence_number) {
-				*greatest_seq_audio = header->sequence_number;
-			}
 			if (header->has_duration_ms) {
 				buffered_audio_range->duration_ms +=
 					header->duration_ms;
 			}
 			buffered_audio_range->end_segment_index =
-				*greatest_seq_audio;
+				header->sequence_number;
 			debug("Setting buffered_audio_range "
 			      "duration_ms=%" PRIi64
 			      ", start_segment_index=%d, end_segment_index=%d",
@@ -546,16 +540,12 @@ ump_part_parse(uint64_t part_type,
 			*header_chosen_fd = stream->fd[1];
 			debug("Header switch to video fd=%d",
 			      *header_chosen_fd);
-			if (header->has_sequence_number &&
-			    *greatest_seq_video < header->sequence_number) {
-				*greatest_seq_video = header->sequence_number;
-			}
 			if (header->has_duration_ms) {
 				buffered_video_range->duration_ms +=
 					header->duration_ms;
 			}
 			buffered_video_range->end_segment_index =
-				*greatest_seq_video;
+				header->sequence_number;
 			debug("Setting buffered_video_range "
 			      "duration_ms=%" PRIi64
 			      ", start_segment_index=%d, end_segment_index=%d",
@@ -635,9 +625,7 @@ static result_t
 ump_parse(const struct string_view *ump,
           struct youtube_stream *stream,
           VideoStreaming__BufferedRange *buffered_audio_range,
-          VideoStreaming__BufferedRange *buffered_video_range,
-          int64_t *greatest_seq_audio, // assumes in-order seq's
-          int64_t *greatest_seq_video) // assumes in-order seq's
+          VideoStreaming__BufferedRange *buffered_video_range)
 {
 	debug("Got UMP response of sz=%zu", ump->sz);
 #if 0
@@ -670,9 +658,7 @@ ump_parse(const struct string_view *ump,
 		                     buffered_video_range,
 		                     buffered_audio_range,
 		                     &done_early,
-		                     &header_chosen_fd,
-		                     greatest_seq_audio,
-		                     greatest_seq_video));
+		                     &header_chosen_fd));
 		if (done_early) {
 			break;
 		}
@@ -847,14 +833,14 @@ youtube_stream_setup(struct youtube_stream *p,
 	video_streaming__buffered_range__init(&buffered_audio_range);
 	buffered_audio_range.format_id = &selected_audio_format;
 	buffered_audio_range.duration_ms = 0;
-	buffered_audio_range.start_segment_index = 0;
+	buffered_audio_range.start_segment_index = 1;
 	buffered_audio_range.end_segment_index = 0;
 
 	VideoStreaming__BufferedRange buffered_video_range;
 	video_streaming__buffered_range__init(&buffered_video_range);
 	buffered_video_range.format_id = &selected_video_format;
 	buffered_video_range.duration_ms = 0;
-	buffered_video_range.start_segment_index = 0;
+	buffered_video_range.start_segment_index = 1;
 	buffered_video_range.end_segment_index = 0;
 
 	VideoStreaming__VideoPlaybackAbrRequest req;
@@ -891,9 +877,6 @@ youtube_stream_setup(struct youtube_stream *p,
 	req.selected_video_format_ids =
 		(Misc__FormatId *[]){&selected_video_format};
 	req.streamer_context = &context;
-
-	int64_t greatest_seq_audio = -1;
-	int64_t greatest_seq_video = -1;
 
 	for (size_t requests = 0; requests < 3; ++requests) {
 		const size_t sabr_packed_sz =
@@ -941,9 +924,7 @@ youtube_stream_setup(struct youtube_stream *p,
 		check(ump_parse(&ump.data,
 		                p,
 		                &buffered_audio_range,
-		                &buffered_video_range,
-		                &greatest_seq_audio,
-		                &greatest_seq_video));
+		                &buffered_video_range));
 
 		req.n_selected_format_ids = 2;
 		req.selected_format_ids = (Misc__FormatId *[]){
