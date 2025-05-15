@@ -820,15 +820,11 @@ youtube_stream_setup(struct youtube_stream *p,
 	misc__format_id__init(&selected_audio_format);
 	selected_audio_format.has_itag = true;
 	selected_audio_format.itag = 251;
-	selected_audio_format.has_last_modified = true;
-	selected_audio_format.last_modified = 1746444978562940;
 
 	Misc__FormatId selected_video_format;
 	misc__format_id__init(&selected_video_format);
 	selected_video_format.has_itag = true;
 	selected_video_format.itag = 299;
-	selected_video_format.has_last_modified = true;
-	selected_video_format.last_modified = 1746446915598707;
 
 	VideoStreaming__BufferedRange buffered_audio_range;
 	video_streaming__buffered_range__init(&buffered_audio_range);
