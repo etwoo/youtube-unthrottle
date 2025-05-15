@@ -462,8 +462,10 @@ ump_part_parse(uint64_t part_type,
                struct youtube_stream *stream,
                VideoStreaming__BufferedRange *buffered_audio_range,
                VideoStreaming__BufferedRange *buffered_video_range,
-               bool *done_early,
-               int *header_chosen_fd)
+               bool *skip_media_blobs_until_next_section,
+               int *header_chosen_fd,
+               int64_t *greatest_seq_audio,
+               int64_t *greatest_seq_video)
 {
 	VideoStreaming__MediaHeader *header
 		__attribute__((cleanup(ump_header_free))) = NULL;
@@ -476,6 +478,7 @@ ump_part_parse(uint64_t part_type,
 
 	switch (part_type) {
 	case 20: /* MEDIA_HEADER */
+		*skip_media_blobs_until_next_section = false;
 		header = video_streaming__media_header__unpack(NULL,
 		                                               part_size,
 		                                               ump->data +
@@ -509,74 +512,113 @@ ump_part_parse(uint64_t part_type,
 		      (header->time_range && header->time_range->has_timescale
 		               ? header->time_range->timescale
 		               : -1));
-#if 0
-		if (header->has_is_init_seg && header->is_init_seg) {
-			debug("Early exit on is_init_seg=1");
-			*done_early = true;
-			return RESULT_OK;
-		}
-#endif
 		switch (header->itag) {
 		case 251:
 			// TODO: refactor how audio/video is selected
 			*header_chosen_fd = stream->fd[0];
 			debug("Header switch to audio fd=%d",
 			      *header_chosen_fd);
-			if (header->has_duration_ms) {
-				buffered_audio_range->duration_ms +=
-					header->duration_ms;
+			if (header->has_sequence_number &&
+			    header->sequence_number <= *greatest_seq_audio) {
+				debug("Skipping repeated seq=%" PRIi64,
+				      header->sequence_number);
+				*skip_media_blobs_until_next_section = true;
+			} else {
+				debug("Handling new seq=%" PRIi64
+				      ", greatest=%" PRIi64,
+				      header->sequence_number,
+				      *greatest_seq_audio);
+				if (header->has_sequence_number) {
+					*greatest_seq_audio =
+						header->sequence_number;
+					buffered_audio_range
+						->end_segment_index =
+						header->sequence_number;
+				}
+				if (header->has_duration_ms) {
+					debug("Advancing audio by duration "
+					      "%" PRIi64 " + %" PRIi32,
+					      buffered_audio_range->duration_ms,
+					      header->duration_ms);
+					buffered_audio_range->duration_ms +=
+						header->duration_ms;
+				}
+				debug("Setting buffered_audio_range "
+				      "duration_ms=%" PRIi64
+				      ", start_segment_index=%d, "
+				      "end_segment_index=%d",
+				      buffered_audio_range->duration_ms,
+				      buffered_audio_range->start_segment_index,
+				      buffered_audio_range->end_segment_index);
 			}
-			buffered_audio_range->end_segment_index =
-				header->sequence_number;
-			debug("Setting buffered_audio_range "
-			      "duration_ms=%" PRIi64
-			      ", start_segment_index=%d, end_segment_index=%d",
-			      buffered_audio_range->duration_ms,
-			      buffered_audio_range->start_segment_index,
-			      buffered_audio_range->end_segment_index);
 			break;
 		case 299:
 			// TODO: refactor how audio/video is selected
 			*header_chosen_fd = stream->fd[1];
 			debug("Header switch to video fd=%d",
 			      *header_chosen_fd);
-			if (header->has_duration_ms) {
-				buffered_video_range->duration_ms +=
-					header->duration_ms;
+			if (header->has_sequence_number &&
+			    header->sequence_number <= *greatest_seq_video) {
+				debug("Skipping repeated seq=%" PRIi64,
+				      header->sequence_number);
+				*skip_media_blobs_until_next_section = true;
+			} else {
+				debug("Handling new seq=%" PRIi64
+				      ", greatest=%" PRIi64,
+				      header->sequence_number,
+				      *greatest_seq_video);
+				if (header->has_sequence_number) {
+					*greatest_seq_video =
+						header->sequence_number;
+					buffered_video_range
+						->end_segment_index =
+						header->sequence_number;
+				}
+				if (header->has_duration_ms) {
+					debug("Advancing video by duration "
+					      "%" PRIi64 " + %" PRIi32,
+					      buffered_video_range->duration_ms,
+					      header->duration_ms);
+					buffered_video_range->duration_ms +=
+						header->duration_ms;
+				}
+				debug("Setting buffered_video_range "
+				      "duration_ms=%" PRIi64
+				      ", start_segment_index=%d, "
+				      "end_segment_index=%d",
+				      buffered_video_range->duration_ms,
+				      buffered_video_range->start_segment_index,
+				      buffered_video_range->end_segment_index);
 			}
-			buffered_video_range->end_segment_index =
-				header->sequence_number;
-			debug("Setting buffered_video_range "
-			      "duration_ms=%" PRIi64
-			      ", start_segment_index=%d, end_segment_index=%d",
-			      buffered_video_range->duration_ms,
-			      buffered_video_range->start_segment_index,
-			      buffered_video_range->end_segment_index);
 			break;
 		}
 		break;
 	case 21: /* MEDIA */
 		// TODO: raise more specific error for header_id
-		check(ump_varint_read(ump, cursor, &header_id));
-		debug("Got media blob header_id=%" PRIu64
-		      ", cursor=%zu, part_size=%" PRIu64
-		      ", remaining_bytes=%zu",
-		      header_id,
-		      *cursor,
-		      part_size,
-		      ump->sz - *cursor);
-		// TODO: refactor how audio/video is selected
-		written = write_with_retry(*header_chosen_fd,
-		                           ump->data + *cursor,
-		                           part_size - 1); // omit header byte
-		info_m_if(written < 0, "Cannot write media to stdout");
-		debug("Wrote media blob bytes=%zd to fd=%d",
-		      written,
-		      *header_chosen_fd);
-		*cursor -= 1; // rewind cursor, let caller update
-		// *done_early = true;
+		if (*skip_media_blobs_until_next_section) {
+			debug("Skipping media blob at cursor=%zu", *cursor);
+		} else {
+			check(ump_varint_read(ump, cursor, &header_id));
+			debug("Got media blob header_id=%" PRIu64
+			      ", cursor=%zu, part_size=%" PRIu64
+			      ", remaining_bytes=%zu",
+			      header_id,
+			      *cursor,
+			      part_size,
+			      ump->sz - *cursor);
+			// TODO: refactor how audio/video is selected
+			written = write_with_retry(*header_chosen_fd,
+						   ump->data + *cursor,
+						   part_size - 1);
+			info_m_if(written < 0, "Cannot write media to stdout");
+			debug("Wrote media blob bytes=%zd to fd=%d",
+			      written,
+			      *header_chosen_fd);
+			*cursor -= 1; // rewind cursor, let caller update
+		}
 		break;
 	case 42: /* FORMAT_INITIALIZATION_METADATA */
+		*skip_media_blobs_until_next_section = false;
 		fmt = video_streaming__format_initialization_metadata__unpack(
 			NULL,
 			part_size,
@@ -605,6 +647,7 @@ ump_part_parse(uint64_t part_type,
 
 		break;
 	case 43: /* SABR_REDIRECT */
+		*skip_media_blobs_until_next_section = false;
 		redirect = video_streaming__sabr_redirect__unpack(
 			NULL,
 			part_size,
@@ -616,6 +659,9 @@ ump_part_parse(uint64_t part_type,
 		             strlen(redirect->url));
 		debug("Got redirect to new SABR url: %s", redirect->url);
 		break;
+	default:
+		*skip_media_blobs_until_next_section = false;
+		break;
 	}
 
 	return RESULT_OK;
@@ -625,7 +671,9 @@ static result_t
 ump_parse(const struct string_view *ump,
           struct youtube_stream *stream,
           VideoStreaming__BufferedRange *buffered_audio_range,
-          VideoStreaming__BufferedRange *buffered_video_range)
+          VideoStreaming__BufferedRange *buffered_video_range,
+          int64_t *greatest_seq_audio,
+          int64_t *greatest_seq_video)
 {
 	debug("Got UMP response of sz=%zu", ump->sz);
 #if 0
@@ -636,6 +684,7 @@ ump_parse(const struct string_view *ump,
 
 	size_t cursor = 0;
 	int header_chosen_fd = stream->fd[0];
+	bool skip_media_blobs_until_next_section = false;
 	while (cursor < ump->sz) {
 		uint64_t part_type = 0;
 		// TODO: raise more specific error for part_type
@@ -649,7 +698,6 @@ ump_parse(const struct string_view *ump,
 		      part_type,
 		      part_size);
 
-		bool done_early = false;
 		check(ump_part_parse(part_type,
 		                     part_size,
 		                     ump,
@@ -657,11 +705,10 @@ ump_parse(const struct string_view *ump,
 		                     stream,
 		                     buffered_video_range,
 		                     buffered_audio_range,
-		                     &done_early,
-		                     &header_chosen_fd));
-		if (done_early) {
-			break;
-		}
+		                     &skip_media_blobs_until_next_section,
+		                     &header_chosen_fd,
+		                     greatest_seq_audio,
+		                     greatest_seq_video));
 
 		cursor += part_size;
 	}
@@ -878,6 +925,9 @@ youtube_stream_setup(struct youtube_stream *p,
 		(Misc__FormatId *[]){&selected_video_format};
 	req.streamer_context = &context;
 
+	int64_t greatest_seq_audio = -1;
+	int64_t greatest_seq_video = -1;
+
 	for (size_t requests = 0; requests < 3; ++requests) {
 		const size_t sabr_packed_sz =
 			video_streaming__video_playback_abr_request__get_packed_size(
@@ -924,7 +974,9 @@ youtube_stream_setup(struct youtube_stream *p,
 		check(ump_parse(&ump.data,
 		                p,
 		                &buffered_audio_range,
-		                &buffered_video_range));
+		                &buffered_video_range,
+		                &greatest_seq_audio,
+		                &greatest_seq_video));
 
 		req.n_selected_format_ids = 2;
 		req.selected_format_ids = (Misc__FormatId *[]){
