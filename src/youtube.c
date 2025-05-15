@@ -533,7 +533,7 @@ ump_part_parse(uint64_t part_type,
 						header->sequence_number;
 					buffered_audio_range
 						->end_segment_index =
-						header->sequence_number;
+						header->sequence_number + 1;
 				}
 				if (header->has_duration_ms) {
 					debug("Advancing audio by duration "
@@ -572,7 +572,7 @@ ump_part_parse(uint64_t part_type,
 						header->sequence_number;
 					buffered_video_range
 						->end_segment_index =
-						header->sequence_number;
+						header->sequence_number + 1;
 				}
 				if (header->has_duration_ms) {
 					debug("Advancing video by duration "
@@ -703,8 +703,8 @@ ump_parse(const struct string_view *ump,
 		                     ump,
 		                     &cursor,
 		                     stream,
-		                     buffered_video_range,
 		                     buffered_audio_range,
+		                     buffered_video_range,
 		                     &skip_media_blobs_until_next_section,
 		                     &header_chosen_fd,
 		                     greatest_seq_audio,
@@ -928,7 +928,7 @@ youtube_stream_setup(struct youtube_stream *p,
 	int64_t greatest_seq_audio = -1;
 	int64_t greatest_seq_video = -1;
 
-	for (size_t requests = 0; requests < 3; ++requests) {
+	for (size_t requests = 0; requests < 5; ++requests) {
 		const size_t sabr_packed_sz =
 			video_streaming__video_playback_abr_request__get_packed_size(
 				&req);
