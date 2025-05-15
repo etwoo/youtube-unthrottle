@@ -10,6 +10,7 @@
 #include "sys/write.h"
 #include "video_streaming/format_initialization_metadata.pb-c.h"
 #include "video_streaming/media_header.pb-c.h"
+#include "video_streaming/next_request_policy.pb-c.h"
 #include "video_streaming/sabr_redirect.pb-c.h"
 #include "video_streaming/video_playback_abr_request.pb-c.h"
 
@@ -323,6 +324,12 @@ ciphertexts_cleanup(char *ciphertexts[][3])
 }
 
 static void
+ump_request_policy_free(VideoStreaming__NextRequestPolicy **policy)
+{
+	video_streaming__next_request_policy__free_unpacked(*policy, NULL);
+}
+
+static void
 ump_header_free(VideoStreaming__MediaHeader **header)
 {
 	video_streaming__media_header__free_unpacked(*header, NULL);
@@ -460,6 +467,7 @@ ump_part_parse(uint64_t part_type,
                const struct string_view *ump,
                size_t *cursor,
                struct youtube_stream *stream,
+               VideoStreaming__VideoPlaybackAbrRequest *req,
                VideoStreaming__BufferedRange *buffered_audio_range,
                VideoStreaming__BufferedRange *buffered_video_range,
                bool *skip_media_blobs_until_next_section,
@@ -467,6 +475,8 @@ ump_part_parse(uint64_t part_type,
                int64_t *greatest_seq_audio,
                int64_t *greatest_seq_video)
 {
+	VideoStreaming__NextRequestPolicy *next_request_policy
+		__attribute__((cleanup(ump_request_policy_free))) = NULL;
 	VideoStreaming__MediaHeader *header
 		__attribute__((cleanup(ump_header_free))) = NULL;
 	VideoStreaming__FormatInitializationMetadata *fmt
@@ -608,14 +618,41 @@ ump_part_parse(uint64_t part_type,
 			      ump->sz - *cursor);
 			// TODO: refactor how audio/video is selected
 			written = write_with_retry(*header_chosen_fd,
-						   ump->data + *cursor,
-						   part_size - 1);
+			                           ump->data + *cursor,
+			                           part_size - 1);
 			info_m_if(written < 0, "Cannot write media to stdout");
 			debug("Wrote media blob bytes=%zd to fd=%d",
 			      written,
 			      *header_chosen_fd);
 			*cursor -= 1; // rewind cursor, let caller update
 		}
+		break;
+	case 35: /* NEXT_REQUEST_POLICY */
+		*skip_media_blobs_until_next_section = false;
+		next_request_policy =
+			video_streaming__next_request_policy__unpack(
+				NULL,
+				part_size,
+				ump->data + *cursor);
+		assert(next_request_policy); // error out on misparse
+		if (req->streamer_context->has_playback_cookie &&
+		    req->streamer_context->playback_cookie.data) {
+			free(req->streamer_context->playback_cookie.data);
+			req->streamer_context->playback_cookie.data = NULL;
+		}
+		const size_t cookie_packed_sz =
+			video_streaming__playback_cookie__get_packed_size(
+				next_request_policy->playback_cookie);
+		req->streamer_context->playback_cookie.data = malloc(
+			cookie_packed_sz *
+			sizeof(*req->streamer_context->playback_cookie.data));
+		// TODO: handle malloc error
+		req->streamer_context->playback_cookie.len = cookie_packed_sz;
+		req->streamer_context->has_playback_cookie = true;
+		video_streaming__playback_cookie__pack(
+			next_request_policy->playback_cookie,
+			req->streamer_context->playback_cookie.data);
+		debug("Updating playback cookie of size=%zu", cookie_packed_sz);
 		break;
 	case 42: /* FORMAT_INITIALIZATION_METADATA */
 		*skip_media_blobs_until_next_section = false;
@@ -670,6 +707,7 @@ ump_part_parse(uint64_t part_type,
 static result_t
 ump_parse(const struct string_view *ump,
           struct youtube_stream *stream,
+          VideoStreaming__VideoPlaybackAbrRequest *req,
           VideoStreaming__BufferedRange *buffered_audio_range,
           VideoStreaming__BufferedRange *buffered_video_range,
           int64_t *greatest_seq_audio,
@@ -703,6 +741,7 @@ ump_parse(const struct string_view *ump,
 		                     ump,
 		                     &cursor,
 		                     stream,
+				     req,
 		                     buffered_audio_range,
 		                     buffered_video_range,
 		                     &skip_media_blobs_until_next_section,
@@ -973,6 +1012,7 @@ youtube_stream_setup(struct youtube_stream *p,
 			&p->request_context));
 		check(ump_parse(&ump.data,
 		                p,
+				&req,
 		                &buffered_audio_range,
 		                &buffered_video_range,
 		                &greatest_seq_audio,
