@@ -456,14 +456,16 @@ ump_varint_read(const struct string_view *ump, size_t *cursor, uint64_t *value)
 
 static result_t
 ump_part_parse(uint64_t part_type,
-	       uint64_t part_size,
-	       const struct string_view *ump,
-	       size_t *cursor,
-	       struct youtube_stream *stream,
-	       VideoStreaming__BufferedRange *buffered_audio_range,
-	       VideoStreaming__BufferedRange *buffered_video_range,
-	       bool *done_early,
-	       int *header_chosen_fd)
+               uint64_t part_size,
+               const struct string_view *ump,
+               size_t *cursor,
+               struct youtube_stream *stream,
+               VideoStreaming__BufferedRange *buffered_audio_range,
+               VideoStreaming__BufferedRange *buffered_video_range,
+               bool *done_early,
+               int *header_chosen_fd,
+               int64_t *greatest_seq_audio, // assumes in-order seq's
+               int64_t *greatest_seq_video) // assumes in-order seq's
 {
 	VideoStreaming__MediaHeader *header
 		__attribute__((cleanup(ump_header_free))) = NULL;
@@ -522,11 +524,16 @@ ump_part_parse(uint64_t part_type,
 			*header_chosen_fd = stream->fd[0];
 			debug("Header switch to audio fd=%d",
 			      *header_chosen_fd);
-			buffered_audio_range->duration_ms = header->duration_ms;
-			buffered_audio_range->start_segment_index =
-				header->sequence_number;
+			if (header->has_sequence_number &&
+			    *greatest_seq_audio < header->sequence_number) {
+				*greatest_seq_audio = header->sequence_number;
+			}
+			if (header->has_duration_ms) {
+				buffered_audio_range->duration_ms +=
+					header->duration_ms;
+			}
 			buffered_audio_range->end_segment_index =
-				header->sequence_number + 1;
+				*greatest_seq_audio;
 			debug("Setting buffered_audio_range "
 			      "duration_ms=%" PRIi64
 			      ", start_segment_index=%d, end_segment_index=%d",
@@ -539,11 +546,16 @@ ump_part_parse(uint64_t part_type,
 			*header_chosen_fd = stream->fd[1];
 			debug("Header switch to video fd=%d",
 			      *header_chosen_fd);
-			buffered_video_range->duration_ms = header->duration_ms;
-			buffered_video_range->start_segment_index =
-				header->sequence_number;
+			if (header->has_sequence_number &&
+			    *greatest_seq_video < header->sequence_number) {
+				*greatest_seq_video = header->sequence_number;
+			}
+			if (header->has_duration_ms) {
+				buffered_video_range->duration_ms +=
+					header->duration_ms;
+			}
 			buffered_video_range->end_segment_index =
-				header->sequence_number + 1;
+				*greatest_seq_video;
 			debug("Setting buffered_video_range "
 			      "duration_ms=%" PRIi64
 			      ", start_segment_index=%d, end_segment_index=%d",
@@ -563,6 +575,7 @@ ump_part_parse(uint64_t part_type,
 		      *cursor,
 		      part_size,
 		      ump->sz - *cursor);
+		// TODO: refactor how audio/video is selected
 		written = write_with_retry(*header_chosen_fd,
 		                           ump->data + *cursor,
 		                           part_size - 1); // omit header byte
@@ -620,9 +633,11 @@ ump_part_parse(uint64_t part_type,
 
 static result_t
 ump_parse(const struct string_view *ump,
-          struct youtube_stream* stream,
+          struct youtube_stream *stream,
           VideoStreaming__BufferedRange *buffered_audio_range,
-          VideoStreaming__BufferedRange *buffered_video_range)
+          VideoStreaming__BufferedRange *buffered_video_range,
+          int64_t *greatest_seq_audio, // assumes in-order seq's
+          int64_t *greatest_seq_video) // assumes in-order seq's
 {
 	debug("Got UMP response of sz=%zu", ump->sz);
 #if 0
@@ -655,7 +670,9 @@ ump_parse(const struct string_view *ump,
 		                     buffered_video_range,
 		                     buffered_audio_range,
 		                     &done_early,
-		                     &header_chosen_fd));
+		                     &header_chosen_fd,
+		                     greatest_seq_audio,
+		                     greatest_seq_video));
 		if (done_early) {
 			break;
 		}
@@ -875,6 +892,9 @@ youtube_stream_setup(struct youtube_stream *p,
 		(Misc__FormatId *[]){&selected_video_format};
 	req.streamer_context = &context;
 
+	int64_t greatest_seq_audio = -1;
+	int64_t greatest_seq_video = -1;
+
 	for (size_t requests = 0; requests < 3; ++requests) {
 		const size_t sabr_packed_sz =
 			video_streaming__video_playback_abr_request__get_packed_size(
@@ -921,7 +941,9 @@ youtube_stream_setup(struct youtube_stream *p,
 		check(ump_parse(&ump.data,
 		                p,
 		                &buffered_audio_range,
-		                &buffered_video_range));
+		                &buffered_video_range,
+		                &greatest_seq_audio,
+		                &greatest_seq_video));
 
 		req.n_selected_format_ids = 2;
 		req.selected_format_ids = (Misc__FormatId *[]){
@@ -934,10 +956,10 @@ youtube_stream_setup(struct youtube_stream *p,
 			&buffered_video_range,
 		};
 
-#if 0
-	abr_state.player_time_ms += min(buffered_audio_range.duration_ms,
-				        buffered_video_range.duration_ms);
-#endif
+		abr_state.has_player_time_ms = true;
+		abr_state.player_time_ms =
+			min(buffered_audio_range.duration_ms,
+		            buffered_video_range.duration_ms);
 	}
 
 	return RESULT_OK;
