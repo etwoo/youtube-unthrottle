@@ -463,9 +463,7 @@ ump_part_parse(uint64_t part_type,
 	       VideoStreaming__BufferedRange *buffered_audio_range,
 	       VideoStreaming__BufferedRange *buffered_video_range,
 	       bool *done_early,
-	       int *header_chosen_fd,
-	       int *highest_seen_seq_audio,
-	       int *highest_seen_seq_video)
+	       int *header_chosen_fd)
 {
 	VideoStreaming__MediaHeader *header
 		__attribute__((cleanup(ump_header_free))) = NULL;
