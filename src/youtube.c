@@ -461,6 +461,11 @@ ump_varint_read(const struct string_view *ump, size_t *cursor, uint64_t *value)
 	return RESULT_OK;
 }
 
+typedef enum {
+	HEADER_AUDIO,
+	HEADER_VIDEO,
+} header_mapping;
+
 static result_t
 ump_part_parse(uint64_t part_type,
                uint64_t part_size,
@@ -471,7 +476,7 @@ ump_part_parse(uint64_t part_type,
                VideoStreaming__BufferedRange *buffered_audio_range,
                VideoStreaming__BufferedRange *buffered_video_range,
                bool *skip_media_blobs_until_next_section,
-               int *header_chosen_fd,
+               header_mapping *header_audio_video_mapping,
                int64_t *greatest_seq_audio,
                int64_t *greatest_seq_video)
 {
@@ -524,10 +529,11 @@ ump_part_parse(uint64_t part_type,
 		               : -1));
 		switch (header->itag) {
 		case 251:
-			// TODO: refactor how audio/video is selected
-			*header_chosen_fd = stream->fd[0];
-			debug("Header switch to audio fd=%d",
-			      *header_chosen_fd);
+			assert(header->header_id <= UCHAR_MAX);
+			header_audio_video_mapping[header->header_id] =
+				HEADER_AUDIO;
+			debug("Set audio header mapping for header_id=%" PRIu32,
+			      header->header_id);
 			if (header->has_sequence_number &&
 			    header->sequence_number <= *greatest_seq_audio) {
 				debug("Skipping repeated seq=%" PRIi64,
@@ -563,10 +569,11 @@ ump_part_parse(uint64_t part_type,
 			}
 			break;
 		case 299:
-			// TODO: refactor how audio/video is selected
-			*header_chosen_fd = stream->fd[1];
-			debug("Header switch to video fd=%d",
-			      *header_chosen_fd);
+			assert(header->header_id <= UCHAR_MAX);
+			header_audio_video_mapping[header->header_id] =
+				HEADER_VIDEO;
+			debug("Set video header mapping for header_id=%" PRIu32,
+			      header->header_id);
 			if (header->has_sequence_number &&
 			    header->sequence_number <= *greatest_seq_video) {
 				debug("Skipping repeated seq=%" PRIi64,
@@ -616,14 +623,18 @@ ump_part_parse(uint64_t part_type,
 			      *cursor,
 			      part_size,
 			      ump->sz - *cursor);
-			// TODO: refactor how audio/video is selected
-			written = write_with_retry(*header_chosen_fd,
+			assert(header_id <= UCHAR_MAX);
+			int fd = (header_audio_video_mapping[header_id] ==
+			          HEADER_AUDIO)
+			                 ? stream->fd[0]
+			                 : stream->fd[1];
+			written = write_with_retry(fd,
 			                           ump->data + *cursor,
 			                           part_size - 1);
 			info_m_if(written < 0, "Cannot write media to stdout");
 			debug("Wrote media blob bytes=%zd to fd=%d",
 			      written,
-			      *header_chosen_fd);
+			      fd);
 			*cursor -= 1; // rewind cursor, let caller update
 		}
 		break;
@@ -721,7 +732,7 @@ ump_parse(const struct string_view *ump,
 #endif
 
 	size_t cursor = 0;
-	int header_chosen_fd = stream->fd[0];
+	header_mapping header_audio_video_mapping[UCHAR_MAX + 1] = {0};
 	bool skip_media_blobs_until_next_section = false;
 	while (cursor < ump->sz) {
 		uint64_t part_type = 0;
@@ -741,11 +752,11 @@ ump_parse(const struct string_view *ump,
 		                     ump,
 		                     &cursor,
 		                     stream,
-				     req,
+		                     req,
 		                     buffered_audio_range,
 		                     buffered_video_range,
 		                     &skip_media_blobs_until_next_section,
-		                     &header_chosen_fd,
+		                     header_audio_video_mapping,
 		                     greatest_seq_audio,
 		                     greatest_seq_video));
 
@@ -1012,7 +1023,7 @@ youtube_stream_setup(struct youtube_stream *p,
 			&p->request_context));
 		check(ump_parse(&ump.data,
 		                p,
-				&req,
+		                &req,
 		                &buffered_audio_range,
 		                &buffered_video_range,
 		                &greatest_seq_audio,
