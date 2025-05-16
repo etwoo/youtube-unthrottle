@@ -154,36 +154,6 @@ increment_header_duration(struct protocol_state *p,
 }
 
 static void
-ump_parse_media_header(struct protocol_state *p,
-                       VideoStreaming__MediaHeader *header,
-                       bool *skip_media_blobs_until_next)
-{
-	set_header_media_type(p, header->header_id, header->itag);
-	if (header->has_sequence_number &&
-	    header->sequence_number <=
-	            max_seq_num_for_header(p, header->header_id)) {
-		debug("Skipping repeated seq=%" PRIi64,
-		      header->sequence_number);
-		*skip_media_blobs_until_next = true;
-		return;
-	}
-
-	debug("Handling new seq=%" PRIi64 ", greatest=%" PRIi64,
-	      header->sequence_number,
-	      max_seq_num_for_header(p, header->header_id));
-	if (header->has_sequence_number) {
-		set_header_sequence_number(p,
-		                           header->header_id,
-		                           header->sequence_number);
-	}
-	if (header->has_duration_ms) {
-		increment_header_duration(p,
-		                          header->header_id,
-		                          header->duration_ms);
-	}
-}
-
-static void
 debug_protobuf_media_header(VideoStreaming__MediaHeader *header)
 {
 	debug("Got header header_id=%" PRIu32 ", video=%s, itag=%d, xtags=%s"
@@ -211,6 +181,36 @@ debug_protobuf_media_header(VideoStreaming__MediaHeader *header)
 	      (header->time_range && header->time_range->has_timescale
 	               ? header->time_range->timescale
 	               : -1));
+}
+
+static void
+ump_parse_media_header(struct protocol_state *p,
+                       VideoStreaming__MediaHeader *header,
+                       bool *skip_media_blobs_until_next)
+{
+	set_header_media_type(p, header->header_id, header->itag);
+	if (header->has_sequence_number &&
+	    header->sequence_number <=
+	            max_seq_num_for_header(p, header->header_id)) {
+		debug("Skipping repeated seq=%" PRIi64,
+		      header->sequence_number);
+		*skip_media_blobs_until_next = true;
+		return;
+	}
+
+	debug("Handling new seq=%" PRIi64 ", greatest=%" PRIi64,
+	      header->sequence_number,
+	      max_seq_num_for_header(p, header->header_id));
+	if (header->has_sequence_number) {
+		set_header_sequence_number(p,
+		                           header->header_id,
+		                           header->sequence_number);
+	}
+	if (header->has_duration_ms) {
+		increment_header_duration(p,
+		                          header->header_id,
+		                          header->duration_ms);
+	}
 }
 
 static void
