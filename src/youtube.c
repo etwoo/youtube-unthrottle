@@ -134,7 +134,7 @@ ada_search_params_set_helper(ada_url url, const char *key, const char *val)
 }
 
 static WARN_UNUSED result_t
-youtube_stream_set_one(struct youtube_stream *p, const char *val)
+youtube_stream_set_url(struct youtube_stream *p, const char *val)
 {
 	const size_t val_sz = strlen(val);
 	if (!ada_can_parse(val, val_sz)) {
@@ -153,11 +153,11 @@ youtube_stream_set_one(struct youtube_stream *p, const char *val)
  * Caller has responsibility to free() the pointer returned in <result>.
  */
 static WARN_UNUSED result_t
-copy_n_param(ada_url url, char **result)
+youtube_stream_copy_n_param(struct youtube_stream *p, char **result)
 {
 	*result = NULL; /* NULL out early, just in case */
 
-	ada_string q_str = ada_get_search(url);
+	ada_string q_str = ada_get_search(p->url);
 	ada_url_search_params q __attribute__((cleanup(free_search_params))) =
 		ada_parse_search_params(q_str.data, q_str.length);
 	if (!ada_search_params_has(q, ARG_N, strlen(ARG_N))) {
@@ -792,7 +792,7 @@ youtube_stream_setup(struct youtube_stream *p,
 		check(ops->before_parse(userdata));
 	}
 
-	check(youtube_stream_set_one(p, null_terminated_sabr));
+	check(youtube_stream_set_url(p, null_terminated_sabr));
 
 	if (p->url == NULL) {
 		return make_result(ERR_YOUTUBE_STREAM_URL_MISSING);
@@ -812,7 +812,7 @@ youtube_stream_setup(struct youtube_stream *p,
 
 	char *ciphertexts[2]
 		__attribute__((cleanup(ciphertexts_cleanup))) = {NULL};
-	check(copy_n_param(p->url, &ciphertexts[0]));
+	check(youtube_stream_copy_n_param(p, &ciphertexts[0]));
 
 	struct call_ops cops = {
 		.got_result = youtube_stream_update_n_param,
