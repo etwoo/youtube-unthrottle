@@ -646,14 +646,6 @@ ump_part_parse(uint64_t part_type,
 		      (fmt->index_range->has_start ? fmt->index_range->start
 		                                   : -1),
 		      (fmt->index_range->has_end ? fmt->index_range->end : -1));
-#if 0
-		written = write_with_retry(STDOUT_FILENO,
-			                   ump->data + *cursor + fmt->init_range->start,
-			                   fmt->init_range->end - fmt->init_range->start);
-		info_m_if(written < 0, "Cannot write media header to stdout");
-		debug("Wrote media header bytes=%zd to stdout", written);
-#endif
-
 		break;
 	case 43: /* SABR_REDIRECT */
 		*skip_media_blobs_until_next_section = false;
