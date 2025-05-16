@@ -104,19 +104,19 @@ struct protocol_state {
 };
 
 static size_t
-index_of(struct protocol_state *p, unsigned char header_id)
+index_of(const struct protocol_state *p, unsigned char header_id)
 {
 	return p->header_map[header_id] == ITAG_AUDIO ? 0 : 1;
 }
 
 static int
-get_fd_for_header(struct protocol_state *p, unsigned char header_id)
+get_fd_for_header(const struct protocol_state *p, unsigned char header_id)
 {
 	return p->outputs[index_of(p, header_id)];
 }
 
 static int64_t
-max_seq_num_for_header(struct protocol_state *p, unsigned char header_id)
+max_seq_num_for_header(const struct protocol_state *p, unsigned char header_id)
 {
 	return p->sequence_number_cursor[index_of(p, header_id)];
 }
@@ -154,7 +154,7 @@ increment_header_duration(struct protocol_state *p,
 }
 
 static void
-debug_protobuf_media_header(VideoStreaming__MediaHeader *header)
+debug_protobuf_media_header(const VideoStreaming__MediaHeader *header)
 {
 	debug("Got header header_id=%" PRIu32 ", video=%s, itag=%d, xtags=%s"
 	      ", start_data_range=%d, is_init_seg=%d"
@@ -185,7 +185,7 @@ debug_protobuf_media_header(VideoStreaming__MediaHeader *header)
 
 static void
 ump_parse_media_header(struct protocol_state *p,
-                       VideoStreaming__MediaHeader *header,
+                       const VideoStreaming__MediaHeader *header,
                        bool *skip_media_blobs_until_next)
 {
 	set_header_media_type(p, header->header_id, header->itag);
@@ -220,8 +220,33 @@ ump_parse_media_blob(struct protocol_state *p,
 {
 	int fd = get_fd_for_header(p, header_id);
 	ssize_t written = write_with_retry(fd, blob->data, blob->sz);
+	// TODO: fail-fast on write failure instead of only logging info()
 	info_m_if(written < 0, "Cannot write media blob to fd=%d", fd);
 	debug("Wrote media blob bytes=%zd to fd=%d", written, fd);
+}
+
+static void
+ump_parse_cookie(const VideoStreaming__NextRequestPolicy *next_request_policy,
+                 VideoStreaming__StreamerContext *context)
+{
+	if (context->has_playback_cookie && context->playback_cookie.data) {
+		free(context->playback_cookie.data);
+		context->playback_cookie.data = NULL;
+	}
+
+	const size_t cookie_packed_sz =
+		video_streaming__playback_cookie__get_packed_size(
+			next_request_policy->playback_cookie);
+	context->playback_cookie.data = malloc(
+		cookie_packed_sz * sizeof(*context->playback_cookie.data));
+	// TODO: handle malloc error
+
+	context->playback_cookie.len = cookie_packed_sz;
+	context->has_playback_cookie = true;
+	video_streaming__playback_cookie__pack(
+		next_request_policy->playback_cookie,
+		context->playback_cookie.data);
+	debug("Updated playback cookie of size=%zu", cookie_packed_sz);
 }
 
 static void
@@ -542,24 +567,7 @@ ump_parse_part(struct protocol_state *p,
 				part_size,
 				(const uint8_t *)ump->data + *cursor);
 		assert(next_request_policy); // TODO: error out on misparse
-		if (p->req.streamer_context->has_playback_cookie &&
-		    p->req.streamer_context->playback_cookie.data) {
-			free(p->req.streamer_context->playback_cookie.data);
-			p->req.streamer_context->playback_cookie.data = NULL;
-		}
-		const size_t cookie_packed_sz =
-			video_streaming__playback_cookie__get_packed_size(
-				next_request_policy->playback_cookie);
-		p->req.streamer_context->playback_cookie.data = malloc(
-			cookie_packed_sz *
-			sizeof(*p->req.streamer_context->playback_cookie.data));
-		// TODO: handle malloc error
-		p->req.streamer_context->playback_cookie.len = cookie_packed_sz;
-		p->req.streamer_context->has_playback_cookie = true;
-		video_streaming__playback_cookie__pack(
-			next_request_policy->playback_cookie,
-			p->req.streamer_context->playback_cookie.data);
-		debug("Updating playback cookie of size=%zu", cookie_packed_sz);
+		ump_parse_cookie(next_request_policy, &p->context);
 		break;
 	case 42: /* FORMAT_INITIALIZATION_METADATA */
 		*skip_media_blobs_until_next = false;
