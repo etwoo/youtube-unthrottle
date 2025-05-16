@@ -494,10 +494,11 @@ ump_part_parse(uint64_t part_type,
 	switch (part_type) {
 	case 20: /* MEDIA_HEADER */
 		*skip_media_blobs_until_next_section = false;
-		header = video_streaming__media_header__unpack(NULL,
-		                                               part_size,
-		                                               ump->data +
-		                                                       *cursor);
+		assert(sizeof(uint8_t) == sizeof(ump->data));
+		header = video_streaming__media_header__unpack(
+			NULL,
+			part_size,
+			(const uint8_t *)ump->data + *cursor);
 		assert(header); // TODO: error out on misparse
 		debug("Got header header_id=%" PRIu32
 		      ", video=%s, itag=%d, xtags=%s"
@@ -640,11 +641,12 @@ ump_part_parse(uint64_t part_type,
 		break;
 	case 35: /* NEXT_REQUEST_POLICY */
 		*skip_media_blobs_until_next_section = false;
+		assert(sizeof(uint8_t) == sizeof(ump->data));
 		next_request_policy =
 			video_streaming__next_request_policy__unpack(
 				NULL,
 				part_size,
-				ump->data + *cursor);
+				(const uint8_t *)ump->data + *cursor);
 		assert(next_request_policy); // error out on misparse
 		if (req->streamer_context->has_playback_cookie &&
 		    req->streamer_context->playback_cookie.data) {
@@ -667,10 +669,11 @@ ump_part_parse(uint64_t part_type,
 		break;
 	case 42: /* FORMAT_INITIALIZATION_METADATA */
 		*skip_media_blobs_until_next_section = false;
+		assert(sizeof(uint8_t) == sizeof(ump->data));
 		fmt = video_streaming__format_initialization_metadata__unpack(
 			NULL,
 			part_size,
-			ump->data + *cursor);
+			(const uint8_t *)ump->data + *cursor);
 		assert(fmt); // TODO: error out on misparse
 		debug("Got format video=%s, itag=%d, "
 		      "duration=%d"
@@ -696,10 +699,11 @@ ump_part_parse(uint64_t part_type,
 		break;
 	case 43: /* SABR_REDIRECT */
 		*skip_media_blobs_until_next_section = false;
+		assert(sizeof(uint8_t) == sizeof(ump->data));
 		redirect = video_streaming__sabr_redirect__unpack(
 			NULL,
 			part_size,
-			ump->data + *cursor);
+			(const uint8_t *)ump->data + *cursor);
 		assert(redirect); // TODO: error out on misparse
 		// TODO: handle ada_set_href() returns false
 		ada_set_href(stream->url[0],
