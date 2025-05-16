@@ -153,7 +153,7 @@ youtube_stream_set_one(struct youtube_stream *p, const char *val)
  * Caller has responsibility to free() the pointer returned in <result>.
  */
 static WARN_UNUSED result_t
-copy_n_param_one(ada_url url, char **result)
+copy_n_param(ada_url url, char **result)
 {
 	*result = NULL; /* NULL out early, just in case */
 
@@ -812,7 +812,7 @@ youtube_stream_setup(struct youtube_stream *p,
 
 	char *ciphertexts[2]
 		__attribute__((cleanup(ciphertexts_cleanup))) = {NULL};
-	check(copy_n_param_one(p->url, ciphertexts));
+	check(copy_n_param(p->url, &ciphertexts[0]));
 
 	struct call_ops cops = {
 		.got_result = youtube_stream_update_n_param,
