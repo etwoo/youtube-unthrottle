@@ -466,74 +466,29 @@ ump_part_parse(struct protocol_state *p,
 		      (header->time_range && header->time_range->has_timescale
 		               ? header->time_range->timescale
 		               : -1));
-		switch (header->itag) {
-		// TODO: figure out how to dedup code in two cases below
-		case ITAG_AUDIO:
-			assert(header->header_id <= UCHAR_MAX);
-			set_header_media_type(p,
-			                      header->header_id,
-			                      header->itag);
-			if (header->has_sequence_number &&
-			    header->sequence_number <=
-			            max_seq_num_for_header(p,
-			                                   header->header_id)) {
-				debug("Skipping repeated seq=%" PRIi64,
-				      header->sequence_number);
-				*skip_media_blobs_until_next_section = true;
-			} else {
-				debug("Handling new seq=%" PRIi64
-				      ", greatest=%" PRIi64,
-				      header->sequence_number,
-				      max_seq_num_for_header(
-					      p,
-					      header->header_id));
-				if (header->has_sequence_number) {
-					set_header_sequence_number(
-						p,
-						header->header_id,
-						header->sequence_number);
-				}
-				if (header->has_duration_ms) {
-					increment_header_duration(
-						p,
-						header->header_id,
-						header->duration_ms);
-				}
+		assert(header->header_id <= UCHAR_MAX);
+		set_header_media_type(p, header->header_id, header->itag);
+		if (header->has_sequence_number &&
+		    header->sequence_number <=
+		            max_seq_num_for_header(p, header->header_id)) {
+			debug("Skipping repeated seq=%" PRIi64,
+			      header->sequence_number);
+			*skip_media_blobs_until_next_section = true;
+		} else {
+			debug("Handling new seq=%" PRIi64 ", greatest=%" PRIi64,
+			      header->sequence_number,
+			      max_seq_num_for_header(p, header->header_id));
+			if (header->has_sequence_number) {
+				set_header_sequence_number(
+					p,
+					header->header_id,
+					header->sequence_number);
 			}
-			break;
-		case ITAG_VIDEO:
-			assert(header->header_id <= UCHAR_MAX);
-			set_header_media_type(p,
-			                      header->header_id,
-			                      header->itag);
-			if (header->has_sequence_number &&
-			    header->sequence_number <=
-			            max_seq_num_for_header(p,
-			                                   header->header_id)) {
-				debug("Skipping repeated seq=%" PRIi64,
-				      header->sequence_number);
-				*skip_media_blobs_until_next_section = true;
-			} else {
-				debug("Handling new seq=%" PRIi64
-				      ", greatest=%" PRIi64,
-				      header->sequence_number,
-				      max_seq_num_for_header(
-					      p,
-					      header->header_id));
-				if (header->has_sequence_number) {
-					set_header_sequence_number(
-						p,
-						header->header_id,
-						header->sequence_number);
-				}
-				if (header->has_duration_ms) {
-					increment_header_duration(
-						p,
-						header->header_id,
-						header->duration_ms);
-				}
+			if (header->has_duration_ms) {
+				increment_header_duration(p,
+				                          header->header_id,
+				                          header->duration_ms);
 			}
-			break;
 		}
 		break;
 	case 21: /* MEDIA */
