@@ -214,6 +214,17 @@ debug_protobuf_media_header(VideoStreaming__MediaHeader *header)
 }
 
 static void
+ump_parse_media_blob(struct protocol_state *p,
+                     unsigned char header_id,
+                     const struct string_view *blob)
+{
+	int fd = get_fd_for_header(p, header_id);
+	ssize_t written = write_with_retry(fd, blob->data, blob->sz);
+	info_m_if(written < 0, "Cannot write media blob to fd=%d", fd);
+	debug("Wrote media blob bytes=%zd to fd=%d", written, fd);
+}
+
+static void
 protocol_init_members(struct protocol_state *p)
 {
 	video_streaming__client_abr_state__init(&p->abr_state);
@@ -486,7 +497,6 @@ ump_parse_part(struct protocol_state *p,
 	VideoStreaming__SabrRedirect *redirect
 		__attribute__((cleanup(sabr_redirect_free))) = NULL;
 	uint64_t parsed_header_id = 0;
-	ssize_t written = -1;
 
 	switch (part_type) {
 	case 20: /* MEDIA_HEADER */
@@ -502,7 +512,6 @@ ump_parse_part(struct protocol_state *p,
 		ump_parse_media_header(p, header, skip_media_blobs_until_next);
 		break;
 	case 21: /* MEDIA */
-		// TODO: move MEDIA case into dedicated function, less indent
 		if (*skip_media_blobs_until_next) {
 			debug("Skipping media blob at cursor=%zu", *cursor);
 		} else {
@@ -516,14 +525,11 @@ ump_parse_part(struct protocol_state *p,
 			      part_size,
 			      ump->sz - *cursor);
 			assert(parsed_header_id <= UCHAR_MAX);
-			int fd = get_fd_for_header(p, parsed_header_id);
-			written = write_with_retry(fd,
-			                           ump->data + *cursor,
-			                           part_size - 1);
-			info_m_if(written < 0, "Cannot write media to stdout");
-			debug("Wrote media blob bytes=%zd to fd=%d",
-			      written,
-			      fd);
+			struct string_view blob = {
+				.data = ump->data + *cursor,
+				.sz = part_size - 1,
+			};
+			ump_parse_media_blob(p, parsed_header_id, &blob);
 			*cursor -= 1; // rewind cursor, let caller update
 		}
 		break;
