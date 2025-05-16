@@ -90,10 +90,7 @@ base64url_to_standard_base64(char *buf)
 struct protocol_state {
 	int outputs[2];
 	int64_t sequence_number_cursor[2];
-	enum {
-		HEADER_AUDIO,
-		HEADER_VIDEO,
-	} header_map[UCHAR_MAX + 1]; // maps header_id number to media type
+	int header_map[UCHAR_MAX + 1]; // maps header_id number to itag
 	VideoStreaming__ClientAbrState abr_state;
 	VideoStreaming__StreamerContext__ClientInfo info;
 	VideoStreaming__StreamerContext context;
@@ -109,7 +106,7 @@ struct protocol_state {
 static int
 get_fd_for_header(struct protocol_state *p, unsigned char header_id)
 {
-	const size_t idx = p->header_map[header_id] == HEADER_AUDIO ? 0 : 1;
+	const size_t idx = p->header_map[header_id] == ITAG_AUDIO ? 0 : 1;
 	return p->outputs[idx];
 }
 
@@ -118,8 +115,7 @@ set_header_media_type(struct protocol_state *p,
                       unsigned char header_id,
                       int itag)
 {
-	p->header_map[header_id] =
-		itag == ITAG_AUDIO ? HEADER_AUDIO : HEADER_VIDEO;
+	p->header_map[header_id] = itag;
 	debug("Mapping header_id=%u to fd=%d",
 	      header_id,
 	      get_fd_for_header(p, header_id));
