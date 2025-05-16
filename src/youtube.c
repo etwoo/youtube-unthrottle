@@ -494,7 +494,7 @@ ump_part_parse(uint64_t part_type,
 	switch (part_type) {
 	case 20: /* MEDIA_HEADER */
 		*skip_media_blobs_until_next_section = false;
-		assert(sizeof(uint8_t) == sizeof(ump->data));
+		assert(sizeof(uint8_t) == sizeof(ump->data[0]));
 		header = video_streaming__media_header__unpack(
 			NULL,
 			part_size,
@@ -641,7 +641,7 @@ ump_part_parse(uint64_t part_type,
 		break;
 	case 35: /* NEXT_REQUEST_POLICY */
 		*skip_media_blobs_until_next_section = false;
-		assert(sizeof(uint8_t) == sizeof(ump->data));
+		assert(sizeof(uint8_t) == sizeof(ump->data[0]));
 		next_request_policy =
 			video_streaming__next_request_policy__unpack(
 				NULL,
@@ -669,7 +669,7 @@ ump_part_parse(uint64_t part_type,
 		break;
 	case 42: /* FORMAT_INITIALIZATION_METADATA */
 		*skip_media_blobs_until_next_section = false;
-		assert(sizeof(uint8_t) == sizeof(ump->data));
+		assert(sizeof(uint8_t) == sizeof(ump->data[0]));
 		fmt = video_streaming__format_initialization_metadata__unpack(
 			NULL,
 			part_size,
@@ -699,7 +699,7 @@ ump_part_parse(uint64_t part_type,
 		break;
 	case 43: /* SABR_REDIRECT */
 		*skip_media_blobs_until_next_section = false;
-		assert(sizeof(uint8_t) == sizeof(ump->data));
+		assert(sizeof(uint8_t) == sizeof(ump->data[0]));
 		redirect = video_streaming__sabr_redirect__unpack(
 			NULL,
 			part_size,
