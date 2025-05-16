@@ -645,7 +645,12 @@ ump_parse(struct protocol_state *p,
 {
 	debug("Got UMP response of sz=%zu", ump->sz);
 
+	// TODO: mutate ump->{data,sz} directly, drop separate cursor value
+	// for above TODO, make a deep-copy of ump struct here or in caller
 	size_t cursor = 0;
+	// TODO: move header_mapping[] into protocol_state struct, add
+	// dedicated methods for manipulating it, remove module-level
+	// HEADER_AUDIO/HEADER_VIDEO enum
 	header_mapping header_audio_video_mapping[UCHAR_MAX + 1] = {0};
 	bool skip_media_blobs_until_next_section = false;
 	while (cursor < ump->sz) {
@@ -666,9 +671,9 @@ ump_parse(struct protocol_state *p,
 		                     target_url,
 		                     part_type,
 		                     part_size,
-		                     &cursor,
+		                     &cursor, // TODO rm
 		                     &skip_media_blobs_until_next_section,
-		                     header_audio_video_mapping));
+		                     header_audio_video_mapping)); // TODO rm
 
 		cursor += part_size;
 	}
