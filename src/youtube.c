@@ -612,10 +612,10 @@ ump_part_parse(uint64_t part_type,
 		}
 		break;
 	case 21: /* MEDIA */
-		// TODO: raise more specific error for header_id
 		if (*skip_media_blobs_until_next_section) {
 			debug("Skipping media blob at cursor=%zu", *cursor);
 		} else {
+			// TODO: raise more specific error for header_id
 			check(ump_varint_read(ump, cursor, &header_id));
 			debug("Got media blob header_id=%" PRIu64
 			      ", cursor=%zu, part_size=%" PRIu64
@@ -647,7 +647,7 @@ ump_part_parse(uint64_t part_type,
 				NULL,
 				part_size,
 				(const uint8_t *)ump->data + *cursor);
-		assert(next_request_policy); // error out on misparse
+		assert(next_request_policy); // TODO: error out on misparse
 		if (req->streamer_context->has_playback_cookie &&
 		    req->streamer_context->playback_cookie.data) {
 			free(req->streamer_context->playback_cookie.data);
@@ -705,9 +705,8 @@ ump_part_parse(uint64_t part_type,
 			part_size,
 			(const uint8_t *)ump->data + *cursor);
 		assert(redirect); // TODO: error out on misparse
-		// TODO: handle ada_set_href() returns false
 		ada_set_href(stream->url[0],
-		             redirect->url,
+		             redirect->url, // TODO: error on NULL url member?
 		             strlen(redirect->url));
 		debug("Got redirect to new SABR url: %s", redirect->url);
 		break;
