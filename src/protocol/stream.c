@@ -1,1 +1,686 @@
 #include "stream.h"
+
+#include "sys/array.h"
+#include "sys/debug.h"
+#include "sys/write.h"
+/*
+ * Some helpful references on YouTube's UMP format and SABR protobufs:
+ *
+ *   https://github.com/gsuberland/UMP_Format/blob/main/UMP_Format.md
+ *   https://github.com/LuanRT/googlevideo/blob/HEAD/src/core/UMP.ts
+ *   https://github.com/LuanRT/googlevideo/blob/HEAD/src/utils/helpers.ts
+ *   https://github.com/LuanRT/googlevideo/blob/main/src/core/ServerAbrStream.ts
+ *
+ *   https://github.com/LuanRT/googlevideo/tree/main/protos/video_streaming
+ *   https://github.com/LuanRT/googlevideo/blob/main/protos/misc/common.proto
+ *
+ *   https://github.com/LuanRT/googlevideo/blob/main/examples/downloader/main.ts
+ *   https://github.com/LuanRT/googlevideo/blob/main/examples/README.md
+ */
+#include "video_streaming/format_initialization_metadata.pb-c.h"
+#include "video_streaming/media_header.pb-c.h"
+#include "video_streaming/next_request_policy.pb-c.h"
+#include "video_streaming/sabr_redirect.pb-c.h"
+#include "video_streaming/video_playback_abr_request.pb-c.h"
+
+#include <inttypes.h>
+#include <resolv.h> /* for b64_pton() */
+#include <stdbool.h>
+#include <stdlib.h>
+
+#define min(x, y) (x < y ? x : y) // TODO: reuse some systemwide define?
+#define max(x, y) (x > y ? x : y) // TODO: reuse some systemwide define?
+
+static void
+str_free(char **strp)
+{
+	free(*strp);
+}
+
+static void
+ump_request_policy_free(VideoStreaming__NextRequestPolicy **policy)
+{
+	video_streaming__next_request_policy__free_unpacked(*policy, NULL);
+}
+
+static void
+ump_header_free(VideoStreaming__MediaHeader **header)
+{
+	video_streaming__media_header__free_unpacked(*header, NULL);
+}
+
+static void
+ump_formats_free(VideoStreaming__FormatInitializationMetadata **format_init)
+{
+	video_streaming__format_initialization_metadata__free_unpacked(
+		*format_init,
+		NULL);
+}
+
+static void
+sabr_redirect_free(VideoStreaming__SabrRedirect **redirect)
+{
+	video_streaming__sabr_redirect__free_unpacked(*redirect, NULL);
+}
+
+/*
+ * Convert base64url-encoded content to standard base64 format.
+ *
+ * https://datatracker.ietf.org/doc/html/rfc4648#section-5
+ */
+static void
+base64url_to_standard_base64(char *buf)
+{
+	for (char *c = buf; *c; ++c) {
+		switch (*c) {
+		case '-':
+			*c = '+';
+			break;
+		case '_':
+			*c = '/';
+			break;
+		}
+	}
+}
+
+struct protocol_state {
+	int outputs[2];
+	int64_t sequence_number_cursor[2];
+	VideoStreaming__ClientAbrState abr_state;
+	VideoStreaming__StreamerContext__ClientInfo info;
+	VideoStreaming__StreamerContext context;
+	Misc__FormatId selected_audio_format;
+	Misc__FormatId selected_video_format;
+	VideoStreaming__BufferedRange buffered_audio_range;
+	VideoStreaming__BufferedRange buffered_video_range;
+	VideoStreaming__VideoPlaybackAbrRequest req;
+};
+
+static int
+get_fd_audio(struct protocol_state *p)
+{
+	return p->outputs[0];
+}
+
+static int
+get_fd_video(struct protocol_state *p)
+{
+	return p->outputs[1];
+}
+
+static int64_t
+max_sequence_number_audio(struct protocol_state *p)
+{
+	return p->sequence_number_cursor[0];
+}
+
+static int64_t
+max_sequence_number_video(struct protocol_state *p)
+{
+	return p->sequence_number_cursor[1];
+}
+
+static void
+set_sequence_number_audio(struct protocol_state *p, int64_t n)
+{
+	p->sequence_number_cursor[0] = n;
+	p->buffered_audio_range.end_segment_index = n + 1;
+}
+
+static void
+set_sequence_number_video(struct protocol_state *p, int64_t n)
+{
+	p->sequence_number_cursor[1] = n;
+	p->buffered_video_range.end_segment_index = n + 1;
+}
+
+static void
+protocol_init_members(struct protocol_state *p)
+{
+	video_streaming__client_abr_state__init(&p->abr_state);
+	p->abr_state.has_last_manual_selected_resolution = true;
+	p->abr_state.last_manual_selected_resolution = 1080;
+	p->abr_state.has_sticky_resolution = true;
+	p->abr_state.sticky_resolution = 1080;
+
+	video_streaming__streamer_context__client_info__init(&p->info);
+	p->info.has_client_name = true;
+	p->info.client_name = 1;
+	p->info.client_version = "2.20250312.04.00";
+	p->info.os_name = "Windows";
+	p->info.os_version = "10.0";
+
+	video_streaming__streamer_context__init(&p->context);
+	p->context.client_info = &p->info;
+
+	misc__format_id__init(&p->selected_audio_format);
+	p->selected_audio_format.has_itag = true;
+	p->selected_audio_format.itag = 251;
+
+	misc__format_id__init(&p->selected_video_format);
+	p->selected_video_format.has_itag = true;
+	p->selected_video_format.itag = 299;
+
+	video_streaming__buffered_range__init(&p->buffered_audio_range);
+	p->buffered_audio_range.format_id = &p->selected_audio_format;
+	p->buffered_audio_range.duration_ms = 0;
+	p->buffered_audio_range.start_segment_index = 1;
+	p->buffered_audio_range.end_segment_index = 0;
+
+	video_streaming__buffered_range__init(&p->buffered_video_range);
+	p->buffered_video_range.format_id = &p->selected_video_format;
+	p->buffered_video_range.duration_ms = 0;
+	p->buffered_video_range.start_segment_index = 1;
+	p->buffered_video_range.end_segment_index = 0;
+
+	video_streaming__video_playback_abr_request__init(&p->req);
+	p->req.client_abr_state = &p->abr_state;
+
+	p->req.n_selected_audio_format_ids = 1;
+	p->req.selected_audio_format_ids =
+		(Misc__FormatId *[]){&p->selected_audio_format};
+	p->req.n_selected_video_format_ids = 1;
+	p->req.selected_video_format_ids =
+		(Misc__FormatId *[]){&p->selected_video_format};
+	p->req.streamer_context = &p->context;
+}
+
+static void
+protocol_update_members(struct protocol_state *p)
+{
+	p->req.n_selected_format_ids = 2;
+	p->req.selected_format_ids = (Misc__FormatId *[]){
+		&p->selected_audio_format,
+		&p->selected_video_format,
+	};
+	p->req.n_buffered_ranges = 2;
+	p->req.buffered_ranges = (VideoStreaming__BufferedRange *[]){
+		&p->buffered_audio_range,
+		&p->buffered_video_range,
+	};
+
+	p->abr_state.has_player_time_ms = true;
+	p->abr_state.player_time_ms = min(p->buffered_audio_range.duration_ms,
+	                                  p->buffered_video_range.duration_ms);
+}
+
+static bool
+protocol_base64_decode(const struct string_view *in,
+                       struct ProtobufCBinaryData *out)
+{
+	char *scratch_buffer __attribute__((cleanup(str_free))) =
+		strndup(in->data, in->sz);
+	if (scratch_buffer == NULL) {
+		return false;
+	}
+
+	base64url_to_standard_base64(scratch_buffer);
+	out->len = b64_pton(scratch_buffer, NULL, 0);
+	if (out->len <= 0) {
+		return false;
+	}
+
+	out->data = malloc(out->len);
+	if (out->data == NULL) {
+		return false;
+	}
+
+	const int rc = b64_pton(scratch_buffer, out->data, out->len);
+	return (rc > 0);
+}
+
+struct protocol_state *
+protocol_init(const char *proof_of_origin,
+              const struct string_view *playback_config,
+              int outputs[2])
+{
+	struct protocol_state *p = malloc(sizeof(*p));
+	if (p == NULL) {
+		goto cleanup;
+	}
+
+	memset(p, 0, sizeof(*p)); /* zero early, just in case */
+
+	p->outputs[0] = outputs[0];
+	p->outputs[1] = outputs[1];
+
+	p->sequence_number_cursor[0] = -1;
+	p->sequence_number_cursor[1] = -1;
+
+	protocol_init_members(p);
+
+	const struct string_view po_token_view = {
+		.data = proof_of_origin,
+		.sz = strlen(proof_of_origin),
+	};
+	if (!protocol_base64_decode(&po_token_view, &p->context.po_token)) {
+		goto cleanup;
+	}
+	p->context.has_po_token = true;
+
+	if (!protocol_base64_decode(playback_config,
+	                            &p->req.video_playback_ustreamer_config)) {
+		goto cleanup;
+	}
+	p->req.has_video_playback_ustreamer_config = true;
+
+	return p;
+
+cleanup:
+	protocol_cleanup(p);
+	free(p);
+	return NULL;
+}
+
+void
+protocol_cleanup(struct protocol_state *p)
+{
+	if (p) {
+		free(p->context.po_token.data);
+	}
+}
+
+#define request__get_packed_size                                               \
+	video_streaming__video_playback_abr_request__get_packed_size
+#define request__pack video_streaming__video_playback_abr_request__pack
+
+result_t
+protocol_next_request(struct protocol_state *p, char **request, size_t *sz)
+{
+	*sz = request__get_packed_size(&p->req);
+	*request = malloc(*sz * sizeof(**request));
+	// TODO: rename ERR_JS_SABR_POST_BODY_ALLOC -> ERR_PROTOCOL_*
+	check_if(*request == NULL, ERR_JS_SABR_POST_BODY_ALLOC);
+	request__pack(&p->req, (uint8_t *)*request);
+	return RESULT_OK;
+}
+
+#undef request__get_packed_size
+#undef request__pack
+
+static const unsigned char CHAR_BIT_0 = 0x80; // bit pattern: 10000000
+static const unsigned char CHAR_BIT_1 = 0x40; // bit pattern: 01000000
+static const unsigned char CHAR_BIT_2 = 0x20; // bit pattern: 00100000
+static const unsigned char CHAR_BIT_3 = 0x10; // bit pattern: 00010000
+static const unsigned char CHAR_BIT_4 = 0x08; // bit pattern: 00001000
+
+static void
+ump_read_vle(const unsigned char first_byte,
+             size_t *bytes_to_read,
+             unsigned char *first_byte_mask)
+{
+	*bytes_to_read = 1;
+	*first_byte_mask = 0xFF; // bit pattern: 11111111
+	if (0 == (first_byte & CHAR_BIT_0)) {
+		return;
+	}
+
+	++*bytes_to_read;
+	*first_byte_mask ^= CHAR_BIT_0;
+	*first_byte_mask ^= CHAR_BIT_1;
+
+	if (0 == (first_byte & CHAR_BIT_1)) {
+		return;
+	}
+
+	++*bytes_to_read;
+	*first_byte_mask ^= CHAR_BIT_2;
+
+	if (0 == (first_byte & CHAR_BIT_2)) {
+		return;
+	}
+
+	++*bytes_to_read;
+	*first_byte_mask ^= CHAR_BIT_3;
+
+	if (0 == (first_byte & CHAR_BIT_3)) {
+		return;
+	}
+
+	++*bytes_to_read;
+	*first_byte_mask ^= CHAR_BIT_4;
+}
+
+static result_t
+ump_varint_read(const struct string_view *ump, size_t *cursor, uint64_t *value)
+{
+	assert(*cursor < ump->sz);
+
+	size_t bytes_to_read = 0;
+	unsigned char first_byte_mask = 0xFF;
+	ump_read_vle(ump->data[*cursor], &bytes_to_read, &first_byte_mask);
+	debug("Got first_byte=%hhu, bytes_to_read=%zu, first_byte_mask=%02X",
+	      ump->data[*cursor],
+	      bytes_to_read,
+	      first_byte_mask);
+
+	check_if(*cursor <= SIZE_MAX - bytes_to_read &&
+	                 *cursor + bytes_to_read >= ump->sz,
+	         1); // TOOD: ERR_PROTOCOL_CURSOR_EXCEEDS_UMP_DATA
+
+	uint64_t parsed[5] = {0};
+	switch (bytes_to_read) {
+	case 5: // TODO: bytes_to_read=5 is probably broken
+		parsed[4] = ump->data[*cursor + 4] << 24;
+		__attribute__((fallthrough));
+	case 4: // TODO: bytes_to_read=4 is probably broken
+		parsed[3] = ump->data[*cursor + 3] << 16;
+		__attribute__((fallthrough));
+	case 3:
+		parsed[2] = ump->data[*cursor + 2] << (8 + (8 - bytes_to_read));
+		__attribute__((fallthrough));
+	case 2:
+		parsed[1] = (unsigned char)ump->data[*cursor + 1]
+		            << (8 - bytes_to_read);
+		__attribute__((fallthrough));
+	case 1:
+		parsed[0] = ump->data[*cursor] & first_byte_mask;
+		break;
+	default:
+		assert(false);
+		break;
+	}
+	*cursor += bytes_to_read;
+
+	*value = 0;
+	for (size_t i = 0; i < ARRAY_SIZE(parsed); ++i) {
+		*value += parsed[i];
+	}
+
+	return RESULT_OK;
+}
+
+typedef enum {
+	HEADER_AUDIO,
+	HEADER_VIDEO,
+} header_mapping;
+
+static result_t
+ump_part_parse(struct protocol_state *p,
+               const struct string_view *ump,
+               char **target_url,
+               uint64_t part_type,
+               uint64_t part_size,
+               size_t *cursor,
+               bool *skip_media_blobs_until_next_section,
+               header_mapping *header_audio_video_mapping)
+{
+	VideoStreaming__NextRequestPolicy *next_request_policy
+		__attribute__((cleanup(ump_request_policy_free))) = NULL;
+	VideoStreaming__MediaHeader *header
+		__attribute__((cleanup(ump_header_free))) = NULL;
+	VideoStreaming__FormatInitializationMetadata *fmt
+		__attribute__((cleanup(ump_formats_free))) = NULL;
+	VideoStreaming__SabrRedirect *redirect
+		__attribute__((cleanup(sabr_redirect_free))) = NULL;
+	uint64_t header_id = 0;
+	ssize_t written = -1;
+
+	switch (part_type) {
+	case 20: /* MEDIA_HEADER */
+		*skip_media_blobs_until_next_section = false;
+		assert(sizeof(uint8_t) == sizeof(ump->data[0]));
+		header = video_streaming__media_header__unpack(
+			NULL,
+			part_size,
+			(const uint8_t *)ump->data + *cursor);
+		assert(header); // TODO: error out on misparse
+		debug("Got header header_id=%" PRIu32
+		      ", video=%s, itag=%d, xtags=%s"
+		      ", start_data_range=%d, is_init_seg=%d"
+		      ", seq=%" PRIi64 ", start_ms=%d, duration_ms=%d"
+		      ", content_length=%" PRIi64 ", time_range.start=%" PRIi64
+		      ", time_range.duration=%" PRIi64
+		      ", time_range.timescale=%" PRIi32,
+		      header->header_id,
+		      header->video_id,
+		      header->has_itag ? header->itag : -1,
+		      header->xtags,
+		      header->has_start_data_range ? header->start_data_range
+		                                   : -1,
+		      header->has_is_init_seg ? header->is_init_seg : -1,
+		      header->has_sequence_number ? header->sequence_number
+		                                  : -1,
+		      header->has_start_ms ? header->start_ms : -1,
+		      header->has_duration_ms ? header->duration_ms : -1,
+		      header->has_content_length ? header->content_length : -1,
+		      (header->time_range && header->time_range->has_start
+		               ? header->time_range->start
+		               : -1),
+		      (header->time_range && header->time_range->has_duration
+		               ? header->time_range->duration
+		               : -1),
+		      (header->time_range && header->time_range->has_timescale
+		               ? header->time_range->timescale
+		               : -1));
+		switch (header->itag) {
+		case 251:
+			assert(header->header_id <= UCHAR_MAX);
+			header_audio_video_mapping[header->header_id] =
+				HEADER_AUDIO;
+			debug("Set audio header mapping for header_id=%" PRIu32,
+			      header->header_id);
+			if (header->has_sequence_number &&
+			    header->sequence_number <=
+			            max_sequence_number_audio(p)) {
+				debug("Skipping repeated seq=%" PRIi64,
+				      header->sequence_number);
+				*skip_media_blobs_until_next_section = true;
+			} else {
+				debug("Handling new seq=%" PRIi64
+				      ", greatest=%" PRIi64,
+				      header->sequence_number,
+				      max_sequence_number_audio(p));
+				if (header->has_sequence_number) {
+					set_sequence_number_audio(
+						p,
+						header->sequence_number);
+				}
+				if (header->has_duration_ms) {
+					debug("Advancing audio by duration "
+					      "%" PRIi64 " + %" PRIi32,
+					      p->buffered_audio_range
+					              .duration_ms,
+					      header->duration_ms);
+					p->buffered_audio_range.duration_ms +=
+						header->duration_ms;
+				}
+				debug("Setting buffered_audio_range "
+				      "duration_ms=%" PRIi64
+				      ", start_segment_index=%d, "
+				      "end_segment_index=%d",
+				      p->buffered_audio_range.duration_ms,
+				      p->buffered_audio_range
+				              .start_segment_index,
+				      p->buffered_audio_range
+				              .end_segment_index);
+			}
+			break;
+		case 299:
+			assert(header->header_id <= UCHAR_MAX);
+			header_audio_video_mapping[header->header_id] =
+				HEADER_VIDEO;
+			debug("Set video header mapping for header_id=%" PRIu32,
+			      header->header_id);
+			if (header->has_sequence_number &&
+			    header->sequence_number <=
+			            max_sequence_number_video(p)) {
+				debug("Skipping repeated seq=%" PRIi64,
+				      header->sequence_number);
+				*skip_media_blobs_until_next_section = true;
+			} else {
+				debug("Handling new seq=%" PRIi64
+				      ", greatest=%" PRIi64,
+				      header->sequence_number,
+				      max_sequence_number_video(p));
+				if (header->has_sequence_number) {
+					set_sequence_number_video(
+						p,
+						header->sequence_number);
+				}
+				if (header->has_duration_ms) {
+					debug("Advancing video by duration "
+					      "%" PRIi64 " + %" PRIi32,
+					      p->buffered_video_range
+					              .duration_ms,
+					      header->duration_ms);
+					p->buffered_video_range.duration_ms +=
+						header->duration_ms;
+				}
+				debug("Setting buffered_video_range "
+				      "duration_ms=%" PRIi64
+				      ", start_segment_index=%d, "
+				      "end_segment_index=%d",
+				      p->buffered_video_range.duration_ms,
+				      p->buffered_video_range
+				              .start_segment_index,
+				      p->buffered_video_range
+				              .end_segment_index);
+			}
+			break;
+		}
+		break;
+	case 21: /* MEDIA */
+		if (*skip_media_blobs_until_next_section) {
+			debug("Skipping media blob at cursor=%zu", *cursor);
+		} else {
+			// TODO: raise more specific error for header_id
+			check(ump_varint_read(ump, cursor, &header_id));
+			debug("Got media blob header_id=%" PRIu64
+			      ", cursor=%zu, part_size=%" PRIu64
+			      ", remaining_bytes=%zu",
+			      header_id,
+			      *cursor,
+			      part_size,
+			      ump->sz - *cursor);
+			assert(header_id <= UCHAR_MAX);
+			int fd = (header_audio_video_mapping[header_id] ==
+			          HEADER_AUDIO)
+			                 ? get_fd_audio(p)
+			                 : get_fd_video(p);
+			written = write_with_retry(fd,
+			                           ump->data + *cursor,
+			                           part_size - 1);
+			info_m_if(written < 0, "Cannot write media to stdout");
+			debug("Wrote media blob bytes=%zd to fd=%d",
+			      written,
+			      fd);
+			*cursor -= 1; // rewind cursor, let caller update
+		}
+		break;
+	case 35: /* NEXT_REQUEST_POLICY */
+		*skip_media_blobs_until_next_section = false;
+		assert(sizeof(uint8_t) == sizeof(ump->data[0]));
+		next_request_policy =
+			video_streaming__next_request_policy__unpack(
+				NULL,
+				part_size,
+				(const uint8_t *)ump->data + *cursor);
+		assert(next_request_policy); // TODO: error out on misparse
+		if (p->req.streamer_context->has_playback_cookie &&
+		    p->req.streamer_context->playback_cookie.data) {
+			free(p->req.streamer_context->playback_cookie.data);
+			p->req.streamer_context->playback_cookie.data = NULL;
+		}
+		const size_t cookie_packed_sz =
+			video_streaming__playback_cookie__get_packed_size(
+				next_request_policy->playback_cookie);
+		p->req.streamer_context->playback_cookie.data = malloc(
+			cookie_packed_sz *
+			sizeof(*p->req.streamer_context->playback_cookie.data));
+		// TODO: handle malloc error
+		p->req.streamer_context->playback_cookie.len = cookie_packed_sz;
+		p->req.streamer_context->has_playback_cookie = true;
+		video_streaming__playback_cookie__pack(
+			next_request_policy->playback_cookie,
+			p->req.streamer_context->playback_cookie.data);
+		debug("Updating playback cookie of size=%zu", cookie_packed_sz);
+		break;
+	case 42: /* FORMAT_INITIALIZATION_METADATA */
+		*skip_media_blobs_until_next_section = false;
+		assert(sizeof(uint8_t) == sizeof(ump->data[0]));
+		fmt = video_streaming__format_initialization_metadata__unpack(
+			NULL,
+			part_size,
+			(const uint8_t *)ump->data + *cursor);
+		assert(fmt); // TODO: error out on misparse
+		debug("Got format video=%s, itag=%d, "
+		      "duration=%d"
+		      ", init_start=%d, init_end=%d"
+		      ", index_start=%d, index_end=%d",
+		      fmt->video_id,
+		      fmt->format_id->has_itag ? fmt->format_id->itag : -1,
+		      (fmt->has_duration_ms ? fmt->duration_ms : -1),
+		      (fmt->init_range->has_start ? fmt->init_range->start
+		                                  : -1),
+		      (fmt->init_range->has_end ? fmt->init_range->end : -1),
+		      (fmt->index_range->has_start ? fmt->index_range->start
+		                                   : -1),
+		      (fmt->index_range->has_end ? fmt->index_range->end : -1));
+		break;
+	case 43: /* SABR_REDIRECT */
+		*skip_media_blobs_until_next_section = false;
+		assert(sizeof(uint8_t) == sizeof(ump->data[0]));
+		redirect = video_streaming__sabr_redirect__unpack(
+			NULL,
+			part_size,
+			(const uint8_t *)ump->data + *cursor);
+		assert(redirect);            // TODO: error out on misparse
+		*target_url = redirect->url; // TODO: error on NULL url member?
+		debug("Got redirect to new SABR url: %s", redirect->url);
+		break;
+	default:
+		*skip_media_blobs_until_next_section = false;
+		break;
+	}
+
+	return RESULT_OK;
+}
+
+static result_t
+ump_parse(struct protocol_state *p,
+          const struct string_view *ump,
+          char **target_url)
+{
+	debug("Got UMP response of sz=%zu", ump->sz);
+
+	size_t cursor = 0;
+	header_mapping header_audio_video_mapping[UCHAR_MAX + 1] = {0};
+	bool skip_media_blobs_until_next_section = false;
+	while (cursor < ump->sz) {
+		uint64_t part_type = 0;
+		// TODO: raise more specific error for part_type
+		check(ump_varint_read(ump, &cursor, &part_type));
+
+		uint64_t part_size = 0;
+		// TODO: raise more specific error for part_size
+		check(ump_varint_read(ump, &cursor, &part_size));
+
+		debug("Got part_type=%" PRIu64 ", part_size=%" PRIu64,
+		      part_type,
+		      part_size);
+
+		check(ump_part_parse(p,
+		                     ump,
+		                     target_url,
+		                     part_type,
+		                     part_size,
+		                     &cursor,
+		                     &skip_media_blobs_until_next_section,
+		                     header_audio_video_mapping));
+
+		cursor += part_size;
+	}
+
+	return RESULT_OK;
+}
+
+result_t
+protocol_parse_response(struct protocol_state *p,
+                        const struct string_view *response,
+                        char **target_url)
+{
+	check(ump_parse(p, response, target_url));
+	protocol_update_members(p);
+	return RESULT_OK;
+}

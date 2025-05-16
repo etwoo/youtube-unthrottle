@@ -34,10 +34,13 @@ target_sources(youtube-protocol PRIVATE
 	${PROTO_C}
 	stream.c
 )
-target_include_directories(youtube-protocol PUBLIC # TODO: switch to PRIVATE
+target_include_directories(youtube-protocol PRIVATE
 	${CMAKE_CURRENT_BINARY_DIR}
+	${PROJECT_SOURCE_DIR}/include
+	${PROJECT_SOURCE_DIR}/src
 )
 target_link_libraries(youtube-protocol PRIVATE
+	my_cflags
 	protobuf-c
 	resolv # for b64_pton()
 )

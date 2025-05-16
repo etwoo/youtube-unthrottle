@@ -3,28 +3,19 @@
 #include "lib/js.h"
 #include "lib/re.h"
 #include "lib/url.h"
+#include "protocol/stream.h"
 #include "sys/array.h"
 #include "sys/debug.h"
 #include "sys/tmpfile.h"
 #include "sys/write.h"
-#include "video_streaming/format_initialization_metadata.pb-c.h"
-#include "video_streaming/media_header.pb-c.h"
-#include "video_streaming/next_request_policy.pb-c.h"
-#include "video_streaming/sabr_redirect.pb-c.h"
-#include "video_streaming/video_playback_abr_request.pb-c.h"
 
 #include <ada_c.h>
 #include <assert.h>
 #include <errno.h>
-#include <inttypes.h>
-#include <resolv.h> /* for b64_pton() */
-#include <stdio.h>  /* for asprintf() */
+#include <stdio.h> /* for asprintf() */
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-
-#define min(x, y) (x < y ? x : y) // TODO: reuse some systemwide define?
-#define max(x, y) (x > y ? x : y) // TODO: reuse some systemwide define?
 
 static const char ARG_N[] = "n";
 
@@ -208,35 +199,6 @@ download_and_mmap_tmpfd(const char *url,
 	return RESULT_OK;
 }
 
-static const char AMPERSAND[] = "\\u0026"; // URI-encoded ampersand character
-static const size_t AMPERSAND_SZ = strlen(AMPERSAND);
-
-static void
-decode_ampersands(struct string_view in /* note: pass by value */, char **out)
-{
-	char *buffer = malloc((in.sz + 1) * sizeof(*buffer));
-	*out = buffer;
-	while (buffer) {
-		const char *src_end = strnstr(in.data, AMPERSAND, in.sz);
-		if (src_end == NULL) {
-			memcpy(buffer, in.data, in.sz);
-			buffer[in.sz] = '\0';
-			break;
-		}
-
-		size_t n = src_end - in.data;
-		memcpy(buffer, in.data, n);
-
-		buffer += n;
-		*buffer = '&';
-		buffer += 1;
-
-		n += AMPERSAND_SZ; /* skip URI-encoded ampersand in <in.data> */
-		in.data += n;
-		in.sz -= n;
-	}
-}
-
 struct downloaded {
 	const char *description; /* does not own */
 	int fd;
@@ -267,456 +229,41 @@ str_free(char **strp)
 }
 
 static void
-ustr_free(unsigned char **strp)
-{
-	free(*strp);
-}
-
-static void
 ciphertexts_cleanup(char *ciphertexts[][2])
 {
-	free((*ciphertexts)[0]); /* handles NULL gracefully */
+	free((*ciphertexts)[0]);
 	(*ciphertexts)[0] = NULL;
 	assert((*ciphertexts)[1] == NULL);
 	debug("free()-d n-param ciphertext bufs");
 }
 
-static void
-ump_request_policy_free(VideoStreaming__NextRequestPolicy **policy)
-{
-	video_streaming__next_request_policy__free_unpacked(*policy, NULL);
-}
+static const char AMPERSAND[] = "\\u0026"; // URI-encoded ampersand character
+static const size_t AMPERSAND_SZ = strlen(AMPERSAND);
 
 static void
-ump_header_free(VideoStreaming__MediaHeader **header)
+decode_ampersands(struct string_view in /* note: pass by value */, char **out)
 {
-	video_streaming__media_header__free_unpacked(*header, NULL);
-}
-
-static void
-ump_formats_free(VideoStreaming__FormatInitializationMetadata **format_init)
-{
-	video_streaming__format_initialization_metadata__free_unpacked(
-		*format_init,
-		NULL);
-}
-
-static void
-sabr_redirect_free(VideoStreaming__SabrRedirect **redirect)
-{
-	video_streaming__sabr_redirect__free_unpacked(*redirect, NULL);
-}
-
-/*
- * Convert base64url-encoded content to standard base64 format.
- *
- * https://datatracker.ietf.org/doc/html/rfc4648#section-5
- */
-static void
-base64url_to_standard_base64(char *buf)
-{
-	for (char *c = buf; *c; ++c) {
-		switch (*c) {
-		case '-':
-			*c = '+';
-			break;
-		case '_':
-			*c = '/';
+	char *buffer = malloc((in.sz + 1) * sizeof(*buffer));
+	*out = buffer;
+	while (buffer) {
+		const char *src_end = strnstr(in.data, AMPERSAND, in.sz);
+		if (src_end == NULL) {
+			memcpy(buffer, in.data, in.sz);
+			buffer[in.sz] = '\0';
 			break;
 		}
+
+		size_t n = src_end - in.data;
+		memcpy(buffer, in.data, n);
+
+		buffer += n;
+		*buffer = '&';
+		buffer += 1;
+
+		n += AMPERSAND_SZ; /* skip URI-encoded ampersand in <in.data> */
+		in.data += n;
+		in.sz -= n;
 	}
-}
-
-static const unsigned char CHAR_BIT_0 = 0x80; // bit pattern: 10000000
-static const unsigned char CHAR_BIT_1 = 0x40; // bit pattern: 01000000
-static const unsigned char CHAR_BIT_2 = 0x20; // bit pattern: 00100000
-static const unsigned char CHAR_BIT_3 = 0x10; // bit pattern: 00010000
-static const unsigned char CHAR_BIT_4 = 0x08; // bit pattern: 00001000
-
-static void
-ump_read_vle(const unsigned char first_byte,
-             size_t *bytes_to_read,
-             unsigned char *first_byte_mask)
-{
-	*bytes_to_read = 1;
-	*first_byte_mask = 0xFF; // bit pattern: 11111111
-	if (0 == (first_byte & CHAR_BIT_0)) {
-		return;
-	}
-
-	++*bytes_to_read;
-	*first_byte_mask ^= CHAR_BIT_0;
-	*first_byte_mask ^= CHAR_BIT_1;
-
-	if (0 == (first_byte & CHAR_BIT_1)) {
-		return;
-	}
-
-	++*bytes_to_read;
-	*first_byte_mask ^= CHAR_BIT_2;
-
-	if (0 == (first_byte & CHAR_BIT_2)) {
-		return;
-	}
-
-	++*bytes_to_read;
-	*first_byte_mask ^= CHAR_BIT_3;
-
-	if (0 == (first_byte & CHAR_BIT_3)) {
-		return;
-	}
-
-	++*bytes_to_read;
-	*first_byte_mask ^= CHAR_BIT_4;
-}
-
-static result_t
-ump_varint_read(const struct string_view *ump, size_t *cursor, uint64_t *value)
-{
-	assert(*cursor < ump->sz);
-
-	size_t bytes_to_read = 0;
-	unsigned char first_byte_mask = 0xFF;
-	ump_read_vle(ump->data[*cursor], &bytes_to_read, &first_byte_mask);
-	debug("Got first_byte=%hhu, bytes_to_read=%zu, first_byte_mask=%02X",
-	      ump->data[*cursor],
-	      bytes_to_read,
-	      first_byte_mask);
-
-	check_if(*cursor <= SIZE_MAX - bytes_to_read &&
-	                 *cursor + bytes_to_read >= ump->sz,
-	         1); // TOOD: ERR_YOUTUBE_CURSOR_EXCEEDS_UMP_DATA
-
-	uint64_t parsed[5] = {0};
-	switch (bytes_to_read) {
-	case 5: // TODO: bytes_to_read=5 is probably broken
-		parsed[4] = ump->data[*cursor + 4] << 24;
-		__attribute__((fallthrough));
-	case 4: // TODO: bytes_to_read=4 is probably broken
-		parsed[3] = ump->data[*cursor + 3] << 16;
-		__attribute__((fallthrough));
-	case 3:
-		parsed[2] = ump->data[*cursor + 2] << (8 + (8 - bytes_to_read));
-		__attribute__((fallthrough));
-	case 2:
-		parsed[1] = (unsigned char)ump->data[*cursor + 1]
-		            << (8 - bytes_to_read);
-		__attribute__((fallthrough));
-	case 1:
-		parsed[0] = ump->data[*cursor] & first_byte_mask;
-		break;
-	default:
-		assert(false);
-		break;
-	}
-	*cursor += bytes_to_read;
-
-	*value = 0;
-	for (size_t i = 0; i < ARRAY_SIZE(parsed); ++i) {
-		*value += parsed[i];
-	}
-
-	return RESULT_OK;
-}
-
-typedef enum {
-	HEADER_AUDIO,
-	HEADER_VIDEO,
-} header_mapping;
-
-static result_t
-ump_part_parse(uint64_t part_type,
-               uint64_t part_size,
-               const struct string_view *ump,
-               size_t *cursor,
-               struct youtube_stream *stream,
-               VideoStreaming__VideoPlaybackAbrRequest *req,
-               VideoStreaming__BufferedRange *buffered_audio_range,
-               VideoStreaming__BufferedRange *buffered_video_range,
-               bool *skip_media_blobs_until_next_section,
-               header_mapping *header_audio_video_mapping,
-               int64_t *greatest_seq_audio,
-               int64_t *greatest_seq_video)
-{
-	VideoStreaming__NextRequestPolicy *next_request_policy
-		__attribute__((cleanup(ump_request_policy_free))) = NULL;
-	VideoStreaming__MediaHeader *header
-		__attribute__((cleanup(ump_header_free))) = NULL;
-	VideoStreaming__FormatInitializationMetadata *fmt
-		__attribute__((cleanup(ump_formats_free))) = NULL;
-	VideoStreaming__SabrRedirect *redirect
-		__attribute__((cleanup(sabr_redirect_free))) = NULL;
-	uint64_t header_id = 0;
-	ssize_t written = -1;
-
-	switch (part_type) {
-	case 20: /* MEDIA_HEADER */
-		*skip_media_blobs_until_next_section = false;
-		assert(sizeof(uint8_t) == sizeof(ump->data[0]));
-		header = video_streaming__media_header__unpack(
-			NULL,
-			part_size,
-			(const uint8_t *)ump->data + *cursor);
-		assert(header); // TODO: error out on misparse
-		debug("Got header header_id=%" PRIu32
-		      ", video=%s, itag=%d, xtags=%s"
-		      ", start_data_range=%d, is_init_seg=%d"
-		      ", seq=%" PRIi64 ", start_ms=%d, duration_ms=%d"
-		      ", content_length=%" PRIi64 ", time_range.start=%" PRIi64
-		      ", time_range.duration=%" PRIi64
-		      ", time_range.timescale=%" PRIi32,
-		      header->header_id,
-		      header->video_id,
-		      header->has_itag ? header->itag : -1,
-		      header->xtags,
-		      header->has_start_data_range ? header->start_data_range
-		                                   : -1,
-		      header->has_is_init_seg ? header->is_init_seg : -1,
-		      header->has_sequence_number ? header->sequence_number
-		                                  : -1,
-		      header->has_start_ms ? header->start_ms : -1,
-		      header->has_duration_ms ? header->duration_ms : -1,
-		      header->has_content_length ? header->content_length : -1,
-		      (header->time_range && header->time_range->has_start
-		               ? header->time_range->start
-		               : -1),
-		      (header->time_range && header->time_range->has_duration
-		               ? header->time_range->duration
-		               : -1),
-		      (header->time_range && header->time_range->has_timescale
-		               ? header->time_range->timescale
-		               : -1));
-		switch (header->itag) {
-		case 251:
-			assert(header->header_id <= UCHAR_MAX);
-			header_audio_video_mapping[header->header_id] =
-				HEADER_AUDIO;
-			debug("Set audio header mapping for header_id=%" PRIu32,
-			      header->header_id);
-			if (header->has_sequence_number &&
-			    header->sequence_number <= *greatest_seq_audio) {
-				debug("Skipping repeated seq=%" PRIi64,
-				      header->sequence_number);
-				*skip_media_blobs_until_next_section = true;
-			} else {
-				debug("Handling new seq=%" PRIi64
-				      ", greatest=%" PRIi64,
-				      header->sequence_number,
-				      *greatest_seq_audio);
-				if (header->has_sequence_number) {
-					*greatest_seq_audio =
-						header->sequence_number;
-					buffered_audio_range
-						->end_segment_index =
-						header->sequence_number + 1;
-				}
-				if (header->has_duration_ms) {
-					debug("Advancing audio by duration "
-					      "%" PRIi64 " + %" PRIi32,
-					      buffered_audio_range->duration_ms,
-					      header->duration_ms);
-					buffered_audio_range->duration_ms +=
-						header->duration_ms;
-				}
-				debug("Setting buffered_audio_range "
-				      "duration_ms=%" PRIi64
-				      ", start_segment_index=%d, "
-				      "end_segment_index=%d",
-				      buffered_audio_range->duration_ms,
-				      buffered_audio_range->start_segment_index,
-				      buffered_audio_range->end_segment_index);
-			}
-			break;
-		case 299:
-			assert(header->header_id <= UCHAR_MAX);
-			header_audio_video_mapping[header->header_id] =
-				HEADER_VIDEO;
-			debug("Set video header mapping for header_id=%" PRIu32,
-			      header->header_id);
-			if (header->has_sequence_number &&
-			    header->sequence_number <= *greatest_seq_video) {
-				debug("Skipping repeated seq=%" PRIi64,
-				      header->sequence_number);
-				*skip_media_blobs_until_next_section = true;
-			} else {
-				debug("Handling new seq=%" PRIi64
-				      ", greatest=%" PRIi64,
-				      header->sequence_number,
-				      *greatest_seq_video);
-				if (header->has_sequence_number) {
-					*greatest_seq_video =
-						header->sequence_number;
-					buffered_video_range
-						->end_segment_index =
-						header->sequence_number + 1;
-				}
-				if (header->has_duration_ms) {
-					debug("Advancing video by duration "
-					      "%" PRIi64 " + %" PRIi32,
-					      buffered_video_range->duration_ms,
-					      header->duration_ms);
-					buffered_video_range->duration_ms +=
-						header->duration_ms;
-				}
-				debug("Setting buffered_video_range "
-				      "duration_ms=%" PRIi64
-				      ", start_segment_index=%d, "
-				      "end_segment_index=%d",
-				      buffered_video_range->duration_ms,
-				      buffered_video_range->start_segment_index,
-				      buffered_video_range->end_segment_index);
-			}
-			break;
-		}
-		break;
-	case 21: /* MEDIA */
-		if (*skip_media_blobs_until_next_section) {
-			debug("Skipping media blob at cursor=%zu", *cursor);
-		} else {
-			// TODO: raise more specific error for header_id
-			check(ump_varint_read(ump, cursor, &header_id));
-			debug("Got media blob header_id=%" PRIu64
-			      ", cursor=%zu, part_size=%" PRIu64
-			      ", remaining_bytes=%zu",
-			      header_id,
-			      *cursor,
-			      part_size,
-			      ump->sz - *cursor);
-			assert(header_id <= UCHAR_MAX);
-			int fd = (header_audio_video_mapping[header_id] ==
-			          HEADER_AUDIO)
-			                 ? stream->fd[0]
-			                 : stream->fd[1];
-			written = write_with_retry(fd,
-			                           ump->data + *cursor,
-			                           part_size - 1);
-			info_m_if(written < 0, "Cannot write media to stdout");
-			debug("Wrote media blob bytes=%zd to fd=%d",
-			      written,
-			      fd);
-			*cursor -= 1; // rewind cursor, let caller update
-		}
-		break;
-	case 35: /* NEXT_REQUEST_POLICY */
-		*skip_media_blobs_until_next_section = false;
-		assert(sizeof(uint8_t) == sizeof(ump->data[0]));
-		next_request_policy =
-			video_streaming__next_request_policy__unpack(
-				NULL,
-				part_size,
-				(const uint8_t *)ump->data + *cursor);
-		assert(next_request_policy); // TODO: error out on misparse
-		if (req->streamer_context->has_playback_cookie &&
-		    req->streamer_context->playback_cookie.data) {
-			free(req->streamer_context->playback_cookie.data);
-			req->streamer_context->playback_cookie.data = NULL;
-		}
-		const size_t cookie_packed_sz =
-			video_streaming__playback_cookie__get_packed_size(
-				next_request_policy->playback_cookie);
-		req->streamer_context->playback_cookie.data = malloc(
-			cookie_packed_sz *
-			sizeof(*req->streamer_context->playback_cookie.data));
-		// TODO: handle malloc error
-		req->streamer_context->playback_cookie.len = cookie_packed_sz;
-		req->streamer_context->has_playback_cookie = true;
-		video_streaming__playback_cookie__pack(
-			next_request_policy->playback_cookie,
-			req->streamer_context->playback_cookie.data);
-		debug("Updating playback cookie of size=%zu", cookie_packed_sz);
-		break;
-	case 42: /* FORMAT_INITIALIZATION_METADATA */
-		*skip_media_blobs_until_next_section = false;
-		assert(sizeof(uint8_t) == sizeof(ump->data[0]));
-		fmt = video_streaming__format_initialization_metadata__unpack(
-			NULL,
-			part_size,
-			(const uint8_t *)ump->data + *cursor);
-		assert(fmt); // TODO: error out on misparse
-		debug("Got format video=%s, itag=%d, "
-		      "duration=%d"
-		      ", init_start=%d, init_end=%d"
-		      ", index_start=%d, index_end=%d",
-		      fmt->video_id,
-		      fmt->format_id->has_itag ? fmt->format_id->itag : -1,
-		      (fmt->has_duration_ms ? fmt->duration_ms : -1),
-		      (fmt->init_range->has_start ? fmt->init_range->start
-		                                  : -1),
-		      (fmt->init_range->has_end ? fmt->init_range->end : -1),
-		      (fmt->index_range->has_start ? fmt->index_range->start
-		                                   : -1),
-		      (fmt->index_range->has_end ? fmt->index_range->end : -1));
-		break;
-	case 43: /* SABR_REDIRECT */
-		*skip_media_blobs_until_next_section = false;
-		assert(sizeof(uint8_t) == sizeof(ump->data[0]));
-		redirect = video_streaming__sabr_redirect__unpack(
-			NULL,
-			part_size,
-			(const uint8_t *)ump->data + *cursor);
-		assert(redirect); // TODO: error out on misparse
-		ada_set_href(stream->url,
-		             redirect->url, // TODO: error on NULL url member?
-		             strlen(redirect->url));
-		debug("Got redirect to new SABR url: %s", redirect->url);
-		break;
-	default:
-		*skip_media_blobs_until_next_section = false;
-		break;
-	}
-
-	return RESULT_OK;
-}
-
-static result_t
-ump_parse(const struct string_view *ump,
-          struct youtube_stream *stream,
-          VideoStreaming__VideoPlaybackAbrRequest *req,
-          VideoStreaming__BufferedRange *buffered_audio_range,
-          VideoStreaming__BufferedRange *buffered_video_range,
-          int64_t *greatest_seq_audio,
-          int64_t *greatest_seq_video)
-{
-	debug("Got UMP response of sz=%zu", ump->sz);
-#if 0
-	for (size_t i = 0; i < ump->sz; ++i) {
-		debug("%02X", (unsigned char)ump->data[i]); // TODO remove
-	}
-#endif
-
-	size_t cursor = 0;
-	header_mapping header_audio_video_mapping[UCHAR_MAX + 1] = {0};
-	bool skip_media_blobs_until_next_section = false;
-	while (cursor < ump->sz) {
-		uint64_t part_type = 0;
-		// TODO: raise more specific error for part_type
-		check(ump_varint_read(ump, &cursor, &part_type));
-
-		uint64_t part_size = 0;
-		// TODO: raise more specific error for part_size
-		check(ump_varint_read(ump, &cursor, &part_size));
-
-		debug("Got part_type=%" PRIu64 ", part_size=%" PRIu64,
-		      part_type,
-		      part_size);
-
-		check(ump_part_parse(part_type,
-		                     part_size,
-		                     ump,
-		                     &cursor,
-		                     stream,
-		                     req,
-		                     buffered_audio_range,
-		                     buffered_video_range,
-		                     &skip_media_blobs_until_next_section,
-		                     header_audio_video_mapping,
-		                     greatest_seq_audio,
-		                     greatest_seq_video));
-
-		cursor += part_size;
-	}
-
-	return RESULT_OK;
 }
 
 result_t
@@ -815,173 +362,48 @@ youtube_stream_setup(struct youtube_stream *p,
 		check(ops->after(userdata));
 	}
 
-	VideoStreaming__ClientAbrState abr_state;
-	video_streaming__client_abr_state__init(&abr_state);
-	abr_state.has_last_manual_selected_resolution = true;
-	abr_state.last_manual_selected_resolution = 1080;
-	abr_state.has_sticky_resolution = true;
-	abr_state.sticky_resolution = 1080;
-
-	VideoStreaming__StreamerContext__ClientInfo info;
-	video_streaming__streamer_context__client_info__init(&info);
-	info.has_client_name = true;
-	info.client_name = 1;
-	info.client_version = "2.20250312.04.00";
-	info.os_name = "Windows";
-	info.os_version = "10.0";
-
-	VideoStreaming__StreamerContext context;
-	video_streaming__streamer_context__init(&context);
-	context.client_info = &info;
-	context.has_po_token = true;
-	unsigned char *decoded_pot __attribute__((cleanup(ustr_free))) = NULL;
-	{
-		int decoded_sz = 0;
-
-		char *tmp __attribute__((cleanup(str_free))) =
-			strdup(p->proof_of_origin);
-		check_if(tmp == NULL, ERR_JS_PROOF_OF_ORIGIN_ALLOC);
-		base64url_to_standard_base64(tmp);
-		decoded_sz = b64_pton(tmp, NULL, 0);
-		check_if(decoded_sz < 0, ERR_JS_PROOF_OF_ORIGIN_BASE64_DECODE);
-		decoded_pot = malloc(decoded_sz);
-		check_if(decoded_pot == NULL, ERR_JS_PROOF_OF_ORIGIN_ALLOC);
-
-		const int rc = b64_pton(tmp, decoded_pot, decoded_sz);
-		check_if(rc < 0, ERR_JS_PROOF_OF_ORIGIN_BASE64_DECODE);
-
-		context.po_token.len = decoded_sz;
-	}
-	context.po_token.data = decoded_pot;
-
-	Misc__FormatId selected_audio_format;
-	misc__format_id__init(&selected_audio_format);
-	selected_audio_format.has_itag = true;
-	selected_audio_format.itag = 251;
-
-	Misc__FormatId selected_video_format;
-	misc__format_id__init(&selected_video_format);
-	selected_video_format.has_itag = true;
-	selected_video_format.itag = 299;
-
-	VideoStreaming__BufferedRange buffered_audio_range;
-	video_streaming__buffered_range__init(&buffered_audio_range);
-	buffered_audio_range.format_id = &selected_audio_format;
-	buffered_audio_range.duration_ms = 0;
-	buffered_audio_range.start_segment_index = 1;
-	buffered_audio_range.end_segment_index = 0;
-
-	VideoStreaming__BufferedRange buffered_video_range;
-	video_streaming__buffered_range__init(&buffered_video_range);
-	buffered_video_range.format_id = &selected_video_format;
-	buffered_video_range.duration_ms = 0;
-	buffered_video_range.start_segment_index = 1;
-	buffered_video_range.end_segment_index = 0;
-
-	VideoStreaming__VideoPlaybackAbrRequest req;
-	video_streaming__video_playback_abr_request__init(&req);
-	req.client_abr_state = &abr_state;
-	req.has_video_playback_ustreamer_config = true;
-	unsigned char *decoded_config __attribute__((cleanup(ustr_free))) =
+	char *null_terminated_sabr_url __attribute__((cleanup(str_free))) =
 		NULL;
 	{
-		int decoded_sz = 0;
-
-		struct string_view config = {0};
-		check(find_playback_config(&html.data, &config));
-
-		char *tmp __attribute__((cleanup(str_free))) =
-			strndup(config.data, config.sz);
-		check_if(tmp == NULL, ERR_JS_PLAYBACK_CONFIG_ALLOC);
-		base64url_to_standard_base64(tmp);
-		decoded_sz = b64_pton(tmp, NULL, 0);
-		check_if(decoded_sz < 0, ERR_JS_PLAYBACK_CONFIG_BASE64_DECODE);
-		decoded_config = malloc(decoded_sz);
-		check_if(decoded_config == NULL, ERR_JS_PLAYBACK_CONFIG_ALLOC);
-
-		const int rc = b64_pton(tmp, decoded_config, decoded_sz);
-		check_if(rc < 0, ERR_JS_PLAYBACK_CONFIG_BASE64_DECODE);
-
-		req.video_playback_ustreamer_config.len = decoded_sz;
+		ada_string tmp = ada_get_href(p->url);
+		null_terminated_sabr_url = strndup(tmp.data, tmp.length);
 	}
-	req.video_playback_ustreamer_config.data = decoded_config;
-	req.n_selected_audio_format_ids = 1;
-	req.selected_audio_format_ids =
-		(Misc__FormatId *[]){&selected_audio_format};
-	req.n_selected_video_format_ids = 1;
-	req.selected_video_format_ids =
-		(Misc__FormatId *[]){&selected_video_format};
-	req.streamer_context = &context;
+	check_if(null_terminated_sabr_url == NULL, ERR_JS_SABR_URL_ALLOC);
 
-	int64_t greatest_seq_audio = -1;
-	int64_t greatest_seq_video = -1;
+	struct string_view playback_config = {0};
+	check(find_playback_config(&html.data, &playback_config));
+
+	protocol stream =
+		protocol_init(p->proof_of_origin, &playback_config, p->fd);
+	check_if(stream == NULL, 1); // TODO: add errcode for protocol alloc
 
 	for (size_t requests = 0; requests < 5; ++requests) {
-		const size_t sabr_packed_sz =
-			video_streaming__video_playback_abr_request__get_packed_size(
-				&req);
+		char *sabr_post __attribute__((cleanup(str_free))) = NULL;
+		size_t sabr_post_sz = 0;
+		check(protocol_next_request(stream, &sabr_post, &sabr_post_sz));
 
-		char *sabr_post __attribute__((cleanup(str_free))) =
-			malloc(sabr_packed_sz * sizeof(*sabr_post));
-		check_if(sabr_post == NULL, ERR_JS_SABR_POST_BODY_ALLOC);
-		video_streaming__video_playback_abr_request__pack(
-			&req,
-			(unsigned char *)sabr_post);
-
-		debug("Sending protobuf blob of sz=%zu", sabr_packed_sz);
-		for (size_t i = 0; i < sabr_packed_sz; ++i) {
-			debug("%02X",
-			      (unsigned char)sabr_post[i]); // TODO remove
+		debug("Sending protobuf blob of sz=%zu", sabr_post_sz);
+		for (size_t i = 0; i < sabr_post_sz; ++i) {
+			debug("%02X", (unsigned char)sabr_post[i]); // TODO rm
 		}
 
-		char *null_terminated_sabr_deobuscated_n_param
-			__attribute__((cleanup(str_free))) = NULL;
-		{
-			ada_string tmp = ada_get_href(p->url);
-			null_terminated_sabr_deobuscated_n_param =
-				strndup(tmp.data, tmp.length);
-			check_if(null_terminated_sabr_deobuscated_n_param ==
-			                 NULL,
-			         ERR_JS_SABR_URL_ALLOC);
-		}
-
-		struct downloaded ump
-			__attribute__((cleanup(downloaded_cleanup)));
+		struct downloaded ump __attribute__((cleanup(downloaded_cleanup)));
 		downloaded_init(&ump, "UMP response tmpfile");
 		check(tmpfd(&ump.fd));
-		check(download_and_mmap_tmpfd(
-			null_terminated_sabr_deobuscated_n_param,
-			NULL,
-			NULL,
-			sabr_post,
-			sabr_packed_sz,
-			NULL,
-			ump.fd,
-			&ump.data,
-			&p->request_context));
-		check(ump_parse(&ump.data,
-		                p,
-		                &req,
-		                &buffered_audio_range,
-		                &buffered_video_range,
-		                &greatest_seq_audio,
-		                &greatest_seq_video));
 
-		req.n_selected_format_ids = 2;
-		req.selected_format_ids = (Misc__FormatId *[]){
-			&selected_audio_format,
-			&selected_video_format,
-		};
-		req.n_buffered_ranges = 2;
-		req.buffered_ranges = (VideoStreaming__BufferedRange *[]){
-			&buffered_audio_range,
-			&buffered_video_range,
-		};
+		check(download_and_mmap_tmpfd(null_terminated_sabr_url,
+		                              NULL,
+		                              NULL,
+		                              sabr_post,
+		                              sabr_post_sz,
+		                              NULL,
+		                              ump.fd,
+		                              &ump.data,
+		                              &p->request_context));
 
-		abr_state.has_player_time_ms = true;
-		abr_state.player_time_ms =
-			min(buffered_audio_range.duration_ms,
-		            buffered_video_range.duration_ms);
+		check(protocol_parse_response(stream,
+		                              &ump.data,
+		                              &null_terminated_sabr_url));
 	}
 
 	return RESULT_OK;
