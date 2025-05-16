@@ -387,7 +387,8 @@ youtube_stream_setup(struct youtube_stream *p,
 			debug("%02X", (unsigned char)sabr_post[i]); // TODO rm
 		}
 
-		struct downloaded ump __attribute__((cleanup(downloaded_cleanup)));
+		struct downloaded ump
+			__attribute__((cleanup(downloaded_cleanup)));
 		downloaded_init(&ump, "UMP response tmpfile");
 		check(tmpfd(&ump.fd));
 

@@ -13,7 +13,7 @@
 #include "youtube.h"
 
 #include <assert.h>
-#include <fcntl.h> /* for open() */
+#include <fcntl.h>  /* for open() */
 #include <getopt.h> /* for getopt_long() */
 #include <stdarg.h>
 #include <stdbool.h>

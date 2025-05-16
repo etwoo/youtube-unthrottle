@@ -625,7 +625,7 @@ ump_part_parse(struct protocol_state *p,
 			NULL,
 			part_size,
 			(const uint8_t *)ump->data + *cursor);
-		assert(redirect); // TODO: error on !redirect || !redirect->url 
+		assert(redirect); // TODO: error on !redirect || !redirect->url
 		debug("Got redirect to new SABR url: %s", redirect->url);
 		free(*target_url);
 		*target_url = strdup(redirect->url);
