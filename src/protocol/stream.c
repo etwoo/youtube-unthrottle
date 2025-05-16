@@ -154,6 +154,66 @@ increment_header_duration(struct protocol_state *p,
 }
 
 static void
+ump_parse_media_header(struct protocol_state *p,
+                       VideoStreaming__MediaHeader *header,
+                       bool *skip_media_blobs_until_next)
+{
+	set_header_media_type(p, header->header_id, header->itag);
+	if (header->has_sequence_number &&
+	    header->sequence_number <=
+	            max_seq_num_for_header(p, header->header_id)) {
+		debug("Skipping repeated seq=%" PRIi64,
+		      header->sequence_number);
+		*skip_media_blobs_until_next = true;
+		return;
+	}
+
+	debug("Handling new seq=%" PRIi64 ", greatest=%" PRIi64,
+	      header->sequence_number,
+	      max_seq_num_for_header(p, header->header_id));
+	if (header->has_sequence_number) {
+		set_header_sequence_number(p,
+		                           header->header_id,
+		                           header->sequence_number);
+	}
+	if (header->has_duration_ms) {
+		increment_header_duration(p,
+		                          header->header_id,
+		                          header->duration_ms);
+	}
+}
+
+static void
+debug_protobuf_media_header(VideoStreaming__MediaHeader *header)
+{
+	debug("Got header header_id=%" PRIu32 ", video=%s, itag=%d, xtags=%s"
+	      ", start_data_range=%d, is_init_seg=%d"
+	      ", seq=%" PRIi64 ", start_ms=%d, duration_ms=%d"
+	      ", content_length=%" PRIi64 ", time_range.start=%" PRIi64
+	      ", time_range.duration=%" PRIi64
+	      ", time_range.timescale=%" PRIi32,
+	      header->header_id,
+	      header->video_id,
+	      header->has_itag ? header->itag : -1,
+	      header->xtags,
+	      header->has_start_data_range ? header->start_data_range : -1,
+	      header->has_is_init_seg ? header->is_init_seg : -1,
+	      header->has_sequence_number ? header->sequence_number : -1,
+	      header->has_start_ms ? header->start_ms : -1,
+	      header->has_duration_ms ? header->duration_ms : -1,
+	      header->has_content_length ? header->content_length : -1,
+	      (header->time_range && header->time_range->has_start
+	               ? header->time_range->start
+	               : -1),
+	      (header->time_range && header->time_range->has_duration
+	               ? header->time_range->duration
+	               : -1),
+	      (header->time_range && header->time_range->has_timescale
+	               ? header->time_range->timescale
+	               : -1));
+}
+
+static void
 protocol_init_members(struct protocol_state *p)
 {
 	video_streaming__client_abr_state__init(&p->abr_state);
@@ -409,13 +469,13 @@ ump_varint_read(const struct string_view *ump, size_t *cursor, uint64_t *value)
 }
 
 static result_t
-ump_part_parse(struct protocol_state *p,
+ump_parse_part(struct protocol_state *p,
                const struct string_view *ump,
                char **target_url,
                uint64_t part_type,
                uint64_t part_size,
                size_t *cursor,
-               bool *skip_media_blobs_until_next_section)
+               bool *skip_media_blobs_until_next)
 {
 	VideoStreaming__NextRequestPolicy *next_request_policy
 		__attribute__((cleanup(ump_request_policy_free))) = NULL;
@@ -430,70 +490,20 @@ ump_part_parse(struct protocol_state *p,
 
 	switch (part_type) {
 	case 20: /* MEDIA_HEADER */
-		*skip_media_blobs_until_next_section = false;
+		*skip_media_blobs_until_next = false;
 		assert(sizeof(uint8_t) == sizeof(ump->data[0]));
 		header = video_streaming__media_header__unpack(
 			NULL,
 			part_size,
 			(const uint8_t *)ump->data + *cursor);
 		assert(header); // TODO: error out on misparse
-		// TODO: move big header logging (below) into dedicated function
-		debug("Got header header_id=%" PRIu32
-		      ", video=%s, itag=%d, xtags=%s"
-		      ", start_data_range=%d, is_init_seg=%d"
-		      ", seq=%" PRIi64 ", start_ms=%d, duration_ms=%d"
-		      ", content_length=%" PRIi64 ", time_range.start=%" PRIi64
-		      ", time_range.duration=%" PRIi64
-		      ", time_range.timescale=%" PRIi32,
-		      header->header_id,
-		      header->video_id,
-		      header->has_itag ? header->itag : -1,
-		      header->xtags,
-		      header->has_start_data_range ? header->start_data_range
-		                                   : -1,
-		      header->has_is_init_seg ? header->is_init_seg : -1,
-		      header->has_sequence_number ? header->sequence_number
-		                                  : -1,
-		      header->has_start_ms ? header->start_ms : -1,
-		      header->has_duration_ms ? header->duration_ms : -1,
-		      header->has_content_length ? header->content_length : -1,
-		      (header->time_range && header->time_range->has_start
-		               ? header->time_range->start
-		               : -1),
-		      (header->time_range && header->time_range->has_duration
-		               ? header->time_range->duration
-		               : -1),
-		      (header->time_range && header->time_range->has_timescale
-		               ? header->time_range->timescale
-		               : -1));
+		debug_protobuf_media_header(header);
 		assert(header->header_id <= UCHAR_MAX);
-		set_header_media_type(p, header->header_id, header->itag);
-		if (header->has_sequence_number &&
-		    header->sequence_number <=
-		            max_seq_num_for_header(p, header->header_id)) {
-			debug("Skipping repeated seq=%" PRIi64,
-			      header->sequence_number);
-			*skip_media_blobs_until_next_section = true;
-		} else {
-			debug("Handling new seq=%" PRIi64 ", greatest=%" PRIi64,
-			      header->sequence_number,
-			      max_seq_num_for_header(p, header->header_id));
-			if (header->has_sequence_number) {
-				set_header_sequence_number(
-					p,
-					header->header_id,
-					header->sequence_number);
-			}
-			if (header->has_duration_ms) {
-				increment_header_duration(p,
-				                          header->header_id,
-				                          header->duration_ms);
-			}
-		}
+		ump_parse_media_header(p, header, skip_media_blobs_until_next);
 		break;
 	case 21: /* MEDIA */
 		// TODO: move MEDIA case into dedicated function, less indent
-		if (*skip_media_blobs_until_next_section) {
+		if (*skip_media_blobs_until_next) {
 			debug("Skipping media blob at cursor=%zu", *cursor);
 		} else {
 			// TODO: raise more specific error for header_id
@@ -518,7 +528,7 @@ ump_part_parse(struct protocol_state *p,
 		}
 		break;
 	case 35: /* NEXT_REQUEST_POLICY */
-		*skip_media_blobs_until_next_section = false;
+		*skip_media_blobs_until_next = false;
 		assert(sizeof(uint8_t) == sizeof(ump->data[0]));
 		next_request_policy =
 			video_streaming__next_request_policy__unpack(
@@ -546,7 +556,7 @@ ump_part_parse(struct protocol_state *p,
 		debug("Updating playback cookie of size=%zu", cookie_packed_sz);
 		break;
 	case 42: /* FORMAT_INITIALIZATION_METADATA */
-		*skip_media_blobs_until_next_section = false;
+		*skip_media_blobs_until_next = false;
 		assert(sizeof(uint8_t) == sizeof(ump->data[0]));
 		fmt = video_streaming__format_initialization_metadata__unpack(
 			NULL,
@@ -568,7 +578,7 @@ ump_part_parse(struct protocol_state *p,
 		      (fmt->index_range->has_end ? fmt->index_range->end : -1));
 		break;
 	case 43: /* SABR_REDIRECT */
-		*skip_media_blobs_until_next_section = false;
+		*skip_media_blobs_until_next = false;
 		assert(sizeof(uint8_t) == sizeof(ump->data[0]));
 		redirect = video_streaming__sabr_redirect__unpack(
 			NULL,
@@ -580,7 +590,7 @@ ump_part_parse(struct protocol_state *p,
 		*target_url = strdup(redirect->url);
 		break;
 	default:
-		*skip_media_blobs_until_next_section = false;
+		*skip_media_blobs_until_next = false;
 		break;
 	}
 
@@ -611,7 +621,7 @@ ump_parse(struct protocol_state *p,
 		      part_type,
 		      part_size);
 
-		check(ump_part_parse(p,
+		check(ump_parse_part(p,
 		                     ump,
 		                     target_url,
 		                     part_type,
