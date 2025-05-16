@@ -16,9 +16,9 @@
 #include <ada_c.h>
 #include <assert.h>
 #include <errno.h>
-#include <resolv.h> /* for b64_pton() */
 #include <inttypes.h>
-#include <stdio.h> /* for asprintf() */
+#include <resolv.h> /* for b64_pton() */
+#include <stdio.h>  /* for asprintf() */
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -29,7 +29,7 @@
 static const char ARG_N[] = "n";
 
 struct youtube_stream {
-	ada_url url[2];
+	ada_url url;
 	const char *proof_of_origin;
 	const char *visitor_data;
 	struct url_request_context request_context;
@@ -73,10 +73,8 @@ void
 youtube_stream_cleanup(struct youtube_stream *p)
 {
 	if (p) {
-		for (size_t i = 0; i < ARRAY_SIZE(p->url); ++i) {
-			ada_free(p->url[i]); /* handles NULL gracefully */
-			p->url[i] = NULL;
-		}
+		ada_free(p->url); /* handles NULL gracefully */
+		p->url = NULL;
 		url_context_cleanup(&p->request_context);
 		for (size_t i = 0; i < ARRAY_SIZE(p->fd); ++i) {
 			close(p->fd[i]);
@@ -89,9 +87,7 @@ youtube_stream_cleanup(struct youtube_stream *p)
 static void
 youtube_stream_valid(struct youtube_stream *p)
 {
-	for (size_t i = 0; i < ARRAY_SIZE(p->url); ++i) {
-		assert(ada_is_valid(p->url[i]));
-	}
+	assert(ada_is_valid(p->url));
 	for (size_t i = 0; i < ARRAY_SIZE(p->fd); ++i) {
 		assert(p->fd[i] > 0);
 	}
@@ -103,10 +99,8 @@ youtube_stream_visitor(struct youtube_stream *p,
                        void *userdata)
 {
 	youtube_stream_valid(p);
-	for (size_t i = 0; i < ARRAY_SIZE(p->url); ++i) {
-		ada_string s = ada_get_href(p->url[i]);
-		visit(s.data, s.length, userdata);
-	}
+	ada_string s = ada_get_href(p->url);
+	visit(s.data, s.length, userdata);
 	return RESULT_OK;
 }
 
@@ -140,7 +134,7 @@ ada_search_params_set_helper(ada_url url, const char *key, const char *val)
 }
 
 static WARN_UNUSED result_t
-youtube_stream_set_one(struct youtube_stream *p, int idx, const char *val)
+youtube_stream_set_one(struct youtube_stream *p, const char *val)
 {
 	const size_t val_sz = strlen(val);
 	if (!ada_can_parse(val, val_sz)) {
@@ -149,25 +143,8 @@ youtube_stream_set_one(struct youtube_stream *p, int idx, const char *val)
 		                   val_sz);
 	}
 
-	assert(idx >= 0 && (unsigned int)idx < ARRAY_SIZE(p->url));
-	p->url[idx] = ada_parse(val, strlen(val));
+	p->url = ada_parse(val, strlen(val));
 	return RESULT_OK;
-}
-
-static WARN_UNUSED result_t
-youtube_stream_set_video(const char *val, void *userdata)
-{
-	struct youtube_stream *p = (struct youtube_stream *)userdata;
-	debug("Setting video stream: %s", val);
-	return youtube_stream_set_one(p, 1, val);
-}
-
-static WARN_UNUSED result_t
-youtube_stream_set_audio(const char *val, void *userdata)
-{
-	struct youtube_stream *p = (struct youtube_stream *)userdata;
-	debug("Setting audio stream: %s", val);
-	return youtube_stream_set_one(p, 0, val);
 }
 
 /*
@@ -195,26 +172,12 @@ copy_n_param_one(ada_url url, char **result)
 	return RESULT_OK;
 }
 
-/*
- * Copy n-parameter values from all query strings in <p>.
- *
- * Caller has responsibility to free() the pointers returned in <results>.
- */
-static WARN_UNUSED result_t
-copy_n_param_all(struct youtube_stream *p, char **results)
-{
-	for (size_t i = 0; i < ARRAY_SIZE(p->url); ++i) {
-		check(copy_n_param_one(p->url[i], results + i));
-	}
-	return RESULT_OK;
-}
-
 static WARN_UNUSED result_t
 youtube_stream_update_n_param(const char *val, size_t pos, void *userdata)
 {
 	struct youtube_stream *p = (struct youtube_stream *)userdata;
-	assert(pos < ARRAY_SIZE(p->url));
-	ada_search_params_set_helper(p->url[pos], ARG_N, val);
+	assert(pos == 0);
+	ada_search_params_set_helper(p->url, ARG_N, val);
 	return RESULT_OK;
 }
 
@@ -310,17 +273,12 @@ ustr_free(unsigned char **strp)
 }
 
 static void
-ciphertexts_cleanup(char *ciphertexts[][3])
+ciphertexts_cleanup(char *ciphertexts[][2])
 {
-	size_t free_count = 0;
-	for (size_t i = 0; i < ARRAY_SIZE(*ciphertexts); ++i) {
-		if ((*ciphertexts)[i]) {
-			free((*ciphertexts)[i]);
-			(*ciphertexts)[i] = NULL;
-			++free_count;
-		}
-	}
-	debug("free()-d %zu n-param ciphertext bufs", free_count);
+	free((*ciphertexts)[0]); /* handles NULL gracefully */
+	(*ciphertexts)[0] = NULL;
+	assert((*ciphertexts)[1] == NULL);
+	debug("free()-d n-param ciphertext bufs");
 }
 
 static void
@@ -705,7 +663,7 @@ ump_part_parse(uint64_t part_type,
 			part_size,
 			(const uint8_t *)ump->data + *cursor);
 		assert(redirect); // TODO: error out on misparse
-		ada_set_href(stream->url[0],
+		ada_set_href(stream->url,
 		             redirect->url, // TODO: error on NULL url member?
 		             strlen(redirect->url));
 		debug("Got redirect to new SABR url: %s", redirect->url);
@@ -842,13 +800,10 @@ youtube_stream_setup(struct youtube_stream *p,
 		check(ops->before_parse(userdata));
 	}
 
-	check(youtube_stream_set_video(null_terminated_sabr, p));
-	check(youtube_stream_set_audio(null_terminated_sabr, p));
+	check(youtube_stream_set_one(p, null_terminated_sabr));
 
-	for (size_t i = 0; i < ARRAY_SIZE(p->url); ++i) {
-		if (p->url[i] == NULL) {
-			return make_result(ERR_YOUTUBE_STREAM_URL_MISSING);
-		}
+	if (p->url == NULL) {
+		return make_result(ERR_YOUTUBE_STREAM_URL_MISSING);
 	}
 
 	if (ops && ops->after_parse) {
@@ -863,9 +818,9 @@ youtube_stream_setup(struct youtube_stream *p,
 	check(find_js_deobfuscator_magic_global(&js.data, &d));
 	check(find_js_deobfuscator(&js.data, &d));
 
-	char *ciphertexts[ARRAY_SIZE(p->url) + 1]
+	char *ciphertexts[2]
 		__attribute__((cleanup(ciphertexts_cleanup))) = {NULL};
-	check(copy_n_param_all(p, ciphertexts));
+	check(copy_n_param_one(p->url, ciphertexts));
 
 	struct call_ops cops = {
 		.got_result = youtube_stream_update_n_param,
@@ -1002,7 +957,7 @@ youtube_stream_setup(struct youtube_stream *p,
 		char *null_terminated_sabr_deobuscated_n_param
 			__attribute__((cleanup(str_free))) = NULL;
 		{
-			ada_string tmp = ada_get_href(p->url[0]);
+			ada_string tmp = ada_get_href(p->url);
 			null_terminated_sabr_deobuscated_n_param =
 				strndup(tmp.data, tmp.length);
 			check_if(null_terminated_sabr_deobuscated_n_param ==
