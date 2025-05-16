@@ -141,6 +141,16 @@ set_header_sequence_number(struct protocol_state *p,
 	p->sequence_number_cursor[idx] = n;
 	VideoStreaming__BufferedRange *br = p->buffered_ranges[idx];
 	br->end_segment_index = n + 1;
+	debug("Set header_id=%u seq=%" PRIi64, header_id, n);
+}
+
+static void
+increment_header_duration(struct protocol_state *p,
+                          unsigned char header_id,
+                          int64_t duration)
+{
+	p->buffered_ranges[index_of(p, header_id)] += duration;
+	debug("Set header_id=%u duration=%" PRIi64, header_id, duration);
 }
 
 static void
@@ -463,11 +473,10 @@ ump_part_parse(struct protocol_state *p,
 			set_header_media_type(p,
 			                      header->header_id,
 			                      header->itag);
-			debug("Set audio header mapping for header_id=%" PRIu32,
-			      header->header_id);
 			if (header->has_sequence_number &&
 			    header->sequence_number <=
-			            max_seq_num_for_header(p, header->header_id)) {
+			            max_seq_num_for_header(p,
+			                                   header->header_id)) {
 				debug("Skipping repeated seq=%" PRIi64,
 				      header->sequence_number);
 				*skip_media_blobs_until_next_section = true;
@@ -475,7 +484,9 @@ ump_part_parse(struct protocol_state *p,
 				debug("Handling new seq=%" PRIi64
 				      ", greatest=%" PRIi64,
 				      header->sequence_number,
-				      max_seq_num_for_header(p, header->header_id));
+				      max_seq_num_for_header(
+					      p,
+					      header->header_id));
 				if (header->has_sequence_number) {
 					set_header_sequence_number(
 						p,
@@ -483,23 +494,11 @@ ump_part_parse(struct protocol_state *p,
 						header->sequence_number);
 				}
 				if (header->has_duration_ms) {
-					debug("Advancing audio by duration "
-					      "%" PRIi64 " + %" PRIi32,
-					      p->buffered_audio_range
-					              .duration_ms,
-					      header->duration_ms);
-					p->buffered_audio_range.duration_ms +=
-						header->duration_ms;
+					increment_header_duration(
+						p,
+						header->header_id,
+						header->duration_ms);
 				}
-				debug("Setting buffered_audio_range "
-				      "duration_ms=%" PRIi64
-				      ", start_segment_index=%d, "
-				      "end_segment_index=%d",
-				      p->buffered_audio_range.duration_ms,
-				      p->buffered_audio_range
-				              .start_segment_index,
-				      p->buffered_audio_range
-				              .end_segment_index);
 			}
 			break;
 		case ITAG_VIDEO:
@@ -507,11 +506,10 @@ ump_part_parse(struct protocol_state *p,
 			set_header_media_type(p,
 			                      header->header_id,
 			                      header->itag);
-			debug("Set video header mapping for header_id=%" PRIu32,
-			      header->header_id);
 			if (header->has_sequence_number &&
 			    header->sequence_number <=
-			            max_seq_num_for_header(p, header->header_id)) {
+			            max_seq_num_for_header(p,
+			                                   header->header_id)) {
 				debug("Skipping repeated seq=%" PRIi64,
 				      header->sequence_number);
 				*skip_media_blobs_until_next_section = true;
@@ -519,7 +517,9 @@ ump_part_parse(struct protocol_state *p,
 				debug("Handling new seq=%" PRIi64
 				      ", greatest=%" PRIi64,
 				      header->sequence_number,
-				      max_seq_num_for_header(p, header->header_id));
+				      max_seq_num_for_header(
+					      p,
+					      header->header_id));
 				if (header->has_sequence_number) {
 					set_header_sequence_number(
 						p,
@@ -527,23 +527,11 @@ ump_part_parse(struct protocol_state *p,
 						header->sequence_number);
 				}
 				if (header->has_duration_ms) {
-					debug("Advancing video by duration "
-					      "%" PRIi64 " + %" PRIi32,
-					      p->buffered_video_range
-					              .duration_ms,
-					      header->duration_ms);
-					p->buffered_video_range.duration_ms +=
-						header->duration_ms;
+					increment_header_duration(
+						p,
+						header->header_id,
+						header->duration_ms);
 				}
-				debug("Setting buffered_video_range "
-				      "duration_ms=%" PRIi64
-				      ", start_segment_index=%d, "
-				      "end_segment_index=%d",
-				      p->buffered_video_range.duration_ms,
-				      p->buffered_video_range
-				              .start_segment_index,
-				      p->buffered_video_range
-				              .end_segment_index);
 			}
 			break;
 		}
