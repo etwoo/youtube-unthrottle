@@ -103,11 +103,22 @@ struct protocol_state {
 	VideoStreaming__BufferedRange *buffered_ranges[2];
 };
 
+static size_t
+index_of(struct protocol_state *p, unsigned char header_id)
+{
+	return p->header_map[header_id] == ITAG_AUDIO ? 0 : 1;
+}
+
 static int
 get_fd_for_header(struct protocol_state *p, unsigned char header_id)
 {
-	const size_t idx = p->header_map[header_id] == ITAG_AUDIO ? 0 : 1;
-	return p->outputs[idx];
+	return p->outputs[index_of(p, header_id)];
+}
+
+static int64_t
+max_seq_num_for_header(struct protocol_state *p, unsigned char header_id)
+{
+	return p->sequence_number_cursor[index_of(p, header_id)];
 }
 
 static void
@@ -121,30 +132,15 @@ set_header_media_type(struct protocol_state *p,
 	      get_fd_for_header(p, header_id));
 }
 
-static int64_t
-max_sequence_number_audio(struct protocol_state *p)
-{
-	return p->sequence_number_cursor[0];
-}
-
-static int64_t
-max_sequence_number_video(struct protocol_state *p)
-{
-	return p->sequence_number_cursor[1];
-}
-
 static void
-set_sequence_number_audio(struct protocol_state *p, int64_t n)
+set_header_sequence_number(struct protocol_state *p,
+                           unsigned char header_id,
+                           int64_t n)
 {
-	p->sequence_number_cursor[0] = n;
-	p->buffered_audio_range.end_segment_index = n + 1;
-}
-
-static void
-set_sequence_number_video(struct protocol_state *p, int64_t n)
-{
-	p->sequence_number_cursor[1] = n;
-	p->buffered_video_range.end_segment_index = n + 1;
+	const size_t idx = index_of(p, header_id);
+	p->sequence_number_cursor[idx] = n;
+	VideoStreaming__BufferedRange *br = p->buffered_ranges[idx];
+	br->end_segment_index = n + 1;
 }
 
 static void
@@ -419,7 +415,7 @@ ump_part_parse(struct protocol_state *p,
 		__attribute__((cleanup(ump_formats_free))) = NULL;
 	VideoStreaming__SabrRedirect *redirect
 		__attribute__((cleanup(sabr_redirect_free))) = NULL;
-	uint64_t header_id = 0;
+	uint64_t parsed_header_id = 0;
 	ssize_t written = -1;
 
 	switch (part_type) {
@@ -471,7 +467,7 @@ ump_part_parse(struct protocol_state *p,
 			      header->header_id);
 			if (header->has_sequence_number &&
 			    header->sequence_number <=
-			            max_sequence_number_audio(p)) {
+			            max_seq_num_for_header(p, header->header_id)) {
 				debug("Skipping repeated seq=%" PRIi64,
 				      header->sequence_number);
 				*skip_media_blobs_until_next_section = true;
@@ -479,10 +475,11 @@ ump_part_parse(struct protocol_state *p,
 				debug("Handling new seq=%" PRIi64
 				      ", greatest=%" PRIi64,
 				      header->sequence_number,
-				      max_sequence_number_audio(p));
+				      max_seq_num_for_header(p, header->header_id));
 				if (header->has_sequence_number) {
-					set_sequence_number_audio(
+					set_header_sequence_number(
 						p,
+						header->header_id,
 						header->sequence_number);
 				}
 				if (header->has_duration_ms) {
@@ -514,7 +511,7 @@ ump_part_parse(struct protocol_state *p,
 			      header->header_id);
 			if (header->has_sequence_number &&
 			    header->sequence_number <=
-			            max_sequence_number_video(p)) {
+			            max_seq_num_for_header(p, header->header_id)) {
 				debug("Skipping repeated seq=%" PRIi64,
 				      header->sequence_number);
 				*skip_media_blobs_until_next_section = true;
@@ -522,10 +519,11 @@ ump_part_parse(struct protocol_state *p,
 				debug("Handling new seq=%" PRIi64
 				      ", greatest=%" PRIi64,
 				      header->sequence_number,
-				      max_sequence_number_video(p));
+				      max_seq_num_for_header(p, header->header_id));
 				if (header->has_sequence_number) {
-					set_sequence_number_video(
+					set_header_sequence_number(
 						p,
+						header->header_id,
 						header->sequence_number);
 				}
 				if (header->has_duration_ms) {
@@ -556,16 +554,16 @@ ump_part_parse(struct protocol_state *p,
 			debug("Skipping media blob at cursor=%zu", *cursor);
 		} else {
 			// TODO: raise more specific error for header_id
-			check(ump_varint_read(ump, cursor, &header_id));
+			check(ump_varint_read(ump, cursor, &parsed_header_id));
 			debug("Got media blob header_id=%" PRIu64
 			      ", cursor=%zu, part_size=%" PRIu64
 			      ", remaining_bytes=%zu",
-			      header_id,
+			      parsed_header_id,
 			      *cursor,
 			      part_size,
 			      ump->sz - *cursor);
-			assert(header_id <= UCHAR_MAX);
-			int fd = get_fd_for_header(p, header_id);
+			assert(parsed_header_id <= UCHAR_MAX);
+			int fd = get_fd_for_header(p, parsed_header_id);
 			written = write_with_retry(fd,
 			                           ump->data + *cursor,
 			                           part_size - 1);
