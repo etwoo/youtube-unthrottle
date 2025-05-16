@@ -5,24 +5,6 @@
 #include "sys/compiler_features.h"
 #include "sys/string_view.h"
 
-struct parse_ops { // TODO: remove, superceded by protobuf
-	result_t (*got_video)(const char *, void *);
-	void *got_video_userdata;
-	result_t (*got_audio)(const char *, void *);
-	void *got_audio_userdata;
-	result_t (*choose_quality)(const char *, void *);
-	void *choose_quality_userdata;
-};
-
-// TODO: remove parse_json(), superceded by protobuf
-result_t parse_json(const struct string_view *json,
-                    const struct parse_ops *ops) WARN_UNUSED;
-// TODO: remove make_innertube_json(), superceded by protobuf
-result_t make_innertube_json(const char *target_url,
-                             const char *proof_of_origin,
-                             long long int timestamp,
-                             char **body);
-
 result_t find_base_js_url(const struct string_view *html,
                           struct string_view *basejs) WARN_UNUSED;
 result_t find_sabr_url(const struct string_view *html,

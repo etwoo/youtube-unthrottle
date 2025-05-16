@@ -63,7 +63,6 @@ ada
 cmake
 curl
 duktape
-jansson
 libseccomp
 pcre2
 protobuf-c

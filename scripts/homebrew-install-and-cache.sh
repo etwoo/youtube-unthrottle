@@ -15,7 +15,7 @@ else
 fi
 
 # Install packages via Homebrew, quieting reinstall warnings if necessary
-brew install --quiet "$CC_PKG" cmake ada-url curl duktape jansson pcre2
+brew install --quiet "$CC_PKG" cmake ada-url curl duktape pcre2 protobuf-c
 
 # Apply Ubuntu-specific tweaks
 if [ "$(uname)" == Linux ] ; then
