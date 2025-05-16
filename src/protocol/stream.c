@@ -425,6 +425,7 @@ ump_part_parse(struct protocol_state *p,
 			part_size,
 			(const uint8_t *)ump->data + *cursor);
 		assert(header); // TODO: error out on misparse
+		// TODO: move big header logging (below) into dedicated function
 		debug("Got header header_id=%" PRIu32
 		      ", video=%s, itag=%d, xtags=%s"
 		      ", start_data_range=%d, is_init_seg=%d"
@@ -454,6 +455,7 @@ ump_part_parse(struct protocol_state *p,
 		               ? header->time_range->timescale
 		               : -1));
 		switch (header->itag) {
+		// TODO: figure out how to dedup code in two cases below
 		case 251:
 			assert(header->header_id <= UCHAR_MAX);
 			header_audio_video_mapping[header->header_id] =
@@ -541,6 +543,7 @@ ump_part_parse(struct protocol_state *p,
 		}
 		break;
 	case 21: /* MEDIA */
+		// TODO: move MEDIA case into dedicated function, less indent
 		if (*skip_media_blobs_until_next_section) {
 			debug("Skipping media blob at cursor=%zu", *cursor);
 		} else {
