@@ -3,6 +3,12 @@
 #include "sys/array.h"
 #include "sys/debug.h"
 #include "sys/write.h"
+
+#include <inttypes.h>
+#include <resolv.h> /* for b64_pton() */
+#include <stdbool.h>
+#include <stdlib.h>
+
 /*
  * Some helpful references on YouTube's UMP format and SABR protobufs:
  *
@@ -22,11 +28,6 @@
 #include "video_streaming/next_request_policy.pb-c.h"
 #include "video_streaming/sabr_redirect.pb-c.h"
 #include "video_streaming/video_playback_abr_request.pb-c.h"
-
-#include <inttypes.h>
-#include <resolv.h> /* for b64_pton() */
-#include <stdbool.h>
-#include <stdlib.h>
 
 #define min(x, y) (x < y ? x : y) // TODO: reuse some systemwide define?
 #define max(x, y) (x > y ? x : y) // TODO: reuse some systemwide define?
