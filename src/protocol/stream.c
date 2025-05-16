@@ -149,7 +149,7 @@ increment_header_duration(struct protocol_state *p,
                           unsigned char header_id,
                           int64_t duration)
 {
-	p->buffered_ranges[index_of(p, header_id)] += duration;
+	p->buffered_ranges[index_of(p, header_id)]->duration_ms += duration;
 	debug("Set header_id=%u duration=%" PRIi64, header_id, duration);
 }
 
