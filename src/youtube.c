@@ -781,9 +781,6 @@ youtube_stream_setup(struct youtube_stream *p,
 	                              &js.data,
 	                              &p->request_context));
 
-	long long int timestamp = 0;
-	check(find_js_timestamp(&js.data, &timestamp));
-
 	if (ops && ops->after_inet) {
 		check(ops->after_inet(userdata));
 	}
