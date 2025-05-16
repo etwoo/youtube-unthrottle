@@ -8,7 +8,6 @@ target_link_libraries(youtube-unthrottle PRIVATE my_cflags sanitizers youtube)
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 include(get_cpm)
 
-add_subdirectory(protos)
 add_subdirectory(src)
 
 if (BUILD_TESTING)

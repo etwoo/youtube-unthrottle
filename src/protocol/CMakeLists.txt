@@ -1,5 +1,3 @@
-# TODO: isolate all protobuf code to src/lib/protobuf.{h,c} and move all of this cmake boilerplate into src/lib/CMakeLists.txt, thereby avoiding a new top-level project directory `protos`; adjust use of CMAKE_CURRENT_BINARY_DIR and target_include_directories() accordingly
-
 CPMAddPackage(
 	NAME googlevideo
 	GITHUB_REPOSITORY LuanRT/googlevideo
@@ -30,13 +28,18 @@ add_custom_command(
 		${PROTO_FULLPATH}
 )
 
-add_library(youtube-protobufs)
-target_sources(youtube-protobufs PRIVATE
+add_library(youtube-protocol)
+
+target_sources(youtube-protocol PRIVATE
 	${PROTO_C}
+	stream.c
 )
-target_include_directories(youtube-protobufs PUBLIC
+target_include_directories(youtube-protocol PUBLIC # TODO: switch to PRIVATE
 	${CMAKE_CURRENT_BINARY_DIR}
 )
-target_link_libraries(youtube-protobufs PRIVATE
+target_link_libraries(youtube-protocol PRIVATE
 	protobuf-c
+	resolv # for b64_pton()
 )
+
+target_link_libraries(youtube PRIVATE youtube-protocol)

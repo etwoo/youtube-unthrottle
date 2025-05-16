@@ -2,9 +2,10 @@ add_library(youtube)
 
 target_include_directories(youtube PUBLIC ${PROJECT_SOURCE_DIR}/include)
 target_include_directories(youtube PRIVATE ${PROJECT_SOURCE_DIR}/src)
-target_link_libraries(youtube PRIVATE my_cflags youtube-protobufs)
+target_link_libraries(youtube PRIVATE my_cflags)
 
 add_subdirectory(lib)
+add_subdirectory(protocol)
 add_subdirectory(sandbox)
 add_subdirectory(sys)
 
@@ -12,10 +13,6 @@ target_sources(youtube PRIVATE
 	result.c
 	sandbox.c
 	youtube.c
-)
-
-target_link_libraries(youtube PRIVATE
-	resolv
 )
 
 if (CMAKE_BUILD_TYPE STREQUAL Debug)
