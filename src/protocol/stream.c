@@ -91,9 +91,11 @@ struct protocol_state {
 	VideoStreaming__StreamerContext context;
 	Misc__FormatId selected_audio_format;
 	Misc__FormatId selected_video_format;
+	Misc__FormatId *selected_format_ids[2];
 	VideoStreaming__BufferedRange buffered_audio_range;
 	VideoStreaming__BufferedRange buffered_video_range;
 	VideoStreaming__VideoPlaybackAbrRequest req;
+	VideoStreaming__BufferedRange *buffered_ranges[2];
 };
 
 static int
@@ -161,6 +163,9 @@ protocol_init_members(struct protocol_state *p)
 	p->selected_video_format.has_itag = true;
 	p->selected_video_format.itag = 299;
 
+	p->selected_format_ids[0] = &p->selected_audio_format;
+	p->selected_format_ids[1] = &p->selected_video_format;
+
 	video_streaming__buffered_range__init(&p->buffered_audio_range);
 	p->buffered_audio_range.format_id = &p->selected_audio_format;
 	p->buffered_audio_range.duration_ms = 0;
@@ -173,31 +178,26 @@ protocol_init_members(struct protocol_state *p)
 	p->buffered_video_range.start_segment_index = 1;
 	p->buffered_video_range.end_segment_index = 0;
 
+	p->buffered_ranges[0] = &p->buffered_audio_range;
+	p->buffered_ranges[1] = &p->buffered_video_range;
+
 	video_streaming__video_playback_abr_request__init(&p->req);
 	p->req.client_abr_state = &p->abr_state;
 
 	p->req.n_selected_audio_format_ids = 1;
-	p->req.selected_audio_format_ids =
-		(Misc__FormatId *[]){&p->selected_audio_format};
+	p->req.selected_audio_format_ids = p->selected_format_ids;
 	p->req.n_selected_video_format_ids = 1;
-	p->req.selected_video_format_ids =
-		(Misc__FormatId *[]){&p->selected_video_format};
+	p->req.selected_video_format_ids = p->selected_format_ids + 1;
 	p->req.streamer_context = &p->context;
 }
 
 static void
 protocol_update_members(struct protocol_state *p)
 {
-	p->req.n_selected_format_ids = 2;
-	p->req.selected_format_ids = (Misc__FormatId *[]){
-		&p->selected_audio_format,
-		&p->selected_video_format,
-	};
-	p->req.n_buffered_ranges = 2;
-	p->req.buffered_ranges = (VideoStreaming__BufferedRange *[]){
-		&p->buffered_audio_range,
-		&p->buffered_video_range,
-	};
+	p->req.n_selected_format_ids = ARRAY_SIZE(p->selected_format_ids);
+	p->req.selected_format_ids = p->selected_format_ids;
+	p->req.n_buffered_ranges = ARRAY_SIZE(p->buffered_ranges);
+	p->req.buffered_ranges = p->buffered_ranges;
 
 	p->abr_state.has_player_time_ms = true;
 	p->abr_state.player_time_ms = min(p->buffered_audio_range.duration_ms,
@@ -625,9 +625,10 @@ ump_part_parse(struct protocol_state *p,
 			NULL,
 			part_size,
 			(const uint8_t *)ump->data + *cursor);
-		assert(redirect);            // TODO: error out on misparse
-		*target_url = redirect->url; // TODO: error on NULL url member?
+		assert(redirect); // TODO: error on !redirect || !redirect->url 
 		debug("Got redirect to new SABR url: %s", redirect->url);
+		free(*target_url);
+		*target_url = strdup(redirect->url);
 		break;
 	default:
 		*skip_media_blobs_until_next_section = false;
