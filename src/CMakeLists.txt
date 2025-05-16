@@ -14,6 +14,10 @@ target_sources(youtube PRIVATE
 	youtube.c
 )
 
+target_link_libraries(youtube PRIVATE
+	resolv
+)
+
 if (CMAKE_BUILD_TYPE STREQUAL Debug)
 	message(STATUS "Enabling runtime debug output")
 	target_compile_definitions(youtube PRIVATE WITH_DEBUG_OUTPUT)

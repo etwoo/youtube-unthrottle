@@ -1,6 +1,5 @@
 #include "youtube.h"
 
-#include "lib/base64.h"
 #include "lib/js.h"
 #include "lib/re.h"
 #include "lib/url.h"
@@ -17,6 +16,7 @@
 #include <ada_c.h>
 #include <assert.h>
 #include <errno.h>
+#include <resolv.h> /* for b64_pton() */
 #include <inttypes.h>
 #include <stdio.h> /* for asprintf() */
 #include <stdlib.h>
@@ -908,12 +908,12 @@ youtube_stream_setup(struct youtube_stream *p,
 			strdup(p->proof_of_origin);
 		check_if(tmp == NULL, ERR_JS_PROOF_OF_ORIGIN_ALLOC);
 		base64url_to_standard_base64(tmp);
-		decoded_sz = base64_decode(tmp, NULL, 0);
+		decoded_sz = b64_pton(tmp, NULL, 0);
 		check_if(decoded_sz < 0, ERR_JS_PROOF_OF_ORIGIN_BASE64_DECODE);
 		decoded_pot = malloc(decoded_sz);
 		check_if(decoded_pot == NULL, ERR_JS_PROOF_OF_ORIGIN_ALLOC);
 
-		const int rc = base64_decode(tmp, decoded_pot, decoded_sz);
+		const int rc = b64_pton(tmp, decoded_pot, decoded_sz);
 		check_if(rc < 0, ERR_JS_PROOF_OF_ORIGIN_BASE64_DECODE);
 
 		context.po_token.len = decoded_sz;
@@ -960,12 +960,12 @@ youtube_stream_setup(struct youtube_stream *p,
 			strndup(config.data, config.sz);
 		check_if(tmp == NULL, ERR_JS_PLAYBACK_CONFIG_ALLOC);
 		base64url_to_standard_base64(tmp);
-		decoded_sz = base64_decode(tmp, NULL, 0);
+		decoded_sz = b64_pton(tmp, NULL, 0);
 		check_if(decoded_sz < 0, ERR_JS_PLAYBACK_CONFIG_BASE64_DECODE);
 		decoded_config = malloc(decoded_sz);
 		check_if(decoded_config == NULL, ERR_JS_PLAYBACK_CONFIG_ALLOC);
 
-		const int rc = base64_decode(tmp, decoded_config, decoded_sz);
+		const int rc = b64_pton(tmp, decoded_config, decoded_sz);
 		check_if(rc < 0, ERR_JS_PLAYBACK_CONFIG_BASE64_DECODE);
 
 		req.video_playback_ustreamer_config.len = decoded_sz;

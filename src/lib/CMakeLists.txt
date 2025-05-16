@@ -1,5 +1,4 @@
 target_sources(youtube PRIVATE
-	base64.c
 	js.c
 	re.c
 	url.c
