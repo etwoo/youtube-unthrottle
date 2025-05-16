@@ -177,9 +177,6 @@ result_to_str(result_t r)
 	case ERR_JS_PARSE_JSON_CALLBACK_INVALID_URL:
 		s = my_asprintf("Cannot parse ciphertext URL: %s", r.msg);
 		break;
-	case ERR_JS_PARSE_JSON_CALLBACK_QUALITY:
-		s = strdup("Chose to skip stream based on qualityLevel");
-		break;
 	case ERR_JS_MAKE_INNERTUBE_JSON_ID:
 		s = strdup("Cannot find video ID for InnerTube POST");
 		break;

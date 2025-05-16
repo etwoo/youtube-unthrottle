@@ -26,9 +26,6 @@ struct youtube_setup_ops {
 	result_t (*before)(void *);
 	result_t (*before_inet)(void *);
 	result_t (*after_inet)(void *);
-	result_t (*before_parse)(void *);
-	result_t (*during_parse_choose_quality)(const char *, void *);
-	result_t (*after_parse)(void *);
 	result_t (*before_eval)(void *);
 	result_t (*after_eval)(void *);
 	result_t (*after)(void *);

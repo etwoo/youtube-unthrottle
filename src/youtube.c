@@ -725,15 +725,15 @@ youtube_stream_setup(struct youtube_stream *p,
                      void *userdata,
                      const char *target)
 {
+	if (ops && ops->before) {
+		check(ops->before(userdata));
+	}
+
 	struct downloaded html __attribute__((cleanup(downloaded_cleanup)));
 	struct downloaded js __attribute__((cleanup(downloaded_cleanup)));
 
 	downloaded_init(&html, "HTML tmpfile");
 	downloaded_init(&js, "JavaScript tmpfile");
-
-	if (ops && ops->before) {
-		check(ops->before(userdata));
-	}
 
 	check(tmpfd(&html.fd));
 	check(tmpfd(&js.fd));
@@ -762,15 +762,6 @@ youtube_stream_setup(struct youtube_stream *p,
 	}
 	check_if(null_terminated_basejs == NULL, ERR_JS_BASEJS_URL_ALLOC);
 
-	char *null_terminated_sabr __attribute__((cleanup(str_free))) = NULL;
-	{
-		struct string_view sabr = {0};
-		check(find_sabr_url(&html.data, &sabr));
-		decode_ampersands(sabr, &null_terminated_sabr);
-	}
-	check_if(null_terminated_sabr == NULL, ERR_JS_SABR_URL_ALLOC);
-	debug("Decoded SABR URL: %s", null_terminated_sabr);
-
 	check(download_and_mmap_tmpfd(NULL,
 	                              "www.youtube.com",
 	                              null_terminated_basejs,
@@ -785,22 +776,22 @@ youtube_stream_setup(struct youtube_stream *p,
 		check(ops->after_inet(userdata));
 	}
 
-	if (ops && ops->before_parse) {
-		check(ops->before_parse(userdata));
-	}
-
-	check(youtube_stream_set_url(p, null_terminated_sabr));
-
-	if (p->url == NULL) {
-		return make_result(ERR_YOUTUBE_STREAM_URL_MISSING);
-	}
-
-	if (ops && ops->after_parse) {
-		check(ops->after_parse(userdata));
-	}
-
 	if (ops && ops->before_eval) {
 		check(ops->before_eval(userdata));
+	}
+
+	char *null_terminated_sabr __attribute__((cleanup(str_free))) = NULL;
+	{
+		struct string_view sabr = {0};
+		check(find_sabr_url(&html.data, &sabr));
+		decode_ampersands(sabr, &null_terminated_sabr);
+	}
+	check_if(null_terminated_sabr == NULL, ERR_JS_SABR_URL_ALLOC);
+	debug("Decoded SABR URL: %s", null_terminated_sabr);
+
+	check(youtube_stream_set_url(p, null_terminated_sabr));
+	if (p->url == NULL) {
+		return make_result(ERR_YOUTUBE_STREAM_URL_MISSING);
 	}
 
 	struct deobfuscator d = {0};

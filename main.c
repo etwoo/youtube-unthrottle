@@ -132,38 +132,6 @@ err:
 	return false;
 }
 
-static const result_t RESULT_QUALITY_BLOCK = {
-	.err = ERR_JS_PARSE_JSON_CALLBACK_QUALITY,
-};
-
-static __attribute__((warn_unused_result)) result_t
-during_parse_choose_quality(const char *val, void *userdata)
-{
-	struct quality *q = (struct quality *)userdata;
-	size_t sz = strlen(val);
-
-	if (q->re == NULL || q->md == NULL) {
-		return RESULT_OK;
-	}
-
-	PCRE2_SPTR subject = (PCRE2_SPTR)val;
-	int rc = pcre2_match(q->re, subject, sz, 0, 0, q->md, NULL);
-	if (rc > 0) {
-		return RESULT_OK;
-	} else if (rc == PCRE2_ERROR_NOMATCH) {
-		return RESULT_QUALITY_BLOCK;
-	}
-
-	PCRE2_UCHAR err[256];
-	if (pcre2_get_error_message(rc, err, sizeof(err)) < 0) {
-		to_stderr("(no details) matching \"%.*s\"", (int)sz, val);
-		return RESULT_QUALITY_BLOCK;
-	}
-
-	to_stderr("matching \"%.*s\": %s", (int)sz, val, err);
-	return RESULT_QUALITY_BLOCK;
-}
-
 static void
 print_url(const char *url, size_t sz, void *userdata __attribute((unused)))
 {
@@ -193,9 +161,6 @@ unthrottle(const char *target,
 		.before = NULL,
 		.before_inet = before_inet,
 		.after_inet = after_inet,
-		.before_parse = NULL,
-		.during_parse_choose_quality = during_parse_choose_quality,
-		.after_parse = NULL,
 		.before_eval = NULL,
 		.after_eval = NULL,
 		.after = NULL,
