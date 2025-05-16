@@ -32,6 +32,9 @@
 #define min(x, y) (x < y ? x : y) // TODO: reuse some systemwide define?
 #define max(x, y) (x > y ? x : y) // TODO: reuse some systemwide define?
 
+#define ITAG_AUDIO 251
+#define ITAG_VIDEO 299
+
 static void
 str_free(char **strp)
 {
@@ -87,6 +90,10 @@ base64url_to_standard_base64(char *buf)
 struct protocol_state {
 	int outputs[2];
 	int64_t sequence_number_cursor[2];
+	enum {
+		HEADER_AUDIO,
+		HEADER_VIDEO,
+	} header_map[UCHAR_MAX + 1]; // maps header_id number to media type
 	VideoStreaming__ClientAbrState abr_state;
 	VideoStreaming__StreamerContext__ClientInfo info;
 	VideoStreaming__StreamerContext context;
@@ -100,15 +107,22 @@ struct protocol_state {
 };
 
 static int
-get_fd_audio(struct protocol_state *p)
+get_fd_for_header(struct protocol_state *p, unsigned char header_id)
 {
-	return p->outputs[0];
+	const size_t idx = p->header_map[header_id] == HEADER_AUDIO ? 0 : 1;
+	return p->outputs[idx];
 }
 
-static int
-get_fd_video(struct protocol_state *p)
+static void
+set_header_media_type(struct protocol_state *p,
+                      unsigned char header_id,
+                      int itag)
 {
-	return p->outputs[1];
+	p->header_map[header_id] =
+		itag == ITAG_AUDIO ? HEADER_AUDIO : HEADER_VIDEO;
+	debug("Mapping header_id=%u to fd=%d",
+	      header_id,
+	      get_fd_for_header(p, header_id));
 }
 
 static int64_t
@@ -158,11 +172,11 @@ protocol_init_members(struct protocol_state *p)
 
 	misc__format_id__init(&p->selected_audio_format);
 	p->selected_audio_format.has_itag = true;
-	p->selected_audio_format.itag = 251;
+	p->selected_audio_format.itag = ITAG_AUDIO;
 
 	misc__format_id__init(&p->selected_video_format);
 	p->selected_video_format.has_itag = true;
-	p->selected_video_format.itag = 299;
+	p->selected_video_format.itag = ITAG_VIDEO;
 
 	p->selected_format_ids[0] = &p->selected_audio_format;
 	p->selected_format_ids[1] = &p->selected_video_format;
@@ -392,11 +406,6 @@ ump_varint_read(const struct string_view *ump, size_t *cursor, uint64_t *value)
 	return RESULT_OK;
 }
 
-typedef enum {
-	HEADER_AUDIO,
-	HEADER_VIDEO,
-} header_mapping;
-
 static result_t
 ump_part_parse(struct protocol_state *p,
                const struct string_view *ump,
@@ -404,8 +413,7 @@ ump_part_parse(struct protocol_state *p,
                uint64_t part_type,
                uint64_t part_size,
                size_t *cursor,
-               bool *skip_media_blobs_until_next_section,
-               header_mapping *header_audio_video_mapping)
+               bool *skip_media_blobs_until_next_section)
 {
 	VideoStreaming__NextRequestPolicy *next_request_policy
 		__attribute__((cleanup(ump_request_policy_free))) = NULL;
@@ -458,10 +466,11 @@ ump_part_parse(struct protocol_state *p,
 		               : -1));
 		switch (header->itag) {
 		// TODO: figure out how to dedup code in two cases below
-		case 251:
+		case ITAG_AUDIO:
 			assert(header->header_id <= UCHAR_MAX);
-			header_audio_video_mapping[header->header_id] =
-				HEADER_AUDIO;
+			set_header_media_type(p,
+			                      header->header_id,
+			                      header->itag);
 			debug("Set audio header mapping for header_id=%" PRIu32,
 			      header->header_id);
 			if (header->has_sequence_number &&
@@ -500,10 +509,11 @@ ump_part_parse(struct protocol_state *p,
 				              .end_segment_index);
 			}
 			break;
-		case 299:
+		case ITAG_VIDEO:
 			assert(header->header_id <= UCHAR_MAX);
-			header_audio_video_mapping[header->header_id] =
-				HEADER_VIDEO;
+			set_header_media_type(p,
+			                      header->header_id,
+			                      header->itag);
 			debug("Set video header mapping for header_id=%" PRIu32,
 			      header->header_id);
 			if (header->has_sequence_number &&
@@ -559,10 +569,7 @@ ump_part_parse(struct protocol_state *p,
 			      part_size,
 			      ump->sz - *cursor);
 			assert(header_id <= UCHAR_MAX);
-			int fd = (header_audio_video_mapping[header_id] ==
-			          HEADER_AUDIO)
-			                 ? get_fd_audio(p)
-			                 : get_fd_video(p);
+			int fd = get_fd_for_header(p, header_id);
 			written = write_with_retry(fd,
 			                           ump->data + *cursor,
 			                           part_size - 1);
@@ -653,10 +660,6 @@ ump_parse(struct protocol_state *p,
 	// TODO: mutate ump->{data,sz} directly, drop separate cursor value
 	// for above TODO, make a deep-copy of ump struct here or in caller
 	size_t cursor = 0;
-	// TODO: move header_mapping[] into protocol_state struct, add
-	// dedicated methods for manipulating it, remove module-level
-	// HEADER_AUDIO/HEADER_VIDEO enum
-	header_mapping header_audio_video_mapping[UCHAR_MAX + 1] = {0};
 	bool skip_media_blobs_until_next_section = false;
 	while (cursor < ump->sz) {
 		uint64_t part_type = 0;
@@ -677,8 +680,7 @@ ump_parse(struct protocol_state *p,
 		                     part_type,
 		                     part_size,
 		                     &cursor, // TODO rm
-		                     &skip_media_blobs_until_next_section,
-		                     header_audio_video_mapping)); // TODO rm
+		                     &skip_media_blobs_until_next_section));
 
 		cursor += part_size;
 	}
@@ -695,3 +697,6 @@ protocol_parse_response(struct protocol_state *p,
 	protocol_update_members(p);
 	return RESULT_OK;
 }
+
+#undef ITAG_AUDIO
+#undef ITAG_VIDEO
