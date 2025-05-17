@@ -426,7 +426,7 @@ ump_varint_read(const struct string_view *ump, size_t *cursor, uint64_t *value)
 
 	check_if(*cursor <= SIZE_MAX - bytes_to_read &&
 	                 *cursor + bytes_to_read >= ump->sz,
-	         1); // TOOD: ERR_PROTOCOL_CURSOR_EXCEEDS_UMP_DATA
+	         ERR_PROTOCOL_VARINT_READ_OUT_OF_BOUNDS);
 
 	uint64_t parsed[5] = {0};
 	switch (bytes_to_read) {
@@ -447,8 +447,8 @@ ump_varint_read(const struct string_view *ump, size_t *cursor, uint64_t *value)
 		parsed[0] = ump->data[*cursor] & first_byte_mask;
 		break;
 	default:
-		assert(false);
-		break;
+		return make_result(ERR_PROTOCOL_VARINT_READ_INVALID_SIZE,
+		                   (int)bytes_to_read);
 	}
 	*cursor += bytes_to_read;
 
@@ -553,7 +553,8 @@ ump_parse_part(struct protocol_state *p,
 			(const uint8_t *)ump.data);
 		assert(header); // TODO: error out on misparse
 		debug_protobuf_media_header(header);
-		assert(header->header_id <= UCHAR_MAX); // TODO: convert to check_if() error
+		assert(header->header_id <=
+		       UCHAR_MAX); // TODO: convert to check_if() error
 		ump_parse_media_header(p, header, skip_media_blobs_until_next);
 		break;
 	case 21: /* MEDIA */
