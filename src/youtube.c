@@ -327,16 +327,18 @@ youtube_stream_setup(struct youtube_stream *p,
 		check(ops->before_eval(userdata));
 	}
 
-	char *null_terminated_sabr __attribute__((cleanup(str_free))) = NULL;
 	{
 		struct string_view sabr = {0};
 		check(find_sabr_url(&html.data, &sabr));
-		decode_ampersands(sabr, &null_terminated_sabr);
-	}
-	check_if(null_terminated_sabr == NULL, ERR_JS_SABR_URL_ALLOC);
-	debug("Decoded SABR URL: %s", null_terminated_sabr);
 
-	check(youtube_stream_set_url(p, null_terminated_sabr));
+		char *null_terminated_sabr __attribute__((cleanup(str_free))) =
+			NULL;
+		decode_ampersands(sabr, &null_terminated_sabr);
+		check_if(null_terminated_sabr == NULL, ERR_JS_SABR_URL_ALLOC);
+		debug("Decoded SABR URL: %s", null_terminated_sabr);
+
+		check(youtube_stream_set_url(p, null_terminated_sabr));
+	}
 	if (p->url == NULL) {
 		return make_result(ERR_YOUTUBE_STREAM_URL_MISSING);
 	}
@@ -362,13 +364,13 @@ youtube_stream_setup(struct youtube_stream *p,
 		check(ops->after(userdata));
 	}
 
-	char *null_terminated_sabr_url __attribute__((cleanup(str_free))) =
+	char *sabr_url_or_redirect __attribute__((cleanup(str_free))) =
 		NULL;
 	{
 		ada_string tmp = ada_get_href(p->url);
-		null_terminated_sabr_url = strndup(tmp.data, tmp.length);
+		sabr_url_or_redirect = strndup(tmp.data, tmp.length);
 	}
-	check_if(null_terminated_sabr_url == NULL, ERR_JS_SABR_URL_ALLOC);
+	check_if(sabr_url_or_redirect == NULL, ERR_JS_SABR_URL_ALLOC);
 
 	struct string_view playback_config = {0};
 	check(find_playback_config(&html.data, &playback_config));
@@ -392,7 +394,7 @@ youtube_stream_setup(struct youtube_stream *p,
 		downloaded_init(&ump, "UMP response tmpfile");
 		check(tmpfd(&ump.fd));
 
-		check(download_and_mmap_tmpfd(null_terminated_sabr_url,
+		check(download_and_mmap_tmpfd(sabr_url_or_redirect,
 		                              NULL,
 		                              NULL,
 		                              sabr_post,
@@ -404,7 +406,7 @@ youtube_stream_setup(struct youtube_stream *p,
 
 		check(protocol_parse_response(stream,
 		                              &ump.data,
-		                              &null_terminated_sabr_url));
+		                              &sabr_url_or_redirect));
 	}
 
 	return RESULT_OK;
