@@ -573,7 +573,6 @@ ump_parse_part(struct protocol_state *p,
 		if (*skip_media_blobs_until_next) {
 			debug("Skipping media blob until next section");
 		} else {
-			// TODO: raise more specific error for header_id
 			size_t cursor = 0;
 			check(ump_varint_read(&ump,
 			                      &cursor,
@@ -648,11 +647,9 @@ ump_parse(struct protocol_state *p,
 	bool skip_media_blobs_until_next_section = false;
 	while (cursor < ump->sz) {
 		uint64_t part_type = 0;
-		// TODO: raise more specific error for part_type
 		check(ump_varint_read(ump, &cursor, &part_type));
 
 		uint64_t part_size = 0;
-		// TODO: raise more specific error for part_size
 		check(ump_varint_read(ump, &cursor, &part_size));
 
 		debug("Got part_type=%" PRIu64 ", part_size=%" PRIu64,
