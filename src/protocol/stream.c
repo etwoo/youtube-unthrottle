@@ -205,7 +205,7 @@ protocol_update_members(struct protocol_state *p)
 }
 
 static size_t
-index_of(const struct protocol_state *p, unsigned char header_id)
+get_index_of(const struct protocol_state *p, unsigned char header_id)
 {
 	return p->header_map[header_id] == ITAG_AUDIO ? 0 : 1;
 }
@@ -213,13 +213,14 @@ index_of(const struct protocol_state *p, unsigned char header_id)
 static int
 get_fd_for_header(const struct protocol_state *p, unsigned char header_id)
 {
-	return p->outputs[index_of(p, header_id)];
+	return p->outputs[get_index_of(p, header_id)];
 }
 
 static int64_t
-max_seq_num_for_header(const struct protocol_state *p, unsigned char header_id)
+get_sequence_number_cursor(const struct protocol_state *p,
+                           unsigned char header_id)
 {
-	return p->sequence_number_cursor[index_of(p, header_id)];
+	return p->sequence_number_cursor[get_index_of(p, header_id)];
 }
 
 static void
@@ -238,7 +239,7 @@ set_header_sequence_number(struct protocol_state *p,
                            unsigned char header_id,
                            int64_t n)
 {
-	const size_t idx = index_of(p, header_id);
+	const size_t idx = get_index_of(p, header_id);
 	p->sequence_number_cursor[idx] = n;
 	VideoStreaming__BufferedRange *br = p->buffered_ranges[idx];
 	br->end_segment_index = n + 1;
@@ -250,7 +251,7 @@ increment_header_duration(struct protocol_state *p,
                           unsigned char header_id,
                           int64_t duration)
 {
-	p->buffered_ranges[index_of(p, header_id)]->duration_ms += duration;
+	p->buffered_ranges[get_index_of(p, header_id)]->duration_ms += duration;
 	debug("Set header_id=%u duration=%" PRIi64, header_id, duration);
 }
 
@@ -469,7 +470,7 @@ ump_parse_media_header(struct protocol_state *p,
 	set_header_media_type(p, header->header_id, header->itag);
 	if (header->has_sequence_number &&
 	    header->sequence_number <=
-	            max_seq_num_for_header(p, header->header_id)) {
+	            get_sequence_number_cursor(p, header->header_id)) {
 		debug("Skipping repeated seq=%" PRIi64,
 		      header->sequence_number);
 		*skip_media_blobs_until_next = true;
@@ -478,7 +479,7 @@ ump_parse_media_header(struct protocol_state *p,
 
 	debug("Handling new seq=%" PRIi64 ", greatest=%" PRIi64,
 	      header->sequence_number,
-	      max_seq_num_for_header(p, header->header_id));
+	      get_sequence_number_cursor(p, header->header_id));
 	if (header->has_sequence_number) {
 		set_header_sequence_number(p,
 		                           header->header_id,
