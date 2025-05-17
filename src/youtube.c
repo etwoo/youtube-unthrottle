@@ -377,7 +377,7 @@ youtube_stream_setup(struct youtube_stream *p,
 
 	protocol stream =
 		protocol_init(p->proof_of_origin, &playback_config, p->fd);
-	check_if(stream == NULL, 1); // TODO: add errcode for protocol alloc
+	check_if(stream == NULL, ERR_PROTOCOL_STATE_ALLOC);
 
 	for (size_t requests = 0; requests < 5; ++requests) {
 		char *sabr_post __attribute__((cleanup(str_free))) = NULL;

@@ -360,8 +360,7 @@ protocol_next_request(struct protocol_state *p, char **request, size_t *sz)
 {
 	*sz = request__get_packed_size(&p->req);
 	*request = malloc(*sz * sizeof(**request));
-	// TODO: rename ERR_JS_SABR_POST_BODY_ALLOC -> ERR_PROTOCOL_*
-	check_if(*request == NULL, ERR_JS_SABR_POST_BODY_ALLOC);
+	check_if(*request == NULL, ERR_PROTOCOL_SABR_POST_BODY_ALLOC);
 	request__pack(&p->req, (uint8_t *)*request);
 	return RESULT_OK;
 }

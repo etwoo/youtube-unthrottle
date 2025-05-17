@@ -59,7 +59,6 @@ print_to_str_each_enum_value(void)
 	ASSERT_IN(make(ERR_JS_SABR_URL_FIND), CANNOT_FIND);
 	ASSERT_IN(make(ERR_JS_SABR_URL_ALLOC), "Cannot strndup");
 	ASSERT_IN(make(ERR_JS_PLAYBACK_CONFIG_FIND), CANNOT_FIND);
-	ASSERT_IN(make(ERR_JS_SABR_POST_BODY_ALLOC), CANNOT_ALLOC);
 	ASSERT_IN(make(ERR_JS_TIMESTAMP_FIND), CANNOT_FIND);
 	ASSERT_IN(make_ns(ERR_JS_TIMESTAMP_PARSE_LL), "Error in strtoll");
 	ASSERT_IN(make(ERR_JS_DEOB_FIND_MAGIC_ONE), CANNOT_FIND);
@@ -73,6 +72,8 @@ print_to_str_each_enum_value(void)
 	ASSERT_IN(make_s(ERR_JS_CALL_COMPILE), "Error in duk_pcompile");
 	ASSERT_IN(make_s(ERR_JS_CALL_INVOKE), "Error in duk_pcall");
 	ASSERT_IN(make(ERR_JS_CALL_GET_RESULT), "Error fetching");
+	ASSERT_IN(make(ERR_PROTOCOL_STATE_ALLOC), CANNOT_ALLOC);
+	ASSERT_IN(make(ERR_PROTOCOL_SABR_POST_BODY_ALLOC), CANNOT_ALLOC);
 	ASSERT_IN(make_s(ERR_RE_COMPILE), "Error in pcre2_compile");
 	ASSERT_IN(make(ERR_RE_ALLOC_MATCH_DATA), CANNOT_ALLOC);
 	ASSERT_IN(make_s(ERR_RE_CAPTURE_GROUP_COUNT), "Wrong number");
