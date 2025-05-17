@@ -91,7 +91,7 @@ after_inet(void *userdata __attribute__((unused)))
 #endif
 }
 
-static int
+static __attribute__((warn_unused_result)) int
 get_output_fd(const char *path)
 {
 	int fd = open(path, O_CREAT | O_TRUNC | O_WRONLY);
