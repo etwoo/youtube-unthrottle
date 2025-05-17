@@ -384,11 +384,6 @@ youtube_stream_setup(struct youtube_stream *p,
 		size_t sabr_post_sz = 0;
 		check(protocol_next_request(stream, &sabr_post, &sabr_post_sz));
 
-		debug("Sending protobuf blob of sz=%zu", sabr_post_sz);
-		for (size_t i = 0; i < sabr_post_sz; ++i) {
-			debug("%02X", (unsigned char)sabr_post[i]); // TODO rm
-		}
-
 		struct downloaded ump
 			__attribute__((cleanup(downloaded_cleanup)));
 		downloaded_init(&ump, "UMP response tmpfile");

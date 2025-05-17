@@ -67,6 +67,38 @@ sabr_redirect_free(VideoStreaming__SabrRedirect **redirect)
 	video_streaming__sabr_redirect__free_unpacked(*redirect, NULL);
 }
 
+static WARN_UNUSED unsigned char
+get_byte(const char *buffer, size_t sz, size_t pos)
+{
+	return pos < sz ? buffer[pos] : 0;
+}
+
+static void
+debug_hexdump_buffer(const char *buf, size_t sz)
+{
+	debug("Sending protobuf blob of sz=%zu", sz);
+	for (size_t i = 0; i < sz; i += 16) {
+		debug("%02X %02X %02X %02X %02X %02X %02X %02X "
+		      "%02X %02X %02X %02X %02X %02X %02X %02X",
+		      get_byte(buf, sz, i),
+		      get_byte(buf, sz, i + 1),
+		      get_byte(buf, sz, i + 2),
+		      get_byte(buf, sz, i + 3),
+		      get_byte(buf, sz, i + 4),
+		      get_byte(buf, sz, i + 5),
+		      get_byte(buf, sz, i + 6),
+		      get_byte(buf, sz, i + 7),
+		      get_byte(buf, sz, i + 8),
+		      get_byte(buf, sz, i + 9),
+		      get_byte(buf, sz, i + 10),
+		      get_byte(buf, sz, i + 11),
+		      get_byte(buf, sz, i + 12),
+		      get_byte(buf, sz, i + 13),
+		      get_byte(buf, sz, i + 14),
+		      get_byte(buf, sz, i + 15));
+	}
+}
+
 static void
 debug_protobuf_media_header(const VideoStreaming__MediaHeader *header)
 {
@@ -362,6 +394,7 @@ protocol_next_request(struct protocol_state *p, char **request, size_t *sz)
 	*request = malloc(*sz * sizeof(**request));
 	check_if(*request == NULL, ERR_PROTOCOL_SABR_POST_BODY_ALLOC);
 	request__pack(&p->req, (uint8_t *)*request);
+	debug_hexdump_buffer(*request, *sz);
 	return RESULT_OK;
 }
 
