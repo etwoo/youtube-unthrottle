@@ -26,6 +26,8 @@ add_custom_command(
 		--proto_path="${PROTO_PREFIX}"
 		--c_out=.
 		${PROTO_FULLPATH}
+	DEPENDS
+		${PROTO_FULLPATH}
 )
 
 add_library(youtube-protocol)
