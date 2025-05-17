@@ -132,8 +132,8 @@ struct protocol_state {
 	Misc__FormatId *selected_format_ids[2];
 	VideoStreaming__BufferedRange buffered_audio_range;
 	VideoStreaming__BufferedRange buffered_video_range;
-	VideoStreaming__VideoPlaybackAbrRequest req;
 	VideoStreaming__BufferedRange *buffered_ranges[2];
+	VideoStreaming__VideoPlaybackAbrRequest req;
 };
 
 static void
