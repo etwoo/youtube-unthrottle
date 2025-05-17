@@ -229,9 +229,8 @@ set_header_media_type(struct protocol_state *p,
                       int itag)
 {
 	p->header_map[header_id] = itag;
-	debug("Mapping header_id=%u to fd=%d",
-	      header_id,
-	      get_fd_for_header(p, header_id));
+	const int fd = get_fd_for_header(p, header_id);
+	debug("Map header_id=%u to fd=%d", header_id, fd);
 }
 
 static void
@@ -243,7 +242,7 @@ set_header_sequence_number(struct protocol_state *p,
 	p->sequence_number_cursor[idx] = n;
 	VideoStreaming__BufferedRange *br = p->buffered_ranges[idx];
 	br->end_segment_index = n + 1;
-	debug("Set header_id=%u seq=%" PRIi64, header_id, n);
+	debug("Map header_id=%u to seq=%" PRIi64, header_id, n);
 }
 
 static void
@@ -252,7 +251,7 @@ increment_header_duration(struct protocol_state *p,
                           int64_t duration)
 {
 	p->buffered_ranges[get_index_of(p, header_id)]->duration_ms += duration;
-	debug("Set header_id=%u duration=%" PRIi64, header_id, duration);
+	debug("Map header_id=%u to duration=%" PRIi64, header_id, duration);
 }
 
 /*
@@ -530,11 +529,9 @@ ump_parse_cookie(const VideoStreaming__NextRequestPolicy *next_request_policy,
 
 static result_t
 ump_parse_part(struct protocol_state *p,
-               const struct string_view *ump,
+               struct string_view ump, /* note: pass by value */
                char **target_url,
                uint64_t part_type,
-               uint64_t part_size,
-               size_t *cursor,
                bool *skip_media_blobs_until_next)
 {
 	VideoStreaming__NextRequestPolicy *next_request_policy
@@ -550,11 +547,11 @@ ump_parse_part(struct protocol_state *p,
 	switch (part_type) {
 	case 20: /* MEDIA_HEADER */
 		*skip_media_blobs_until_next = false;
-		assert(sizeof(uint8_t) == sizeof(ump->data[0]));
+		assert(sizeof(uint8_t) == sizeof(ump.data[0]));
 		header = video_streaming__media_header__unpack(
 			NULL,
-			part_size,
-			(const uint8_t *)ump->data + *cursor);
+			ump.sz,
+			(const uint8_t *)ump.data);
 		assert(header); // TODO: error out on misparse
 		debug_protobuf_media_header(header);
 		assert(header->header_id <= UCHAR_MAX);
@@ -562,54 +559,55 @@ ump_parse_part(struct protocol_state *p,
 		break;
 	case 21: /* MEDIA */
 		if (*skip_media_blobs_until_next) {
-			debug("Skipping media blob at cursor=%zu", *cursor);
+			debug("Skipping media blob until next section");
 		} else {
 			// TODO: raise more specific error for header_id
-			check(ump_varint_read(ump, cursor, &parsed_header_id));
-			debug("Got media blob header_id=%" PRIu64
-			      ", cursor=%zu, part_size=%" PRIu64
-			      ", remaining_bytes=%zu",
+			size_t cursor = 0;
+			check(ump_varint_read(&ump,
+			                      &cursor,
+			                      &parsed_header_id));
+			debug("Got media blob header_id=%" PRIu64 ", cursor=%zu"
+			      ", part_size=%zu, remaining_bytes=%zu",
 			      parsed_header_id,
-			      *cursor,
-			      part_size,
-			      ump->sz - *cursor);
+			      cursor,
+			      ump.sz,
+			      ump.sz - cursor);
 			assert(parsed_header_id <= UCHAR_MAX);
-			struct string_view blob = {
-				.data = ump->data + *cursor,
-				.sz = part_size - 1,
+			const struct string_view blob = {
+				.data = ump.data + cursor,
+				.sz = ump.sz - cursor,
 			};
 			ump_parse_media_blob(p, parsed_header_id, &blob);
-			*cursor -= 1; // rewind cursor, let caller update
 		}
 		break;
 	case 35: /* NEXT_REQUEST_POLICY */
 		*skip_media_blobs_until_next = false;
-		assert(sizeof(uint8_t) == sizeof(ump->data[0]));
+		assert(sizeof(uint8_t) == sizeof(ump.data[0]));
 		next_request_policy =
 			video_streaming__next_request_policy__unpack(
 				NULL,
-				part_size,
-				(const uint8_t *)ump->data + *cursor);
+				ump.sz,
+				(const uint8_t *)ump.data);
 		assert(next_request_policy); // TODO: error out on misparse
 		ump_parse_cookie(next_request_policy, &p->context);
 		break;
 	case 42: /* FORMAT_INITIALIZATION_METADATA */
 		*skip_media_blobs_until_next = false;
-		assert(sizeof(uint8_t) == sizeof(ump->data[0]));
+		assert(sizeof(uint8_t) == sizeof(ump.data[0]));
 		fmt = video_streaming__format_initialization_metadata__unpack(
 			NULL,
-			part_size,
-			(const uint8_t *)ump->data + *cursor);
+			ump.sz,
+			(const uint8_t *)ump.data);
 		assert(fmt); // TODO: error out on misparse
 		debug_protobuf_fmt_init(fmt);
 		break;
 	case 43: /* SABR_REDIRECT */
 		*skip_media_blobs_until_next = false;
-		assert(sizeof(uint8_t) == sizeof(ump->data[0]));
+		assert(sizeof(uint8_t) == sizeof(ump.data[0]));
 		redirect = video_streaming__sabr_redirect__unpack(
 			NULL,
-			part_size,
-			(const uint8_t *)ump->data + *cursor);
+			ump.sz,
+			(const uint8_t *)ump.data);
 		assert(redirect); // TODO: error on !redirect || !redirect->url
 		debug("Got redirect to new SABR url: %s", redirect->url);
 		free(*target_url);
@@ -647,12 +645,14 @@ ump_parse(struct protocol_state *p,
 		      part_type,
 		      part_size);
 
+		const struct string_view part = {
+			.data = ump->data + cursor,
+			.sz = part_size,
+		};
 		check(ump_parse_part(p,
-		                     ump,
+		                     part,
 		                     target_url,
 		                     part_type,
-		                     part_size,
-		                     &cursor, // TODO rm
 		                     &skip_media_blobs_until_next_section));
 
 		cursor += part_size;
