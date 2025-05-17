@@ -23,9 +23,6 @@
 #include <sys/param.h> /* for MAX() */
 #include <sysexits.h>
 
-#define PCRE2_CODE_UNIT_WIDTH 8
-#include <pcre2.h>
-
 const char *__asan_default_options(void) // NOLINT(bugprone-reserved-identifier)
 	__attribute__((used));
 const char *
