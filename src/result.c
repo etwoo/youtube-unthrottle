@@ -404,6 +404,12 @@ result_to_str(result_t r)
 	case ERR_URL_DOWNLOAD_SET_OPT_POST_BODY:
 		s = my_asprintf("Cannot set POST body: %s", easy_error(r));
 		break;
+	case ERR_URL_DOWNLOAD_SET_OPT_POST_BODY_SIZE:
+		s = my_asprintf("Cannot set POST body size: %s", easy_error(r));
+		break;
+	case ERR_URL_DOWNLOAD_SET_VERBOSE:
+		s = my_asprintf("Cannot set verbose mode: %s", easy_error(r));
+		break;
 	case ERR_URL_DOWNLOAD_PERFORM:
 		s = my_asprintf("Error performing HTTP request: %s",
 		                easy_error(r));
