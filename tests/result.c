@@ -79,6 +79,7 @@ print_to_str_each_enum_value(void)
 	ASSERT_IN(make_n(ERR_PROTOCOL_VARINT_READ_INVALID_SIZE),
 	          "UMP varint size is invalid");
 	ASSERT_IN(make_n(ERR_PROTOCOL_MEDIA_BLOB_WRITE), "Error writing");
+	ASSERT_IN(make(ERR_PROTOCOL_PLAYBACK_COOKIE_ALLOC), CANNOT_ALLOC);
 	ASSERT_IN(make_s(ERR_RE_COMPILE), "Error in pcre2_compile");
 	ASSERT_IN(make(ERR_RE_ALLOC_MATCH_DATA), CANNOT_ALLOC);
 	ASSERT_IN(make_s(ERR_RE_CAPTURE_GROUP_COUNT), "Wrong number");

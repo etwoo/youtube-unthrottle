@@ -502,7 +502,7 @@ ump_parse_media_blob(struct protocol_state *p,
 	return RESULT_OK;
 }
 
-static void
+static WARN_UNUSED result_t
 ump_parse_cookie(const VideoStreaming__NextRequestPolicy *next_request_policy,
                  VideoStreaming__StreamerContext *context)
 {
@@ -516,14 +516,17 @@ ump_parse_cookie(const VideoStreaming__NextRequestPolicy *next_request_policy,
 			next_request_policy->playback_cookie);
 	context->playback_cookie.data = malloc(
 		cookie_packed_sz * sizeof(*context->playback_cookie.data));
-	// TODO: handle malloc error
+	check_if(context->playback_cookie.data == NULL,
+	         ERR_PROTOCOL_PLAYBACK_COOKIE_ALLOC);
 
 	context->playback_cookie.len = cookie_packed_sz;
 	context->has_playback_cookie = true;
 	video_streaming__playback_cookie__pack(
 		next_request_policy->playback_cookie,
 		context->playback_cookie.data);
+
 	debug("Updated playback cookie of size=%zu", cookie_packed_sz);
+	return RESULT_OK;
 }
 
 static WARN_UNUSED result_t
@@ -589,7 +592,7 @@ ump_parse_part(struct protocol_state *p,
 				ump.sz,
 				(const uint8_t *)ump.data);
 		assert(next_request_policy); // TODO: error out on misparse
-		ump_parse_cookie(next_request_policy, &p->context);
+		check(ump_parse_cookie(next_request_policy, &p->context));
 		break;
 	case 42: /* FORMAT_INITIALIZATION_METADATA */
 		*skip_media_blobs_until_next = false;
