@@ -554,7 +554,7 @@ ump_parse_part(struct protocol_state *p,
 			(const uint8_t *)ump.data);
 		assert(header); // TODO: error out on misparse
 		debug_protobuf_media_header(header);
-		assert(header->header_id <= UCHAR_MAX);
+		assert(header->header_id <= UCHAR_MAX); // TODO: convert to check_if() error
 		ump_parse_media_header(p, header, skip_media_blobs_until_next);
 		break;
 	case 21: /* MEDIA */

@@ -129,7 +129,7 @@ youtube_stream_set_url(struct youtube_stream *p, const char *val)
 {
 	const size_t val_sz = strlen(val);
 	if (!ada_can_parse(val, val_sz)) {
-		return make_result(ERR_JS_PARSE_JSON_CALLBACK_INVALID_URL,
+		return make_result(ERR_YOUTUBE_STREAM_URL_INVALID,
 		                   val,
 		                   val_sz);
 	}
