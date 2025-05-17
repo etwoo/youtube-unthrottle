@@ -490,15 +490,14 @@ ump_parse_media_header(struct protocol_state *p,
 	}
 }
 
-static void
+static WARN_UNUSED result_t
 ump_parse_media_blob(struct protocol_state *p,
                      unsigned char header_id,
                      const struct string_view *blob)
 {
 	int fd = get_fd_for_header(p, header_id);
-	ssize_t written = write_with_retry(fd, blob->data, blob->sz);
-	// TODO: fail-fast on write failure instead of only logging info()
-	info_m_if(written < 0, "Cannot write media blob to fd=%d", fd);
+	const ssize_t written = write_with_retry(fd, blob->data, blob->sz);
+	check_if(written < 0, ERR_PROTOCOL_MEDIA_BLOB_WRITE, errno);
 	debug("Wrote media blob bytes=%zd to fd=%d", written, fd);
 }
 
@@ -577,7 +576,7 @@ ump_parse_part(struct protocol_state *p,
 				.data = ump.data + cursor,
 				.sz = ump.sz - cursor,
 			};
-			ump_parse_media_blob(p, parsed_header_id, &blob);
+			check(ump_parse_media_blob(p, parsed_header_id, &blob));
 		}
 		break;
 	case 35: /* NEXT_REQUEST_POLICY */

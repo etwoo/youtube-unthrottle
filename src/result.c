@@ -219,6 +219,9 @@ result_to_str(result_t r)
 	case ERR_PROTOCOL_VARINT_READ_INVALID_SIZE:
 		s = my_asprintf("UMP varint size is invalid: %d", r.num);
 		break;
+	case ERR_PROTOCOL_MEDIA_BLOB_WRITE:
+		s = my_asprintf("Error writing media blob: %s", my_strerror(r));
+		break;
 	case ERR_RE_COMPILE:
 		s = my_asprintf("Error in pcre2_compile() with "
 		                "regex \"%s\" at offset %zu: %s",
