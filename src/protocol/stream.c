@@ -452,6 +452,12 @@ ump_varint_read(const struct string_view *ump, size_t *pos, uint64_t *value)
 		                   (int)bytes_to_read);
 	}
 	*pos += bytes_to_read;
+
+	/*
+	 * Note: this postcondition assumes a varint is never at the very end
+	 * of a buffer, i.e. that a varint is always used to describe the
+	 * type/size/etc of some subsequent payload.
+	 */
 	check_if(*pos >= ump->sz, ERR_PROTOCOL_VARINT_READ_POST, (int)*pos);
 
 	*value = 0;
