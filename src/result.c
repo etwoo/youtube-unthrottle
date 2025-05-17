@@ -212,6 +212,14 @@ result_to_str(result_t r)
 	case ERR_PROTOCOL_SABR_POST_BODY_ALLOC:
 		s = strdup("Cannot allocate SABR POST body");
 		break;
+	case ERR_PROTOCOL_VARINT_READ_PRE:
+		s = my_asprintf("UMP varint read fails precondition at pos=%d",
+		                r.num);
+		break;
+	case ERR_PROTOCOL_VARINT_READ_POST:
+		s = my_asprintf("UMP varint read fails postcondition at pos=%d",
+		                r.num);
+		break;
 	case ERR_PROTOCOL_VARINT_READ_OUT_OF_BOUNDS:
 		s = my_asprintf("UMP varint size exceeds buffer bounds: %d",
 		                r.num);

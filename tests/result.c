@@ -75,6 +75,10 @@ print_to_str_each_enum_value(void)
 	ASSERT_IN(make(ERR_JS_CALL_GET_RESULT), "Error fetching");
 	ASSERT_IN(make(ERR_PROTOCOL_STATE_ALLOC), CANNOT_ALLOC);
 	ASSERT_IN(make(ERR_PROTOCOL_SABR_POST_BODY_ALLOC), CANNOT_ALLOC);
+	ASSERT_IN(make_n(ERR_PROTOCOL_VARINT_READ_PRE),
+	          "UMP varint read fails precondition");
+	ASSERT_IN(make_n(ERR_PROTOCOL_VARINT_READ_POST),
+	          "UMP varint read fails postcondition");
 	ASSERT_IN(make_n(ERR_PROTOCOL_VARINT_READ_OUT_OF_BOUNDS),
 	          "UMP varint size exceeds");
 	ASSERT_IN(make_n(ERR_PROTOCOL_VARINT_READ_INVALID_SIZE),

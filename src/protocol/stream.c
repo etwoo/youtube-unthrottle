@@ -412,45 +412,47 @@ ump_read_vle(const unsigned char first_byte,
 }
 
 static WARN_UNUSED result_t
-ump_varint_read(const struct string_view *ump, size_t *cursor, uint64_t *value)
+ump_varint_read(const struct string_view *ump, size_t *pos, uint64_t *value)
 {
-	assert(*cursor < ump->sz); // TODO: use make_error/check_if
+	check_if(*pos >= ump->sz, ERR_PROTOCOL_VARINT_READ_PRE, (int)*pos);
 
 	size_t bytes_to_read = 0;
 	unsigned char first_byte_mask = 0xFF;
-	ump_read_vle(ump->data[*cursor], &bytes_to_read, &first_byte_mask);
+	ump_read_vle(ump->data[*pos], &bytes_to_read, &first_byte_mask);
 	debug("Got first_byte=%hhu, bytes_to_read=%zu, first_byte_mask=%02X",
-	      ump->data[*cursor],
+	      ump->data[*pos],
 	      bytes_to_read,
 	      first_byte_mask);
 
-	check_if(*cursor <= SIZE_MAX - bytes_to_read &&
-	                 *cursor + bytes_to_read >= ump->sz,
-	         ERR_PROTOCOL_VARINT_READ_OUT_OF_BOUNDS);
+	check_if(*pos > SIZE_MAX - bytes_to_read ||
+	                 *pos >= ump->sz - bytes_to_read,
+	         ERR_PROTOCOL_VARINT_READ_OUT_OF_BOUNDS,
+	         (int)bytes_to_read);
 
 	uint64_t parsed[5] = {0};
 	switch (bytes_to_read) {
 	case 5: // TODO: bytes_to_read=5 is probably broken
-		parsed[4] = ump->data[*cursor + 4] << 24;
+		parsed[4] = ump->data[*pos + 4] << 24;
 		__attribute__((fallthrough));
 	case 4: // TODO: bytes_to_read=4 is probably broken
-		parsed[3] = ump->data[*cursor + 3] << 16;
+		parsed[3] = ump->data[*pos + 3] << 16;
 		__attribute__((fallthrough));
 	case 3:
-		parsed[2] = ump->data[*cursor + 2] << (8 + (8 - bytes_to_read));
+		parsed[2] = ump->data[*pos + 2] << (8 + (8 - bytes_to_read));
 		__attribute__((fallthrough));
 	case 2:
-		parsed[1] = (unsigned char)ump->data[*cursor + 1]
+		parsed[1] = (unsigned char)ump->data[*pos + 1]
 		            << (8 - bytes_to_read);
 		__attribute__((fallthrough));
 	case 1:
-		parsed[0] = ump->data[*cursor] & first_byte_mask;
+		parsed[0] = ump->data[*pos] & first_byte_mask;
 		break;
 	default:
 		return make_result(ERR_PROTOCOL_VARINT_READ_INVALID_SIZE,
 		                   (int)bytes_to_read);
 	}
-	*cursor += bytes_to_read;
+	*pos += bytes_to_read;
+	check_if(*pos >= ump->sz, ERR_PROTOCOL_VARINT_READ_POST, (int)*pos);
 
 	*value = 0;
 	for (size_t i = 0; i < ARRAY_SIZE(parsed); ++i) {
