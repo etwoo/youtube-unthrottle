@@ -204,19 +204,19 @@ protocol_update_members(struct protocol_state *p)
 	                                  p->buffered_video_range.duration_ms);
 }
 
-static size_t
+static WARN_UNUSED size_t
 get_index_of(const struct protocol_state *p, unsigned char header_id)
 {
 	return p->header_map[header_id] == ITAG_AUDIO ? 0 : 1;
 }
 
-static int
+static WARN_UNUSED int
 get_fd_for_header(const struct protocol_state *p, unsigned char header_id)
 {
 	return p->outputs[get_index_of(p, header_id)];
 }
 
-static int64_t
+static WARN_UNUSED int64_t
 get_sequence_number_cursor(const struct protocol_state *p,
                            unsigned char header_id)
 {
@@ -274,7 +274,7 @@ base64url_to_standard_base64(char *buf)
 	}
 }
 
-static bool
+static WARN_UNUSED bool
 protocol_base64_decode(const struct string_view *in,
                        struct ProtobufCBinaryData *out)
 {
@@ -411,7 +411,7 @@ ump_read_vle(const unsigned char first_byte,
 	*first_byte_mask ^= CHAR_BIT_4;
 }
 
-static result_t
+static WARN_UNUSED result_t
 ump_varint_read(const struct string_view *ump, size_t *cursor, uint64_t *value)
 {
 	assert(*cursor < ump->sz);
@@ -499,6 +499,7 @@ ump_parse_media_blob(struct protocol_state *p,
 	const ssize_t written = write_with_retry(fd, blob->data, blob->sz);
 	check_if(written < 0, ERR_PROTOCOL_MEDIA_BLOB_WRITE, errno);
 	debug("Wrote media blob bytes=%zd to fd=%d", written, fd);
+	return RESULT_OK;
 }
 
 static void
@@ -525,7 +526,7 @@ ump_parse_cookie(const VideoStreaming__NextRequestPolicy *next_request_policy,
 	debug("Updated playback cookie of size=%zu", cookie_packed_sz);
 }
 
-static result_t
+static WARN_UNUSED result_t
 ump_parse_part(struct protocol_state *p,
                struct string_view ump, /* note: pass by value */
                char **target_url,
@@ -620,7 +621,7 @@ ump_parse_part(struct protocol_state *p,
 	return RESULT_OK;
 }
 
-static result_t
+static WARN_UNUSED result_t
 ump_parse(struct protocol_state *p,
           const struct string_view *ump,
           char **target_url)
