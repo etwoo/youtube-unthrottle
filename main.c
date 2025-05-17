@@ -13,12 +13,13 @@
 #include "youtube.h"
 
 #include <assert.h>
+#include <errno.h>
 #include <fcntl.h>  /* for open() */
 #include <getopt.h> /* for getopt_long() */
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <string.h>    /* for strlen() */
+#include <string.h>    /* for strerror(), strlen() */
 #include <sys/param.h> /* for MAX() */
 #include <sysexits.h>
 
@@ -93,65 +94,26 @@ after_inet(void *userdata __attribute__((unused)))
 #endif
 }
 
-struct quality {
-	pcre2_code *re;
-	pcre2_match_data *md;
-};
-
-static __attribute__((warn_unused_result)) bool
-parse_quality_choices(const char *str, struct quality *q)
+static int
+get_output_fd(const char *path)
 {
-	assert(q->re == NULL && q->md == NULL);
-
-	int rc = 0;
-	PCRE2_SIZE loc = 0;
-	PCRE2_SPTR pat = (PCRE2_SPTR)str;
-	PCRE2_UCHAR err[256];
-
-	const char *action = "compiling";
-	q->re = pcre2_compile(pat, PCRE2_ZERO_TERMINATED, 0, &rc, &loc, NULL);
-	if (q->re == NULL) {
-		goto err;
+	int fd = open(path, O_CREAT | O_TRUNC | O_WRONLY);
+	if (fd < 0) {
+		to_stderr("Can't open %s: %s", path, strerror(errno));
 	}
-
-	action = "allocating match data block";
-	q->md = pcre2_match_data_create_from_pattern(q->re, NULL);
-	if (q->md == NULL) {
-		goto err;
-	}
-
-	return true;
-
-err:
-	if (pcre2_get_error_message(rc, err, sizeof(err)) < 0) {
-		to_stderr("(no details) %s regex \"%s\"", action, str);
-		return false;
-	}
-
-	to_stderr("%s \"%s\" at offset %zu: %s", action, str, loc, err);
-	return false;
-}
-
-static void
-print_url(const char *url, size_t sz, void *userdata __attribute((unused)))
-{
-	fprintf(stderr, "%.*s\n", (int)sz, url);
+	return fd;
 }
 
 static __attribute__((warn_unused_result)) result_t
 unthrottle(const char *target,
            const char *proof_of_origin,
            const char *visitor_data,
-           struct quality *q,
+           int fd[2],
            youtube_handle_t *stream)
 {
 	check(youtube_global_init());
 
-	int fd[2] = {0};
-	fd[0] = open("audio.out", O_CREAT | O_TRUNC | O_WRONLY);
-	fd[1] = open("video.out", O_CREAT | O_TRUNC | O_WRONLY);
-	// TODO: fail-fast on open() error
-
+	check_if(fd[0] < 0 || fd[1] < 0, OK);
 	*stream = youtube_stream_init(proof_of_origin, visitor_data, NULL, fd);
 	check_if(*stream == NULL, OK);
 
@@ -165,8 +127,7 @@ unthrottle(const char *target,
 		.after_eval = NULL,
 		.after = NULL,
 	};
-	check(youtube_stream_setup(*stream, &sops, q, target));
-	check(youtube_stream_visitor(*stream, print_url, NULL));
+	check(youtube_stream_setup(*stream, &sops, NULL, target));
 	return RESULT_OK;
 }
 
@@ -179,7 +140,6 @@ main(int argc, char *argv[])
 		ACTION_USAGE_HELP,
 		ACTION_USAGE_ERROR,
 	} action = 0;
-	const char *q_str = NULL;
 	const char *proof_of_origin = NULL;
 	const char *visitor_data = NULL;
 
@@ -187,23 +147,19 @@ main(int argc, char *argv[])
 	struct option lo[] = {
 		{"help", no_argument, &synonym, 'h'},
 		{"try-sandbox", no_argument, &synonym, 't'},
-		{"quality", required_argument, &synonym, 'q'},
 		{"proof-of-origin", required_argument, &synonym, 'p'},
 		{"visitor-data", required_argument, &synonym, 'v'},
 		{NULL, 0, NULL, 0},
 	};
 
 	int opt = 0;
-	while ((opt = getopt_long(argc, argv, "htq:p:v:", lo, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "htp:v:", lo, NULL)) != -1) {
 		switch (opt == 0 ? synonym : opt) {
 		case 'h':
 			action = MAX(action, ACTION_USAGE_HELP);
 			break;
 		case 't':
 			action = MAX(action, ACTION_TRY_SANDBOX);
-			break;
-		case 'q':
-			q_str = optarg;
 			break;
 		case 'p':
 			proof_of_origin = optarg;
@@ -219,7 +175,6 @@ main(int argc, char *argv[])
 
 	int rc = EX_USAGE;  /* assume invalid arguments by default */
 	FILE *out = stderr; /* assume output to stderr by default */
-	struct quality q = {NULL, NULL};
 
 	switch (action) {
 	case ACTION_YOUTUBE_UNTHROTTLE:
@@ -229,16 +184,22 @@ main(int argc, char *argv[])
 			to_stderr("Missing --proof-of-origin value");
 		} else if (!visitor_data || *visitor_data == '\0') {
 			to_stderr("Missing --visitor-data value");
-		} else if (q_str && !parse_quality_choices(q_str, &q)) {
-			to_stderr("Invalid --quality value: %s", q_str);
 		} else {
+			int media[2] = {
+				get_output_fd("audio.out"),
+				get_output_fd("video.out"),
+			};
 			youtube_handle_t stream = NULL;
 			rc = result_to_status(unthrottle(argv[optind],
 			                                 proof_of_origin,
 			                                 visitor_data,
-			                                 &q,
+			                                 media,
 			                                 &stream));
-			if (stream == NULL) {
+
+			if (media[0] < 0 || media[1] < 0) {
+				/* get_output_fd() already logs to stderr */
+				rc = EX_CANTCREAT;
+			} else if (stream == NULL) {
 				to_stderr("Can't alloc stream");
 				rc = EX_OSERR;
 			}
@@ -261,7 +222,5 @@ main(int argc, char *argv[])
 		break;
 	}
 
-	pcre2_match_data_free(q.md); /* handles NULL gracefully */
-	pcre2_code_free(q.re);       /* handles NULL gracefully */
 	return rc;
 }
