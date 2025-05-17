@@ -533,8 +533,8 @@ ump_parse_media_header(struct protocol_state *p,
 
 static WARN_UNUSED result_t
 ump_parse_media_blob(struct protocol_state *p,
-                     unsigned char header_id,
-                     const struct string_view *blob)
+                     const struct string_view *blob,
+                     unsigned char header_id)
 {
 	int fd = get_fd_for_header(p, header_id);
 	const ssize_t written = write_with_retry(fd, blob->data, blob->sz);
@@ -623,7 +623,7 @@ ump_parse_part(struct protocol_state *p,
 				.data = ump.data + cursor,
 				.sz = ump.sz - cursor,
 			};
-			check(ump_parse_media_blob(p, parsed_header_id, &blob));
+			check(ump_parse_media_blob(p, &blob, parsed_header_id));
 		}
 		break;
 	case 35: /* NEXT_REQUEST_POLICY */
@@ -674,10 +674,9 @@ ump_parse(struct protocol_state *p,
 {
 	debug("Got UMP response of sz=%zu", ump->sz);
 
-	// TODO: mutate ump->{data,sz} directly, drop separate cursor value
-	// for above TODO, make a deep-copy of ump struct here or in caller
-	size_t cursor = 0;
-	bool skip_media_blobs_until_next_section = false;
+	size_t cursor = 0; // position within UMP payload
+	bool skip = false; // whether to skip certain UMP sections
+
 	while (cursor < ump->sz) {
 		uint64_t part_type = 0;
 		check(ump_varint_read(ump, &cursor, &part_type));
@@ -693,11 +692,7 @@ ump_parse(struct protocol_state *p,
 			.data = ump->data + cursor,
 			.sz = part_size,
 		};
-		check(ump_parse_part(p,
-		                     part,
-		                     target_url,
-		                     part_type,
-		                     &skip_media_blobs_until_next_section));
+		check(ump_parse_part(p, part, target_url, part_type, &skip));
 
 		cursor += part_size;
 	}
