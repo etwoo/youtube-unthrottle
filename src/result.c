@@ -225,6 +225,21 @@ result_to_str(result_t r)
 	case ERR_PROTOCOL_PLAYBACK_COOKIE_ALLOC:
 		s = strdup("Cannot allocate playback cookie buffer");
 		break;
+	case ERR_PROTOCOL_HEADER_ID_OVERFLOW:
+		s = my_asprintf("Header ID is unexpectedly large: %d", r.num);
+		break;
+	case ERR_PROTOCOL_UNPACK_MEDIA_HEADER:
+		s = strdup("Cannot unpack media header protobuf");
+		break;
+	case ERR_PROTOCOL_UNPACK_NEXT_REQUEST_POLICY:
+		s = strdup("Cannot unpack next request policy protobuf");
+		break;
+	case ERR_PROTOCOL_UNPACK_FORMAT_INIT:
+		s = strdup("Cannot unpack format init metadata protobuf");
+		break;
+	case ERR_PROTOCOL_UNPACK_SABR_REDIRECT:
+		s = strdup("Cannot unpack SABR redirect protobuf");
+		break;
 	case ERR_RE_COMPILE:
 		s = my_asprintf("Error in pcre2_compile() with "
 		                "regex \"%s\" at offset %zu: %s",

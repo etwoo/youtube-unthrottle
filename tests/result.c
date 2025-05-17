@@ -46,6 +46,7 @@ static const char CANNOT_APPEND[] = "Cannot append";
 static const char CANNOT_FIND[] = "Cannot find";
 static const char CANNOT_GET[] = "Cannot get";
 static const char CANNOT_SET[] = "Cannot set";
+static const char CANNOT_UNPACK[] = "Cannot unpack";
 static const char CANNOT_ISSUE[] = "Error issuing";
 static const char CANNOT_CONSUME[] = "Error consuming";
 static const char CANNOT_RELEASE[] = "Error releasing";
@@ -80,6 +81,10 @@ print_to_str_each_enum_value(void)
 	          "UMP varint size is invalid");
 	ASSERT_IN(make_n(ERR_PROTOCOL_MEDIA_BLOB_WRITE), "Error writing");
 	ASSERT_IN(make(ERR_PROTOCOL_PLAYBACK_COOKIE_ALLOC), CANNOT_ALLOC);
+	ASSERT_IN(make(ERR_PROTOCOL_UNPACK_MEDIA_HEADER), CANNOT_UNPACK);
+	ASSERT_IN(make(ERR_PROTOCOL_UNPACK_NEXT_REQUEST_POLICY), CANNOT_UNPACK);
+	ASSERT_IN(make(ERR_PROTOCOL_UNPACK_FORMAT_INIT), CANNOT_UNPACK);
+	ASSERT_IN(make(ERR_PROTOCOL_UNPACK_SABR_REDIRECT), CANNOT_UNPACK);
 	ASSERT_IN(make_s(ERR_RE_COMPILE), "Error in pcre2_compile");
 	ASSERT_IN(make(ERR_RE_ALLOC_MATCH_DATA), CANNOT_ALLOC);
 	ASSERT_IN(make_s(ERR_RE_CAPTURE_GROUP_COUNT), "Wrong number");
