@@ -156,9 +156,13 @@ increment_header_duration(struct protocol_state *p,
 static void
 debug_protobuf_media_header(const VideoStreaming__MediaHeader *header)
 {
-	debug("Got header header_id=%" PRIu32 ", video=%s, itag=%d, xtags=%s"
-	      ", start_data_range=%d, is_init_seg=%d"
-	      ", seq=%" PRIi64 ", start_ms=%d, duration_ms=%d"
+	debug("Got header header_id=%" PRIu32 ", video=%s"
+	      ", itag=%d"
+	      ", xtags=%s"
+	      ", start_data_range=%d"
+	      ", is_init_seg=%d"
+	      ", seq=%" PRIi64 ", start_ms=%d"
+	      ", duration_ms=%d"
 	      ", content_length=%" PRIi64 ", time_range.start=%" PRIi64
 	      ", time_range.duration=%" PRIi64
 	      ", time_range.timescale=%" PRIi32,
@@ -181,6 +185,25 @@ debug_protobuf_media_header(const VideoStreaming__MediaHeader *header)
 	      (header->time_range && header->time_range->has_timescale
 	               ? header->time_range->timescale
 	               : -1));
+}
+
+static void
+debug_protobuf_fmt_init(const VideoStreaming__FormatInitializationMetadata *fmt)
+{
+	debug("Got format video=%s"
+	      ", itag=%d"
+	      ", duration=%d"
+	      ", init_start=%d"
+	      ", init_end=%d"
+	      ", index_start=%d"
+	      ", index_end=%d",
+	      fmt->video_id,
+	      fmt->format_id->has_itag ? fmt->format_id->itag : -1,
+	      (fmt->has_duration_ms ? fmt->duration_ms : -1),
+	      (fmt->init_range->has_start ? fmt->init_range->start : -1),
+	      (fmt->init_range->has_end ? fmt->init_range->end : -1),
+	      (fmt->index_range->has_start ? fmt->index_range->start : -1),
+	      (fmt->index_range->has_end ? fmt->index_range->end : -1));
 }
 
 static void
@@ -577,19 +600,7 @@ ump_parse_part(struct protocol_state *p,
 			part_size,
 			(const uint8_t *)ump->data + *cursor);
 		assert(fmt); // TODO: error out on misparse
-		debug("Got format video=%s, itag=%d, "
-		      "duration=%d"
-		      ", init_start=%d, init_end=%d"
-		      ", index_start=%d, index_end=%d",
-		      fmt->video_id,
-		      fmt->format_id->has_itag ? fmt->format_id->itag : -1,
-		      (fmt->has_duration_ms ? fmt->duration_ms : -1),
-		      (fmt->init_range->has_start ? fmt->init_range->start
-		                                  : -1),
-		      (fmt->init_range->has_end ? fmt->init_range->end : -1),
-		      (fmt->index_range->has_start ? fmt->index_range->start
-		                                   : -1),
-		      (fmt->index_range->has_end ? fmt->index_range->end : -1));
+		debug_protobuf_fmt_init(fmt);
 		break;
 	case 43: /* SABR_REDIRECT */
 		*skip_media_blobs_until_next = false;
