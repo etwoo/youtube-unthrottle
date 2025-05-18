@@ -235,6 +235,12 @@ ciphertexts_cleanup(char *ciphertexts[][2])
 	debug("free()-d n-param ciphertext bufs");
 }
 
+static void
+protocol_cleanup_p(protocol *pp)
+{
+	protocol_cleanup(*pp);
+}
+
 static const char AMPERSAND[] = "\\u0026"; // URI-encoded ampersand character
 static const size_t AMPERSAND_SZ = strlen(AMPERSAND);
 
@@ -372,10 +378,11 @@ youtube_stream_setup(struct youtube_stream *p,
 	struct string_view playback_config = {0};
 	check(find_playback_config(&html.data, &playback_config));
 
-	protocol stream =
+	protocol stream __attribute__((cleanup(protocol_cleanup_p))) =
 		protocol_init(p->proof_of_origin, &playback_config, p->fd);
 	check_if(stream == NULL, ERR_PROTOCOL_STATE_ALLOC);
 
+	// TODO: debug cutoff at 60s, then remove hardcoded 5 request limit
 	for (size_t requests = 0; requests < 5; ++requests) {
 		char *sabr_post __attribute__((cleanup(str_free))) = NULL;
 		size_t sabr_post_sz = 0;
