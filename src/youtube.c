@@ -22,7 +22,7 @@ static const char ARG_N[] = "n";
 struct youtube_stream {
 	ada_url url;
 	const char *proof_of_origin;
-	const char *visitor_data;
+	const char *visitor_data; // TODO: remove unused visitor data
 	struct url_request_context request_context;
 	int fd[2];
 };
