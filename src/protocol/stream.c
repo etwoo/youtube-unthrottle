@@ -383,23 +383,17 @@ protocol_cleanup(struct protocol_state *p)
 	}
 }
 
-#define request__get_packed_size                                               \
-	video_streaming__video_playback_abr_request__get_packed_size
-#define request__pack video_streaming__video_playback_abr_request__pack
-
 result_t
-protocol_next_request(struct protocol_state *p, char **request, size_t *sz)
+protocol_next_request(struct protocol_state *p, char **buf, size_t *sz)
 {
-	*sz = request__get_packed_size(&p->req);
-	*request = malloc(*sz * sizeof(**request));
-	check_if(*request == NULL, ERR_PROTOCOL_SABR_POST_BODY_ALLOC);
-	request__pack(&p->req, (uint8_t *)*request);
-	debug_hexdump_buffer(*request, *sz);
+	VideoStreaming__VideoPlaybackAbrRequest *r = &p->req;
+	*sz = video_streaming__video_playback_abr_request__get_packed_size(r);
+	*buf = malloc(*sz * sizeof(**buf));
+	check_if(*buf == NULL, ERR_PROTOCOL_SABR_POST_BODY_ALLOC);
+	video_streaming__video_playback_abr_request__pack(r, (uint8_t *)*buf);
+	debug_hexdump_buffer(*buf, *sz);
 	return RESULT_OK;
 }
-
-#undef request__get_packed_size
-#undef request__pack
 
 static const unsigned char CHAR_BIT_0 = 0x80; // bit pattern: 10000000
 static const unsigned char CHAR_BIT_1 = 0x40; // bit pattern: 01000000
