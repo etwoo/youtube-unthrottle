@@ -129,9 +129,7 @@ youtube_stream_set_url(struct youtube_stream *p, const char *val)
 {
 	const size_t val_sz = strlen(val);
 	if (!ada_can_parse(val, val_sz)) {
-		return make_result(ERR_YOUTUBE_STREAM_URL_INVALID,
-		                   val,
-		                   val_sz);
+		return make_result(ERR_YOUTUBE_STREAM_URL_INVALID, val, val_sz);
 	}
 
 	p->url = ada_parse(val, strlen(val));
@@ -364,8 +362,7 @@ youtube_stream_setup(struct youtube_stream *p,
 		check(ops->after(userdata));
 	}
 
-	char *sabr_url_or_redirect __attribute__((cleanup(str_free))) =
-		NULL;
+	char *sabr_url_or_redirect __attribute__((cleanup(str_free))) = NULL;
 	{
 		ada_string tmp = ada_get_href(p->url);
 		sabr_url_or_redirect = strndup(tmp.data, tmp.length);
