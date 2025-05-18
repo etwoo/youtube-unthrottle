@@ -129,6 +129,8 @@ print_to_str_each_enum_value(void)
 	ASSERT_IN(make_n(ERR_TMPFILE_DUP), "Error dup");
 	ASSERT_IN(make_n(ERR_TMPFILE_FSTAT), "Error fstat");
 	ASSERT_IN(make_n(ERR_TMPFILE_MMAP), "Error mmap");
+	ASSERT_IN(make_n(ERR_TMPFILE_LSEEK), "Error seeking");
+	ASSERT_IN(make_n(ERR_TMPFILE_FTRUNCATE), "Error truncating");
 	ASSERT_IN(make(ERR_URL_GLOBAL_INIT), "Cannot use URL functions");
 	ASSERT_IN(make(ERR_URL_PREPARE_ALLOC), CANNOT_ALLOC);
 	ASSERT_IN(make_n(ERR_URL_PREPARE_SET_PART_SCHEME), CANNOT_SET);

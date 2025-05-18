@@ -76,15 +76,10 @@ parse_callback_noop(const char *val __attribute__((unused)),
 }
 
 static const struct youtube_setup_ops NOOP = {
-	.before = setup_callback_noop,
+	.before_tmpfile = setup_callback_noop,
+	.after_tmpfile = setup_callback_noop,
 	.before_inet = setup_callback_noop,
 	.after_inet = setup_callback_noop,
-	.before_parse = setup_callback_noop,
-	.during_parse_choose_quality = parse_callback_noop,
-	.after_parse = setup_callback_noop,
-	.before_eval = setup_callback_noop,
-	.after_eval = setup_callback_noop,
-	.after = setup_callback_noop,
 };
 
 struct check_url_state {
@@ -146,15 +141,10 @@ stream_setup_with_redirected_network_io(const char *(*custom_fn)(const char *),
 }
 
 static const struct youtube_setup_ops NULLOP = {
-	.before = NULL,
+	.before_tmpfile = NULL,
+	.after_tmpfile = NULL,
 	.before_inet = NULL,
 	.after_inet = NULL,
-	.before_parse = NULL,
-	.during_parse_choose_quality = NULL,
-	.after_parse = NULL,
-	.before_eval = NULL,
-	.after_eval = NULL,
-	.after = NULL,
 };
 
 TEST

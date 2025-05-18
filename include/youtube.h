@@ -23,12 +23,10 @@ youtube_handle_t youtube_stream_init(const char *proof_of_origin,
 void youtube_stream_cleanup(youtube_handle_t h);
 
 struct youtube_setup_ops {
-	result_t (*before)(void *);
+	result_t (*before_tmpfile)(void *);
+	result_t (*after_tmpfile)(void *);
 	result_t (*before_inet)(void *);
 	result_t (*after_inet)(void *);
-	result_t (*before_eval)(void *);
-	result_t (*after_eval)(void *);
-	result_t (*after)(void *);
 };
 
 result_t youtube_stream_setup(youtube_handle_t h,

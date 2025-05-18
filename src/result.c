@@ -362,6 +362,12 @@ result_to_str(result_t r)
 	case ERR_TMPFILE_MMAP:
 		s = my_asprintf("Error mmap()-ing tmpfile: %s", my_strerror(r));
 		break;
+	case ERR_TMPFILE_LSEEK:
+		s = my_asprintf("Error seeking in tmpfile: %s", my_strerror(r));
+		break;
+	case ERR_TMPFILE_FTRUNCATE:
+		s = my_asprintf("Error truncating tmpfile: %s", my_strerror(r));
+		break;
 	case ERR_URL_GLOBAL_INIT:
 		s = strdup("Cannot use URL functions");
 		break;

@@ -218,6 +218,7 @@ downloaded_cleanup(struct downloaded *d)
 	info_m_if(d->fd > 0 && close(d->fd) < 0,
 	          "Ignoring error close()-ing %s",
 	          d->description);
+	d->fd = -1;
 }
 
 static void
@@ -276,18 +277,25 @@ youtube_stream_setup(struct youtube_stream *p,
                      void *userdata,
                      const char *target)
 {
-	if (ops && ops->before) {
-		check(ops->before(userdata));
+	if (ops && ops->before_tmpfile) {
+		check(ops->before_tmpfile(userdata));
 	}
 
 	struct downloaded html __attribute__((cleanup(downloaded_cleanup)));
 	struct downloaded js __attribute__((cleanup(downloaded_cleanup)));
+	struct downloaded ump __attribute__((cleanup(downloaded_cleanup)));
 
 	downloaded_init(&html, "HTML tmpfile");
 	downloaded_init(&js, "JavaScript tmpfile");
+	downloaded_init(&ump, "UMP response tmpfile");
 
 	check(tmpfd(&html.fd));
 	check(tmpfd(&js.fd));
+	check(tmpfd(&ump.fd));
+
+	if (ops && ops->after_tmpfile) {
+		check(ops->after_tmpfile(userdata));
+	}
 
 	if (ops && ops->before_inet) {
 		check(ops->before_inet(userdata));
@@ -323,14 +331,6 @@ youtube_stream_setup(struct youtube_stream *p,
 	                              &js.data,
 	                              &p->request_context));
 
-	if (ops && ops->after_inet) {
-		check(ops->after_inet(userdata));
-	}
-
-	if (ops && ops->before_eval) {
-		check(ops->before_eval(userdata));
-	}
-
 	{
 		struct string_view sabr = {0};
 		check(find_sabr_url(&html.data, &sabr));
@@ -360,14 +360,6 @@ youtube_stream_setup(struct youtube_stream *p,
 	};
 	check(call_js_foreach(&d, ciphertexts, &cops, p));
 
-	if (ops && ops->after_eval) {
-		check(ops->after_eval(userdata));
-	}
-
-	if (ops && ops->after) {
-		check(ops->after(userdata));
-	}
-
 	char *sabr_url_or_redirect __attribute__((cleanup(str_free))) = NULL;
 	{
 		ada_string tmp = ada_get_href(p->url);
@@ -386,13 +378,8 @@ youtube_stream_setup(struct youtube_stream *p,
 	for (size_t requests = 0; requests < 5; ++requests) {
 		char *sabr_post __attribute__((cleanup(str_free))) = NULL;
 		size_t sabr_post_sz = 0;
+
 		check(protocol_next_request(stream, &sabr_post, &sabr_post_sz));
-
-		struct downloaded ump
-			__attribute__((cleanup(downloaded_cleanup)));
-		downloaded_init(&ump, "UMP response tmpfile");
-		check(tmpfd(&ump.fd));
-
 		check(download_and_mmap_tmpfd(sabr_url_or_redirect,
 		                              NULL,
 		                              NULL,
@@ -402,10 +389,15 @@ youtube_stream_setup(struct youtube_stream *p,
 		                              ump.fd,
 		                              &ump.data,
 		                              &p->request_context));
-
 		check(protocol_parse_response(stream,
 		                              &ump.data,
 		                              &sabr_url_or_redirect));
+
+		check(tmptruncate(ump.fd, &ump.data));
+	}
+
+	if (ops && ops->after_inet) {
+		check(ops->after_inet(userdata));
 	}
 
 	return RESULT_OK;

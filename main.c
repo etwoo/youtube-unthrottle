@@ -70,25 +70,15 @@ try_sandbox(void)
 }
 
 static __attribute__((warn_unused_result)) result_t
-before_inet(void *userdata __attribute__((unused)))
+after_tmpfile(void *userdata __attribute__((unused)))
 {
-#if defined(__APPLE__)
-	/* macOS sandbox can drop filesystem access entirely at this point */
-	return RESULT_OK; // sandbox_only_io();
-	// TODO: restore sandbox; currently disabled to allow late SABR POST
-#else
 	return sandbox_only_io_inet_rpath();
-#endif
 }
 
 static __attribute__((warn_unused_result)) result_t
 after_inet(void *userdata __attribute__((unused)))
 {
-#if defined(__APPLE__)
-	return RESULT_OK;
-#else
 	return sandbox_only_io();
-#endif
 }
 
 static __attribute__((warn_unused_result)) int
@@ -117,12 +107,10 @@ unthrottle(const char *target,
 	check(sandbox_only_io_inet_tmpfile());
 
 	struct youtube_setup_ops sops = {
-		.before = NULL,
-		.before_inet = before_inet,
+		.before_tmpfile = NULL,
+		.after_tmpfile = after_tmpfile,
+		.before_inet = NULL,
 		.after_inet = after_inet,
-		.before_eval = NULL,
-		.after_eval = NULL,
-		.after = NULL,
 	};
 	check(youtube_stream_setup(*stream, &sops, NULL, target));
 	return RESULT_OK;
