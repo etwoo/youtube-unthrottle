@@ -3,6 +3,7 @@
 #include "sys/debug.h"
 #include "sys/write.h"
 
+#include <ada_c.h>
 #include <assert.h>
 #include <unistd.h>
 
@@ -115,7 +116,6 @@ static const char BROWSER_USERAGENT[] =
 	"like Gecko) Chrome/87.0.4280.101 Safari/537.36";
 static const char CONTENT_TYPE_PROTOBUF[] =
 	"Content-Type: application/x-protobuf";
-static const char DEFAULT_HOST_STR[] = "www.youtube.com";
 
 result_t
 url_download(const char *url_str,     /* maybe NULL */
@@ -138,6 +138,7 @@ url_download(const char *url_str,     /* maybe NULL */
 		debug("Reset easy handle: %p", context->state);
 	}
 	CURL *curl = context->state;
+	url_simulator fn = context->simulator;
 
 	CURLcode res = curl == NULL ? CURLE_OUT_OF_MEMORY : CURLE_OK;
 	check_if_num(res, ERR_URL_DOWNLOAD_ALLOC);
@@ -159,9 +160,16 @@ url_download(const char *url_str,     /* maybe NULL */
 		res = curl_easy_setopt(curl, CURLOPT_URL, url_str);
 		check_if_num(res, ERR_URL_DOWNLOAD_SET_OPT_URL_STRING);
 
-		url_or_path = strstr(url_str, DEFAULT_HOST_STR);
-		if (url_or_path) {
-			url_or_path += strlen(DEFAULT_HOST_STR);
+		if (fn) {
+			ada_url tmp = ada_parse(url_str, strlen(url_str));
+			if (tmp) {
+				ada_string parsed = ada_get_pathname(tmp);
+				url_or_path =
+					strndup(parsed.data, parsed.length);
+				debug("Got path for test io_simulator: %s",
+				      url_or_path);
+			}
+			ada_free(tmp);
 		}
 	} else {
 		assert(host_str != NULL && path_str != NULL);
@@ -196,7 +204,6 @@ url_download(const char *url_str,     /* maybe NULL */
 		check_if_num(res, ERR_URL_DOWNLOAD_SET_OPT_HTTP_HEADER);
 	}
 
-	url_simulator fn = context->simulator;
 	res = fn ? curl_simulate(fn(url_or_path), fd) : curl_easy_perform(curl);
 	check_if_num(res, ERR_URL_DOWNLOAD_PERFORM);
 
