@@ -245,7 +245,7 @@ protocol_cleanup_p(protocol *pp)
 }
 
 static const char AMPERSAND[] = "\\u0026"; // URI-encoded ampersand character
-static const size_t AMPERSAND_SZ = strlen(AMPERSAND);
+static const size_t AMPERSAND_SZ = sizeof(AMPERSAND) - 1;
 
 static void
 decode_ampersands(struct string_view in /* note: pass by value */, char **out)
@@ -253,7 +253,8 @@ decode_ampersands(struct string_view in /* note: pass by value */, char **out)
 	char *buffer = malloc((in.sz + 1) * sizeof(*buffer));
 	*out = buffer;
 	while (buffer) {
-		const char *src_end = strnstr(in.data, AMPERSAND, in.sz);
+		const char *src_end =
+			memmem(in.data, in.sz, AMPERSAND, AMPERSAND_SZ);
 		if (src_end == NULL) {
 			memcpy(buffer, in.data, in.sz);
 			buffer[in.sz] = '\0';
