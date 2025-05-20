@@ -43,7 +43,7 @@ url_simulate(const char *path)
 	} else if (strstr(path, "/base.js")) {
 		to_write = FAKE_JS_RESPONSE;
 	} else if (strstr(path, "/sabr")) {
-		to_write = "some_protobuf_payload"; // TODO: real protobuf?
+		to_write = "\1\1\1"; /* return an empty-ish UMP response */
 	}
 
 	assert(to_write && "Test logic bug? No fixture for given path!");
