@@ -466,7 +466,8 @@ ump_varint_read(const struct string_view *ump, size_t *pos, uint64_t *value)
 		parsed[3] = ump->data[*pos + 3] << 16;
 		__attribute__((fallthrough));
 	case 3:
-		parsed[2] = ump->data[*pos + 2] << (8 + (8 - bytes_to_read));
+		parsed[2] = (unsigned char)ump->data[*pos + 2]
+		            << (8 + (8 - bytes_to_read));
 		__attribute__((fallthrough));
 	case 2:
 		parsed[1] = (unsigned char)ump->data[*pos + 1]
@@ -490,6 +491,7 @@ ump_varint_read(const struct string_view *ump, size_t *pos, uint64_t *value)
 
 	*value = 0;
 	for (size_t i = 0; i < ARRAY_SIZE(parsed); ++i) {
+		debug("Accumulating: %" PRIu64, parsed[i]);
 		*value += parsed[i];
 	}
 

@@ -40,7 +40,7 @@ protocol_ump_read_vle(void)
 	CHECK_CALL(test_ump_varint_read_n(3, (char[4]){0xDF, 0xFF, 0x08, 0}, 73727));
 	CHECK_CALL(test_ump_varint_read_n(3, (char[4]){0xDF, 0xFF, 0x10, 0}, 139263));
 	CHECK_CALL(test_ump_varint_read_n(3, (char[4]){0xDF, 0xFF, 0x7F, 0}, 1048575));
-	// CHECK_CALL(test_ump_varint_read_n(3, (char[4]){0xDF, 0xFF, 0xFF, 0}, 2097151));
+	CHECK_CALL(test_ump_varint_read_n(3, (char[4]){0xDF, 0xFF, 0xFF, 0}, 2097151));
 	PASS();
 }
 
