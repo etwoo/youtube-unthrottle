@@ -5,6 +5,7 @@
 
 #include <ada_c.h>
 #include <assert.h>
+#include <stdlib.h>
 #include <unistd.h>
 
 /*
@@ -35,6 +36,12 @@ write_to_tmpfile(const char *ptr, size_t size, size_t nmemb, void *userdata)
 	info_m_if(written < 0, "Cannot write to tmpfile");
 
 	return real_size; /* always consider buffer entirely consumed */
+}
+
+static void
+str_free(char **strp)
+{
+	free(*strp);
 }
 
 static WARN_UNUSED CURLcode
@@ -155,7 +162,7 @@ url_download(const char *url_str,     /* maybe NULL */
 	res = curl_easy_setopt(curl, CURLOPT_USERAGENT, BROWSER_USERAGENT);
 	check_if_num(res, ERR_URL_DOWNLOAD_SET_OPT_USERAGENT);
 
-	const char *url_or_path = NULL;
+	char *url_or_path __attribute__((cleanup(str_free))) = NULL;
 	if (url_str) {
 		res = curl_easy_setopt(curl, CURLOPT_URL, url_str);
 		check_if_num(res, ERR_URL_DOWNLOAD_SET_OPT_URL_STRING);
@@ -166,7 +173,7 @@ url_download(const char *url_str,     /* maybe NULL */
 				ada_string parsed = ada_get_pathname(tmp);
 				url_or_path =
 					strndup(parsed.data, parsed.length);
-				debug("Got path for test io_simulator: %s",
+				debug("Got URL path for test io_simulator: %s",
 				      url_or_path);
 			}
 			ada_free(tmp);
@@ -179,7 +186,11 @@ url_download(const char *url_str,     /* maybe NULL */
 		res = curl_easy_setopt(curl, CURLOPT_CURLU, url);
 		check_if_num(res, ERR_URL_DOWNLOAD_SET_OPT_URL_OBJECT);
 
-		url_or_path = path_str;
+		if (fn) {
+			url_or_path = strdup(path_str);
+			debug("Got standalone path for test io_simulator: %s",
+			      url_or_path);
+		}
 	}
 
 	if (post_body) {
