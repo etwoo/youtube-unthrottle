@@ -94,31 +94,32 @@ static int TEST_FD[2] = {
 
 #define do_test_init() youtube_stream_init("POT", "X", url_simulate, TEST_FD)
 
-	TEST stream_setup_with_redirected_network_io(
-		const char *(*custom_fn)(const char *),
-		const char *expected_audio_url,
-		const char *expected_video_url){youtube_handle_t stream =
-                                                        do_test_init();
-ASSERT(stream);
+TEST
+stream_setup_with_redirected_network_io(const char *(*custom_fn)(const char *),
+	                                const char *expected_audio_url,
+                                        const char *expected_video_url)
+{
+	youtube_handle_t stream = do_test_init();
+	ASSERT(stream);
 
-test_request_path_to_response = custom_fn;
-auto_result err = youtube_stream_setup(stream, &NOOP, NULL, FAKE_URL);
-test_request_path_to_response = NULL;
+	test_request_path_to_response = custom_fn;
+	auto_result err = youtube_stream_setup(stream, &NOOP, NULL, FAKE_URL);
+	test_request_path_to_response = NULL;
 
-ASSERT_EQ(OK, err.err);
+	ASSERT_EQ(OK, err.err);
 
-struct check_url_state cus = {
-	.got_correct_urls = true,
-	.expected_audio_url = expected_audio_url,
-	.expected_video_url = expected_video_url,
-};
-err = youtube_stream_visitor(stream, check_url, &cus);
+	struct check_url_state cus = {
+		.got_correct_urls = true,
+		.expected_audio_url = expected_audio_url,
+		.expected_video_url = expected_video_url,
+	};
+	err = youtube_stream_visitor(stream, check_url, &cus);
 
-ASSERT_EQ(OK, err.err);
-ASSERT(cus.got_correct_urls);
+	ASSERT_EQ(OK, err.err);
+	ASSERT(cus.got_correct_urls);
 
-youtube_stream_cleanup(stream);
-PASS();
+	youtube_stream_cleanup(stream);
+	PASS();
 }
 
 static const struct youtube_setup_ops NULLOP = {
@@ -188,7 +189,7 @@ stream_setup_edge_cases_stream_url_cannot_parse(void)
 	auto_result err = youtube_stream_setup(stream, &NOOP, NULL, FAKE_URL);
 	test_request_path_to_response = NULL;
 
-	ASSERT_EQ(ERR_YOUTUBE_STREAM_URL_MISSING, err.err);
+	ASSERT_EQ(ERR_YOUTUBE_STREAM_URL_INVALID, err.err);
 	ASSERT_STR_EQ("http://a%test", err.msg);
 
 	youtube_stream_cleanup(stream);
