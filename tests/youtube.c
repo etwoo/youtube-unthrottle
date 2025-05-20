@@ -214,14 +214,13 @@ test_request_n_param_pos_last(const char *path)
 }
 
 static WARN_UNUSED const char *
-test_request_n_param_empty_or_missing(const char *path)
+test_request_n_param_missing(const char *path)
 {
 	if (path == NULL || NULL == strstr(FAKE_URL, path)) {
 		return NULL;
 	}
 	return "\"/s/player/foobar/base.js\"\n"
-	       "\"serverAbrStreamingUrl\":\"https://a.test/"
-	       "sabr?first=foo&second=bar&n=\"\n"
+	       "\"serverAbrStreamingUrl\":\"https://a.test/sabr?x=y\"\n"
 	       "\"videoPlaybackUstreamerConfig\":\"Zm9vYmFyCg==\"";
 }
 
@@ -231,7 +230,7 @@ stream_setup_edge_cases_n_param_missing(void)
 	youtube_handle_t stream = do_test_init();
 	ASSERT(stream);
 
-	test_request_path_to_response = test_request_n_param_empty_or_missing;
+	test_request_path_to_response = test_request_n_param_missing;
 	auto_result err = youtube_stream_setup(stream, &NOOP, NULL, FAKE_URL);
 	test_request_path_to_response = NULL;
 
