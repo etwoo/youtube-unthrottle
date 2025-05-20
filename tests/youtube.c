@@ -73,10 +73,13 @@ check_url(const char *url, size_t sz, void *userdata)
 {
 	struct check_url_state *p = (struct check_url_state *)userdata;
 	if (0 == strncmp(p->expected_url, url, sz)) {
-		debug("Got expected URL: %s", url);
+		debug("Got expected URL: %.*s", (int)sz, url);
 	} else {
 		p->got_correct_urls = false;
-		info("check_url() fails: %s", url);
+		info("check_url() fails: %.*s != %s",
+		     (int)sz,
+		     url,
+		     p->expected_url);
 	}
 }
 
@@ -243,13 +246,13 @@ SUITE(stream_setup_n_param_positions)
 	RUN_TEST(global_setup);
 	RUN_TESTp(stream_setup_with_redirected_network_io,
 	          test_request_n_param_pos_middle,
-	          "https://a.test/?first=foo&n=AAA&last=bar&pot=POT");
+	          "https://a.test/sabr?first=foo&n=AAA&last=bar&pot=POT");
 	RUN_TESTp(stream_setup_with_redirected_network_io,
 	          test_request_n_param_pos_first,
-	          "https://a.test/?n=AAA&second=foo&third=bar&pot=POT");
+	          "https://a.test/sabr?n=AAA&second=foo&third=bar&pot=POT");
 	RUN_TESTp(stream_setup_with_redirected_network_io,
 	          test_request_n_param_pos_last,
-	          "https://a.test/?first=foo&second=bar&n=AAA&pot=POT");
+	          "https://a.test/sabr?first=foo&second=bar&n=AAA&pot=POT");
 	RUN_TEST(stream_setup_edge_cases_n_param_missing);
 }
 
