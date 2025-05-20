@@ -5,6 +5,9 @@
 #include "sys/write.h"
 
 #include <inttypes.h>
+#if defined(__OpenBSD__)
+#include <netinet/in.h> /* for resolv.h dependencies under OpenBSD */
+#endif
 #include <resolv.h> /* for b64_pton() */
 #include <stdbool.h>
 #include <stdlib.h>

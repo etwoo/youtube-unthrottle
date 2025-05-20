@@ -44,7 +44,11 @@ target_include_directories(youtube-protocol PRIVATE
 target_link_libraries(youtube-protocol PRIVATE
 	my_cflags
 	protobuf-c
-	resolv # for b64_pton()
 )
+if (NOT CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
+	target_link_libraries(youtube-protocol PRIVATE
+		resolv # for b64_pton()
+	)
+endif (NOT CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
 
 target_link_libraries(youtube PRIVATE youtube-protocol)
