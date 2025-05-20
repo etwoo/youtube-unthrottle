@@ -50,6 +50,7 @@ macro(generate_test_driver)
 endmacro()
 
 register_test(js)
+register_test(protocol)
 register_test(re)
 register_test(result)
 register_test(sandbox "ASAN_OPTIONS=detect_leaks=0")
