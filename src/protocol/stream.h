@@ -24,9 +24,6 @@ result_t protocol_parse_response(protocol stream,
 /*
  * Expose pure/stateless subset of parsing logic for UMP format.
  */
-void ump_read_vle(const unsigned char first_byte,
-                  size_t *bytes_to_read,
-                  unsigned char *first_byte_mask);
 result_t ump_varint_read(const struct string_view *ump,
                          size_t *pos,
                          uint64_t *value) WARN_UNUSED;

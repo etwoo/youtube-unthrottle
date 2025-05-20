@@ -402,7 +402,7 @@ static const unsigned char CHAR_BIT_2 = 0x20; // bit pattern: 00100000
 static const unsigned char CHAR_BIT_3 = 0x10; // bit pattern: 00010000
 static const unsigned char CHAR_BIT_4 = 0x08; // bit pattern: 00001000
 
-void
+static void
 ump_read_vle(unsigned char first_byte,
              size_t *bytes_to_read,
              unsigned char *first_byte_mask)
