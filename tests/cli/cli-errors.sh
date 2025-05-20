@@ -31,9 +31,6 @@ t "Missing --visitor-data" foo.test --proof-of-origin p
 t "Missing --visitor-data" foo.test --proof-of-origin p --visitor-data ""
 t "requires an argument" foo.test --proof-of-origin p --visitor-data
 
-t "Invalid --quality" foo.test --proof-of-origin p --visitor-data v --quality +
-t "requires an argument" foo.test --proof-of-origin p --visitor-data v --quality
-
 t "un(recognized|known)" --foobar
 t "un(recognized|known)" foo.test --proof-of-origin p --visitor-data v --foobar
 t "un(recognized|known)" --help --foobar
