@@ -44,6 +44,66 @@ find_base_js_url_positive(void)
 }
 
 TEST
+find_sabr_url_negative(void)
+{
+	struct string_view p = {0};
+	const struct string_view html = MAKE_TEST_STRING("<html/>");
+
+	auto_result err = find_sabr_url(&html, &p);
+	ASSERT_EQ(ERR_JS_SABR_URL_FIND, err.err);
+
+	ASSERT_EQ(NULL, p.data);
+	ASSERT_EQ(0, p.sz);
+	PASS();
+}
+
+TEST
+find_sabr_url_positive(void)
+{
+	struct string_view p = {0};
+	const struct string_view html = MAKE_TEST_STRING(
+		"{ \"serverAbrStreamingUrl\":\"https://foobar.test\" }");
+
+	auto_result err = find_sabr_url(&html, &p);
+	ASSERT_EQ(OK, err.err);
+
+	const char expected[] = "https://foobar.test";
+	ASSERT_EQ(strlen(expected), p.sz);
+	ASSERT_STRN_EQ(expected, p.data, p.sz);
+	PASS();
+}
+
+TEST
+find_playback_config_negative(void)
+{
+	struct string_view p = {0};
+	const struct string_view html = MAKE_TEST_STRING("<html/>");
+
+	auto_result err = find_playback_config(&html, &p);
+	ASSERT_EQ(ERR_JS_PLAYBACK_CONFIG_FIND, err.err);
+
+	ASSERT_EQ(NULL, p.data);
+	ASSERT_EQ(0, p.sz);
+	PASS();
+}
+
+TEST
+find_playback_config_positive(void)
+{
+	struct string_view p = {0};
+	const struct string_view html = MAKE_TEST_STRING(
+		"{ \"videoPlaybackUstreamerConfig\":\"https://foobar.test\" }");
+
+	auto_result err = find_playback_config(&html, &p);
+	ASSERT_EQ(OK, err.err);
+
+	const char expected[] = "https://foobar.test";
+	ASSERT_EQ(strlen(expected), p.sz);
+	ASSERT_STRN_EQ(expected, p.data, p.sz);
+	PASS();
+}
+
+TEST
 find_js_deobfuscator_magic_global_negative_first(void)
 {
 	struct deobfuscator d = {0};
@@ -185,6 +245,10 @@ SUITE(find_with_pcre)
 {
 	RUN_TEST(find_base_js_url_negative);
 	RUN_TEST(find_base_js_url_positive);
+	RUN_TEST(find_sabr_url_negative);
+	RUN_TEST(find_sabr_url_positive);
+	RUN_TEST(find_playback_config_negative);
+	RUN_TEST(find_playback_config_positive);
 	RUN_TEST(find_js_deobfuscator_magic_global_negative_first);
 	RUN_TEST(find_js_deobfuscator_magic_global_negative_second);
 	RUN_TEST(find_js_deobfuscator_magic_global_positive);

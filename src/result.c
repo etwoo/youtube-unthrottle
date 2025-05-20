@@ -78,16 +78,6 @@ make_result_tis(int typ, int num, const char *msg)
 }
 
 result_t
-make_result_tiss(int typ, int num, const char *msg, size_t sz)
-{
-	return (result_t){
-		.err = typ,
-		.num = num,
-		.msg = strndup(msg, sz),
-	};
-}
-
-result_t
 make_result_re(int typ, int num, const char *pattern, size_t offset)
 {
 	return (result_t){

@@ -133,7 +133,6 @@ DECLARE_MAKERESULT_IMPL(ti, int typ, int num);
 DECLARE_MAKERESULT_IMPL(ts, int typ, const char *msg);
 DECLARE_MAKERESULT_IMPL(tss, int typ, const char *msg, size_t sz);
 DECLARE_MAKERESULT_IMPL(tis, int typ, int num, const char *msg);
-DECLARE_MAKERESULT_IMPL(tiss, int typ, int num, const char *msg, size_t sz);
 DECLARE_MAKERESULT_IMPL(re, int typ, int num, const char *pat, size_t off);
 
 #undef DECLARE_MAKERESULT_IMPL
@@ -145,7 +144,7 @@ DECLARE_MAKERESULT_IMPL(re, int typ, int num, const char *pat, size_t off);
 #define make_result_3arg(x, y, z)                                              \
 	_Generic(y, int: make_result_tis, make_result_str_arg(tss))(x, y, z)
 
-#define CHOOSE_MACRO_BY_ARGN(w, x, y, z, NAME, ...) NAME
+#define CHOOSE_MACRO_BY_ARGN(w, x, y, NAME, ...) NAME
 
 /*
  * Create a result_t by passing any of the following sets of arguments:
@@ -157,7 +156,6 @@ DECLARE_MAKERESULT_IMPL(re, int typ, int num, const char *pat, size_t off);
  */
 #define make_result(...)                                                       \
 	CHOOSE_MACRO_BY_ARGN(__VA_ARGS__,                                      \
-	                     make_result_tiss,                                 \
 	                     make_result_3arg,                                 \
 	                     make_result_2arg,                                 \
 	                     make_result_t,                                    \
