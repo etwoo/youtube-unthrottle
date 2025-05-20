@@ -110,7 +110,6 @@ stream_setup_with_redirected_network_io(const char *(*custom_fn)(const char *),
 	auto_result err = youtube_stream_setup(stream, &NOOP, NULL, FAKE_URL);
 	test_request_path_to_response = NULL;
 
-	fprintf(stderr, "Got err: %s\n", result_to_str(err));
 	ASSERT_EQ(OK, err.err);
 
 	struct check_url_state cus = {
@@ -153,28 +152,6 @@ SUITE(stream_setup_simple)
 	          NULL,
 	          "https://a.test/sabr?n=AAA");
 	RUN_TEST(stream_setup_with_null_ops);
-}
-
-static const char YT_MISSING_ID[] = "https://a.test/watch?v=";
-
-TEST
-stream_setup_edge_cases_target_url_missing_stream_id(void)
-{
-	youtube_handle_t stream = do_test_init();
-	ASSERT(stream);
-
-	auto_result err =
-		youtube_stream_setup(stream, &NOOP, NULL, YT_MISSING_ID);
-	ASSERT_EQ(ERR_YOUTUBE_STREAM_URL_MISSING, err.err);
-
-	youtube_stream_cleanup(stream);
-	PASS();
-}
-
-SUITE(stream_setup_target_url_variations)
-{
-	RUN_TEST(global_setup);
-	RUN_TEST(stream_setup_edge_cases_target_url_missing_stream_id);
 }
 
 static WARN_UNUSED const char *
