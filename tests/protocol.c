@@ -1,5 +1,6 @@
 #include "greatest.h"
 #include "protocol/stream.h"
+#include "sys/debug.h"
 
 static enum greatest_test_res
 test_ump_varint_read_n(size_t n, char *bytes_to_parse, uint64_t expected)
@@ -22,14 +23,15 @@ test_ump_varint_read_n(size_t n, char *bytes_to_parse, uint64_t expected)
 TEST
 protocol_ump_read_vle(void)
 {
-	CHECK_CALL(test_ump_varint_read_n(1, (char[2]){0x00, 0x00}, 0));
-	CHECK_CALL(test_ump_varint_read_n(2, (char[3]){0x80, 0x01, 0x00}, 64));
-	CHECK_CALL(test_ump_varint_read_n(2, (char[3]){0x81, 0x01, 0x00}, 65));
-	CHECK_CALL(test_ump_varint_read_n(2, (char[3]){0x88, 0x01, 0x00}, 72));
-	CHECK_CALL(test_ump_varint_read_n(2, (char[3]){0x8F, 0x01, 0x00}, 79));
-	CHECK_CALL(test_ump_varint_read_n(2, (char[3]){0xA0, 0x01, 0x00}, 96));
-	CHECK_CALL(test_ump_varint_read_n(2, (char[3]){0xAA, 0x01, 0x00}, 106));
-	CHECK_CALL(test_ump_varint_read_n(2, (char[3]){0xBF, 0x01, 0x00}, 127));
+	CHECK_CALL(test_ump_varint_read_n(1, (char[2]){0x00, 0}, 0));
+	CHECK_CALL(test_ump_varint_read_n(1, (char[2]){0x01, 0}, 1));
+	CHECK_CALL(test_ump_varint_read_n(1, (char[2]){0x08, 0}, 8));
+	CHECK_CALL(test_ump_varint_read_n(1, (char[2]){0x10, 0}, 16));
+	CHECK_CALL(test_ump_varint_read_n(1, (char[2]){0x7F, 0}, 127));
+	CHECK_CALL(test_ump_varint_read_n(2, (char[3]){0xBF, 0x01, 0}, 127));
+	CHECK_CALL(test_ump_varint_read_n(2, (char[3]){0xBF, 0x08, 0}, 575));
+	CHECK_CALL(test_ump_varint_read_n(2, (char[3]){0xBF, 0x10, 0}, 1087));
+	CHECK_CALL(test_ump_varint_read_n(2, (char[3]){0xBF, 0x7F, 0}, 8191));
 	PASS();
 }
 
