@@ -11,22 +11,8 @@
 static const char PATH_WANTS_JSON_RESPONSE[] = "/youtubei/v1/player";
 static const char FAKE_URL[] = "https://www.youtube.com/watch?v=FOOBAR";
 static const char FAKE_HTML_RESPONSE[] = "\"/s/player/foobar/base.js\"";
-static const char FAKE_JSON_RESPONSE[] =
-	"{\"streamingData\": {\"adaptiveFormats\": ["
-	"{"
-	"\"mimeType\": \"audio/foobar\","
-	"\"qualityLabel\": \"high\","
-	"\"url\": \"http://a.test?n=aaa\""
-	"},"
-	"{\""
-	"mimeType\": \"video/foobar\","
-	"\"qualityLabel\": \"high\","
-	"\"url\": \"http://v.test?n=vvv\""
-	"}"
-	"]}}";
 static const char FAKE_JS_RESPONSE[] =
 	"'use strict';var zzz=666666,aaa,bbb,ccc,ddd,eee,fff,ggg,hhh;"
-	"{signatureTimestamp:12345}"
 	"var mmm=88888888;"
 	"&&(c=X[0](c),\nvar X=[Y];\n"
 	"Y=function(a){"
@@ -52,8 +38,6 @@ url_simulate(const char *path)
 		to_write = ""; /* handle thread warmup in url_context_init() */
 	} else if (strstr(path, "/watch?v=")) {
 		to_write = FAKE_HTML_RESPONSE;
-	} else if (strstr(path, PATH_WANTS_JSON_RESPONSE)) {
-		to_write = FAKE_JSON_RESPONSE;
 	} else if (strstr(path, "/base.js")) {
 		to_write = FAKE_JS_RESPONSE;
 	}
@@ -64,13 +48,6 @@ url_simulate(const char *path)
 
 static WARN_UNUSED result_t
 setup_callback_noop(void *userdata __attribute__((unused)))
-{
-	return RESULT_OK;
-}
-
-static WARN_UNUSED result_t
-parse_callback_noop(const char *val __attribute__((unused)),
-                    void *userdata __attribute__((unused)))
 {
 	return RESULT_OK;
 }
@@ -110,34 +87,38 @@ global_setup(void)
 	PASS();
 }
 
-#define do_test_init() youtube_stream_init("POT", "VISITOR_DATA", url_simulate)
+static int TEST_FD[2] = {
+	STDOUT_FILENO,
+	STDOUT_FILENO,
+};
 
-TEST
-stream_setup_with_redirected_network_io(const char *(*custom_fn)(const char *),
-                                        const char *expected_audio_url,
-                                        const char *expected_video_url)
-{
-	youtube_handle_t stream = do_test_init();
-	ASSERT(stream);
+#define do_test_init() youtube_stream_init("POT", "X", url_simulate, TEST_FD)
 
-	test_request_path_to_response = custom_fn;
-	auto_result err = youtube_stream_setup(stream, &NOOP, NULL, FAKE_URL);
-	test_request_path_to_response = NULL;
+	TEST stream_setup_with_redirected_network_io(
+		const char *(*custom_fn)(const char *),
+		const char *expected_audio_url,
+		const char *expected_video_url){youtube_handle_t stream =
+                                                        do_test_init();
+ASSERT(stream);
 
-	ASSERT_EQ(OK, err.err);
+test_request_path_to_response = custom_fn;
+auto_result err = youtube_stream_setup(stream, &NOOP, NULL, FAKE_URL);
+test_request_path_to_response = NULL;
 
-	struct check_url_state cus = {
-		.got_correct_urls = true,
-		.expected_audio_url = expected_audio_url,
-		.expected_video_url = expected_video_url,
-	};
-	err = youtube_stream_visitor(stream, check_url, &cus);
+ASSERT_EQ(OK, err.err);
 
-	ASSERT_EQ(OK, err.err);
-	ASSERT(cus.got_correct_urls);
+struct check_url_state cus = {
+	.got_correct_urls = true,
+	.expected_audio_url = expected_audio_url,
+	.expected_video_url = expected_video_url,
+};
+err = youtube_stream_visitor(stream, check_url, &cus);
 
-	youtube_stream_cleanup(stream);
-	PASS();
+ASSERT_EQ(OK, err.err);
+ASSERT(cus.got_correct_urls);
+
+youtube_stream_cleanup(stream);
+PASS();
 }
 
 static const struct youtube_setup_ops NULLOP = {
@@ -180,7 +161,7 @@ stream_setup_edge_cases_target_url_missing_stream_id(void)
 
 	auto_result err =
 		youtube_stream_setup(stream, &NOOP, NULL, YT_MISSING_ID);
-	ASSERT_EQ(ERR_JS_MAKE_INNERTUBE_JSON_ID, err.err);
+	ASSERT_EQ(ERR_YOUTUBE_STREAM_URL_MISSING, err.err);
 
 	youtube_stream_cleanup(stream);
 	PASS();
@@ -207,7 +188,7 @@ stream_setup_edge_cases_stream_url_cannot_parse(void)
 	auto_result err = youtube_stream_setup(stream, &NOOP, NULL, FAKE_URL);
 	test_request_path_to_response = NULL;
 
-	ASSERT_EQ(ERR_JS_PARSE_JSON_CALLBACK_INVALID_URL, err.err);
+	ASSERT_EQ(ERR_YOUTUBE_STREAM_URL_MISSING, err.err);
 	ASSERT_STR_EQ("http://a%test", err.msg);
 
 	youtube_stream_cleanup(stream);

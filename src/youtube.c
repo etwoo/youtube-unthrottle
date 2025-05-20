@@ -68,7 +68,9 @@ youtube_stream_cleanup(struct youtube_stream *p)
 		p->url = NULL;
 		url_context_cleanup(&p->request_context);
 		for (size_t i = 0; i < ARRAY_SIZE(p->fd); ++i) {
-			close(p->fd[i]);
+			if (p->fd[i] > STDERR_FILENO) {
+				close(p->fd[i]);
+			}
 			p->fd[i] = -1;
 		}
 	}
