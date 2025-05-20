@@ -4,7 +4,6 @@
 #include "sys/debug.h"
 #include "sys/write.h"
 
-#include <inttypes.h>
 #if defined(__OpenBSD__)
 #include <netinet/in.h> /* for resolv.h dependencies under OpenBSD */
 #endif
@@ -403,8 +402,8 @@ static const unsigned char CHAR_BIT_2 = 0x20; // bit pattern: 00100000
 static const unsigned char CHAR_BIT_3 = 0x10; // bit pattern: 00010000
 static const unsigned char CHAR_BIT_4 = 0x08; // bit pattern: 00001000
 
-static void
-ump_read_vle(const unsigned char first_byte,
+void
+ump_read_vle(unsigned char first_byte,
              size_t *bytes_to_read,
              unsigned char *first_byte_mask)
 {
@@ -440,7 +439,7 @@ ump_read_vle(const unsigned char first_byte,
 	*first_byte_mask ^= CHAR_BIT_4;
 }
 
-static WARN_UNUSED result_t
+result_t
 ump_varint_read(const struct string_view *ump, size_t *pos, uint64_t *value)
 {
 	check_if(*pos >= ump->sz, ERR_PROTOCOL_VARINT_READ_PRE, (int)*pos);

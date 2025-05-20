@@ -5,6 +5,8 @@
 #include "sys/compiler_features.h"
 #include "sys/string_view.h"
 
+#include <inttypes.h>
+
 typedef struct protocol_state *protocol;
 
 protocol protocol_init(const char *proof_of_origin,
@@ -18,5 +20,15 @@ result_t protocol_next_request(protocol stream,
 result_t protocol_parse_response(protocol stream,
                                  const struct string_view *response,
                                  char **target_url) WARN_UNUSED;
+
+/*
+ * Expose pure/stateless subset of parsing logic for UMP format.
+ */
+void ump_read_vle(const unsigned char first_byte,
+                  size_t *bytes_to_read,
+                  unsigned char *first_byte_mask);
+result_t ump_varint_read(const struct string_view *ump,
+                         size_t *pos,
+                         uint64_t *value) WARN_UNUSED;
 
 #endif
