@@ -84,7 +84,7 @@ after_inet(void *userdata __attribute__((unused)))
 static __attribute__((warn_unused_result)) int
 get_output_fd(const char *path)
 {
-	int fd = open(path, O_CREAT | O_TRUNC | O_WRONLY);
+	int fd = open(path, O_CREAT | O_TRUNC | O_WRONLY, 0644);
 	if (fd < 0) {
 		to_stderr("Can't open %s: %s", path, strerror(errno));
 	}
