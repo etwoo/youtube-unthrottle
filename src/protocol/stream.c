@@ -325,7 +325,8 @@ protocol_base64_decode(const struct string_view *in,
 		return false;
 	}
 
-	const int rc = b64_pton(scratch_buffer, out->data, out->len);
+	const size_t decode_len = out->len + 1; // XXX: +1 is needed on Linux?
+	const int rc = b64_pton(scratch_buffer, out->data, decode_len);
 	return (rc > 0);
 }
 
@@ -368,7 +369,6 @@ protocol_init(const char *proof_of_origin,
 
 cleanup:
 	protocol_cleanup(p);
-	free(p);
 	return NULL;
 }
 
@@ -378,6 +378,7 @@ protocol_cleanup(struct protocol_state *p)
 	if (p) {
 		free(p->context.po_token.data);
 		free(p->req.video_playback_ustreamer_config.data);
+		free(p);
 	}
 }
 
