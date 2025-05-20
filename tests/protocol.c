@@ -37,6 +37,11 @@ protocol_ump_read_vle_byte_length_one(void)
 	ASSERT_EQ(0x3F, first_byte_mask);
 	ASSERT_EQ(42, 0xAA & first_byte_mask);
 
+	ump_read_vle(0xBF, &bytes_to_read, &first_byte_mask);
+	ASSERT_EQ(2, bytes_to_read);
+	ASSERT_EQ(0x3F, first_byte_mask);
+	ASSERT_EQ(63, 0xBF & first_byte_mask);
+
 	PASS();
 }
 
