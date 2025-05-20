@@ -1,4 +1,4 @@
-#include "stream.h"
+#include "protocol/stream.h"
 
 #include "sys/array.h"
 #include "sys/debug.h"
