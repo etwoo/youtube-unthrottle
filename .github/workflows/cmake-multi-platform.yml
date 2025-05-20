@@ -81,7 +81,7 @@ jobs:
         unique-suffix: coverage
     - name: Gather code coverage data
       run: >
-        ./scripts/coverage.sh -E 'main.c|linuxbrew' coverage.profraw ./build/coverage.xml
+        ./scripts/coverage.sh -E 'main.c|build/|linuxbrew' coverage.profraw ./build/coverage.xml
         | sed 's@^@    @g' >> "$GITHUB_STEP_SUMMARY"
 
   build-openbsd:
