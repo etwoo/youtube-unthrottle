@@ -75,25 +75,28 @@ TEST
 protocol_ump_varint_read_precondition(void)
 {
 	uint64_t value = 0;
-	size_t pos = 0;
 
 	const struct string_view null_view = {
 		.data = NULL,
 		.sz = 0,
 	};
-	pos = 0;
-	auto_result err_null = ump_varint_read(&null_view, &pos, &value);
-	ASSERT_EQ(ERR_PROTOCOL_VARINT_READ_PRE, err_null.err);
-	ASSERT_EQ(pos, (size_t)err_null.num);
+	{
+		size_t pos = 0;
+		auto_result err = ump_varint_read(&null_view, &pos, &value);
+		ASSERT_EQ(ERR_PROTOCOL_VARINT_READ_PRE, err.err);
+		ASSERT_EQ(pos, (size_t)err.num);
+	}
 
 	const struct string_view some_view = {
 		.data = "Hello, World!",
 		.sz = 13,
 	};
-	pos = 15;
-	auto_result err_some = ump_varint_read(&some_view, &pos, &value);
-	ASSERT_EQ(ERR_PROTOCOL_VARINT_READ_PRE, err_some.err);
-	ASSERT_EQ(pos, (size_t)err_some.num);
+	{
+		size_t pos = 15;
+		auto_result err = ump_varint_read(&some_view, &pos, &value);
+		ASSERT_EQ(ERR_PROTOCOL_VARINT_READ_PRE, err.err);
+		ASSERT_EQ(pos, (size_t)err.num);
+	}
 
 	PASS();
 }
@@ -132,12 +135,24 @@ protocol_ump_varint_read_out_of_bounds(void)
 TEST
 protocol_ump_varint_read_invalid_size(void)
 {
+	// TODO: ERR_PROTOCOL_VARINT_READ_INVALID_SIZE is unreadable; remove?
 	PASS();
 }
 
 TEST
 protocol_ump_varint_read_postcondition(void)
 {
+	size_t pos = 0;
+	uint64_t value = 0;
+
+	const struct string_view no_remainder = {
+		.data = (char[2]){0x80 /* bytes_to_read=2 */, 0x0F },
+		.sz = 2,
+	};
+	auto_result err = ump_varint_read(&no_remainder, &pos, &value);
+	ASSERT_EQ(ERR_PROTOCOL_VARINT_READ_POST, err.err);
+	ASSERT_EQ(2, err.num);
+
 	PASS();
 }
 

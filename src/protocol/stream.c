@@ -455,8 +455,8 @@ ump_varint_read(const struct string_view *ump, size_t *pos, uint64_t *value)
 	      first_byte_mask);
 
 	if (*pos > SIZE_MAX - bytes_to_read || /* 1) avoid overflow         */
-	    bytes_to_read >= ump->sz ||        /* 2) avoid underflow in (3) */
-	    *pos >= ump->sz - bytes_to_read) { /* 3) avoid OOB read         */
+	    bytes_to_read > ump->sz ||         /* 2) avoid underflow in (3) */
+	    *pos > ump->sz - bytes_to_read) {  /* 3) avoid OOB read         */
 		return make_result(ERR_PROTOCOL_VARINT_READ_OUT_OF_BOUNDS,
 		                   (int)bytes_to_read);
 	}
