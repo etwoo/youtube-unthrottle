@@ -3,10 +3,12 @@
 #include "sys/debug.h"
 
 static enum greatest_test_res
-test_ump_varint_read_n(uint64_t expected, size_t n, char *bytes_to_parse)
+test_ump_varint_read_n(uint64_t expected,
+                       size_t n,
+                       const unsigned char *bytes_to_parse)
 {
 	const struct string_view view = {
-		.data = bytes_to_parse,
+		.data = (const char *)bytes_to_parse,
 		.sz = n + 1,
 	};
 	size_t pos = 0;
@@ -24,7 +26,7 @@ test_ump_varint_read_n(uint64_t expected, size_t n, char *bytes_to_parse)
 }
 
 #define test_ump_varint(EXPECTED, N, ...)                                      \
-	test_ump_varint_read_n(EXPECTED, N, (char[N + 1]) __VA_ARGS__)
+	test_ump_varint_read_n(EXPECTED, N, (unsigned char[N + 1]) __VA_ARGS__)
 
 TEST
 protocol_ump_varint_read(void)
