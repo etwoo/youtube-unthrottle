@@ -251,6 +251,10 @@ protocol_parse_response_media_header(void)
 	auto_result err = protocol_parse_response(p, &response, &target_url);
 	ASSERT_EQ(OK, err.err);
 
+	/*
+	 * Verify that the <response> above affects the <next> request's
+	 * sequence numbers, duration values, et cetera as expected.
+	 */
 	char *blob __attribute__((cleanup(str_free))) = NULL;
 	size_t blob_sz = 0;
 	auto_result next = protocol_next_request(p, &blob, &blob_sz);
