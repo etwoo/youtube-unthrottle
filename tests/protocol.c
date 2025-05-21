@@ -317,9 +317,16 @@ protocol_parse_response_next_request_policy(void)
 	 * Verify that the <response> above affected the <next> request's
 	 * sequence numbers, duration values, et cetera as expected.
 	 */
-	ASSERT(request->has_video_playback_ustreamer_config);
-	ASSERT_EQ(8, request->video_playback_ustreamer_config.len);
-	ASSERT_STRN_EQ("todo_foo", request->video_playback_ustreamer_config.data, 8);
+	ASSERT(request->streamer_context->has_playback_cookie);
+	ASSERT_EQ(10, request->streamer_context->playback_cookie.len);
+	const char expected_cookie[10] = {
+		0x3A, 0x03, 0x08, 0xAB,
+		0x02, 0x42, 0x03, 0x08,
+		0xFB, 0x01,
+	};
+	ASSERT_STRN_EQ(expected_cookie,
+		       request->streamer_context->playback_cookie.data,
+		       request->streamer_context->playback_cookie.len);
 
 	PASS();
 }
