@@ -5,6 +5,8 @@
 
 #include <unistd.h>
 
+#include "video_streaming/video_playback_abr_request.pb-c.h"
+
 static void
 str_free(char **strp)
 {
@@ -15,6 +17,12 @@ static void
 protocol_cleanup_p(protocol *pp)
 {
 	protocol_cleanup(*pp);
+}
+
+static void
+video_playback_request_cleanup(VideoStreaming__VideoPlaybackAbrRequest **p)
+{
+	video_streaming__video_playback_abr_request__free_unpacked(*p, NULL);
 }
 
 static enum greatest_test_res
@@ -210,6 +218,9 @@ static const struct string_view PLAYBACK = MAKE_TEST_STRING("UExBWUJBQ0sK");
 
 #define auto_protocol protocol __attribute__((cleanup(protocol_cleanup_p)))
 #define do_test_init() protocol_init("UE9UCg==", &PLAYBACK, TEST_FD)
+#define request_unpack video_streaming__video_playback_abr_request__unpack
+#define auto_request VideoStreaming__VideoPlaybackAbrRequest *                 \
+	__attribute__((cleanup(video_playback_request_cleanup)))
 
 TEST
 protocol_parse_response_media_header(void)
@@ -219,28 +230,35 @@ protocol_parse_response_media_header(void)
 
 	const struct string_view response = {
 		// clang-format off
-		.data = (char[14]){
+		.data = (char[12]){
 			0x14, /* part_type = MEDIA_HEADER */
-			0x0C, /* part_size = 12 */
+			0x0A, /* part_size = 10 */
 			/*
 			 * $ cat /tmp/media_header.txt
 			 * header_id: 2
 			 * itag: 299
 			 * sequence_number: 4
-			 * time_range {
-			 *     duration: 1000
-			 * }
+			 * duration_ms: 1000
 			 * $ cat /tmp/media_header.txt | protoc --proto_path=build/_deps/googlevideo-src/protos --encode=video_streaming.MediaHeader $(find build/_deps -type f -name '*.proto') | hexdump -C
 			 */
-			0x08, 0x02, 0x18, 0xAB, 0x02, 0x48, 0x04, 0x7A,
-			0x03, 0x10, 0xE8, 0x07,
+			0x08, 0x02, 0x18, 0xAB,
+			0x02, 0x48, 0x04, 0x60,
+			0xE8, 0x07,
 		},
 		// clang-format on
-		.sz = 14,
+		.sz = 12,
 	};
 	auto_result err = protocol_parse_response(p, &response, &target_url);
 	ASSERT_EQ(OK, err.err);
-	// TODO: inspect header state
+
+	char *blob __attribute__((cleanup(str_free))) = NULL;
+	size_t blob_sz = 0;
+	auto_result next = protocol_next_request(p, &blob, &blob_sz);
+	ASSERT_EQ(OK, next.err);
+	auto_request req = request_unpack(NULL, blob_sz, (uint8_t*)blob);
+	ASSERT_NEQ(NULL, req);
+	ASSERT_EQ(5, req->buffered_ranges[1]->end_segment_index);
+	ASSERT_EQ(1000, req->buffered_ranges[1]->duration_ms);
 
 	PASS();
 }
