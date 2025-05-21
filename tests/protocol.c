@@ -1,6 +1,9 @@
 #include "greatest.h"
 #include "protocol/stream.h"
 #include "sys/debug.h"
+#include "test_macros.h"
+
+#include <unistd.h>
 
 static enum greatest_test_res
 test_ump_varint_read_n(uint64_t expected,
@@ -100,21 +103,15 @@ protocol_ump_varint_read_precondition(void)
 {
 	uint64_t value = 0;
 
-	const struct string_view null_view = {
-		.data = NULL,
-		.sz = 0,
-	};
+	const struct string_view empty_view = MAKE_TEST_STRING("");
 	{
 		size_t pos = 0;
-		auto_result err = ump_varint_read(&null_view, &pos, &value);
+		auto_result err = ump_varint_read(&empty_view, &pos, &value);
 		ASSERT_EQ(ERR_PROTOCOL_VARINT_READ_PRE, err.err);
 		ASSERT_EQ(pos, (size_t)err.num);
 	}
 
-	const struct string_view some_view = {
-		.data = "Hello, World!",
-		.sz = 13,
-	};
+	const struct string_view some_view = MAKE_TEST_STRING("Hello, World!");
 	{
 		size_t pos = 15;
 		auto_result err = ump_varint_read(&some_view, &pos, &value);
@@ -191,4 +188,35 @@ SUITE(protocol_ump_varint_read)
 	RUN_TEST(protocol_ump_varint_read_out_of_bounds);
 	RUN_TEST(protocol_ump_varint_read_invalid_size);
 	RUN_TEST(protocol_ump_varint_read_postcondition);
+}
+
+static void
+protocol_cleanup_p(protocol *pp)
+{
+	protocol_cleanup(*pp);
+}
+
+static int TEST_FD[2] = {
+	STDOUT_FILENO,
+	STDOUT_FILENO,
+};
+
+#define auto_protocol protocol __attribute__((cleanup(protocol_cleanup_p)))
+static const struct string_view PLAYBACK_CONFIG =
+	MAKE_TEST_STRING("UExBWUJBQ0sK");
+#define do_test_init() protocol_init("UE9UCg==", &PLAYBACK_CONFIG, TEST_FD)
+
+TEST
+protocol_parse_response_media_header(void)
+{
+	auto_protocol p = do_test_init();
+	PASS();
+}
+
+#undef auto_protocol
+#undef do_test_init
+
+SUITE(protocol_parse)
+{
+	RUN_TEST(protocol_parse_response_media_header);
 }

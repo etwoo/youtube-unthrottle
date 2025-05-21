@@ -243,3 +243,5 @@ SUITE(stream_cleanup)
 {
 	RUN_TEST(global_cleanup);
 }
+
+#undef do_test_init
