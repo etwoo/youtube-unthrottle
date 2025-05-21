@@ -49,7 +49,21 @@ protocol_ump_varint_read(void)
 	CHECK_CALL(test_ump_varint(17825791, 4, {0xEF, 0xFF, 0xFF, 0x10, 0}));
 	CHECK_CALL(test_ump_varint(134217727, 4, {0xEF, 0xFF, 0xFF, 0x7F, 0}));
 	CHECK_CALL(test_ump_varint(268435455, 4, {0xEF, 0xFF, 0xFF, 0xFF, 0}));
-	CHECK_CALL(test_ump_varint(UINT32_MAX, 5, {0xF0, 0xFF, 0xFF, 0xFF, 0xFF, 0}));
+	CHECK_CALL(test_ump_varint(33554431,
+	                           5,
+	                           {0xF0, 0xFF, 0xFF, 0xFF, 0x01, 0}));
+	CHECK_CALL(test_ump_varint(150994943,
+	                           5,
+	                           {0xF0, 0xFF, 0xFF, 0xFF, 0x08, 0}));
+	CHECK_CALL(test_ump_varint(285212671,
+	                           5,
+	                           {0xF0, 0xFF, 0xFF, 0xFF, 0x10, 0}));
+	CHECK_CALL(test_ump_varint(2147483647,
+	                           5,
+	                           {0xF0, 0xFF, 0xFF, 0xFF, 0x7F, 0}));
+	CHECK_CALL(test_ump_varint(UINT32_MAX,
+	                           5,
+	                           {0xF0, 0xFF, 0xFF, 0xFF, 0xFF, 0}));
 	PASS();
 }
 
