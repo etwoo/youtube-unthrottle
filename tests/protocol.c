@@ -67,9 +67,45 @@ protocol_ump_varint_read(void)
 	PASS();
 }
 
+TEST
+protocol_ump_varint_read_precondition(void)
+{
+	uint64_t value = 0;
+	size_t pos = 0;
+
+	const struct string_view null_view = {
+		.data = NULL,
+		.sz = 0,
+	};
+	pos = 0;
+	auto_result err_null = ump_varint_read(&null_view, &pos, &value);
+	ASSERT_EQ(ERR_PROTOCOL_VARINT_READ_PRE, err_null.err);
+	ASSERT_EQ(pos, (size_t)err_null.num);
+
+	const struct string_view some_view = {
+		.data = "Hello, World!",
+		.sz = 13,
+	};
+	pos = 15;
+	auto_result err_some = ump_varint_read(&some_view, &pos, &value);
+	ASSERT_EQ(ERR_PROTOCOL_VARINT_READ_PRE, err_some.err);
+	ASSERT_EQ(pos, (size_t)err_some.num);
+
+	PASS();
+}
+
+TEST
+protocol_ump_varint_read_out_of_bounds(void)
+{
+	// TODO
+	PASS();
+}
+
 #undef test_ump_varint
 
 SUITE(protocol_ump)
 {
 	RUN_TEST(protocol_ump_varint_read);
+	RUN_TEST(protocol_ump_varint_read_precondition);
+	RUN_TEST(protocol_ump_varint_read_out_of_bounds);
 }

@@ -442,7 +442,9 @@ ump_read_vle(unsigned char first_byte,
 result_t
 ump_varint_read(const struct string_view *ump, size_t *pos, uint64_t *value)
 {
-	check_if(*pos >= ump->sz, ERR_PROTOCOL_VARINT_READ_PRE, (int)*pos);
+	if (*pos >= ump->sz) {
+		return make_result(ERR_PROTOCOL_VARINT_READ_PRE, (int)*pos);
+	}
 
 	size_t bytes_to_read = 0;
 	unsigned char first_byte_mask = 0xFF;
@@ -452,10 +454,11 @@ ump_varint_read(const struct string_view *ump, size_t *pos, uint64_t *value)
 	      bytes_to_read,
 	      first_byte_mask);
 
-	check_if(*pos > SIZE_MAX - bytes_to_read ||
-	                 *pos >= ump->sz - bytes_to_read,
-	         ERR_PROTOCOL_VARINT_READ_OUT_OF_BOUNDS,
-	         (int)bytes_to_read);
+	if (*pos > SIZE_MAX - bytes_to_read ||
+	    *pos >= ump->sz - bytes_to_read) {
+		return make_result(ERR_PROTOCOL_VARINT_READ_OUT_OF_BOUNDS,
+		                   (int)bytes_to_read);
+	}
 
 	uint64_t parsed[5] = {0};
 	switch (bytes_to_read) {
@@ -492,7 +495,9 @@ ump_varint_read(const struct string_view *ump, size_t *pos, uint64_t *value)
 	 * of a buffer, i.e. that a varint is always used to describe the
 	 * type/size/etc of some subsequent payload.
 	 */
-	check_if(*pos >= ump->sz, ERR_PROTOCOL_VARINT_READ_POST, (int)*pos);
+	if (*pos >= ump->sz) {
+		return make_result(ERR_PROTOCOL_VARINT_READ_POST, (int)*pos);
+	}
 
 	*value = 0;
 	for (size_t i = 0; i < ARRAY_SIZE(parsed); ++i) {
