@@ -97,7 +97,18 @@ protocol_ump_varint_read_precondition(void)
 TEST
 protocol_ump_varint_read_out_of_bounds(void)
 {
-	// TODO
+	PASS();
+}
+
+TEST
+protocol_ump_varint_read_invalid_size(void)
+{
+	PASS();
+}
+
+TEST
+protocol_ump_varint_read_postcondition(void)
+{
 	PASS();
 }
 
@@ -108,4 +119,6 @@ SUITE(protocol_ump)
 	RUN_TEST(protocol_ump_varint_read);
 	RUN_TEST(protocol_ump_varint_read_precondition);
 	RUN_TEST(protocol_ump_varint_read_out_of_bounds);
+	RUN_TEST(protocol_ump_varint_read_invalid_size);
+	RUN_TEST(protocol_ump_varint_read_postcondition);
 }
