@@ -67,6 +67,8 @@ protocol_ump_varint_read(void)
 	PASS();
 }
 
+#undef test_ump_varint
+
 TEST
 protocol_ump_varint_read_precondition(void)
 {
@@ -111,8 +113,6 @@ protocol_ump_varint_read_postcondition(void)
 {
 	PASS();
 }
-
-#undef test_ump_varint
 
 SUITE(protocol_ump)
 {
