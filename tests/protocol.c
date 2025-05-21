@@ -138,7 +138,7 @@ protocol_ump_varint_read_out_of_bounds(void)
 		size_t pos = 0;
 		auto_result err = ump_varint_read(&read_past_sz, &pos, &value);
 		ASSERT_EQ(ERR_PROTOCOL_VARINT_READ_OUT_OF_BOUNDS, err.err);
-		ASSERT_EQ(5, err.num);
+		ASSERT_EQ(/* bytes_to_read */ 5, err.num);
 	}
 
 	const struct string_view pos_plus_read_past_sz = {
@@ -150,7 +150,7 @@ protocol_ump_varint_read_out_of_bounds(void)
 		auto_result err =
 			ump_varint_read(&pos_plus_read_past_sz, &pos, &value);
 		ASSERT_EQ(ERR_PROTOCOL_VARINT_READ_OUT_OF_BOUNDS, err.err);
-		ASSERT_EQ(5, err.num);
+		ASSERT_EQ(/* bytes_to_read */ 5, err.num);
 	}
 
 	PASS();
@@ -170,12 +170,12 @@ protocol_ump_varint_read_postcondition(void)
 	uint64_t value = 0;
 
 	const struct string_view no_remainder = {
-		.data = (char[2]){0x80 /* bytes_to_read=2 */, 0x0F },
+		.data = (char[2]){0x80 /* bytes_to_read=2 */, 0x0F},
 		.sz = 2,
 	};
 	auto_result err = ump_varint_read(&no_remainder, &pos, &value);
 	ASSERT_EQ(ERR_PROTOCOL_VARINT_READ_POST, err.err);
-	ASSERT_EQ(2, err.num);
+	ASSERT_EQ(/* bytes_to_read */ 2, err.num);
 
 	PASS();
 }
