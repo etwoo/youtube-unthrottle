@@ -101,6 +101,31 @@ protocol_ump_varint_read_precondition(void)
 TEST
 protocol_ump_varint_read_out_of_bounds(void)
 {
+	uint64_t value = 0;
+
+	const struct string_view read_past_sz = {
+		.data = (char[1]){0xF0 /* bytes_to_read=5 */},
+		.sz = 1, /* note: bytes_to_read >= sz */
+	};
+	{
+		size_t pos = 0;
+		auto_result err = ump_varint_read(&read_past_sz, &pos, &value);
+		ASSERT_EQ(ERR_PROTOCOL_VARINT_READ_OUT_OF_BOUNDS, err.err);
+		ASSERT_EQ(5, err.num);
+	}
+
+	const struct string_view pos_plus_read_past_sz = {
+		.data = (char[4]){0x00, 0xF0 /* bytes_to_read=5 */, 0x0F, 0},
+		.sz = 4,
+	};
+	{
+		size_t pos = 1;
+		auto_result err =
+			ump_varint_read(&pos_plus_read_past_sz, &pos, &value);
+		ASSERT_EQ(ERR_PROTOCOL_VARINT_READ_OUT_OF_BOUNDS, err.err);
+		ASSERT_EQ(5, err.num);
+	}
+
 	PASS();
 }
 
