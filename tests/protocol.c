@@ -251,14 +251,15 @@ protocol_parse_response_media_header(void)
 	auto_result err = protocol_parse_response(p, &response, &target_url);
 	ASSERT_EQ(OK, err.err);
 
-	/*
-	 * Verify that the <response> above affects the <next> request's
-	 * sequence numbers, duration values, et cetera as expected.
-	 */
 	char *blob __attribute__((cleanup(str_free))) = NULL;
 	size_t blob_sz = 0;
 	auto_result next = protocol_next_request(p, &blob, &blob_sz);
 	ASSERT_EQ(OK, next.err);
+
+	/*
+	 * Verify that the <response> above affected the <next> request's
+	 * sequence numbers, duration values, et cetera as expected.
+	 */
 	auto_request req = request_unpack(NULL, blob_sz, (uint8_t *)blob);
 	ASSERT_NEQ(NULL, req);
 	ASSERT_EQ(5, req->buffered_ranges[1]->end_segment_index);
