@@ -285,6 +285,42 @@ protocol_parse_response_media_header(void)
 TEST
 protocol_parse_response_next_request_policy(void)
 {
+	auto_request request;
+
+	const struct string_view response = {
+		// clang-format off
+		.data = (char[14]){
+			0x23, /* part_type = NEXT_REQUEST_POLICY */
+			0x0C, /* part_size = 12 */
+			/*
+			 * $ cat /tmp/next_request_policy.txt
+			 * playback_cookie {
+			 *     video_fmt {
+			 *         itag: 299
+			 *     }
+			 *     audio_fmt {
+			 *         itag: 251
+			 *     }
+			 * }
+			 * $ cat /tmp/next_request_policy.txt | protoc --proto_path=build/_deps/googlevideo-src/protos --encode=video_streaming.NextRequestPolicy $(find build/_deps -type f -name '*.proto') | hexdump -C
+			 */
+			0x3A, 0x0A, 0x3A, 0x03,
+			0x08, 0xAB, 0x02, 0x42,
+			0x03, 0x08, 0xFB, 0x01,
+		},
+		// clang-format on
+		.sz = 14,
+	};
+	CHECK_CALL(parse_and_get_next(&response, &request));
+
+	/*
+	 * Verify that the <response> above affected the <next> request's
+	 * sequence numbers, duration values, et cetera as expected.
+	 */
+	ASSERT(request->has_video_playback_ustreamer_config);
+	ASSERT_EQ(8, request->video_playback_ustreamer_config.len);
+	ASSERT_STRN_EQ("todo_foo", request->video_playback_ustreamer_config.data, 8);
+
 	PASS();
 }
 
