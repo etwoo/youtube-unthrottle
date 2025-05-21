@@ -215,18 +215,39 @@ static int TEST_FD[2] = {
 };
 static const struct string_view PLAYBACK = MAKE_TEST_STRING("UExBWUJBQ0sK");
 
+typedef VideoStreaming__VideoPlaybackAbrRequest Request;
+
 #define auto_protocol protocol __attribute__((cleanup(protocol_cleanup_p)))
 #define do_test_init() protocol_init("UE9UCg==", &PLAYBACK, TEST_FD)
 #define request_unpack video_streaming__video_playback_abr_request__unpack
 #define auto_request                                                           \
-	VideoStreaming__VideoPlaybackAbrRequest *__attribute__((               \
-		cleanup(video_playback_request_cleanup)))
+	Request *__attribute__((cleanup(video_playback_request_cleanup)))
+
+static enum greatest_test_res
+parse_and_get_next(const struct string_view *response, Request **out)
+{
+	auto_protocol p = do_test_init();
+	char *url __attribute__((cleanup(str_free))) = NULL;
+
+	auto_result parse = protocol_parse_response(p, response, &url);
+	ASSERT_EQ(OK, parse.err);
+
+	char *blob __attribute__((cleanup(str_free))) = NULL;
+	size_t blob_sz = 0;
+
+	auto_result next = protocol_next_request(p, &blob, &blob_sz);
+	ASSERT_EQ(OK, next.err);
+
+	*out = request_unpack(NULL, blob_sz, (uint8_t *)blob);
+	ASSERT_NEQ(NULL, *out);
+
+	PASS();
+}
 
 TEST
 protocol_parse_response_media_header(void)
 {
-	auto_protocol p = do_test_init();
-	char *url __attribute__((cleanup(str_free))) = NULL;
+	auto_request request;
 
 	const struct string_view response = {
 		// clang-format off
@@ -248,27 +269,21 @@ protocol_parse_response_media_header(void)
 		// clang-format on
 		.sz = 12,
 	};
-	{
-		auto_result err = protocol_parse_response(p, &response, &url);
-		ASSERT_EQ(OK, err.err);
-	}
-
-	char *blob __attribute__((cleanup(str_free))) = NULL;
-	size_t blob_sz = 0;
-	{
-		auto_result err = protocol_next_request(p, &blob, &blob_sz);
-		ASSERT_EQ(OK, err.err);
-	}
+	CHECK_CALL(parse_and_get_next(&response, &request));
 
 	/*
 	 * Verify that the <response> above affected the <next> request's
 	 * sequence numbers, duration values, et cetera as expected.
 	 */
-	auto_request next = request_unpack(NULL, blob_sz, (uint8_t *)blob);
-	ASSERT_NEQ(NULL, next);
-	ASSERT_EQ(5, next->buffered_ranges[1]->end_segment_index);
-	ASSERT_EQ(1000, next->buffered_ranges[1]->duration_ms);
+	ASSERT_EQ(5, request->buffered_ranges[1]->end_segment_index);
+	ASSERT_EQ(1000, request->buffered_ranges[1]->duration_ms);
 
+	PASS();
+}
+
+TEST
+protocol_parse_response_next_request_policy(void)
+{
 	PASS();
 }
 
@@ -280,4 +295,5 @@ protocol_parse_response_media_header(void)
 SUITE(protocol_parse)
 {
 	RUN_TEST(protocol_parse_response_media_header);
+	RUN_TEST(protocol_parse_response_next_request_policy);
 }
