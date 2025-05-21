@@ -226,7 +226,7 @@ TEST
 protocol_parse_response_media_header(void)
 {
 	auto_protocol p = do_test_init();
-	char *target_url __attribute__((cleanup(str_free))) = NULL;
+	char *url __attribute__((cleanup(str_free))) = NULL;
 
 	const struct string_view response = {
 		// clang-format off
@@ -248,22 +248,26 @@ protocol_parse_response_media_header(void)
 		// clang-format on
 		.sz = 12,
 	};
-	auto_result err = protocol_parse_response(p, &response, &target_url);
-	ASSERT_EQ(OK, err.err);
+	{
+		auto_result err = protocol_parse_response(p, &response, &url);
+		ASSERT_EQ(OK, err.err);
+	}
 
 	char *blob __attribute__((cleanup(str_free))) = NULL;
 	size_t blob_sz = 0;
-	auto_result next = protocol_next_request(p, &blob, &blob_sz);
-	ASSERT_EQ(OK, next.err);
+	{
+		auto_result err = protocol_next_request(p, &blob, &blob_sz);
+		ASSERT_EQ(OK, err.err);
+	}
 
 	/*
 	 * Verify that the <response> above affected the <next> request's
 	 * sequence numbers, duration values, et cetera as expected.
 	 */
-	auto_request req = request_unpack(NULL, blob_sz, (uint8_t *)blob);
-	ASSERT_NEQ(NULL, req);
-	ASSERT_EQ(5, req->buffered_ranges[1]->end_segment_index);
-	ASSERT_EQ(1000, req->buffered_ranges[1]->duration_ms);
+	auto_request next = request_unpack(NULL, blob_sz, (uint8_t *)blob);
+	ASSERT_NEQ(NULL, next);
+	ASSERT_EQ(5, next->buffered_ranges[1]->end_segment_index);
+	ASSERT_EQ(1000, next->buffered_ranges[1]->duration_ms);
 
 	PASS();
 }
