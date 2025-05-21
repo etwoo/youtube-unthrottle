@@ -244,7 +244,7 @@ protocol_cleanup_p(protocol *pp)
 	protocol_cleanup(*pp);
 }
 
-static const char AMPERSAND[] = "\\u0026"; // URI-encoded ampersand character
+static const char AMPERSAND[] = "\\u0026"; /* URI-encoded ampersand character */
 static const size_t AMPERSAND_SZ = sizeof(AMPERSAND) - 1;
 
 static void

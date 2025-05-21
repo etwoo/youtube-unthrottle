@@ -155,7 +155,7 @@ debug_protobuf_fmt_init(const VideoStreaming__FormatInitializationMetadata *fmt)
 struct protocol_state {
 	int outputs[2];
 	int64_t sequence_number_cursor[2];
-	int header_map[UCHAR_MAX + 1]; // maps header_id number to itag
+	int header_map[UCHAR_MAX + 1]; /* maps header_id number to itag */
 	VideoStreaming__ClientAbrState abr_state;
 	VideoStreaming__StreamerContext__ClientInfo info;
 	VideoStreaming__StreamerContext context;
@@ -327,7 +327,7 @@ protocol_base64_decode(const struct string_view *in,
 		return false;
 	}
 
-	const size_t decode_len = out->len + 1; // XXX: +1 is needed on Linux?
+	const size_t decode_len = out->len + 1; /* XXX: +1 needed on Linux? */
 	const int rc = b64_pton(scratch_buffer, out->data, decode_len);
 	return (rc > 0);
 }
@@ -396,11 +396,11 @@ protocol_next_request(struct protocol_state *p, char **buf, size_t *sz)
 	return RESULT_OK;
 }
 
-static const unsigned char CHAR_BIT_0 = 0x80; // bit pattern: 10000000
-static const unsigned char CHAR_BIT_1 = 0x40; // bit pattern: 01000000
-static const unsigned char CHAR_BIT_2 = 0x20; // bit pattern: 00100000
-static const unsigned char CHAR_BIT_3 = 0x10; // bit pattern: 00010000
-static const unsigned char CHAR_BIT_4 = 0x08; // bit pattern: 00001000
+static const unsigned char CHAR_BIT_0 = 0x80; /* bit pattern: 10000000 */
+static const unsigned char CHAR_BIT_1 = 0x40; /* bit pattern: 01000000 */
+static const unsigned char CHAR_BIT_2 = 0x20; /* bit pattern: 00100000 */
+static const unsigned char CHAR_BIT_3 = 0x10; /* bit pattern: 00010000 */
+static const unsigned char CHAR_BIT_4 = 0x08; /* bit pattern: 00001000 */
 
 static void
 ump_read_vle(unsigned char first_byte,
@@ -408,7 +408,7 @@ ump_read_vle(unsigned char first_byte,
              unsigned char *first_byte_mask)
 {
 	*bytes_to_read = 1;
-	*first_byte_mask = 0xFF; // bit pattern: 11111111
+	*first_byte_mask = 0xFF; /* bit pattern: 11111111 */
 	if (0 == (first_byte & CHAR_BIT_0)) {
 		return;
 	}
@@ -675,8 +675,8 @@ ump_parse(struct protocol_state *p,
 {
 	debug("Got UMP response of sz=%zu", ump->sz);
 
-	size_t cursor = 0; // position within UMP payload
-	bool skip = false; // whether to skip certain UMP sections
+	size_t cursor = 0; /* position within UMP payload */
+	bool skip = false; /* whether to skip certain UMP sections */
 
 	while (cursor < ump->sz) {
 		uint64_t part_type = 0;
