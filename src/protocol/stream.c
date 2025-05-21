@@ -462,8 +462,9 @@ ump_varint_read(const struct string_view *ump, size_t *pos, uint64_t *value)
 	case 5: // TODO: bytes_to_read=5 is probably broken
 		parsed[4] = ump->data[*pos + 4] << 24;
 		__attribute__((fallthrough));
-	case 4: // TODO: bytes_to_read=4 is probably broken
-		parsed[3] = ump->data[*pos + 3] << 16;
+	case 4:
+		parsed[3] = (unsigned char)ump->data[*pos + 3]
+		            << (16 + (8 - bytes_to_read));
 		__attribute__((fallthrough));
 	case 3:
 		parsed[2] = (unsigned char)ump->data[*pos + 2]

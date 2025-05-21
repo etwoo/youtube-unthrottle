@@ -44,6 +44,11 @@ protocol_ump_read_vle(void)
 	CHECK_CALL(test_ump_varint_read(139263, 3, {0xDF, 0xFF, 0x10, 0}));
 	CHECK_CALL(test_ump_varint_read(1048575, 3, {0xDF, 0xFF, 0x7F, 0}));
 	CHECK_CALL(test_ump_varint_read(2097151, 3, {0xDF, 0xFF, 0xFF, 0}));
+	CHECK_CALL(test_ump_varint_read(2097151, 4, {0xEF, 0xFF, 0xFF, 0x01, 0}));
+	CHECK_CALL(test_ump_varint_read(9437183, 4, {0xEF, 0xFF, 0xFF, 0x08, 0}));
+	CHECK_CALL(test_ump_varint_read(17825791, 4, {0xEF, 0xFF, 0xFF, 0x10, 0}));
+	CHECK_CALL(test_ump_varint_read(134217727, 4, {0xEF, 0xFF, 0xFF, 0x7F, 0}));
+	CHECK_CALL(test_ump_varint_read(268435455, 4, {0xEF, 0xFF, 0xFF, 0xFF, 0}));
 	PASS();
 }
 
