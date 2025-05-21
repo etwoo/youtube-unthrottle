@@ -2,10 +2,9 @@
 #include "protocol/stream.h"
 #include "sys/debug.h"
 #include "test_macros.h"
+#include "video_streaming/video_playback_abr_request.pb-c.h"
 
 #include <unistd.h>
-
-#include "video_streaming/video_playback_abr_request.pb-c.h"
 
 static void
 str_free(char **strp)
@@ -219,8 +218,9 @@ static const struct string_view PLAYBACK = MAKE_TEST_STRING("UExBWUJBQ0sK");
 #define auto_protocol protocol __attribute__((cleanup(protocol_cleanup_p)))
 #define do_test_init() protocol_init("UE9UCg==", &PLAYBACK, TEST_FD)
 #define request_unpack video_streaming__video_playback_abr_request__unpack
-#define auto_request VideoStreaming__VideoPlaybackAbrRequest *                 \
-	__attribute__((cleanup(video_playback_request_cleanup)))
+#define auto_request                                                           \
+	VideoStreaming__VideoPlaybackAbrRequest *__attribute__((               \
+		cleanup(video_playback_request_cleanup)))
 
 TEST
 protocol_parse_response_media_header(void)
@@ -255,7 +255,7 @@ protocol_parse_response_media_header(void)
 	size_t blob_sz = 0;
 	auto_result next = protocol_next_request(p, &blob, &blob_sz);
 	ASSERT_EQ(OK, next.err);
-	auto_request req = request_unpack(NULL, blob_sz, (uint8_t*)blob);
+	auto_request req = request_unpack(NULL, blob_sz, (uint8_t *)blob);
 	ASSERT_NEQ(NULL, req);
 	ASSERT_EQ(5, req->buffered_ranges[1]->end_segment_index);
 	ASSERT_EQ(1000, req->buffered_ranges[1]->duration_ms);
@@ -265,6 +265,8 @@ protocol_parse_response_media_header(void)
 
 #undef auto_protocol
 #undef do_test_init
+#undef request_unpack
+#undef auto_request
 
 SUITE(protocol_parse)
 {
