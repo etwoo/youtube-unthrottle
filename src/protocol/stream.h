@@ -22,7 +22,7 @@ result_t protocol_parse_response(protocol stream,
                                  char **target_url) WARN_UNUSED;
 
 /*
- * Expose pure/stateless subset of parsing logic for UMP format.
+ * Expose a pure functional subset of parsing logic for UMP format.
  */
 result_t ump_varint_read(const struct string_view *ump,
                          size_t *pos,
