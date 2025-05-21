@@ -27,7 +27,7 @@ test_ump_varint_read_n(uint64_t expected, size_t n, char *bytes_to_parse)
 	test_ump_varint_read_n(EXPECTED, N, (char[N + 1]) __VA_ARGS__)
 
 TEST
-protocol_ump_read_vle(void)
+protocol_ump_varint_read(void)
 {
 	CHECK_CALL(test_ump_varint(0, 1, {0x00, 0}));
 	CHECK_CALL(test_ump_varint(1, 1, {0x01, 0}));
@@ -56,5 +56,5 @@ protocol_ump_read_vle(void)
 
 SUITE(protocol_ump)
 {
-	RUN_TEST(protocol_ump_read_vle);
+	RUN_TEST(protocol_ump_varint_read);
 }
