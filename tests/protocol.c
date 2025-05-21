@@ -3,7 +3,7 @@
 #include "sys/debug.h"
 
 static enum greatest_test_res
-test_ump_varint_read_n(size_t n, char *bytes_to_parse, uint64_t expected)
+test_ump_varint_read_n(uint64_t expected, size_t n, char *bytes_to_parse)
 {
 	const struct string_view view = {
 		.data = bytes_to_parse,
@@ -23,26 +23,31 @@ test_ump_varint_read_n(size_t n, char *bytes_to_parse, uint64_t expected)
 	PASS();
 }
 
+#define test_ump_varint_read(EXPECTED, N, ...)                                 \
+	test_ump_varint_read_n(EXPECTED, N, (char[N + 1]) __VA_ARGS__)
+
 TEST
 protocol_ump_read_vle(void)
 {
-	CHECK_CALL(test_ump_varint_read_n(1, (char[2]){0x00, 0}, 0));
-	CHECK_CALL(test_ump_varint_read_n(1, (char[2]){0x01, 0}, 1));
-	CHECK_CALL(test_ump_varint_read_n(1, (char[2]){0x08, 0}, 8));
-	CHECK_CALL(test_ump_varint_read_n(1, (char[2]){0x10, 0}, 16));
-	CHECK_CALL(test_ump_varint_read_n(1, (char[2]){0x7F, 0}, 127));
-	CHECK_CALL(test_ump_varint_read_n(2, (char[3]){0xBF, 0x01, 0}, 127));
-	CHECK_CALL(test_ump_varint_read_n(2, (char[3]){0xBF, 0x08, 0}, 575));
-	CHECK_CALL(test_ump_varint_read_n(2, (char[3]){0xBF, 0x10, 0}, 1087));
-	CHECK_CALL(test_ump_varint_read_n(2, (char[3]){0xBF, 0x7F, 0}, 8191));
-	CHECK_CALL(test_ump_varint_read_n(2, (char[3]){0xBF, 0xFF, 0}, 16383));
-	CHECK_CALL(test_ump_varint_read_n(3, (char[4]){0xDF, 0xFF, 0x01, 0}, 16383));
-	CHECK_CALL(test_ump_varint_read_n(3, (char[4]){0xDF, 0xFF, 0x08, 0}, 73727));
-	CHECK_CALL(test_ump_varint_read_n(3, (char[4]){0xDF, 0xFF, 0x10, 0}, 139263));
-	CHECK_CALL(test_ump_varint_read_n(3, (char[4]){0xDF, 0xFF, 0x7F, 0}, 1048575));
-	CHECK_CALL(test_ump_varint_read_n(3, (char[4]){0xDF, 0xFF, 0xFF, 0}, 2097151));
+	CHECK_CALL(test_ump_varint_read(0, 1, {0x00, 0}));
+	CHECK_CALL(test_ump_varint_read(1, 1, {0x01, 0}));
+	CHECK_CALL(test_ump_varint_read(8, 1, {0x08, 0}));
+	CHECK_CALL(test_ump_varint_read(16, 1, {0x10, 0}));
+	CHECK_CALL(test_ump_varint_read(127, 1, {0x7F, 0}));
+	CHECK_CALL(test_ump_varint_read(127, 2, {0xBF, 0x01, 0}));
+	CHECK_CALL(test_ump_varint_read(575, 2, {0xBF, 0x08, 0}));
+	CHECK_CALL(test_ump_varint_read(1087, 2, {0xBF, 0x10, 0}));
+	CHECK_CALL(test_ump_varint_read(8191, 2, {0xBF, 0x7F, 0}));
+	CHECK_CALL(test_ump_varint_read(16383, 2, {0xBF, 0xFF, 0}));
+	CHECK_CALL(test_ump_varint_read(16383, 3, {0xDF, 0xFF, 0x01, 0}));
+	CHECK_CALL(test_ump_varint_read(73727, 3, {0xDF, 0xFF, 0x08, 0}));
+	CHECK_CALL(test_ump_varint_read(139263, 3, {0xDF, 0xFF, 0x10, 0}));
+	CHECK_CALL(test_ump_varint_read(1048575, 3, {0xDF, 0xFF, 0x7F, 0}));
+	CHECK_CALL(test_ump_varint_read(2097151, 3, {0xDF, 0xFF, 0xFF, 0}));
 	PASS();
 }
+
+#undef test_ump_varint_read
 
 SUITE(protocol_ump)
 {

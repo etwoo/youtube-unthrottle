@@ -491,7 +491,6 @@ ump_varint_read(const struct string_view *ump, size_t *pos, uint64_t *value)
 
 	*value = 0;
 	for (size_t i = 0; i < ARRAY_SIZE(parsed); ++i) {
-		debug("Accumulating: %" PRIu64, parsed[i]);
 		*value += parsed[i];
 	}
 
