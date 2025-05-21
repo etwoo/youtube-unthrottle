@@ -209,24 +209,19 @@ SUITE(protocol_ump_varint_read)
 	RUN_TEST(protocol_ump_varint_read_postcondition);
 }
 
-static int TEST_FD[2] = {
-	STDOUT_FILENO,
-	STDOUT_FILENO,
-};
-static const struct string_view PLAYBACK = MAKE_TEST_STRING("UExBWUJBQ0sK");
-
 typedef VideoStreaming__VideoPlaybackAbrRequest Request;
-
-#define auto_protocol protocol __attribute__((cleanup(protocol_cleanup_p)))
-#define do_test_init() protocol_init("UE9UCg==", &PLAYBACK, TEST_FD)
-#define request_unpack video_streaming__video_playback_abr_request__unpack
-#define auto_request                                                           \
-	Request *__attribute__((cleanup(video_playback_request_cleanup)))
 
 static enum greatest_test_res
 parse_and_get_next(const struct string_view *response, Request **out)
 {
-	auto_protocol p = do_test_init();
+	const struct string_view PLAYBACK = MAKE_TEST_STRING("UExBWUJBQ0sK");
+	int TEST_FD[2] = {
+		STDOUT_FILENO,
+		STDOUT_FILENO,
+	};
+
+	protocol p __attribute__((cleanup(protocol_cleanup_p))) =
+		protocol_init("UE9UCg==", &PLAYBACK, TEST_FD);
 	char *url __attribute__((cleanup(str_free))) = NULL;
 
 	auto_result parse = protocol_parse_response(p, response, &url);
@@ -238,11 +233,17 @@ parse_and_get_next(const struct string_view *response, Request **out)
 	auto_result next = protocol_next_request(p, &blob, &blob_sz);
 	ASSERT_EQ(OK, next.err);
 
-	*out = request_unpack(NULL, blob_sz, (uint8_t *)blob);
+	*out = video_streaming__video_playback_abr_request__unpack(
+		NULL,
+		blob_sz,
+		(uint8_t *)blob);
 	ASSERT_NEQ(NULL, *out);
 
 	PASS();
 }
+
+#define auto_request                                                           \
+	Request *__attribute__((cleanup(video_playback_request_cleanup)))
 
 TEST
 protocol_parse_response_media_header(void)
@@ -287,9 +288,6 @@ protocol_parse_response_next_request_policy(void)
 	PASS();
 }
 
-#undef auto_protocol
-#undef do_test_init
-#undef request_unpack
 #undef auto_request
 
 SUITE(protocol_parse)
