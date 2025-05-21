@@ -29,28 +29,52 @@ test_ump_varint_read_n(uint64_t expected,
 	test_ump_varint_read_n(EXPECTED, N, (unsigned char[N + 1]) __VA_ARGS__)
 
 TEST
-protocol_ump_varint_read(void)
+protocol_ump_varint_read_byte_length_1(void)
 {
 	CHECK_CALL(test_ump_varint(0, 1, {0x00, 0}));
 	CHECK_CALL(test_ump_varint(1, 1, {0x01, 0}));
 	CHECK_CALL(test_ump_varint(8, 1, {0x08, 0}));
 	CHECK_CALL(test_ump_varint(16, 1, {0x10, 0}));
 	CHECK_CALL(test_ump_varint(127, 1, {0x7F, 0}));
+	PASS();
+}
+
+TEST
+protocol_ump_varint_read_byte_length_2(void)
+{
 	CHECK_CALL(test_ump_varint(127, 2, {0xBF, 0x01, 0}));
 	CHECK_CALL(test_ump_varint(575, 2, {0xBF, 0x08, 0}));
 	CHECK_CALL(test_ump_varint(1087, 2, {0xBF, 0x10, 0}));
 	CHECK_CALL(test_ump_varint(8191, 2, {0xBF, 0x7F, 0}));
 	CHECK_CALL(test_ump_varint(16383, 2, {0xBF, 0xFF, 0}));
+	PASS();
+}
+
+TEST
+protocol_ump_varint_read_byte_length_3(void)
+{
 	CHECK_CALL(test_ump_varint(16383, 3, {0xDF, 0xFF, 0x01, 0}));
 	CHECK_CALL(test_ump_varint(73727, 3, {0xDF, 0xFF, 0x08, 0}));
 	CHECK_CALL(test_ump_varint(139263, 3, {0xDF, 0xFF, 0x10, 0}));
 	CHECK_CALL(test_ump_varint(1048575, 3, {0xDF, 0xFF, 0x7F, 0}));
 	CHECK_CALL(test_ump_varint(2097151, 3, {0xDF, 0xFF, 0xFF, 0}));
+	PASS();
+}
+
+TEST
+protocol_ump_varint_read_byte_length_4(void)
+{
 	CHECK_CALL(test_ump_varint(2097151, 4, {0xEF, 0xFF, 0xFF, 0x01, 0}));
 	CHECK_CALL(test_ump_varint(9437183, 4, {0xEF, 0xFF, 0xFF, 0x08, 0}));
 	CHECK_CALL(test_ump_varint(17825791, 4, {0xEF, 0xFF, 0xFF, 0x10, 0}));
 	CHECK_CALL(test_ump_varint(134217727, 4, {0xEF, 0xFF, 0xFF, 0x7F, 0}));
 	CHECK_CALL(test_ump_varint(268435455, 4, {0xEF, 0xFF, 0xFF, 0xFF, 0}));
+	PASS();
+}
+
+TEST
+protocol_ump_varint_read_byte_length_5(void)
+{
 	CHECK_CALL(test_ump_varint(33554431,
 	                           5,
 	                           {0xF0, 0xFF, 0xFF, 0xFF, 0x01, 0}));
@@ -156,9 +180,13 @@ protocol_ump_varint_read_postcondition(void)
 	PASS();
 }
 
-SUITE(protocol_ump)
+SUITE(protocol_ump_varint_read)
 {
-	RUN_TEST(protocol_ump_varint_read);
+	RUN_TEST(protocol_ump_varint_read_byte_length_1);
+	RUN_TEST(protocol_ump_varint_read_byte_length_2);
+	RUN_TEST(protocol_ump_varint_read_byte_length_3);
+	RUN_TEST(protocol_ump_varint_read_byte_length_4);
+	RUN_TEST(protocol_ump_varint_read_byte_length_5);
 	RUN_TEST(protocol_ump_varint_read_precondition);
 	RUN_TEST(protocol_ump_varint_read_out_of_bounds);
 	RUN_TEST(protocol_ump_varint_read_invalid_size);
