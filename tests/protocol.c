@@ -5,6 +5,18 @@
 
 #include <unistd.h>
 
+static void
+str_free(char **strp)
+{
+	free(*strp);
+}
+
+static void
+protocol_cleanup_p(protocol *pp)
+{
+	protocol_cleanup(*pp);
+}
+
 static enum greatest_test_res
 test_ump_varint_read_n(uint64_t expected,
                        size_t n,
@@ -190,26 +202,29 @@ SUITE(protocol_ump_varint_read)
 	RUN_TEST(protocol_ump_varint_read_postcondition);
 }
 
-static void
-protocol_cleanup_p(protocol *pp)
-{
-	protocol_cleanup(*pp);
-}
-
 static int TEST_FD[2] = {
 	STDOUT_FILENO,
 	STDOUT_FILENO,
 };
+static const struct string_view PLAYBACK = MAKE_TEST_STRING("UExBWUJBQ0sK");
 
 #define auto_protocol protocol __attribute__((cleanup(protocol_cleanup_p)))
-static const struct string_view PLAYBACK_CONFIG =
-	MAKE_TEST_STRING("UExBWUJBQ0sK");
-#define do_test_init() protocol_init("UE9UCg==", &PLAYBACK_CONFIG, TEST_FD)
+#define do_test_init() protocol_init("UE9UCg==", &PLAYBACK, TEST_FD)
 
 TEST
 protocol_parse_response_media_header(void)
 {
 	auto_protocol p = do_test_init();
+	char *target_url __attribute__((cleanup(str_free))) = NULL;
+
+	const struct string_view response = {
+		.data = (char[3]){20 /* MEDIA_HEADER */, 0x7F, 0},
+		.sz = 3,
+	};
+	auto_result err = protocol_parse_response(p, &response, &target_url);
+	ASSERT_EQ(OK, err.err);
+	// TODO: inspect header state
+
 	PASS();
 }
 
