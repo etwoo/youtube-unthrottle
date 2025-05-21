@@ -159,7 +159,7 @@ protocol_ump_varint_read_out_of_bounds(void)
 TEST
 protocol_ump_varint_read_invalid_size(void)
 {
-	// TODO: ERR_PROTOCOL_VARINT_READ_INVALID_SIZE is unreadable; remove?
+	// TODO: ERR_PROTOCOL_VARINT_READ_INVALID_SIZE is unreachable; remove?
 	PASS();
 }
 
