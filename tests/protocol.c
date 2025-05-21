@@ -218,6 +218,7 @@ protocol_parse_response_media_header(void)
 	char *target_url __attribute__((cleanup(str_free))) = NULL;
 
 	const struct string_view response = {
+		// clang-format off
 		.data = (char[14]){
 			0x14, /* part_type = MEDIA_HEADER */
 			0x0C, /* part_size = 12 */
@@ -229,12 +230,12 @@ protocol_parse_response_media_header(void)
 			 * time_range {
 			 *     duration: 1000
 			 * }
-			 * $ cat /tmp/media_header.txt | protoc-c --proto_path=build/_deps/googlevideo-src/protos --encode=video_streaming.MediaHeader $(find build/_deps/googlevideo-src/protos -type f -name '*.proto') | hexdump -C
+			 * $ cat /tmp/media_header.txt | protoc --proto_path=build/_deps/googlevideo-src/protos --encode=video_streaming.MediaHeader $(find build/_deps -type f -name '*.proto') | hexdump -C
 			 */
-			0x08, 0x02, 0x18, 0xAB,
-			0x02, 0x48, 0x04, 0x7A,
+			0x08, 0x02, 0x18, 0xAB, 0x02, 0x48, 0x04, 0x7A,
 			0x03, 0x10, 0xE8, 0x07,
 		},
+		// clang-format on
 		.sz = 14,
 	};
 	auto_result err = protocol_parse_response(p, &response, &target_url);
