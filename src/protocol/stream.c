@@ -379,6 +379,7 @@ protocol_cleanup(struct protocol_state *p)
 {
 	if (p) {
 		free(p->context.po_token.data);
+		free(p->context.playback_cookie.data);
 		free(p->req.video_playback_ustreamer_config.data);
 		free(p);
 	}
