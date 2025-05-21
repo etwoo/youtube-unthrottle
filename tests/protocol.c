@@ -218,8 +218,24 @@ protocol_parse_response_media_header(void)
 	char *target_url __attribute__((cleanup(str_free))) = NULL;
 
 	const struct string_view response = {
-		.data = (char[3]){20 /* MEDIA_HEADER */, 0x7F, 0},
-		.sz = 3,
+		.data = (char[14]){
+			0x14, /* part_type = MEDIA_HEADER */
+			0x0C, /* part_size = 12 */
+			/*
+			 * $ cat /tmp/media_header.txt
+			 * header_id: 2
+			 * itag: 299
+			 * sequence_number: 4
+			 * time_range {
+			 *     duration: 1000
+			 * }
+			 * $ cat /tmp/media_header.txt | protoc-c --proto_path=build/_deps/googlevideo-src/protos --encode=video_streaming.MediaHeader $(find build/_deps/googlevideo-src/protos -type f -name '*.proto') | hexdump -C
+			 */
+			0x08, 0x02, 0x18, 0xAB,
+			0x02, 0x48, 0x04, 0x7A,
+			0x03, 0x10, 0xE8, 0x07,
+		},
+		.sz = 14,
 	};
 	auto_result err = protocol_parse_response(p, &response, &target_url);
 	ASSERT_EQ(OK, err.err);
