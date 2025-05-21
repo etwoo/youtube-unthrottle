@@ -344,4 +344,8 @@ SUITE(protocol_parse)
 {
 	RUN_TEST(protocol_parse_response_media_header);
 	RUN_TEST(protocol_parse_response_next_request_policy);
+	// TODO: test SABR_REDIRECT
+	// TODO: test FORMAT_INITIALIZATION_METADATA; add hook for side effects?
+	// TODO: test MEDIA blob; add hook to intercept side effects?
+	// TODO: maybe add callbacks for everything, avoid unpack() entirely
 }
