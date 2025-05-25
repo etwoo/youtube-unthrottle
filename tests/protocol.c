@@ -1,6 +1,7 @@
 #include "greatest.h"
 #include "protocol/stream.h"
 #include "sys/debug.h"
+#include "sys/tmpfile.h"
 #include "test_macros.h"
 #include "video_streaming/video_playback_abr_request.pb-c.h"
 
@@ -214,16 +215,18 @@ typedef VideoStreaming__VideoPlaybackAbrRequest Request;
 static enum greatest_test_res
 parse_and_get_next(const struct string_view *response,
                    Request **out,
-                   char **url)
+                   char **url,
+                   int *pfd)
 {
 	const struct string_view PLAYBACK = MAKE_TEST_STRING("UExBWUJBQ0sK");
-	int TEST_FD[2] = {
-		STDOUT_FILENO,
-		STDOUT_FILENO,
+	int fd = pfd ? *pfd : STDOUT_FILENO;
+	int fds[2] = {
+		fd,
+		fd,
 	};
 
 	protocol p __attribute__((cleanup(protocol_cleanup_p))) =
-		protocol_init("UE9UCg==", &PLAYBACK, TEST_FD);
+		protocol_init("UE9UCg==", &PLAYBACK, fds);
 	auto_result parse = protocol_parse_response(p, response, url);
 	ASSERT_EQ(OK, parse.err);
 
@@ -246,14 +249,19 @@ parse_and_get_next(const struct string_view *response,
 	Request *__attribute__((cleanup(video_playback_request_cleanup)))
 
 TEST
-protocol_parse_response_media_header(void)
+protocol_parse_response_media_header_and_blob(void)
 {
 	auto_request request;
 	char *url __attribute__((cleanup(str_free))) = NULL;
 
+	int fd = -1;
+	auto_result err = tmpfd(&fd);
+	ASSERT_EQ(OK, err.err);
+	ASSERT_LTE(0, fd);
+
 	const struct string_view response = {
 		// clang-format off
-		.data = (char[12]){
+		.data = (char[21]){
 			0x14, /* part_type = MEDIA_HEADER */
 			0x0A, /* part_size = 10 */
 			/*
@@ -267,11 +275,15 @@ protocol_parse_response_media_header(void)
 			0x08, 0x02, 0x18, 0xAB,
 			0x02, 0x48, 0x04, 0x60,
 			0xE8, 0x07,
+			0x15, /* part_type = MEDIA */
+			0x07, /* part_size = 7 */
+			0x02, /* header_id = 2 */
+			0x46, 0x4F, 0x4F, 0x42, 0x41, 0x52, /* FOOBAR */
 		},
 		// clang-format on
-		.sz = 12,
+		.sz = 21,
 	};
-	CHECK_CALL(parse_and_get_next(&response, &request, &url));
+	CHECK_CALL(parse_and_get_next(&response, &request, &url, &fd));
 
 	/*
 	 * Verify that the <response> above affected the <next> request's
@@ -279,6 +291,18 @@ protocol_parse_response_media_header(void)
 	 */
 	ASSERT_EQ(5, request->buffered_ranges[1]->end_segment_index);
 	ASSERT_EQ(1000, request->buffered_ranges[1]->duration_ms);
+
+	/*
+	 * Verify FOOBAR media blob writes to provided fd as expected.
+	 */
+	char written[6];
+	const off_t pos = lseek(fd, -1 * sizeof(written), SEEK_END);
+	ASSERT_LTE(0, pos);
+	const ssize_t got_bytes = read(fd, written, sizeof(written));
+	ASSERT_EQ(sizeof(written), got_bytes);
+	ASSERT_STRN_EQ("FOOBAR", written, sizeof(written));
+	const int rc = close(fd);
+	ASSERT_EQ(0, rc);
 
 	PASS();
 }
@@ -313,7 +337,7 @@ protocol_parse_response_next_request_policy(void)
 		// clang-format on
 		.sz = 14,
 	};
-	CHECK_CALL(parse_and_get_next(&response, &request, &url));
+	CHECK_CALL(parse_and_get_next(&response, &request, &url, NULL));
 
 	/*
 	 * Verify that the <response> above affected the <next> request's
@@ -366,7 +390,7 @@ protocol_parse_response_sabr_redirect(void)
 		// clang-format on
 		.sz = 24,
 	};
-	CHECK_CALL(parse_and_get_next(&response, &request, &url));
+	CHECK_CALL(parse_and_get_next(&response, &request, &url, NULL));
 
 	/*
 	 * Verify that the <response> above affected the <next> request's
@@ -381,10 +405,8 @@ protocol_parse_response_sabr_redirect(void)
 
 SUITE(protocol_parse)
 {
-	RUN_TEST(protocol_parse_response_media_header);
+	RUN_TEST(protocol_parse_response_media_header_and_blob);
 	RUN_TEST(protocol_parse_response_next_request_policy);
 	RUN_TEST(protocol_parse_response_sabr_redirect);
 	// TODO: test FORMAT_INITIALIZATION_METADATA; check total duration?
-	// TODO: test MEDIA blob; add hook to intercept side effects?
-	// TODO: maybe add callbacks for everything, avoid unpack() entirely
 }
