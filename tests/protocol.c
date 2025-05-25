@@ -284,6 +284,9 @@ protocol_parse_response_media_header_and_blob(void)
 			// payload (not FOOBAR); existing test assertions will
 			// then double as check that this latter blob is
 			// ignored (not written)
+			// TODO: maybe add third media header to exercise
+			// switching back on, i.e. setting
+			// skip_media_blobs_until_next back to false
 		},
 		// clang-format on
 		.sz = 21,
