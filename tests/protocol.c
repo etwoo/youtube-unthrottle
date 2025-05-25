@@ -279,6 +279,11 @@ protocol_parse_response_media_header_and_blob(void)
 			0x07, /* part_size = 7 */
 			0x02, /* header_id = 2 */
 			0x46, 0x4F, 0x4F, 0x42, 0x41, 0x52, /* FOOBAR */
+			// TODO: add MEDIA_HEADER with sequence_number lower
+			// than 4, followed by MEDIA blob with different
+			// payload (not FOOBAR); existing test assertions will
+			// then double as check that this latter blob is
+			// ignored (not written)
 		},
 		// clang-format on
 		.sz = 21,
