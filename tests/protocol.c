@@ -317,7 +317,7 @@ protocol_parse_response_next_request_policy(void)
 
 	/*
 	 * Verify that the <response> above affected the <next> request's
-	 * sequence numbers, duration values, et cetera as expected.
+	 * playback cookie as expected.
 	 */
 	ASSERT(request->streamer_context->has_playback_cookie);
 	ASSERT_EQ(10, request->streamer_context->playback_cookie.len);
@@ -340,13 +340,51 @@ protocol_parse_response_next_request_policy(void)
 	PASS();
 }
 
+TEST
+protocol_parse_response_sabr_redirect(void)
+{
+	auto_request request;
+	char *url __attribute__((cleanup(str_free))) = NULL;
+
+	const struct string_view response = {
+		// clang-format off
+		.data = (char[24]){
+			0x2B, /* part_type = SABR_REDIRECT */
+			0x16, /* part_size = 22 */
+			/*
+			 * $ cat /tmp/sabr_redirect.txt
+			 * url: "https://foo.test/bar"
+			 * $ cat /tmp/sabr_redirect.txt | protoc --proto_path=build/_deps/googlevideo-src/protos --encode=video_streaming.SabrRedirect $(find build/_deps -type f -name '*.proto') | hexdump -C
+			 */
+			0x0A, 0x14, 0x68, 0x74,
+			0x74, 0x70, 0x73, 0x3A,
+			0x2F, 0x2F, 0x66, 0x6F,
+			0x6F, 0x2E, 0x74, 0x65,
+			0x73, 0x74, 0x2F, 0x62,
+			0x61, 0x72,
+		},
+		// clang-format on
+		.sz = 24,
+	};
+	CHECK_CALL(parse_and_get_next(&response, &request, &url));
+
+	/*
+	 * Verify that the <response> above affected the <next> request's
+	 * target URL as expected.
+	 */
+	ASSERT_STRN_EQ("https://foo.test/bar", url, 20);
+
+	PASS();
+
+}
+
 #undef auto_request
 
 SUITE(protocol_parse)
 {
 	RUN_TEST(protocol_parse_response_media_header);
 	RUN_TEST(protocol_parse_response_next_request_policy);
-	// TODO: test SABR_REDIRECT
+	RUN_TEST(protocol_parse_response_sabr_redirect);
 	// TODO: test FORMAT_INITIALIZATION_METADATA; check total duration?
 	// TODO: test MEDIA blob; add hook to intercept side effects?
 	// TODO: maybe add callbacks for everything, avoid unpack() entirely
