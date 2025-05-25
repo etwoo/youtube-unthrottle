@@ -212,7 +212,9 @@ SUITE(protocol_ump_varint_read)
 typedef VideoStreaming__VideoPlaybackAbrRequest Request;
 
 static enum greatest_test_res
-parse_and_get_next(const struct string_view *response, Request **out)
+parse_and_get_next(const struct string_view *response,
+                   Request **out,
+                   char **url)
 {
 	const struct string_view PLAYBACK = MAKE_TEST_STRING("UExBWUJBQ0sK");
 	int TEST_FD[2] = {
@@ -222,9 +224,7 @@ parse_and_get_next(const struct string_view *response, Request **out)
 
 	protocol p __attribute__((cleanup(protocol_cleanup_p))) =
 		protocol_init("UE9UCg==", &PLAYBACK, TEST_FD);
-	char *url __attribute__((cleanup(str_free))) = NULL;
-
-	auto_result parse = protocol_parse_response(p, response, &url);
+	auto_result parse = protocol_parse_response(p, response, url);
 	ASSERT_EQ(OK, parse.err);
 
 	char *blob __attribute__((cleanup(str_free))) = NULL;
@@ -249,6 +249,7 @@ TEST
 protocol_parse_response_media_header(void)
 {
 	auto_request request;
+	char *url __attribute__((cleanup(str_free))) = NULL;
 
 	const struct string_view response = {
 		// clang-format off
@@ -270,7 +271,7 @@ protocol_parse_response_media_header(void)
 		// clang-format on
 		.sz = 12,
 	};
-	CHECK_CALL(parse_and_get_next(&response, &request));
+	CHECK_CALL(parse_and_get_next(&response, &request, &url));
 
 	/*
 	 * Verify that the <response> above affected the <next> request's
@@ -286,6 +287,7 @@ TEST
 protocol_parse_response_next_request_policy(void)
 {
 	auto_request request;
+	char *url __attribute__((cleanup(str_free))) = NULL;
 
 	const struct string_view response = {
 		// clang-format off
@@ -311,7 +313,7 @@ protocol_parse_response_next_request_policy(void)
 		// clang-format on
 		.sz = 14,
 	};
-	CHECK_CALL(parse_and_get_next(&response, &request));
+	CHECK_CALL(parse_and_get_next(&response, &request, &url));
 
 	/*
 	 * Verify that the <response> above affected the <next> request's
@@ -345,7 +347,7 @@ SUITE(protocol_parse)
 	RUN_TEST(protocol_parse_response_media_header);
 	RUN_TEST(protocol_parse_response_next_request_policy);
 	// TODO: test SABR_REDIRECT
-	// TODO: test FORMAT_INITIALIZATION_METADATA; add hook for side effects?
+	// TODO: test FORMAT_INITIALIZATION_METADATA; check total duration?
 	// TODO: test MEDIA blob; add hook to intercept side effects?
 	// TODO: maybe add callbacks for everything, avoid unpack() entirely
 }
