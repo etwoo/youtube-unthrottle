@@ -375,7 +375,6 @@ protocol_parse_response_sabr_redirect(void)
 	ASSERT_STRN_EQ("https://foo.test/bar", url, 20);
 
 	PASS();
-
 }
 
 #undef auto_request
