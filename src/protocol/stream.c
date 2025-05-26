@@ -10,7 +10,7 @@
 #include <resolv.h> /* for b64_pton() */
 #include <stdbool.h>
 #include <stdlib.h>
-#include <sys/param.h> /* for MIN() */
+#include <sys/param.h> /* for MIN() and MAX() */
 
 /*
  * Some helpful references on YouTube's UMP format and SABR protobufs:
@@ -143,16 +143,27 @@ debug_protobuf_fmt_init(const VideoStreaming__FormatInitializationMetadata *fmt)
 	      ", init_end=%d"
 	      ", index_start=%d"
 	      ", index_end=%d",
-	      fmt->video_id,
-	      fmt->format_id->has_itag ? fmt->format_id->itag : -1,
+	      fmt->video_id ? fmt->video_id : "none",
+	      (fmt->format_id && fmt->format_id->has_itag)
+	              ? fmt->format_id->itag
+	              : -1,
 	      (fmt->has_duration_ms ? fmt->duration_ms : -1),
-	      (fmt->init_range->has_start ? fmt->init_range->start : -1),
-	      (fmt->init_range->has_end ? fmt->init_range->end : -1),
-	      (fmt->index_range->has_start ? fmt->index_range->start : -1),
-	      (fmt->index_range->has_end ? fmt->index_range->end : -1));
+	      (fmt->init_range && fmt->init_range->has_start
+	               ? fmt->init_range->start
+	               : -1),
+	      (fmt->init_range && fmt->init_range->has_end
+	               ? fmt->init_range->end
+	               : -1),
+	      (fmt->index_range && fmt->index_range->has_start
+	               ? fmt->index_range->start
+	               : -1),
+	      (fmt->index_range && fmt->index_range->has_end
+	               ? fmt->index_range->end
+	               : -1));
 }
 
 struct protocol_state {
+	int32_t total_duration;
 	int outputs[2];
 	int header_map[UCHAR_MAX + 1]; /* maps header_id number to itag */
 	VideoStreaming__ClientAbrState abr_state;
@@ -170,6 +181,8 @@ struct protocol_state {
 static void
 protocol_init_members(struct protocol_state *p)
 {
+	p->total_duration = 0;
+
 	video_streaming__client_abr_state__init(&p->abr_state);
 	p->abr_state.has_last_manual_selected_resolution = true;
 	p->abr_state.last_manual_selected_resolution = 1080;
@@ -384,6 +397,12 @@ protocol_cleanup(struct protocol_state *p)
 	}
 }
 
+int32_t
+protocol_ends_at(struct protocol_state *p)
+{
+	return p->total_duration;
+}
+
 result_t
 protocol_next_request(struct protocol_state *p, char **buf, size_t *sz)
 {
@@ -578,6 +597,17 @@ ump_parse_cookie(const VideoStreaming__NextRequestPolicy *next_request_policy,
 }
 
 static WARN_UNUSED result_t
+ump_parse_fmt_init(struct protocol_state *p,
+                   const VideoStreaming__FormatInitializationMetadata *fmt)
+{
+	if (fmt->has_duration_ms) {
+		p->total_duration = MAX(p->total_duration, fmt->duration_ms);
+		debug("Current total_duration=%" PRIi32, p->total_duration);
+	}
+	return RESULT_OK;
+}
+
+static WARN_UNUSED result_t
 ump_parse_part(struct protocol_state *p,
                struct string_view ump, /* note: pass by value */
                char **target_url,
@@ -652,6 +682,7 @@ ump_parse_part(struct protocol_state *p,
 			(const uint8_t *)ump.data);
 		check_if(fmt == NULL, ERR_PROTOCOL_UNPACK_FORMAT_INIT);
 		debug_protobuf_fmt_init(fmt);
+		check(ump_parse_fmt_init(p, fmt));
 		break;
 	case 43: /* SABR_REDIRECT */
 		*skip_media_blobs_until_next = false;

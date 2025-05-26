@@ -214,6 +214,7 @@ typedef VideoStreaming__VideoPlaybackAbrRequest Request;
 
 static enum greatest_test_res
 parse_and_get_next(const struct string_view *response,
+		   int32_t *ends_at,
                    Request **out,
                    char **url,
                    int *pfd)
@@ -229,6 +230,10 @@ parse_and_get_next(const struct string_view *response,
 		protocol_init("UE9UCg==", &PLAYBACK, fds);
 	auto_result parse = protocol_parse_response(p, response, url);
 	ASSERT_EQ(OK, parse.err);
+
+	if (ends_at) {
+		*ends_at = protocol_ends_at(p);
+	}
 
 	char *blob __attribute__((cleanup(str_free))) = NULL;
 	size_t blob_sz = 0;
@@ -315,7 +320,7 @@ protocol_parse_response_media_header_and_blob(void)
 		// clang-format on
 		.sz = 63,
 	};
-	CHECK_CALL(parse_and_get_next(&response, &request, &url, &fd));
+	CHECK_CALL(parse_and_get_next(&response, NULL, &request, &url, &fd));
 
 	/*
 	 * Verify that the <response> above affected the <next> request's
@@ -381,7 +386,7 @@ protocol_parse_response_next_request_policy(void)
 		// clang-format on
 		.sz = 14,
 	};
-	CHECK_CALL(parse_and_get_next(&response, &request, &url, NULL));
+	CHECK_CALL(parse_and_get_next(&response, NULL, &request, &url, NULL));
 
 	/*
 	 * Verify that the <response> above affected the <next> request's
@@ -405,6 +410,34 @@ protocol_parse_response_next_request_policy(void)
 	               request->streamer_context->playback_cookie.data,
 	               request->streamer_context->playback_cookie.len);
 
+	PASS();
+}
+
+TEST
+protocol_parse_response_format_initialization_metadata(void)
+{
+	int32_t end = -1;
+	auto_request request;
+	char *url __attribute__((cleanup(str_free))) = NULL;
+
+	const struct string_view response = {
+		// clang-format off
+		.data = (char[6]){
+			0x2A, /* part_type = FORMAT_INITIALIZATION_METADATA */
+			0x04, /* part_size = 4 */
+			/*
+			 * $ cat /tmp/format_initialization_metadata.txt
+			 * duration_ms: 600000
+			 * $ cat /tmp/format_initialization_metadata.txt | protoc --proto_path=build/_deps/googlevideo-src/protos --encode=video_streaming.FormatInitializationMetadata $(find build/_deps -type f -name '*.proto') | hexdump -C
+			 */
+			0x48, 0xC0, 0xCF, 0x24,
+		},
+		// clang-format on
+		.sz = 6,
+	};
+	CHECK_CALL(parse_and_get_next(&response, &end, &request, &url, NULL));
+
+	ASSERT_EQ(600000, end);
 	PASS();
 }
 
@@ -434,7 +467,7 @@ protocol_parse_response_sabr_redirect(void)
 		// clang-format on
 		.sz = 24,
 	};
-	CHECK_CALL(parse_and_get_next(&response, &request, &url, NULL));
+	CHECK_CALL(parse_and_get_next(&response, NULL, &request, &url, NULL));
 
 	/*
 	 * Verify that the <response> above affected the <next> request's
@@ -451,6 +484,7 @@ SUITE(protocol_parse)
 {
 	RUN_TEST(protocol_parse_response_media_header_and_blob);
 	RUN_TEST(protocol_parse_response_next_request_policy);
+	RUN_TEST(protocol_parse_response_format_initialization_metadata);
 	RUN_TEST(protocol_parse_response_sabr_redirect);
 	// TODO: test FORMAT_INITIALIZATION_METADATA; check total duration?
 }
