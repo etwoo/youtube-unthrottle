@@ -337,14 +337,17 @@ base64_decode(const struct string_view *in, struct ProtobufCBinaryData *out)
 	check_if(scratch_buffer == NULL, ERR_PROTOCOL_STATE_ALLOC);
 
 	base64url_to_standard_base64(scratch_buffer);
-	out->len = b64_pton(scratch_buffer, NULL, 0);
-	check_if(out->len < 0, ERR_PROTOCOL_STATE_BASE64_DECODE);
+	int rc = b64_pton(scratch_buffer, NULL, 0);
+	if (rc < 0) {
+		return make_result(ERR_PROTOCOL_STATE_BASE64_DECODE);
+	}
+	out->len = rc;
 
 	out->data = malloc(out->len);
 	check_if(out->data == NULL, ERR_PROTOCOL_STATE_ALLOC);
 
 	const size_t decode_len = out->len + 1; /* XXX: +1 needed on Linux? */
-	const int rc = b64_pton(scratch_buffer, out->data, decode_len);
+	rc = b64_pton(scratch_buffer, out->data, decode_len);
 	check_if(rc < 0, ERR_PROTOCOL_STATE_BASE64_DECODE);
 
 	return RESULT_OK;

@@ -210,6 +210,43 @@ SUITE(protocol_ump_varint_read)
 	RUN_TEST(protocol_ump_varint_read_postcondition);
 }
 
+TEST
+protocol_init_base64_decode_negative(void)
+{
+	const struct string_view invalid_base64 = MAKE_TEST_STRING("A");
+	int fds[2] = {
+		STDOUT_FILENO,
+		STDOUT_FILENO,
+	};
+
+	protocol p __attribute__((cleanup(protocol_cleanup_p))) = NULL;
+	auto_result err =
+		protocol_init(&invalid_base64, &invalid_base64, fds, &p);
+	ASSERT_EQ(ERR_PROTOCOL_STATE_BASE64_DECODE, err.err);
+
+	PASS();
+}
+
+TEST
+protocol_init_base64_decode_positive(void)
+{
+	const struct string_view underscore_to_slash =
+		MAKE_TEST_STRING("QUJDREVGR0g_Cg==");
+	const struct string_view dash_to_plus =
+		MAKE_TEST_STRING("QUJDREVGR0g-Cg==");
+	int fds[2] = {
+		STDOUT_FILENO,
+		STDOUT_FILENO,
+	};
+
+	protocol p __attribute__((cleanup(protocol_cleanup_p))) = NULL;
+	auto_result err =
+		protocol_init(&underscore_to_slash, &dash_to_plus, fds, &p);
+	ASSERT_EQ(OK, err.err);
+
+	PASS();
+}
+
 typedef VideoStreaming__VideoPlaybackAbrRequest Request;
 
 static enum greatest_test_res
@@ -219,8 +256,8 @@ parse_and_get_next(const struct string_view *response,
                    char **url,
                    int *pfd)
 {
-	const struct string_view PROOF_OF_ORIGIN = MAKE_TEST_STRING("UE9U");
-	const struct string_view PLAYBACK = MAKE_TEST_STRING("UExBWUJBQ0s=");
+	const struct string_view proof_of_origin = MAKE_TEST_STRING("UE9U");
+	const struct string_view playback = MAKE_TEST_STRING("UExBWUJBQ0s=");
 	int fd = pfd ? *pfd : STDOUT_FILENO;
 	int fds[2] = {
 		fd,
@@ -228,7 +265,7 @@ parse_and_get_next(const struct string_view *response,
 	};
 
 	protocol p __attribute__((cleanup(protocol_cleanup_p))) = NULL;
-	auto_result alloc = protocol_init(&PROOF_OF_ORIGIN, &PLAYBACK, fds, &p);
+	auto_result alloc = protocol_init(&proof_of_origin, &playback, fds, &p);
 	ASSERT_EQ(OK, alloc.err);
 
 	auto_result parse = protocol_parse_response(p, response, url);
@@ -485,6 +522,8 @@ protocol_parse_response_sabr_redirect(void)
 
 SUITE(protocol_parse)
 {
+	RUN_TEST(protocol_init_base64_decode_negative);
+	RUN_TEST(protocol_init_base64_decode_positive);
 	RUN_TEST(protocol_parse_response_media_header_and_blob);
 	RUN_TEST(protocol_parse_response_next_request_policy);
 	RUN_TEST(protocol_parse_response_format_initialization_metadata);
