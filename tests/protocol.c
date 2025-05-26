@@ -486,5 +486,4 @@ SUITE(protocol_parse)
 	RUN_TEST(protocol_parse_response_next_request_policy);
 	RUN_TEST(protocol_parse_response_format_initialization_metadata);
 	RUN_TEST(protocol_parse_response_sabr_redirect);
-	// TODO: test FORMAT_INITIALIZATION_METADATA; check total duration?
 }
