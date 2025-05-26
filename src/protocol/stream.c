@@ -154,7 +154,6 @@ debug_protobuf_fmt_init(const VideoStreaming__FormatInitializationMetadata *fmt)
 
 struct protocol_state {
 	int outputs[2];
-	int64_t sequence_number_cursor[2];
 	int header_map[UCHAR_MAX + 1]; /* maps header_id number to itag */
 	VideoStreaming__ClientAbrState abr_state;
 	VideoStreaming__StreamerContext__ClientInfo info;
@@ -252,7 +251,9 @@ static WARN_UNUSED int64_t
 get_sequence_number_cursor(const struct protocol_state *p,
                            unsigned char header_id)
 {
-	return p->sequence_number_cursor[get_index_of(p, header_id)];
+	VideoStreaming__BufferedRange *br =
+		p->buffered_ranges[get_index_of(p, header_id)];
+	return br->end_segment_index - 1;
 }
 
 static void
@@ -270,9 +271,8 @@ set_header_sequence_number(struct protocol_state *p,
                            unsigned char header_id,
                            int64_t n)
 {
-	const size_t idx = get_index_of(p, header_id);
-	p->sequence_number_cursor[idx] = n;
-	VideoStreaming__BufferedRange *br = p->buffered_ranges[idx];
+	VideoStreaming__BufferedRange *br =
+		p->buffered_ranges[get_index_of(p, header_id)];
 	br->end_segment_index = n + 1;
 	debug("Map header_id=%u to seq=%" PRIi64, header_id, n);
 }
@@ -282,7 +282,9 @@ increment_header_duration(struct protocol_state *p,
                           unsigned char header_id,
                           int64_t duration)
 {
-	p->buffered_ranges[get_index_of(p, header_id)]->duration_ms += duration;
+	VideoStreaming__BufferedRange *br =
+		p->buffered_ranges[get_index_of(p, header_id)];
+	br->duration_ms += duration;
 	debug("Map header_id=%u to duration=%" PRIi64, header_id, duration);
 }
 
@@ -346,9 +348,6 @@ protocol_init(const char *proof_of_origin,
 
 	p->outputs[0] = outputs[0];
 	p->outputs[1] = outputs[1];
-
-	p->sequence_number_cursor[0] = -1;
-	p->sequence_number_cursor[1] = -1;
 
 	protocol_init_members(p);
 
