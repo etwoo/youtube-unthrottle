@@ -261,7 +261,7 @@ protocol_parse_response_media_header_and_blob(void)
 
 	const struct string_view response = {
 		// clang-format off
-		.data = (char[21]){
+		.data = (char[63]){
 			0x14, /* part_type = MEDIA_HEADER */
 			0x0A, /* part_size = 10 */
 			/*
@@ -278,18 +278,42 @@ protocol_parse_response_media_header_and_blob(void)
 			0x15, /* part_type = MEDIA */
 			0x07, /* part_size = 7 */
 			0x02, /* header_id = 2 */
-			0x46, 0x4F, 0x4F, 0x42, 0x41, 0x52, /* FOOBAR */
-			// TODO: add MEDIA_HEADER with sequence_number lower
-			// than 4, followed by MEDIA blob with different
-			// payload (not FOOBAR); existing test assertions will
-			// then double as check that this latter blob is
-			// ignored (not written)
-			// TODO: maybe add third media header to exercise
-			// switching back on, i.e. setting
-			// skip_media_blobs_until_next back to false
+			0x46, 0x4F, 0x4F, 0x46, 0x4F, 0x4F, /* FOOFOO */
+			0x14, /* part_type = MEDIA_HEADER */
+			0x0A, /* part_size = 10 */
+			/*
+			 * $ cat /tmp/media_header.txt
+			 * header_id: 2
+			 * itag: 299
+			 * sequence_number: 3
+			 * duration_ms: 1000
+			 */
+			0x08, 0x02, 0x18, 0xAB,
+			0x02, 0x48, 0x03, 0x60,
+			0xE8, 0x07,
+			0x15, /* part_type = MEDIA */
+			0x07, /* part_size = 7 */
+			0x02, /* header_id = 2 */
+			0x4E, 0x4F, 0x4E, 0x4F, 0x4E, 0x4F, /* NONONO */
+			0x14, /* part_type = MEDIA_HEADER */
+			0x0A, /* part_size = 10 */
+			/*
+			 * $ cat /tmp/media_header.txt
+			 * header_id: 2
+			 * itag: 299
+			 * sequence_number: 5
+			 * duration_ms: 1000
+			 */
+			0x08, 0x02, 0x18, 0xAB,
+			0x02, 0x48, 0x05, 0x60,
+			0xE8, 0x07,
+			0x15, /* part_type = MEDIA */
+			0x07, /* part_size = 7 */
+			0x02, /* header_id = 2 */
+			0x42, 0x41, 0x52, 0x42, 0x41, 0x52, /* BARBAR */
 		},
 		// clang-format on
-		.sz = 21,
+		.sz = 63,
 	};
 	CHECK_CALL(parse_and_get_next(&response, &request, &url, &fd));
 
@@ -297,18 +321,30 @@ protocol_parse_response_media_header_and_blob(void)
 	 * Verify that the <response> above affected the <next> request's
 	 * sequence numbers, duration values, et cetera as expected.
 	 */
-	ASSERT_EQ(5, request->buffered_ranges[1]->end_segment_index);
-	ASSERT_EQ(1000, request->buffered_ranges[1]->duration_ms);
+	ASSERT_EQ(6, request->buffered_ranges[1]->end_segment_index);
+	ASSERT_EQ(2000, request->buffered_ranges[1]->duration_ms);
 
 	/*
-	 * Verify FOOBAR media blob writes to provided fd as expected.
+	 * Verify that:
+	 *
+	 * 1) FOOFOO media blob writes to provided fd
+	 * 2) NONONO media blob triggers skip_media_blobs_until_next == true
+	 * 3) BARBAR media blob triggers skip_media_blobs_until_next == false
 	 */
 	char written[6];
-	const off_t pos = lseek(fd, -1 * sizeof(written), SEEK_END);
-	ASSERT_LTE(0, pos);
-	const ssize_t got_bytes = read(fd, written, sizeof(written));
-	ASSERT_EQ(sizeof(written), got_bytes);
-	ASSERT_STRN_EQ("FOOBAR", written, sizeof(written));
+	{
+		const off_t pos = lseek(fd, -2 * sizeof(written), SEEK_END);
+		ASSERT_LTE(0, pos);
+		const ssize_t got_bytes = read(fd, written, sizeof(written));
+		ASSERT_EQ(sizeof(written), got_bytes);
+	}
+	ASSERT_STRN_EQ("FOOFOO", written, sizeof(written));
+	{
+		const ssize_t got_bytes = read(fd, written, sizeof(written));
+		ASSERT_EQ(sizeof(written), got_bytes);
+	}
+	ASSERT_STRN_EQ("BARBAR", written, sizeof(written));
+
 	const int rc = close(fd);
 	ASSERT_EQ(0, rc);
 
