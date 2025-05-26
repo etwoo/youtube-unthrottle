@@ -199,6 +199,9 @@ result_to_str(result_t r)
 	case ERR_PROTOCOL_STATE_ALLOC:
 		s = strdup("Cannot allocate protocol state");
 		break;
+	case ERR_PROTOCOL_STATE_BASE64_DECODE:
+		s = strdup("Error decoding base64 protocol data");
+		break;
 	case ERR_PROTOCOL_SABR_POST_BODY_ALLOC:
 		s = strdup("Cannot allocate SABR POST body");
 		break;

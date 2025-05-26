@@ -227,8 +227,10 @@ parse_and_get_next(const struct string_view *response,
 		fd,
 	};
 
-	protocol p __attribute__((cleanup(protocol_cleanup_p))) =
-		protocol_init(&PROOF_OF_ORIGIN, &PLAYBACK, fds);
+	protocol p __attribute__((cleanup(protocol_cleanup_p))) = NULL;
+	auto_result alloc = protocol_init(&PROOF_OF_ORIGIN, &PLAYBACK, fds, &p);
+	ASSERT_EQ(OK, alloc.err);
+
 	auto_result parse = protocol_parse_response(p, response, url);
 	ASSERT_EQ(OK, parse.err);
 

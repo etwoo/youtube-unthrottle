@@ -67,6 +67,12 @@ sabr_redirect_free(VideoStreaming__SabrRedirect **redirect)
 	video_streaming__sabr_redirect__free_unpacked(*redirect, NULL);
 }
 
+static void
+protocol_cleanup_p(protocol *pp)
+{
+	protocol_cleanup(*pp);
+}
+
 static WARN_UNUSED unsigned char
 get_byte(const char *buffer, size_t sz, size_t pos)
 {
@@ -321,41 +327,36 @@ base64url_to_standard_base64(char *buf)
 	}
 }
 
-static WARN_UNUSED bool
-protocol_base64_decode(const struct string_view *in,
-                       struct ProtobufCBinaryData *out)
+static WARN_UNUSED result_t
+base64_decode(const struct string_view *in, struct ProtobufCBinaryData *out)
 {
 	char *scratch_buffer __attribute__((cleanup(str_free))) =
 		strndup(in->data, in->sz);
-	if (scratch_buffer == NULL) {
-		return false;
-	}
+	check_if(scratch_buffer == NULL, ERR_PROTOCOL_STATE_ALLOC);
 
 	base64url_to_standard_base64(scratch_buffer);
 	out->len = b64_pton(scratch_buffer, NULL, 0);
-	if (out->len <= 0) {
-		return false;
-	}
+	check_if(out->len < 0, ERR_PROTOCOL_STATE_BASE64_DECODE);
 
 	out->data = malloc(out->len);
-	if (out->data == NULL) {
-		return false;
-	}
+	check_if(out->data == NULL, ERR_PROTOCOL_STATE_ALLOC);
 
 	const size_t decode_len = out->len + 1; /* XXX: +1 needed on Linux? */
 	const int rc = b64_pton(scratch_buffer, out->data, decode_len);
-	return (rc > 0);
+	check_if(rc < 0, ERR_PROTOCOL_STATE_BASE64_DECODE);
+
+	return RESULT_OK;
 }
 
-struct protocol_state *
+result_t
 protocol_init(const struct string_view *proof_of_origin,
               const struct string_view *playback_config,
-              int outputs[2])
+              int outputs[2],
+              struct protocol_state **out)
 {
-	struct protocol_state *p = malloc(sizeof(*p));
-	if (p == NULL) {
-		goto cleanup;
-	}
+	struct protocol_state *p __attribute__((cleanup(protocol_cleanup_p))) =
+		malloc(sizeof(*p));
+	check_if(p == NULL, ERR_PROTOCOL_STATE_ALLOC);
 
 	memset(p, 0, sizeof(*p)); /* zero early, just in case */
 
@@ -364,22 +365,16 @@ protocol_init(const struct string_view *proof_of_origin,
 
 	protocol_init_members(p);
 
-	if (!protocol_base64_decode(proof_of_origin, &p->context.po_token)) {
-		goto cleanup;
-	}
+	check(base64_decode(proof_of_origin, &p->context.po_token));
 	p->context.has_po_token = true;
 
-	if (!protocol_base64_decode(playback_config,
-	                            &p->req.video_playback_ustreamer_config)) {
-		goto cleanup;
-	}
+	check(base64_decode(playback_config,
+	                    &p->req.video_playback_ustreamer_config));
 	p->req.has_video_playback_ustreamer_config = true;
 
-	return p;
-
-cleanup:
-	protocol_cleanup(p);
-	return NULL;
+	*out = p;
+	p = NULL; /* skip automatic cleanup */
+	return RESULT_OK;
 }
 
 void
