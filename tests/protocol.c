@@ -450,6 +450,12 @@ protocol_parse_response_next_request_policy(void)
 	               request->streamer_context->playback_cookie.data,
 	               request->streamer_context->playback_cookie.len);
 
+	/*
+	 * Verify that setting the playback cookie a second time does not leak
+	 * memory (assuming this test runs with LSan enabled).
+	 */
+	CHECK_CALL(parse_and_get_next(&response, NULL, &request, &url, NULL));
+
 	PASS();
 }
 
