@@ -219,8 +219,8 @@ parse_and_get_next(const struct string_view *response,
                    char **url,
                    int *pfd)
 {
-	const struct string_view PROOF_OF_ORIGIN = MAKE_TEST_STRING("UE9UCg==");
-	const struct string_view PLAYBACK = MAKE_TEST_STRING("UExBWUJBQ0sK");
+	const struct string_view PROOF_OF_ORIGIN = MAKE_TEST_STRING("UE9U");
+	const struct string_view PLAYBACK = MAKE_TEST_STRING("UExBWUJBQ0s=");
 	int fd = pfd ? *pfd : STDOUT_FILENO;
 	int fds[2] = {
 		fd,

@@ -323,6 +323,8 @@ base64url_to_standard_base64(char *buf)
 		case '_':
 			*c = '/';
 			break;
+		default:
+			break;
 		}
 	}
 }
