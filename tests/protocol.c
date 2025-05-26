@@ -404,7 +404,7 @@ protocol_parse_response_next_request_policy(void)
 
 	const struct string_view response = {
 		// clang-format off
-		.data = (char[14]){
+		.data = (char[28]){
 			0x23, /* part_type = NEXT_REQUEST_POLICY */
 			0x0C, /* part_size = 12 */
 			/*
@@ -422,9 +422,19 @@ protocol_parse_response_next_request_policy(void)
 			0x3A, 0x0A, 0x3A, 0x03,
 			0x08, 0xAB, 0x02, 0x42,
 			0x03, 0x08, 0xFB, 0x01,
+			/*
+			 * Verify that setting the playback cookie a second
+			 * time does not leak memory (assuming this test runs
+			 * with LSan enabled).
+			 */
+			0x23, /* part_type = NEXT_REQUEST_POLICY */
+			0x0C, /* part_size = 12 */
+			0x3A, 0x0A, 0x3A, 0x03,
+			0x08, 0xAB, 0x02, 0x42,
+			0x03, 0x08, 0xFB, 0x01,
 		},
 		// clang-format on
-		.sz = 14,
+		.sz = 28,
 	};
 	CHECK_CALL(parse_and_get_next(&response, NULL, &request, &url, NULL));
 
@@ -449,12 +459,6 @@ protocol_parse_response_next_request_policy(void)
 	ASSERT_STRN_EQ(expected_cookie,
 	               request->streamer_context->playback_cookie.data,
 	               request->streamer_context->playback_cookie.len);
-
-	/*
-	 * Verify that setting the playback cookie a second time does not leak
-	 * memory (assuming this test runs with LSan enabled).
-	 */
-	CHECK_CALL(parse_and_get_next(&response, NULL, &request, &url, NULL));
 
 	PASS();
 }
