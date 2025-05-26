@@ -232,6 +232,10 @@ SUITE(stream_setup_n_param_positions)
 	RUN_TEST(stream_setup_edge_cases_n_param_missing);
 }
 
+// TODO: add suite to exercise sabr URL edge cases, including:
+// 1) youtube_stream_set_url() with bad URL -> ERR_YOUTUBE_STREAM_URL_INVALID
+// 2) URL in HTML contains encoded ampersands -> verify decoded in expected_url
+
 TEST
 global_cleanup(void)
 {
