@@ -214,7 +214,7 @@ typedef VideoStreaming__VideoPlaybackAbrRequest Request;
 
 static enum greatest_test_res
 parse_and_get_next(const struct string_view *response,
-		   int32_t *ends_at,
+                   int32_t *ends_at,
                    Request **out,
                    char **url,
                    int *pfd)
