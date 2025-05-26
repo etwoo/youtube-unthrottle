@@ -323,7 +323,7 @@ protocol_parse_response_media_header_and_blob(void)
 	CHECK_CALL(parse_and_get_next(&response, NULL, &request, &url, &fd));
 
 	/*
-	 * Verify that the <response> above affected the <next> request's
+	 * Verify that the <response> above affected the next request's
 	 * sequence numbers, duration values, et cetera as expected.
 	 */
 	ASSERT_EQ(6, request->buffered_ranges[1]->end_segment_index);
@@ -389,7 +389,7 @@ protocol_parse_response_next_request_policy(void)
 	CHECK_CALL(parse_and_get_next(&response, NULL, &request, &url, NULL));
 
 	/*
-	 * Verify that the <response> above affected the <next> request's
+	 * Verify that the <response> above affected the next request's
 	 * playback cookie as expected.
 	 */
 	ASSERT(request->streamer_context->has_playback_cookie);
@@ -470,8 +470,8 @@ protocol_parse_response_sabr_redirect(void)
 	CHECK_CALL(parse_and_get_next(&response, NULL, &request, &url, NULL));
 
 	/*
-	 * Verify that the <response> above affected the <next> request's
-	 * target URL as expected.
+	 * Verify that the <response> above affected the next request's target
+	 * URL as expected.
 	 */
 	ASSERT_STRN_EQ("https://foo.test/bar", url, 20);
 
