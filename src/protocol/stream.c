@@ -348,7 +348,7 @@ protocol_base64_decode(const struct string_view *in,
 }
 
 struct protocol_state *
-protocol_init(const char *proof_of_origin,
+protocol_init(const struct string_view *proof_of_origin,
               const struct string_view *playback_config,
               int outputs[2])
 {
@@ -364,11 +364,7 @@ protocol_init(const char *proof_of_origin,
 
 	protocol_init_members(p);
 
-	const struct string_view po_token_view = {
-		.data = proof_of_origin,
-		.sz = strlen(proof_of_origin),
-	};
-	if (!protocol_base64_decode(&po_token_view, &p->context.po_token)) {
+	if (!protocol_base64_decode(proof_of_origin, &p->context.po_token)) {
 		goto cleanup;
 	}
 	p->context.has_po_token = true;

@@ -9,7 +9,7 @@
 
 typedef struct protocol_state *protocol;
 
-protocol protocol_init(const char *proof_of_origin,
+protocol protocol_init(const struct string_view *proof_of_origin,
                        const struct string_view *playback_config,
                        int outputs[2]) WARN_UNUSED;
 void protocol_cleanup(protocol stream);

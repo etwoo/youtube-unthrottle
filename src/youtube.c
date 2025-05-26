@@ -374,8 +374,12 @@ youtube_stream_setup(struct youtube_stream *p,
 	struct string_view playback_config = {0};
 	check(find_playback_config(&html.data, &playback_config));
 
+	struct string_view proof_of_origin = {
+		.data = p->proof_of_origin,
+		.sz = strlen(p->proof_of_origin),
+	};
 	protocol stream __attribute__((cleanup(protocol_cleanup_p))) =
-		protocol_init(p->proof_of_origin, &playback_config, p->fd);
+		protocol_init(&proof_of_origin, &playback_config, p->fd);
 	check_if(stream == NULL, ERR_PROTOCOL_STATE_ALLOC);
 
 	// TODO: debug cutoff at 60s, then remove hardcoded 5 request limit

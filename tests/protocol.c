@@ -219,6 +219,7 @@ parse_and_get_next(const struct string_view *response,
                    char **url,
                    int *pfd)
 {
+	const struct string_view PROOF_OF_ORIGIN = MAKE_TEST_STRING("UE9UCg==");
 	const struct string_view PLAYBACK = MAKE_TEST_STRING("UExBWUJBQ0sK");
 	int fd = pfd ? *pfd : STDOUT_FILENO;
 	int fds[2] = {
@@ -227,7 +228,7 @@ parse_and_get_next(const struct string_view *response,
 	};
 
 	protocol p __attribute__((cleanup(protocol_cleanup_p))) =
-		protocol_init("UE9UCg==", &PLAYBACK, fds);
+		protocol_init(&PROOF_OF_ORIGIN, &PLAYBACK, fds);
 	auto_result parse = protocol_parse_response(p, response, url);
 	ASSERT_EQ(OK, parse.err);
 
