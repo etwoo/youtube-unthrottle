@@ -340,15 +340,17 @@ youtube_stream_setup(struct youtube_stream *p,
 	}
 	check_if(target_sabr == NULL, ERR_JS_SABR_URL_ALLOC);
 
-	struct string_view playback_config = {0};
-	check(find_playback_config(&html.data, &playback_config));
-
-	struct string_view poo = {
-		.data = p->proof_of_origin,
-		.sz = strlen(p->proof_of_origin),
-	};
 	protocol stream __attribute__((cleanup(protocol_cleanup_p))) = NULL;
-	check(protocol_init(&poo, &playback_config, p->fd, &stream));
+	{
+		struct string_view playback_config = {0};
+		check(find_playback_config(&html.data, &playback_config));
+
+		struct string_view poo = {
+			.data = p->proof_of_origin,
+			.sz = strlen(p->proof_of_origin),
+		};
+		check(protocol_init(&poo, &playback_config, p->fd, &stream));
+	}
 
 	do {
 		char *sabr_post __attribute__((cleanup(str_free))) = NULL;
