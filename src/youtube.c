@@ -23,7 +23,7 @@ struct youtube_stream {
 	ada_url url;
 	const char *proof_of_origin;
 	const char *visitor_data; // TODO: remove unused visitor data
-	struct url_request_context request_context;
+	struct url_request_context context;
 	int fd[2];
 };
 
@@ -52,8 +52,8 @@ youtube_stream_init(const char *proof_of_origin,
 		memset(p, 0, sizeof(*p)); /* zero early, just in case */
 		p->proof_of_origin = proof_of_origin;
 		p->visitor_data = visitor_data;
-		p->request_context.simulator = io_simulator;
-		url_context_init(&p->request_context);
+		p->context.simulator = io_simulator;
+		url_context_init(&p->context);
 		p->fd[0] = fd[0];
 		p->fd[1] = fd[1];
 	}
@@ -66,7 +66,7 @@ youtube_stream_cleanup(struct youtube_stream *p)
 	if (p) {
 		ada_free(p->url); /* handles NULL gracefully */
 		p->url = NULL;
-		url_context_cleanup(&p->request_context);
+		url_context_cleanup(&p->context);
 		for (size_t i = 0; i < ARRAY_SIZE(p->fd); ++i) {
 			p->fd[i] = -1;
 		}
@@ -290,42 +290,32 @@ youtube_stream_setup(struct youtube_stream *p,
 		check(ops->before_inet(userdata));
 	}
 
-	check(download_and_mmap_tmpfd(&html,
-	                              target,
-	                              NULL,
-	                              NULL,
-	                              &p->request_context));
+	check(download_and_mmap_tmpfd(&html, target, NULL, NULL, &p->context));
 
-	char *null_terminated_basejs __attribute__((cleanup(str_free))) = NULL;
+	char *target_js __attribute__((cleanup(str_free))) = NULL;
 	{
 		struct string_view basejs = {0};
 		check(find_base_js_url(&html.data, &basejs));
 
 		debug("Setting base.js URL: %.*s", (int)basejs.sz, basejs.data);
-		const int rc = asprintf(&null_terminated_basejs,
+		const int rc = asprintf(&target_js,
 		                        "https://www.youtube.com/%.*s",
 		                        (int)basejs.sz,
 		                        basejs.data);
 		check_if(rc < 0, ERR_JS_BASEJS_URL_ALLOC);
 	}
-
-	check(download_and_mmap_tmpfd(&js,
-	                              null_terminated_basejs,
-	                              NULL,
-	                              NULL,
-	                              &p->request_context));
+	check(download_and_mmap_tmpfd(&js, target_js, NULL, NULL, &p->context));
 
 	{
 		struct string_view sabr = {0};
 		check(find_sabr_url(&html.data, &sabr));
 
-		char *null_terminated_sabr __attribute__((cleanup(str_free))) =
-			NULL;
-		decode_ampersands(sabr, &null_terminated_sabr);
-		check_if(null_terminated_sabr == NULL, ERR_JS_SABR_URL_ALLOC);
-		debug("Decoded SABR URL: %s", null_terminated_sabr);
+		char *tmp __attribute__((cleanup(str_free))) = NULL;
+		decode_ampersands(sabr, &tmp);
+		check_if(tmp == NULL, ERR_JS_SABR_URL_ALLOC);
+		debug("Decoded SABR URL: %s", tmp);
 
-		check(youtube_stream_set_url(p, null_terminated_sabr));
+		check(youtube_stream_set_url(p, tmp));
 	}
 
 	struct deobfuscator d = {0};
@@ -341,12 +331,12 @@ youtube_stream_setup(struct youtube_stream *p,
 	};
 	check(call_js_foreach(&d, ciphertexts, &cops, p));
 
-	char *sabr_url_or_redirect __attribute__((cleanup(str_free))) = NULL;
+	char *target_sabr __attribute__((cleanup(str_free))) = NULL;
 	{
 		ada_string tmp = ada_get_href(p->url);
-		sabr_url_or_redirect = strndup(tmp.data, tmp.length);
+		target_sabr = strndup(tmp.data, tmp.length);
 	}
-	check_if(sabr_url_or_redirect == NULL, ERR_JS_SABR_URL_ALLOC);
+	check_if(target_sabr == NULL, ERR_JS_SABR_URL_ALLOC);
 
 	struct string_view playback_config = {0};
 	check(find_playback_config(&html.data, &playback_config));
@@ -364,16 +354,14 @@ youtube_stream_setup(struct youtube_stream *p,
 
 		check(protocol_next_request(stream, &sabr_post, &sabr_post_sz));
 		check(download_and_mmap_tmpfd(&ump,
-		                              sabr_url_or_redirect,
+		                              target_sabr,
 		                              &(struct string_view){
 						      .data = sabr_post,
 						      .sz = sabr_post_sz,
 					      },
 		                              NULL,
-		                              &p->request_context));
-		check(protocol_parse_response(stream,
-		                              &ump.data,
-		                              &sabr_url_or_redirect));
+		                              &p->context));
+		check(protocol_parse_response(stream, &ump.data, &target_sabr));
 		check(tmptruncate(ump.fd, &ump.data));
 	} while (protocol_at(stream) < protocol_ends_at(stream));
 
