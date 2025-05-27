@@ -91,6 +91,14 @@ get_output_fd(const char *path)
 	return fd;
 }
 
+static void
+close_output_fd(int fd)
+{
+	if (close(fd) < 0) {
+		to_stderr("Error closing output: %s", strerror(errno));
+	}
+}
+
 static __attribute__((warn_unused_result)) result_t
 unthrottle(const char *target,
            const char *proof_of_origin,
@@ -190,6 +198,8 @@ main(int argc, char *argv[])
 			}
 			youtube_stream_cleanup(stream);
 			youtube_global_cleanup();
+			close_output_fd(media[0]);
+			close_output_fd(media[1]);
 		}
 		break;
 	case ACTION_TRY_SANDBOX:
