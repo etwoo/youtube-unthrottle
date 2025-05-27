@@ -160,7 +160,7 @@ protocol_ump_varint_read_out_of_bounds(void)
 
 	const struct string_view pos_plus_read_past_sz =
 		MAKE_TEST_STRING("\x00"
-	                         "\xF0" /* bytes_to_read=5, exceeds sz=4 */
+	                         "\xF0" /* bytes_to_read=5, exceeds remainder */
 	                         "\x0F"
 	                         "\x00");
 	{
