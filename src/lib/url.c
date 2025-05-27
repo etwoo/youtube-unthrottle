@@ -75,8 +75,6 @@ url_context_init(struct url_request_context *context)
 	 */
 	auto_result err = url_download("https://www.youtube.com",
 	                               NULL,
-	                               NULL,
-	                               NULL,
 	                               0,
 	                               NULL,
 	                               FD_DISCARD,
@@ -88,25 +86,6 @@ void
 url_context_cleanup(struct url_request_context *context)
 {
 	curl_easy_cleanup(context->state); /* handles NULL gracefully */
-}
-
-static WARN_UNUSED result_t
-url_prepare(const char *hostp, const char *pathp, CURLU **url)
-{
-	*url = curl_url();
-	CURLUcode uc = (*url == NULL) ? CURLUE_OUT_OF_MEMORY : CURLUE_OK;
-	check_if_num(uc, ERR_URL_PREPARE_ALLOC);
-
-	uc = curl_url_set(*url, CURLUPART_SCHEME, "https", 0);
-	check_if_num(uc, ERR_URL_PREPARE_SET_PART_SCHEME);
-
-	uc = curl_url_set(*url, CURLUPART_HOST, hostp, 0);
-	check_if_num(uc, ERR_URL_PREPARE_SET_PART_HOST);
-
-	uc = curl_url_set(*url, CURLUPART_PATH, pathp, 0);
-	check_if_num(uc, ERR_URL_PREPARE_SET_PART_PATH);
-
-	return RESULT_OK;
 }
 
 static WARN_UNUSED result_t
@@ -125,9 +104,7 @@ static const char CONTENT_TYPE_PROTOBUF[] =
 	"Content-Type: application/x-protobuf";
 
 result_t
-url_download(const char *url_str,     /* maybe NULL */
-             const char *host_str,    /* maybe NULL */
-             const char *path_str,    /* maybe NULL */
+url_download(const char *url_str,
              const char *post_body,   /* maybe NULL */
              size_t post_body_size,   /* meaningful iff post_body != NULL */
              const char *post_header, /* maybe NULL */
@@ -162,35 +139,20 @@ url_download(const char *url_str,     /* maybe NULL */
 	res = curl_easy_setopt(curl, CURLOPT_USERAGENT, BROWSER_USERAGENT);
 	check_if_num(res, ERR_URL_DOWNLOAD_SET_OPT_USERAGENT);
 
+	res = curl_easy_setopt(curl, CURLOPT_URL, url_str);
+	check_if_num(res, ERR_URL_DOWNLOAD_SET_OPT_URL_STRING);
+
 	char *url_or_path __attribute__((cleanup(str_free))) = NULL;
-	if (url_str) {
-		res = curl_easy_setopt(curl, CURLOPT_URL, url_str);
-		check_if_num(res, ERR_URL_DOWNLOAD_SET_OPT_URL_STRING);
-
-		if (fn) {
-			ada_url tmp = ada_parse(url_str, strlen(url_str));
-			if (tmp) {
-				ada_string parsed = ada_get_pathname(tmp);
-				url_or_path =
-					strndup(parsed.data, parsed.length);
-				debug("Got URL path for test io_simulator: %s",
-				      url_or_path);
-			}
-			ada_free(tmp);
-		}
-	} else {
-		assert(host_str != NULL && path_str != NULL);
-
-		check(url_prepare(host_str, path_str, &url));
-
-		res = curl_easy_setopt(curl, CURLOPT_CURLU, url);
-		check_if_num(res, ERR_URL_DOWNLOAD_SET_OPT_URL_OBJECT);
-
-		if (fn) {
-			url_or_path = strdup(path_str);
-			debug("Got standalone path for test io_simulator: %s",
+	if (fn) {
+		ada_url tmp = ada_parse(url_str, strlen(url_str));
+		if (tmp) {
+			ada_string parsed = ada_get_pathname(tmp);
+			url_or_path =
+				strndup(parsed.data, parsed.length);
+			debug("Got URL path for test io_simulator: %s",
 			      url_or_path);
 		}
+		ada_free(tmp);
 	}
 
 	if (post_body) {

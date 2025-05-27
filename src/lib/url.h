@@ -17,8 +17,6 @@ void url_context_init(struct url_request_context *context);
 void url_context_cleanup(struct url_request_context *context);
 
 result_t url_download(const char *url,
-                      const char *host,
-                      const char *path,
                       const char *post_body,
                       size_t post_body_size,
                       const char *post_header,

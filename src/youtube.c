@@ -171,8 +171,6 @@ youtube_stream_update_n_param(const char *val, size_t pos, void *userdata)
 
 static WARN_UNUSED result_t
 download_and_mmap_tmpfd(const char *url,
-                        const char *host,
-                        const char *path,
                         const char *post_body,
                         size_t post_body_size,
                         const char *post_header,
@@ -183,8 +181,6 @@ download_and_mmap_tmpfd(const char *url,
 	assert(fd >= 0);
 
 	check(url_download(url,
-	                   host,
-	                   path,
 	                   post_body,
 	                   post_body_size,
 	                   post_header,
@@ -192,7 +188,7 @@ download_and_mmap_tmpfd(const char *url,
 	                   ctx));
 	check(tmpmap(fd, data));
 
-	debug("Downloaded %s to fd=%d", url ? url : path, fd);
+	debug("Downloaded %s to fd=%d", url, fd);
 	return RESULT_OK;
 }
 
@@ -303,8 +299,6 @@ youtube_stream_setup(struct youtube_stream *p,
 
 	check(download_and_mmap_tmpfd(target,
 	                              NULL,
-	                              NULL,
-	                              NULL,
 	                              0,
 	                              NULL,
 	                              html.fd,
@@ -317,13 +311,14 @@ youtube_stream_setup(struct youtube_stream *p,
 		check(find_base_js_url(&html.data, &basejs));
 
 		debug("Setting base.js URL: %.*s", (int)basejs.sz, basejs.data);
-		null_terminated_basejs = strndup(basejs.data, basejs.sz);
+		const int rc = asprintf(&null_terminated_basejs,
+		                        "https://www.youtube.com/%.*s",
+		                        (int)basejs.sz,
+		                        basejs.data);
+		check_if(rc < 0, ERR_JS_BASEJS_URL_ALLOC);
 	}
-	check_if(null_terminated_basejs == NULL, ERR_JS_BASEJS_URL_ALLOC);
 
-	check(download_and_mmap_tmpfd(NULL,
-	                              "www.youtube.com",
-	                              null_terminated_basejs,
+	check(download_and_mmap_tmpfd(null_terminated_basejs,
 	                              NULL,
 	                              0,
 	                              NULL,
@@ -380,8 +375,6 @@ youtube_stream_setup(struct youtube_stream *p,
 
 		check(protocol_next_request(stream, &sabr_post, &sabr_post_sz));
 		check(download_and_mmap_tmpfd(sabr_url_or_redirect,
-		                              NULL,
-		                              NULL,
 		                              sabr_post,
 		                              sabr_post_sz,
 		                              NULL,

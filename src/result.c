@@ -364,18 +364,6 @@ result_to_str(result_t r)
 	case ERR_URL_GLOBAL_INIT:
 		s = strdup("Cannot use URL functions");
 		break;
-	case ERR_URL_PREPARE_ALLOC:
-		s = strdup("Cannot allocate URL handle");
-		break;
-	case ERR_URL_PREPARE_SET_PART_SCHEME:
-		s = my_asprintf("Cannot set URL scheme: %s", url_error(r));
-		break;
-	case ERR_URL_PREPARE_SET_PART_HOST:
-		s = my_asprintf("Cannot set URL host: %s", url_error(r));
-		break;
-	case ERR_URL_PREPARE_SET_PART_PATH:
-		s = my_asprintf("Cannot set URL path: %s", url_error(r));
-		break;
 	case ERR_URL_DOWNLOAD_ALLOC:
 		s = strdup("Cannot allocate easy handle");
 		break;
@@ -393,9 +381,6 @@ result_to_str(result_t r)
 		break;
 	case ERR_URL_DOWNLOAD_SET_OPT_URL_STRING:
 		s = my_asprintf("Cannot set URL via string: %s", easy_error(r));
-		break;
-	case ERR_URL_DOWNLOAD_SET_OPT_URL_OBJECT:
-		s = my_asprintf("Cannot set URL via object: %s", easy_error(r));
 		break;
 	case ERR_URL_DOWNLOAD_SET_OPT_HTTP_HEADER:
 		s = my_asprintf("Cannot set HTTP headers: %s", easy_error(r));
