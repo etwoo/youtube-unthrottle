@@ -72,7 +72,8 @@ static void
 check_url(const char *url, size_t sz, void *userdata)
 {
 	struct check_url_state *p = (struct check_url_state *)userdata;
-	if (0 == strncmp(p->expected_url, url, sz)) {
+	if (strlen(p->expected_url) == sz &&
+	    0 == strncmp(p->expected_url, url, sz)) {
 		debug("Got expected URL: %.*s", (int)sz, url);
 	} else {
 		p->got_correct_urls = false;
@@ -190,6 +191,20 @@ test_request_n_param_pos_last(const char *path)
 	       "\"videoPlaybackUstreamerConfig\":\"Zm9vYmFyCg==\"";
 }
 
+SUITE(stream_setup_n_param_positions)
+{
+	RUN_TEST(global_setup);
+	RUN_TESTp(stream_setup_with_redirected_network_io,
+	          test_request_n_param_pos_middle,
+	          "https://a.test/sabr?first=foo&n=AAA&last=bar");
+	RUN_TESTp(stream_setup_with_redirected_network_io,
+	          test_request_n_param_pos_first,
+	          "https://a.test/sabr?n=AAA&second=foo&third=bar");
+	RUN_TESTp(stream_setup_with_redirected_network_io,
+	          test_request_n_param_pos_last,
+	          "https://a.test/sabr?first=foo&second=bar&n=AAA");
+}
+
 static WARN_UNUSED const char *
 test_request_n_param_missing(const char *path)
 {
@@ -217,24 +232,53 @@ stream_setup_edge_cases_n_param_missing(void)
 	PASS();
 }
 
-SUITE(stream_setup_n_param_positions)
+static WARN_UNUSED const char *
+test_request_invalid_url(const char *path)
 {
-	RUN_TEST(global_setup);
-	RUN_TESTp(stream_setup_with_redirected_network_io,
-	          test_request_n_param_pos_middle,
-	          "https://a.test/sabr?first=foo&n=AAA&last=bar&pot=POT");
-	RUN_TESTp(stream_setup_with_redirected_network_io,
-	          test_request_n_param_pos_first,
-	          "https://a.test/sabr?n=AAA&second=foo&third=bar&pot=POT");
-	RUN_TESTp(stream_setup_with_redirected_network_io,
-	          test_request_n_param_pos_last,
-	          "https://a.test/sabr?first=foo&second=bar&n=AAA&pot=POT");
-	RUN_TEST(stream_setup_edge_cases_n_param_missing);
+	if (path == NULL || NULL == strstr(FAKE_URL, path)) {
+		return NULL;
+	}
+	return "\"/s/player/foobar/base.js\"\n"
+	       "\"serverAbrStreamingUrl\":\"!@#$%^&*()\"\n"
+	       "\"videoPlaybackUstreamerConfig\":\"Zm9vYmFyCg==\"";
 }
 
-// TODO: add suite to exercise sabr URL edge cases, including:
-// 1) youtube_stream_set_url() with bad URL -> ERR_YOUTUBE_STREAM_URL_INVALID
-// 2) URL in HTML contains encoded ampersands -> verify decoded in expected_url
+TEST
+stream_setup_edge_cases_invalid_url(void)
+{
+	youtube_handle_t stream = do_test_init();
+	ASSERT(stream);
+
+	test_request_path_to_response = test_request_invalid_url;
+	auto_result err = youtube_stream_setup(stream, &NOOP, NULL, FAKE_URL);
+	test_request_path_to_response = NULL;
+
+	ASSERT_EQ(ERR_YOUTUBE_STREAM_URL_INVALID, err.err);
+
+	youtube_stream_cleanup(stream);
+	PASS();
+}
+
+static WARN_UNUSED const char *
+test_request_double_encoded_ampersands(const char *path)
+{
+	if (path == NULL || NULL == strstr(FAKE_URL, path)) {
+		return NULL;
+	}
+	return "\"/s/player/foobar/base.js\"\n"
+	       "\"serverAbrStreamingUrl\":\"https://a.test/"
+	       "sabr?first=ampersand\\u0026n=aaa\\u0026last=ampersand\"\n"
+	       "\"videoPlaybackUstreamerConfig\":\"Zm9vYmFyCg==\"";
+}
+
+SUITE(stream_setup_weird_urls)
+{
+	RUN_TEST(stream_setup_edge_cases_n_param_missing);
+	RUN_TEST(stream_setup_edge_cases_invalid_url);
+	RUN_TESTp(stream_setup_with_redirected_network_io,
+	          test_request_double_encoded_ampersands,
+	          "https://a.test/sabr?first=ampersand&n=AAA&last=ampersand");
+}
 
 TEST
 global_cleanup(void)
