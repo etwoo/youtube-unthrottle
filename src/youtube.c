@@ -393,8 +393,8 @@ youtube_stream_setup(struct youtube_stream *p,
 		                              &ump.data,
 		                              &sabr_url_or_redirect));
 		check(tmptruncate(ump.fd, &ump.data));
-		ends_at = protocol_ends_at(stream);
-	} while (ends_at > 0 && protocol_at(stream) < ends_at);
+		ends_at = protocol_ends_at(stream); /* note: may be zero */
+	} while (protocol_at(stream) < ends_at);
 
 	if (ops && ops->after_inet) {
 		check(ops->after_inet(userdata));
