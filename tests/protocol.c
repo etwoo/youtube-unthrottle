@@ -147,10 +147,8 @@ protocol_ump_varint_read_out_of_bounds(void)
 {
 	uint64_t value = 0;
 
-	const struct string_view read_past_sz = {
-		.data = "\xF0", /* bytes_to_read=5, exceeds sz=1 */
-		.sz = 1,
-	};
+	const struct string_view read_past_sz =
+		MAKE_TEST_STRING("\xF0"); /* bytes_to_read=5, exceeds sz=1 */
 	{
 		size_t pos = 0;
 		auto_result err = ump_varint_read(&read_past_sz, &pos, &value);
