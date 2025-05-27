@@ -501,8 +501,11 @@ ump_varint_read(const struct string_view *ump, size_t *pos, uint64_t *value)
 		parsed[0] = ump->data[*pos] & first_byte_mask;
 		break;
 	default:
-		return make_result(ERR_PROTOCOL_VARINT_READ_INVALID_SIZE,
-		                   (int)bytes_to_read);
+		/*
+		 * ump_read_vle() sets bytes_to_read within range [1,5]
+		 */
+		assert(bytes_to_read >= 1 && bytes_to_read <= 5);
+		break;
 	}
 	*pos += bytes_to_read;
 

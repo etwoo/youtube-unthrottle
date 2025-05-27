@@ -174,13 +174,6 @@ protocol_ump_varint_read_out_of_bounds(void)
 }
 
 TEST
-protocol_ump_varint_read_invalid_size(void)
-{
-	// TODO: ERR_PROTOCOL_VARINT_READ_INVALID_SIZE is unreachable; remove?
-	PASS();
-}
-
-TEST
 protocol_ump_varint_read_postcondition(void)
 {
 	size_t pos = 0;
@@ -206,7 +199,6 @@ SUITE(protocol_ump_varint_read)
 	RUN_TEST(protocol_ump_varint_read_byte_length_5);
 	RUN_TEST(protocol_ump_varint_read_precondition);
 	RUN_TEST(protocol_ump_varint_read_out_of_bounds);
-	RUN_TEST(protocol_ump_varint_read_invalid_size);
 	RUN_TEST(protocol_ump_varint_read_postcondition);
 }
 
