@@ -169,23 +169,6 @@ youtube_stream_update_n_param(const char *val, size_t pos, void *userdata)
 	return RESULT_OK;
 }
 
-static WARN_UNUSED result_t
-download_and_mmap_tmpfd(const char *url,
-                        const struct string_view *post_body,
-                        const char *post_header,
-                        int fd,
-                        struct string_view *data,
-                        struct url_request_context *ctx)
-{
-	assert(fd >= 0);
-
-	check(url_download(url, post_body, post_header, fd, ctx));
-	check(tmpmap(fd, data));
-
-	debug("Downloaded %s to fd=%d", url, fd);
-	return RESULT_OK;
-}
-
 struct downloaded {
 	const char *description; /* does not own */
 	int fd;
@@ -208,6 +191,22 @@ downloaded_cleanup(struct downloaded *d)
 	          "Ignoring error close()-ing %s",
 	          d->description);
 	d->fd = -1;
+}
+
+static WARN_UNUSED result_t
+download_and_mmap_tmpfd(struct downloaded *d,
+                        const char *url,
+                        const struct string_view *post_body,
+                        const char *post_header,
+                        struct url_request_context *ctx)
+{
+	assert(d->fd >= 0);
+
+	check(url_download(url, post_body, post_header, d->fd, ctx));
+	check(tmpmap(d->fd, &d->data));
+
+	debug("Downloaded %s to fd=%d", url, d->fd);
+	return RESULT_OK;
 }
 
 static void
@@ -291,11 +290,10 @@ youtube_stream_setup(struct youtube_stream *p,
 		check(ops->before_inet(userdata));
 	}
 
-	check(download_and_mmap_tmpfd(target,
+	check(download_and_mmap_tmpfd(&html,
+	                              target,
 	                              NULL,
 	                              NULL,
-	                              html.fd,
-	                              &html.data,
 	                              &p->request_context));
 
 	char *null_terminated_basejs __attribute__((cleanup(str_free))) = NULL;
@@ -311,11 +309,10 @@ youtube_stream_setup(struct youtube_stream *p,
 		check_if(rc < 0, ERR_JS_BASEJS_URL_ALLOC);
 	}
 
-	check(download_and_mmap_tmpfd(null_terminated_basejs,
+	check(download_and_mmap_tmpfd(&js,
+	                              null_terminated_basejs,
 	                              NULL,
 	                              NULL,
-	                              js.fd,
-	                              &js.data,
 	                              &p->request_context));
 
 	{
@@ -366,14 +363,13 @@ youtube_stream_setup(struct youtube_stream *p,
 		size_t sabr_post_sz = 0;
 
 		check(protocol_next_request(stream, &sabr_post, &sabr_post_sz));
-		check(download_and_mmap_tmpfd(sabr_url_or_redirect,
+		check(download_and_mmap_tmpfd(&ump,
+		                              sabr_url_or_redirect,
 		                              &(struct string_view){
 						      .data = sabr_post,
 						      .sz = sabr_post_sz,
 					      },
 		                              NULL,
-		                              ump.fd,
-		                              &ump.data,
 		                              &p->request_context));
 		check(protocol_parse_response(stream,
 		                              &ump.data,
