@@ -309,12 +309,12 @@ protocol_parse_response_media_header_and_blob(void)
 		 */
 		/* clang-format on */
 		"\x08\x02\x18\xAB\x02\x48\x04\x60\xE8\x07"
-		"\x15"                     /* part_type = MEDIA */
-		"\x07"                     /* part_size = 7 */
-		"\x02"                     /* header_id = 2 */
-		"\x46\x4F\x4F\x46\x4F\x4F" /* FOOFOO */
-		"\x14"                     /* part_type = MEDIA_HEADER */
-		"\x0A"                     /* part_size = 10 */
+		"\x15" /* part_type = MEDIA */
+		"\x07" /* part_size = 7 */
+		"\x02" /* header_id = 2 */
+		"FOOFOO"
+		"\x14" /* part_type = MEDIA_HEADER */
+		"\x0A" /* part_size = 10 */
 		/*
 	         * $ cat /tmp/media_header.txt
 	         * header_id: 2
@@ -323,12 +323,12 @@ protocol_parse_response_media_header_and_blob(void)
 	         * duration_ms: 1000
 	         */
 		"\x08\x02\x18\xAB\x02\x48\x03\x60\xE8\x07"
-		"\x15"                     /* part_type = MEDIA */
-		"\x07"                     /* part_size = 7 */
-		"\x02"                     /* header_id = 2 */
-		"\x4E\x4F\x4E\x4F\x4E\x4F" /* NONONO */
-		"\x14"                     /* part_type = MEDIA_HEADER */
-		"\x0A"                     /* part_size = 10 */
+		"\x15" /* part_type = MEDIA */
+		"\x07" /* part_size = 7 */
+		"\x02" /* header_id = 2 */
+		"NONONO"
+		"\x14" /* part_type = MEDIA_HEADER */
+		"\x0A" /* part_size = 10 */
 		/*
 	         * $ cat /tmp/media_header.txt
 	         * header_id: 2
@@ -337,11 +337,10 @@ protocol_parse_response_media_header_and_blob(void)
 	         * duration_ms: 1000
 	         */
 		"\x08\x02\x18\xAB\x02\x48\x05\x60\xE8\x07"
-		"\x15"                     /* part_type = MEDIA */
-		"\x07"                     /* part_size = 7 */
-		"\x02"                     /* header_id = 2 */
-		"\x42\x41\x52\x42\x41\x52" /* BARBAR */
-	);
+		"\x15" /* part_type = MEDIA */
+		"\x07" /* part_size = 7 */
+		"\x02" /* header_id = 2 */
+		"BARBAR");
 	CHECK_CALL(parse_and_get_next(&response, NULL, &request, &url, &fd));
 
 	/*
