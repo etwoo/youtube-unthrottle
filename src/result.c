@@ -416,9 +416,6 @@ result_to_str(result_t r)
 	case ERR_YOUTUBE_STREAM_URL_INVALID:
 		s = strdup("Error parsing invalid stream URL");
 		break;
-	case ERR_YOUTUBE_STREAM_URL_MISSING:
-		s = strdup("Missing stream URL");
-		break;
 	case ERR_YOUTUBE_N_PARAM_QUERY_ALLOC:
 		s = strdup("Cannot allocate ciphertext buffer");
 		break;

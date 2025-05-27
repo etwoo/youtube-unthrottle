@@ -346,10 +346,6 @@ youtube_stream_setup(struct youtube_stream *p,
 
 		check(youtube_stream_set_url(p, null_terminated_sabr));
 	}
-	if (p->url == NULL) {
-		// TODO: unreachable? covered by ERR_YOUTUBE_STREAM_URL_INVALID
-		return make_result(ERR_YOUTUBE_STREAM_URL_MISSING);
-	}
 
 	struct deobfuscator d = {0};
 	check(find_js_deobfuscator_magic_global(&js.data, &d));
