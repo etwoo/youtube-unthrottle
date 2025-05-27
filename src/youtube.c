@@ -322,8 +322,10 @@ youtube_stream_setup(struct youtube_stream *p,
 	check(find_js_deobfuscator_magic_global(&js.data, &deobfuscator));
 	check(find_js_deobfuscator(&js.data, &deobfuscator));
 
-	char *ciphertexts[2]
-		__attribute__((cleanup(ciphertexts_cleanup))) = {NULL};
+	char *ciphertexts[2] __attribute__((cleanup(ciphertexts_cleanup))) = {
+		NULL,
+		NULL,
+	};
 	check(youtube_stream_copy_n_param(p, &ciphertexts[0]));
 
 	struct call_ops cops = {
