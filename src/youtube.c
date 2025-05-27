@@ -374,7 +374,6 @@ youtube_stream_setup(struct youtube_stream *p,
 	protocol stream __attribute__((cleanup(protocol_cleanup_p))) = NULL;
 	check(protocol_init(&poo, &playback_config, p->fd, &stream));
 
-	int32_t ends_at = 0;
 	do {
 		char *sabr_post __attribute__((cleanup(str_free))) = NULL;
 		size_t sabr_post_sz = 0;
@@ -393,8 +392,7 @@ youtube_stream_setup(struct youtube_stream *p,
 		                              &ump.data,
 		                              &sabr_url_or_redirect));
 		check(tmptruncate(ump.fd, &ump.data));
-		ends_at = protocol_ends_at(stream); /* note: may be zero */
-	} while (protocol_at(stream) < ends_at);
+	} while (protocol_at(stream) < protocol_ends_at(stream));
 
 	if (ops && ops->after_inet) {
 		check(ops->after_inet(userdata));
