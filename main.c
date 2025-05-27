@@ -22,6 +22,7 @@
 #include <string.h>    /* for strerror(), strlen() */
 #include <sys/param.h> /* for MAX() */
 #include <sysexits.h>
+#include <unistd.h> /* for close() */
 
 const char *__asan_default_options(void) // NOLINT(bugprone-reserved-identifier)
 	__attribute__((used));
