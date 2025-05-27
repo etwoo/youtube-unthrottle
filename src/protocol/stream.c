@@ -464,6 +464,8 @@ ump_varint_read(const struct string_view *ump, size_t *pos, uint64_t *value)
 	size_t bytes_to_read = 0;
 	unsigned char first_byte_mask = 0xFF;
 	ump_read_vle(ump->data[*pos], &bytes_to_read, &first_byte_mask);
+	assert(bytes_to_read >= 1 && bytes_to_read <= 5);
+
 	debug("Got first_byte=%hhu, bytes_to_read=%zu, first_byte_mask=%02X",
 	      ump->data[*pos],
 	      bytes_to_read,
@@ -499,12 +501,6 @@ ump_varint_read(const struct string_view *ump, size_t *pos, uint64_t *value)
 		__attribute__((fallthrough));
 	case 1:
 		parsed[0] = ump->data[*pos] & first_byte_mask;
-		break;
-	default:
-		/*
-		 * ump_read_vle() sets bytes_to_read within range [1,5]
-		 */
-		assert(bytes_to_read >= 1 && bytes_to_read <= 5);
 		break;
 	}
 	*pos += bytes_to_read;
