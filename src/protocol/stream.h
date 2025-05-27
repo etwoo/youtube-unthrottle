@@ -15,13 +15,15 @@ result_t protocol_init(const struct string_view *proof_of_origin,
                        protocol *out) WARN_UNUSED;
 void protocol_cleanup(protocol stream);
 
+int64_t protocol_at(protocol stream) WARN_UNUSED;
+int32_t protocol_ends_at(protocol stream) WARN_UNUSED;
+
 result_t protocol_next_request(protocol stream,
                                char **request,
                                size_t *size) WARN_UNUSED;
 result_t protocol_parse_response(protocol stream,
                                  const struct string_view *response,
                                  char **target_url) WARN_UNUSED;
-int32_t protocol_ends_at(protocol stream) WARN_UNUSED;
 
 /*
  * Expose a pure functional subset of parsing logic for UMP format.

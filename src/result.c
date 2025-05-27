@@ -205,6 +205,9 @@ result_to_str(result_t r)
 	case ERR_PROTOCOL_SABR_POST_BODY_ALLOC:
 		s = strdup("Cannot allocate SABR POST body");
 		break;
+	case ERR_PROTOCOL_EARLY_END_OF_STREAM:
+		s = strdup("Media stream ended prematurely");
+		break;
 	case ERR_PROTOCOL_VARINT_READ_PRE:
 		s = my_asprintf("UMP varint read fails precondition at pos=%d",
 		                r.num);

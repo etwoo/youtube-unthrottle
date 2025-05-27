@@ -374,8 +374,8 @@ youtube_stream_setup(struct youtube_stream *p,
 	protocol stream __attribute__((cleanup(protocol_cleanup_p))) = NULL;
 	check(protocol_init(&poo, &playback_config, p->fd, &stream));
 
-	// TODO: debug cutoff at 60s, then remove hardcoded 5 request limit
-	for (size_t requests = 0; requests < 5; ++requests) {
+	int32_t ends_at = 0;
+	do {
 		char *sabr_post __attribute__((cleanup(str_free))) = NULL;
 		size_t sabr_post_sz = 0;
 
@@ -392,9 +392,9 @@ youtube_stream_setup(struct youtube_stream *p,
 		check(protocol_parse_response(stream,
 		                              &ump.data,
 		                              &sabr_url_or_redirect));
-
 		check(tmptruncate(ump.fd, &ump.data));
-	}
+		ends_at = protocol_ends_at(stream);
+	} while (ends_at > 0 && protocol_at(stream) < ends_at);
 
 	if (ops && ops->after_inet) {
 		check(ops->after_inet(userdata));
