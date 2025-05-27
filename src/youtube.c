@@ -171,8 +171,7 @@ youtube_stream_update_n_param(const char *val, size_t pos, void *userdata)
 
 static WARN_UNUSED result_t
 download_and_mmap_tmpfd(const char *url,
-                        const char *post_body,
-                        size_t post_body_size,
+                        const struct string_view *post_body,
                         const char *post_header,
                         int fd,
                         struct string_view *data,
@@ -180,12 +179,7 @@ download_and_mmap_tmpfd(const char *url,
 {
 	assert(fd >= 0);
 
-	check(url_download(url,
-	                   post_body,
-	                   post_body_size,
-	                   post_header,
-	                   fd,
-	                   ctx));
+	check(url_download(url, post_body, post_header, fd, ctx));
 	check(tmpmap(fd, data));
 
 	debug("Downloaded %s to fd=%d", url, fd);
@@ -299,7 +293,6 @@ youtube_stream_setup(struct youtube_stream *p,
 
 	check(download_and_mmap_tmpfd(target,
 	                              NULL,
-	                              0,
 	                              NULL,
 	                              html.fd,
 	                              &html.data,
@@ -320,7 +313,6 @@ youtube_stream_setup(struct youtube_stream *p,
 
 	check(download_and_mmap_tmpfd(null_terminated_basejs,
 	                              NULL,
-	                              0,
 	                              NULL,
 	                              js.fd,
 	                              &js.data,
@@ -375,8 +367,10 @@ youtube_stream_setup(struct youtube_stream *p,
 
 		check(protocol_next_request(stream, &sabr_post, &sabr_post_sz));
 		check(download_and_mmap_tmpfd(sabr_url_or_redirect,
-		                              sabr_post,
-		                              sabr_post_sz,
+		                              &(struct string_view){
+						      .data = sabr_post,
+						      .sz = sabr_post_sz,
+					      },
 		                              NULL,
 		                              ump.fd,
 		                              &ump.data,
