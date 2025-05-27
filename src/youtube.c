@@ -318,9 +318,9 @@ youtube_stream_setup(struct youtube_stream *p,
 		check(youtube_stream_set_url(p, tmp));
 	}
 
-	struct deobfuscator d = {0};
-	check(find_js_deobfuscator_magic_global(&js.data, &d));
-	check(find_js_deobfuscator(&js.data, &d));
+	struct deobfuscator deobfuscator = {0};
+	check(find_js_deobfuscator_magic_global(&js.data, &deobfuscator));
+	check(find_js_deobfuscator(&js.data, &deobfuscator));
 
 	char *ciphertexts[2]
 		__attribute__((cleanup(ciphertexts_cleanup))) = {NULL};
@@ -329,7 +329,7 @@ youtube_stream_setup(struct youtube_stream *p,
 	struct call_ops cops = {
 		.got_result = youtube_stream_update_n_param,
 	};
-	check(call_js_foreach(&d, ciphertexts, &cops, p));
+	check(call_js_foreach(&deobfuscator, ciphertexts, &cops, p));
 
 	char *target_sabr __attribute__((cleanup(str_free))) = NULL;
 	{
