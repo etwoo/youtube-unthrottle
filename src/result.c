@@ -116,12 +116,6 @@ easy_error(result_t r)
 }
 
 static WARN_UNUSED const char *
-url_error(result_t r)
-{
-	return curl_url_strerror(r.num);
-}
-
-static WARN_UNUSED const char *
 regex_error(result_t r, PCRE2_UCHAR *buffer, size_t capacity)
 {
 	if (pcre2_get_error_message(r.num, buffer, capacity) < 0) {
