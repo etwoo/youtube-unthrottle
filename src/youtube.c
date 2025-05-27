@@ -297,12 +297,12 @@ youtube_stream_setup(struct youtube_stream *p,
 		struct string_view basejs = {0};
 		check(find_base_js_url(&html.data, &basejs));
 
-		debug("Setting base.js URL: %.*s", (int)basejs.sz, basejs.data);
 		const int rc = asprintf(&target_js,
-		                        "https://www.youtube.com/%.*s",
+		                        "https://www.youtube.com%.*s",
 		                        (int)basejs.sz,
 		                        basejs.data);
 		check_if(rc < 0, ERR_JS_BASEJS_URL_ALLOC);
+		debug("Set base.js URL: %s", target_js);
 	}
 	check(download_and_mmap_tmpfd(&js, target_js, NULL, NULL, &p->context));
 
