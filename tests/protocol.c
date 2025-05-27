@@ -148,8 +148,8 @@ protocol_ump_varint_read_out_of_bounds(void)
 	uint64_t value = 0;
 
 	const struct string_view read_past_sz = {
-		.data = (char[1]){0xF0 /* bytes_to_read=5 */},
-		.sz = 1, /* note: bytes_to_read >= sz */
+		.data = "\xF0", /* bytes_to_read=5, exceeds sz=1 */
+		.sz = 1,
 	};
 	{
 		size_t pos = 0;
@@ -158,10 +158,11 @@ protocol_ump_varint_read_out_of_bounds(void)
 		ASSERT_EQ(/* bytes_to_read */ 5, err.num);
 	}
 
-	const struct string_view pos_plus_read_past_sz = {
-		.data = (char[4]){0x00, 0xF0 /* bytes_to_read=5 */, 0x0F, 0},
-		.sz = 4,
-	};
+	const struct string_view pos_plus_read_past_sz =
+		MAKE_TEST_STRING("\x00"
+	                         "\xF0" /* bytes_to_read=5, exceeds sz=4 */
+	                         "\x0F"
+	                         "\x00");
 	{
 		size_t pos = 1;
 		auto_result err =
@@ -179,10 +180,8 @@ protocol_ump_varint_read_postcondition(void)
 	size_t pos = 0;
 	uint64_t value = 0;
 
-	const struct string_view no_remainder = {
-		.data = (char[2]){0x80 /* bytes_to_read=2 */, 0x0F},
-		.sz = 2,
-	};
+	const struct string_view no_remainder =
+		MAKE_TEST_STRING("\x80" /* bytes_to_read=2 */ "\x0F");
 	auto_result err = ump_varint_read(&no_remainder, &pos, &value);
 	ASSERT_EQ(ERR_PROTOCOL_VARINT_READ_POST, err.err);
 	ASSERT_EQ(/* bytes_to_read */ 2, err.num);
@@ -296,62 +295,53 @@ protocol_parse_response_media_header_and_blob(void)
 	ASSERT_EQ(OK, err.err);
 	ASSERT_LTE(0, fd);
 
-	const struct string_view response = {
-		// clang-format off
-		.data = (char[63]){
-			0x14, /* part_type = MEDIA_HEADER */
-			0x0A, /* part_size = 10 */
-			/*
-			 * $ cat /tmp/media_header.txt
-			 * header_id: 2
-			 * itag: 299
-			 * sequence_number: 4
-			 * duration_ms: 1000
-			 * $ cat /tmp/media_header.txt | protoc --proto_path=build/_deps/googlevideo-src/protos --encode=video_streaming.MediaHeader $(find build/_deps -type f -name '*.proto') | hexdump -C
-			 */
-			0x08, 0x02, 0x18, 0xAB,
-			0x02, 0x48, 0x04, 0x60,
-			0xE8, 0x07,
-			0x15, /* part_type = MEDIA */
-			0x07, /* part_size = 7 */
-			0x02, /* header_id = 2 */
-			0x46, 0x4F, 0x4F, 0x46, 0x4F, 0x4F, /* FOOFOO */
-			0x14, /* part_type = MEDIA_HEADER */
-			0x0A, /* part_size = 10 */
-			/*
-			 * $ cat /tmp/media_header.txt
-			 * header_id: 2
-			 * itag: 299
-			 * sequence_number: 3
-			 * duration_ms: 1000
-			 */
-			0x08, 0x02, 0x18, 0xAB,
-			0x02, 0x48, 0x03, 0x60,
-			0xE8, 0x07,
-			0x15, /* part_type = MEDIA */
-			0x07, /* part_size = 7 */
-			0x02, /* header_id = 2 */
-			0x4E, 0x4F, 0x4E, 0x4F, 0x4E, 0x4F, /* NONONO */
-			0x14, /* part_type = MEDIA_HEADER */
-			0x0A, /* part_size = 10 */
-			/*
-			 * $ cat /tmp/media_header.txt
-			 * header_id: 2
-			 * itag: 299
-			 * sequence_number: 5
-			 * duration_ms: 1000
-			 */
-			0x08, 0x02, 0x18, 0xAB,
-			0x02, 0x48, 0x05, 0x60,
-			0xE8, 0x07,
-			0x15, /* part_type = MEDIA */
-			0x07, /* part_size = 7 */
-			0x02, /* header_id = 2 */
-			0x42, 0x41, 0x52, 0x42, 0x41, 0x52, /* BARBAR */
-		},
-		// clang-format on
-		.sz = 63,
-	};
+	const struct string_view response = MAKE_TEST_STRING(
+		"\x14" /* part_type = MEDIA_HEADER */
+		"\x0A" /* part_size = 10 */
+		/* clang-format off */
+		/*
+		 * $ cat /tmp/media_header.txt
+		 * header_id: 2
+		 * itag: 299
+		 * sequence_number: 4
+		 * duration_ms: 1000
+		 * $ cat /tmp/media_header.txt | protoc --proto_path=build/_deps/googlevideo-src/protos --encode=video_streaming.MediaHeader $(find build/_deps -type f -name '*.proto') | hexdump -C
+		 */
+		/* clang-format on */
+		"\x08\x02\x18\xAB\x02\x48\x04\x60\xE8\x07"
+		"\x15"                     /* part_type = MEDIA */
+		"\x07"                     /* part_size = 7 */
+		"\x02"                     /* header_id = 2 */
+		"\x46\x4F\x4F\x46\x4F\x4F" /* FOOFOO */
+		"\x14"                     /* part_type = MEDIA_HEADER */
+		"\x0A"                     /* part_size = 10 */
+		/*
+	         * $ cat /tmp/media_header.txt
+	         * header_id: 2
+	         * itag: 299
+	         * sequence_number: 3
+	         * duration_ms: 1000
+	         */
+		"\x08\x02\x18\xAB\x02\x48\x03\x60\xE8\x07"
+		"\x15"                     /* part_type = MEDIA */
+		"\x07"                     /* part_size = 7 */
+		"\x02"                     /* header_id = 2 */
+		"\x4E\x4F\x4E\x4F\x4E\x4F" /* NONONO */
+		"\x14"                     /* part_type = MEDIA_HEADER */
+		"\x0A"                     /* part_size = 10 */
+		/*
+	         * $ cat /tmp/media_header.txt
+	         * header_id: 2
+	         * itag: 299
+	         * sequence_number: 5
+	         * duration_ms: 1000
+	         */
+		"\x08\x02\x18\xAB\x02\x48\x05\x60\xE8\x07"
+		"\x15"                     /* part_type = MEDIA */
+		"\x07"                     /* part_size = 7 */
+		"\x02"                     /* header_id = 2 */
+		"\x42\x41\x52\x42\x41\x52" /* BARBAR */
+	);
 	CHECK_CALL(parse_and_get_next(&response, NULL, &request, &url, &fd));
 
 	/*
@@ -394,40 +384,32 @@ protocol_parse_response_next_request_policy(void)
 	auto_request request;
 	char *url __attribute__((cleanup(str_free))) = NULL;
 
-	const struct string_view response = {
-		// clang-format off
-		.data = (char[28]){
-			0x23, /* part_type = NEXT_REQUEST_POLICY */
-			0x0C, /* part_size = 12 */
-			/*
-			 * $ cat /tmp/next_request_policy.txt
-			 * playback_cookie {
-			 *     video_fmt {
-			 *         itag: 299
-			 *     }
-			 *     audio_fmt {
-			 *         itag: 251
-			 *     }
-			 * }
-			 * $ cat /tmp/next_request_policy.txt | protoc --proto_path=build/_deps/googlevideo-src/protos --encode=video_streaming.NextRequestPolicy $(find build/_deps -type f -name '*.proto') | hexdump -C
-			 */
-			0x3A, 0x0A, 0x3A, 0x03,
-			0x08, 0xAB, 0x02, 0x42,
-			0x03, 0x08, 0xFB, 0x01,
-			/*
-			 * Verify that setting the playback cookie a second
-			 * time does not leak memory (assuming this test runs
-			 * with LSan enabled).
-			 */
-			0x23, /* part_type = NEXT_REQUEST_POLICY */
-			0x0C, /* part_size = 12 */
-			0x3A, 0x0A, 0x3A, 0x03,
-			0x08, 0xAB, 0x02, 0x42,
-			0x03, 0x08, 0xFB, 0x01,
-		},
-		// clang-format on
-		.sz = 28,
-	};
+	const struct string_view response = MAKE_TEST_STRING(
+		"\x23" /* part_type = NEXT_REQUEST_POLICY */
+		"\x0C" /* part_size = 12 */
+		/* clang-format off */
+		/*
+		 * $ cat /tmp/next_request_policy.txt
+		 * playback_cookie {
+		 *     video_fmt {
+		 *         itag: 299
+		 *     }
+		 *     audio_fmt {
+		 *         itag: 251
+		 *     }
+		 * }
+		 * $ cat /tmp/next_request_policy.txt | protoc --proto_path=build/_deps/googlevideo-src/protos --encode=video_streaming.NextRequestPolicy $(find build/_deps -type f -name '*.proto') | hexdump -C
+		 */
+		/* clang-format on */
+		"\x3A\x0A\x3A\x03\x08\xAB\x02\x42\x03\x08\xFB\x01"
+		/*
+	         * Verify that setting the playback cookie a second
+	         * time does not leak memory (assuming this test runs
+	         * with LSan enabled).
+	         */
+		"\x23" /* part_type = NEXT_REQUEST_POLICY */
+		"\x0C" /* part_size = 12 */
+		"\x3A\x0A\x3A\x03\x08\xAB\x02\x42\x03\x08\xFB\x01");
 	CHECK_CALL(parse_and_get_next(&response, NULL, &request, &url, NULL));
 
 	/*
@@ -436,18 +418,8 @@ protocol_parse_response_next_request_policy(void)
 	 */
 	ASSERT(request->streamer_context->has_playback_cookie);
 	ASSERT_EQ(10, request->streamer_context->playback_cookie.len);
-	const char expected_cookie[10] = {
-		0x3A,
-		0x03,
-		0x08,
-		0xAB,
-		0x02,
-		0x42,
-		0x03,
-		0x08,
-		0xFB,
-		0x01,
-	};
+	const char *expected_cookie =
+		"\x3A\x03\x08\xAB\x02\x42\x03\x08\xFB\x01";
 	ASSERT_STRN_EQ(expected_cookie,
 	               request->streamer_context->playback_cookie.data,
 	               request->streamer_context->playback_cookie.len);
@@ -462,21 +434,17 @@ protocol_parse_response_format_initialization_metadata(void)
 	auto_request request;
 	char *url __attribute__((cleanup(str_free))) = NULL;
 
-	const struct string_view response = {
-		// clang-format off
-		.data = (char[6]){
-			0x2A, /* part_type = FORMAT_INITIALIZATION_METADATA */
-			0x04, /* part_size = 4 */
-			/*
-			 * $ cat /tmp/format_initialization_metadata.txt
-			 * duration_ms: 600000
-			 * $ cat /tmp/format_initialization_metadata.txt | protoc --proto_path=build/_deps/googlevideo-src/protos --encode=video_streaming.FormatInitializationMetadata $(find build/_deps -type f -name '*.proto') | hexdump -C
-			 */
-			0x48, 0xC0, 0xCF, 0x24,
-		},
-		// clang-format on
-		.sz = 6,
-	};
+	const struct string_view response = MAKE_TEST_STRING(
+		"\x2A" /* part_type = FORMAT_INITIALIZATION_METADATA */
+		"\x04" /* part_size = 4 */
+		/* clang-format off */
+		/*
+		 * $ cat /tmp/format_initialization_metadata.txt
+		 * duration_ms: 600000
+		 * $ cat /tmp/format_initialization_metadata.txt | protoc --proto_path=build/_deps/googlevideo-src/protos --encode=video_streaming.FormatInitializationMetadata $(find build/_deps -type f -name '*.proto') | hexdump -C
+		 */
+		/* clang-format on */
+		"\x48\xC0\xCF\x24");
 	CHECK_CALL(parse_and_get_next(&response, &end, &request, &url, NULL));
 
 	ASSERT_EQ(600000, end);
@@ -489,26 +457,19 @@ protocol_parse_response_sabr_redirect(void)
 	auto_request request;
 	char *url __attribute__((cleanup(str_free))) = NULL;
 
-	const struct string_view response = {
-		// clang-format off
-		.data = (char[24]){
-			0x2B, /* part_type = SABR_REDIRECT */
-			0x16, /* part_size = 22 */
-			/*
-			 * $ cat /tmp/sabr_redirect.txt
-			 * url: "https://foo.test/bar"
-			 * $ cat /tmp/sabr_redirect.txt | protoc --proto_path=build/_deps/googlevideo-src/protos --encode=video_streaming.SabrRedirect $(find build/_deps -type f -name '*.proto') | hexdump -C
-			 */
-			0x0A, 0x14, 0x68, 0x74,
-			0x74, 0x70, 0x73, 0x3A,
-			0x2F, 0x2F, 0x66, 0x6F,
-			0x6F, 0x2E, 0x74, 0x65,
-			0x73, 0x74, 0x2F, 0x62,
-			0x61, 0x72,
-		},
-		// clang-format on
-		.sz = 24,
-	};
+	const struct string_view response = MAKE_TEST_STRING(
+		"\x2B" /* part_type = SABR_REDIRECT */
+		"\x16" /* part_size = 22 */
+		/* clang-format off */
+		/*
+		 * $ cat /tmp/sabr_redirect.txt
+		 * url: "https://foo.test/bar"
+		 * $ cat /tmp/sabr_redirect.txt | protoc --proto_path=build/_deps/googlevideo-src/protos --encode=video_streaming.SabrRedirect $(find build/_deps -type f -name '*.proto') | hexdump -C
+		 */
+		/* clang-format on */
+		"\x0A\x14\x68\x74\x74\x70\x73\x3A"
+		"\x2F\x2F\x66\x6F\x6F\x2E\x74\x65"
+		"\x73\x74\x2F\x62\x61\x72");
 	CHECK_CALL(parse_and_get_next(&response, NULL, &request, &url, NULL));
 
 	/*
