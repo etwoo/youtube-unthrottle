@@ -8,9 +8,18 @@ target_link_libraries(youtube-unthrottle PRIVATE my_cflags sanitizers youtube)
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 include(get_cpm)
 
+# Note: this use of CPMAddPackage() defines ${googlevideo_BINARY_DIR}
+CPMAddPackage(
+	NAME googlevideo
+	GITHUB_REPOSITORY LuanRT/googlevideo
+	GIT_TAG e217d50236486025e8813ed88ec16d15a7a60c89 # 3.0.0
+	DOWNLOAD_ONLY YES
+)
+
 add_subdirectory(src)
 
 if (BUILD_TESTING)
+	# Note: this use of CPMAddPackage() defines ${greatest_SOURCE_DIR}
 	CPMAddPackage(
 		NAME greatest
 		GITHUB_REPOSITORY silentbicycle/greatest
