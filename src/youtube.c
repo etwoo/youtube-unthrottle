@@ -124,7 +124,7 @@ ada_search_params_set_helper(ada_url url, const char *key, const char *val)
 }
 
 static WARN_UNUSED result_t
-youtube_stream_set_url(struct youtube_stream *p, const char *val)
+youtube_stream_set_url_with_n_param(struct youtube_stream *p, const char *val)
 {
 	const size_t val_sz = strlen(val);
 	if (!ada_can_parse(val, val_sz)) {
@@ -260,63 +260,54 @@ decode_ampersands(struct string_view in /* note: pass by value */, char **out)
 	}
 }
 
-result_t
-youtube_stream_setup(struct youtube_stream *p,
-                     const struct youtube_setup_ops *ops,
-                     void *userdata,
-                     const char *target)
+static WARN_UNUSED result_t
+youtube_stream_setup_sabr(struct youtube_stream *p,
+                          const char *target,
+                          int tmpfd_early[2],
+                          protocol *stream)
 {
-	if (ops && ops->before_tmpfile) {
-		check(ops->before_tmpfile(userdata));
-	}
-
 	struct downloaded html __attribute__((cleanup(downloaded_cleanup)));
 	struct downloaded js __attribute__((cleanup(downloaded_cleanup)));
-	struct downloaded ump __attribute__((cleanup(downloaded_cleanup)));
 
 	downloaded_init(&html, "HTML tmpfile");
 	downloaded_init(&js, "JavaScript tmpfile");
-	downloaded_init(&ump, "UMP response tmpfile");
 
-	check(tmpfd(&html.fd));
-	check(tmpfd(&js.fd));
-	check(tmpfd(&ump.fd));
-
-	if (ops && ops->after_tmpfile) {
-		check(ops->after_tmpfile(userdata));
-	}
-
-	if (ops && ops->before_inet) {
-		check(ops->before_inet(userdata));
-	}
+	html.fd = tmpfd_early[0]; /* takes ownership */
+	js.fd = tmpfd_early[1];   /* takes ownership */
 
 	check(download_and_mmap_tmpfd(&html, target, NULL, NULL, &p->context));
 
+	struct string_view playback_config = {0};
+	check(find_playback_config(&html.data, &playback_config));
+
+	struct string_view poo = {
+		.data = p->proof_of_origin,
+		.sz = strlen(p->proof_of_origin),
+	};
+	check(protocol_init(&poo, &playback_config, p->fd, stream));
+
+	struct string_view sabr_raw = {0};
+	check(find_sabr_url(&html.data, &sabr_raw));
+	{
+		char *scratch_buffer __attribute__((cleanup(str_free))) = NULL;
+		decode_ampersands(sabr_raw, &scratch_buffer);
+		check_if(scratch_buffer == NULL, ERR_JS_SABR_URL_ALLOC);
+		debug("Decoded SABR URL: %s", scratch_buffer);
+		check(youtube_stream_set_url_with_n_param(p, scratch_buffer));
+	}
+
+	struct string_view basejs_path = {0};
+	check(find_base_js_url(&html.data, &basejs_path));
+
 	char *target_js __attribute__((cleanup(str_free))) = NULL;
-	{
-		struct string_view basejs = {0};
-		check(find_base_js_url(&html.data, &basejs));
+	const int rc = asprintf(&target_js,
+	                        "https://www.youtube.com%.*s",
+	                        (int)basejs_path.sz,
+	                        basejs_path.data);
+	check_if(rc < 0, ERR_JS_BASEJS_URL_ALLOC);
+	debug("Got base.js URL: %s", target_js);
 
-		const int rc = asprintf(&target_js,
-		                        "https://www.youtube.com%.*s",
-		                        (int)basejs.sz,
-		                        basejs.data);
-		check_if(rc < 0, ERR_JS_BASEJS_URL_ALLOC);
-		debug("Set base.js URL: %s", target_js);
-	}
 	check(download_and_mmap_tmpfd(&js, target_js, NULL, NULL, &p->context));
-
-	{
-		struct string_view sabr = {0};
-		check(find_sabr_url(&html.data, &sabr));
-
-		char *tmp __attribute__((cleanup(str_free))) = NULL;
-		decode_ampersands(sabr, &tmp);
-		check_if(tmp == NULL, ERR_JS_SABR_URL_ALLOC);
-		debug("Decoded SABR URL: %s", tmp);
-
-		check(youtube_stream_set_url(p, tmp));
-	}
 
 	struct deobfuscator deobfuscator = {0};
 	check(find_js_deobfuscator_magic_global(&js.data, &deobfuscator));
@@ -332,6 +323,40 @@ youtube_stream_setup(struct youtube_stream *p,
 		.got_result = youtube_stream_update_n_param,
 	};
 	check(call_js_foreach(&deobfuscator, ciphertexts, &cops, p));
+	return RESULT_OK;
+}
+
+result_t
+youtube_stream_setup(struct youtube_stream *p,
+                     const struct youtube_setup_ops *ops,
+                     void *userdata,
+                     const char *target)
+{
+	if (ops && ops->before_tmpfile) {
+		check(ops->before_tmpfile(userdata));
+	}
+
+	struct downloaded ump __attribute__((cleanup(downloaded_cleanup)));
+	downloaded_init(&ump, "UMP response tmpfile");
+	check(tmpfd(&ump.fd));
+
+	int tmpfd_early[2] = {
+		-1,
+		-1,
+	};
+	check(tmpfd(tmpfd_early));
+	check(tmpfd(tmpfd_early + 1));
+
+	if (ops && ops->after_tmpfile) {
+		check(ops->after_tmpfile(userdata));
+	}
+
+	if (ops && ops->before_inet) {
+		check(ops->before_inet(userdata));
+	}
+
+	protocol stream __attribute__((cleanup(protocol_cleanup_p))) = NULL;
+	check(youtube_stream_setup_sabr(p, target, tmpfd_early, &stream));
 
 	char *target_sabr __attribute__((cleanup(str_free))) = NULL;
 	{
@@ -339,18 +364,6 @@ youtube_stream_setup(struct youtube_stream *p,
 		target_sabr = strndup(tmp.data, tmp.length);
 	}
 	check_if(target_sabr == NULL, ERR_JS_SABR_URL_ALLOC);
-
-	protocol stream __attribute__((cleanup(protocol_cleanup_p))) = NULL;
-	{
-		struct string_view playback_config = {0};
-		check(find_playback_config(&html.data, &playback_config));
-
-		struct string_view poo = {
-			.data = p->proof_of_origin,
-			.sz = strlen(p->proof_of_origin),
-		};
-		check(protocol_init(&poo, &playback_config, p->fd, &stream));
-	}
 
 	do {
 		char *sabr_post __attribute__((cleanup(str_free))) = NULL;
