@@ -84,14 +84,12 @@ tmpunmap(struct string_view *addr)
 result_t
 tmptruncate(int fd, struct string_view *addr)
 {
-	int rc = -1;
-
 	tmpunmap(addr);
 
-	rc = lseek(fd, 0, SEEK_SET);
-	check_if(rc < 0, ERR_TMPFILE_LSEEK, errno);
+	const off_t off = lseek(fd, 0, SEEK_SET);
+	check_if(off < 0, ERR_TMPFILE_LSEEK, errno);
 
-	rc = ftruncate(fd, 0);
+	const int rc = ftruncate(fd, 0);
 	check_if(rc < 0, ERR_TMPFILE_FTRUNCATE, errno);
 
 	return RESULT_OK;

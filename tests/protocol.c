@@ -236,12 +236,10 @@ protocol_init_base64_decode_positive(void)
 	PASS();
 }
 
-typedef VideoStreaming__VideoPlaybackAbrRequest Request;
-
 static enum greatest_test_res
 parse_and_get_next(const struct string_view *response,
                    int32_t *ends_at,
-                   Request **out,
+                   VideoStreaming__VideoPlaybackAbrRequest **out,
                    char **url,
                    int *pfd)
 {
@@ -279,13 +277,11 @@ parse_and_get_next(const struct string_view *response,
 	PASS();
 }
 
-#define auto_request                                                           \
-	Request *__attribute__((cleanup(video_playback_request_cleanup)))
-
 TEST
 protocol_parse_response_media_header_and_blob(void)
 {
-	auto_request request;
+	VideoStreaming__VideoPlaybackAbrRequest *request
+		__attribute__((cleanup(video_playback_request_cleanup))) = NULL;
 	char *url __attribute__((cleanup(str_free))) = NULL;
 
 	int fd = -1;
@@ -357,7 +353,8 @@ protocol_parse_response_media_header_and_blob(void)
 	 */
 	char written[6];
 	{
-		const off_t pos = lseek(fd, -2 * sizeof(written), SEEK_END);
+		const off_t target = -2 * (off_t)sizeof(written);
+		const off_t pos = lseek(fd, target, SEEK_END);
 		ASSERT_LTE(0, pos);
 		const ssize_t got_bytes = read(fd, written, sizeof(written));
 		ASSERT_EQ(sizeof(written), got_bytes);
@@ -378,7 +375,8 @@ protocol_parse_response_media_header_and_blob(void)
 TEST
 protocol_parse_response_next_request_policy(void)
 {
-	auto_request request;
+	VideoStreaming__VideoPlaybackAbrRequest *request
+		__attribute__((cleanup(video_playback_request_cleanup))) = NULL;
 	char *url __attribute__((cleanup(str_free))) = NULL;
 
 	const struct string_view response = MAKE_TEST_STRING(
@@ -428,7 +426,8 @@ TEST
 protocol_parse_response_format_initialization_metadata(void)
 {
 	int32_t end = -1;
-	auto_request request;
+	VideoStreaming__VideoPlaybackAbrRequest *request
+		__attribute__((cleanup(video_playback_request_cleanup))) = NULL;
 	char *url __attribute__((cleanup(str_free))) = NULL;
 
 	const struct string_view response = MAKE_TEST_STRING(
@@ -451,7 +450,8 @@ protocol_parse_response_format_initialization_metadata(void)
 TEST
 protocol_parse_response_sabr_redirect(void)
 {
-	auto_request request;
+	VideoStreaming__VideoPlaybackAbrRequest *request
+		__attribute__((cleanup(video_playback_request_cleanup))) = NULL;
 	char *url __attribute__((cleanup(str_free))) = NULL;
 
 	const struct string_view response = MAKE_TEST_STRING(
@@ -477,8 +477,6 @@ protocol_parse_response_sabr_redirect(void)
 
 	PASS();
 }
-
-#undef auto_request
 
 SUITE(protocol_parse)
 {
