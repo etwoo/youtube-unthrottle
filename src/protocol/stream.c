@@ -299,7 +299,7 @@ set_header_sequence_number(struct protocol_state *p,
 	VideoStreaming__BufferedRange *br =
 		p->buffered_ranges[get_index_of(p, header_id)];
 	assert(sizeof(int32_t) == sizeof(br->end_segment_index));
-	br->end_segment_index = MIN(INT32_MAX, n + 1); // safe int64_t->int32_t
+	br->end_segment_index = MIN(INT32_MAX, n + 1); /* truncate to int32_t */
 	debug("Map header_id=%u to seq=%" PRIi64, header_id, n);
 }
 
