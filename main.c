@@ -103,13 +103,13 @@ close_output_fd(int fd)
 static __attribute__((warn_unused_result)) result_t
 unthrottle(const char *target,
            const char *proof_of_origin,
-           int fd[2],
+           int output[2],
            youtube_handle_t *stream)
 {
 	check(youtube_global_init());
+	check_if(output[0] < 0 || output[1] < 0, OK);
 
-	check_if(fd[0] < 0 || fd[1] < 0, OK);
-	*stream = youtube_stream_init(proof_of_origin, NULL, fd);
+	*stream = youtube_stream_init(proof_of_origin, NULL);
 	check_if(*stream == NULL, OK);
 
 	check(sandbox_only_io_inet_tmpfile());
@@ -120,7 +120,7 @@ unthrottle(const char *target,
 		.before_inet = NULL,
 		.after_inet = after_inet,
 	};
-	check(youtube_stream_setup(*stream, &sops, NULL, target));
+	check(youtube_stream_setup(*stream, &sops, NULL, target, output));
 	return RESULT_OK;
 }
 
@@ -171,17 +171,17 @@ main(int argc, char *argv[])
 		} else if (!proof_of_origin || *proof_of_origin == '\0') {
 			to_stderr("Missing --proof-of-origin value");
 		} else {
-			int media[2] = {
+			int output[2] = {
 				get_output_fd("audio.out"),
 				get_output_fd("video.out"),
 			};
 			youtube_handle_t stream = NULL;
 			rc = result_to_status(unthrottle(argv[optind],
 			                                 proof_of_origin,
-			                                 media,
+			                                 output,
 			                                 &stream));
 
-			if (media[0] < 0 || media[1] < 0) {
+			if (output[0] < 0 || output[1] < 0) {
 				/* get_output_fd() already logs to stderr */
 				rc = EX_CANTCREAT;
 			} else if (stream == NULL) {
@@ -190,8 +190,8 @@ main(int argc, char *argv[])
 			}
 			youtube_stream_cleanup(stream);
 			youtube_global_cleanup();
-			close_output_fd(media[0]);
-			close_output_fd(media[1]);
+			close_output_fd(output[0]);
+			close_output_fd(output[1]);
 		}
 		break;
 	case ACTION_TRY_SANDBOX:

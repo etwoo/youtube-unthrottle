@@ -16,8 +16,7 @@ typedef struct youtube_stream *youtube_handle_t;
  * does not deep-copy any of the passed-in strings.
  */
 youtube_handle_t youtube_stream_init(const char *proof_of_origin,
-                                     const char *(*io_simulator)(const char *),
-                                     int fd[2])
+                                     const char *(*io_simulator)(const char *))
 	__attribute__((warn_unused_result));
 void youtube_stream_cleanup(youtube_handle_t h);
 
@@ -31,7 +30,8 @@ struct youtube_setup_ops {
 result_t youtube_stream_setup(youtube_handle_t h,
                               const struct youtube_setup_ops *ops,
                               void *userdata,
-                              const char *target)
+                              const char *target,
+                              int fd_output[2])
 	__attribute__((warn_unused_result));
 
 result_t youtube_stream_visitor(youtube_handle_t h,

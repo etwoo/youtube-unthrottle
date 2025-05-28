@@ -23,7 +23,6 @@ struct youtube_stream {
 	ada_url url;
 	const char *proof_of_origin;
 	struct url_request_context context;
-	int fd[2];
 };
 
 result_t
@@ -40,8 +39,7 @@ youtube_global_cleanup(void)
 
 struct youtube_stream *
 youtube_stream_init(const char *proof_of_origin,
-                    const char *(*io_simulator)(const char *),
-                    int fd[2])
+                    const char *(*io_simulator)(const char *))
 {
 	assert(proof_of_origin);
 
@@ -51,8 +49,6 @@ youtube_stream_init(const char *proof_of_origin,
 		p->proof_of_origin = proof_of_origin;
 		p->context.simulator = io_simulator;
 		url_context_init(&p->context);
-		p->fd[0] = fd[0];
-		p->fd[1] = fd[1];
 	}
 	return p;
 }
@@ -64,9 +60,6 @@ youtube_stream_cleanup(struct youtube_stream *p)
 		ada_free(p->url); /* handles NULL gracefully */
 		p->url = NULL;
 		url_context_cleanup(&p->context);
-		for (size_t i = 0; i < ARRAY_SIZE(p->fd); ++i) {
-			p->fd[i] = -1;
-		}
 	}
 	free(p);
 }
@@ -75,9 +68,6 @@ static void
 youtube_stream_valid(struct youtube_stream *p)
 {
 	assert(ada_is_valid(p->url));
-	for (size_t i = 0; i < ARRAY_SIZE(p->fd); ++i) {
-		assert(p->fd[i] > 0);
-	}
 }
 
 result_t
@@ -259,6 +249,7 @@ decode_ampersands(struct string_view in /* note: pass by value */, char **out)
 static WARN_UNUSED result_t
 youtube_stream_setup_sabr(struct youtube_stream *p,
                           const char *start_url,
+                          int fd_output[2],
                           int tmpfd_early[2],
                           protocol *stream)
 {
@@ -280,7 +271,7 @@ youtube_stream_setup_sabr(struct youtube_stream *p,
 		.data = p->proof_of_origin,
 		.sz = strlen(p->proof_of_origin),
 	};
-	check(protocol_init(&poo, &playback_config, p->fd, stream));
+	check(protocol_init(&poo, &playback_config, fd_output, stream));
 
 	struct string_view sabr_raw = {0};
 	check(find_sabr_url(&html.data, &sabr_raw));
@@ -326,7 +317,8 @@ result_t
 youtube_stream_setup(struct youtube_stream *p,
                      const struct youtube_setup_ops *ops,
                      void *userdata,
-                     const char *start_url)
+                     const char *start_url,
+                     int fd_output[2])
 {
 	if (ops && ops->before_tmpfile) {
 		check(ops->before_tmpfile(userdata));
@@ -352,7 +344,11 @@ youtube_stream_setup(struct youtube_stream *p,
 	}
 
 	protocol stream __attribute__((cleanup(protocol_cleanup_p))) = NULL;
-	check(youtube_stream_setup_sabr(p, start_url, tmpfd_early, &stream));
+	check(youtube_stream_setup_sabr(p,
+	                                start_url,
+	                                fd_output,
+	                                tmpfd_early,
+	                                &stream));
 
 	char *to_poll __attribute__((cleanup(str_free))) = NULL;
 	{
