@@ -97,8 +97,7 @@ static int TEST_FD[2] = {
 	STDOUT_FILENO,
 };
 
-#define do_test_init()                                                         \
-	youtube_stream_init("UE9UCg==", "X", url_simulate, TEST_FD)
+#define do_test_init() youtube_stream_init("UE9UCg==", url_simulate, TEST_FD)
 
 TEST
 stream_setup_with_redirected_network_io(const char *(*custom_fn)(const char *),

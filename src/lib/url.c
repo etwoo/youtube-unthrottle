@@ -75,9 +75,8 @@ url_context_init(struct url_request_context *context)
 	 */
 	auto_result err = url_download("https://www.youtube.com",
 	                               NULL,
-	                               NULL,
-	                               FD_DISCARD,
-	                               context);
+	                               context,
+	                               FD_DISCARD);
 	info_if(err.err, "Error creating early URL worker threads");
 }
 
@@ -105,9 +104,8 @@ static const char CONTENT_TYPE_PROTOBUF[] =
 result_t
 url_download(const char *url_str,
              const struct string_view *post_body, /* maybe NULL */
-             const char *post_header,             /* maybe NULL */
-             int fd,
-             struct url_request_context *context)
+             struct url_request_context *context,
+             int fd)
 {
 	CURLU *url = NULL;
 	struct curl_slist *headers = NULL;
@@ -164,10 +162,6 @@ url_download(const char *url_str,
 		                       CURLOPT_POSTFIELDSIZE_LARGE,
 		                       post_body->sz);
 		check_if_num(res, ERR_URL_DOWNLOAD_SET_OPT_POST_BODY_SIZE);
-	}
-
-	if (post_header) {
-		check(url_list_append(&headers, post_header));
 	}
 
 	if (headers) {

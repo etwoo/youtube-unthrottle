@@ -27,11 +27,7 @@ t "Missing --proof-of-origin" foo.test
 t "Missing --proof-of-origin" foo.test --proof-of-origin ""
 t "requires an argument" foo.test --proof-of-origin
 
-t "Missing --visitor-data" foo.test --proof-of-origin p
-t "Missing --visitor-data" foo.test --proof-of-origin p --visitor-data ""
-t "requires an argument" foo.test --proof-of-origin p --visitor-data
-
 t "un(recognized|known)" --foobar
-t "un(recognized|known)" foo.test --proof-of-origin p --visitor-data v --foobar
+t "un(recognized|known)" foo.test --proof-of-origin p --foobar
 t "un(recognized|known)" --help --foobar
 t "un(recognized|known)" --sandbox --foobar

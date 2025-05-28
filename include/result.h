@@ -96,7 +96,6 @@ typedef struct {
 		ERR_YOUTUBE_STREAM_URL_INVALID,
 		ERR_YOUTUBE_N_PARAM_QUERY_ALLOC,
 		ERR_YOUTUBE_N_PARAM_FIND_IN_QUERY,
-		ERR_YOUTUBE_VISITOR_DATA_HEADER_ALLOC,
 	} err;
 	int num; /* may hold errno, CURLcode, CURLUcode, etc */
 	union {

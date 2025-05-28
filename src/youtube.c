@@ -22,7 +22,6 @@ static const char ARG_N[] = "n";
 struct youtube_stream {
 	ada_url url;
 	const char *proof_of_origin;
-	const char *visitor_data; // TODO: remove unused visitor data
 	struct url_request_context context;
 	int fd[2];
 };
@@ -41,17 +40,15 @@ youtube_global_cleanup(void)
 
 struct youtube_stream *
 youtube_stream_init(const char *proof_of_origin,
-                    const char *visitor_data,
                     const char *(*io_simulator)(const char *),
                     int fd[2])
 {
-	assert(proof_of_origin && visitor_data);
+	assert(proof_of_origin);
 
 	struct youtube_stream *p = malloc(sizeof(*p));
 	if (p) {
 		memset(p, 0, sizeof(*p)); /* zero early, just in case */
 		p->proof_of_origin = proof_of_origin;
-		p->visitor_data = visitor_data;
 		p->context.simulator = io_simulator;
 		url_context_init(&p->context);
 		p->fd[0] = fd[0];
@@ -194,15 +191,14 @@ downloaded_cleanup(struct downloaded *d)
 }
 
 static WARN_UNUSED result_t
-download_and_mmap_tmpfd(struct downloaded *d,
+download_and_mmap_tmpfd(struct youtube_stream *p,
+                        struct downloaded *d,
                         const char *url,
-                        const struct string_view *post_body,
-                        const char *post_header,
-                        struct url_request_context *ctx)
+                        const struct string_view *post_body)
 {
 	assert(d->fd >= 0);
 
-	check(url_download(url, post_body, post_header, d->fd, ctx));
+	check(url_download(url, post_body, &p->context, d->fd));
 	check(tmpmap(d->fd, &d->data));
 
 	debug("Downloaded %s to fd=%d", url, d->fd);
@@ -262,7 +258,7 @@ decode_ampersands(struct string_view in /* note: pass by value */, char **out)
 
 static WARN_UNUSED result_t
 youtube_stream_setup_sabr(struct youtube_stream *p,
-                          const char *target,
+                          const char *start_url,
                           int tmpfd_early[2],
                           protocol *stream)
 {
@@ -275,7 +271,7 @@ youtube_stream_setup_sabr(struct youtube_stream *p,
 	html.fd = tmpfd_early[0]; /* takes ownership */
 	js.fd = tmpfd_early[1];   /* takes ownership */
 
-	check(download_and_mmap_tmpfd(&html, target, NULL, NULL, &p->context));
+	check(download_and_mmap_tmpfd(p, &html, start_url, NULL));
 
 	struct string_view playback_config = {0};
 	check(find_playback_config(&html.data, &playback_config));
@@ -307,7 +303,7 @@ youtube_stream_setup_sabr(struct youtube_stream *p,
 	check_if(rc < 0, ERR_JS_BASEJS_URL_ALLOC);
 	debug("Got base.js URL: %s", target_js);
 
-	check(download_and_mmap_tmpfd(&js, target_js, NULL, NULL, &p->context));
+	check(download_and_mmap_tmpfd(p, &js, target_js, NULL));
 
 	struct deobfuscator deobfuscator = {0};
 	check(find_js_deobfuscator_magic_global(&js.data, &deobfuscator));
@@ -330,7 +326,7 @@ result_t
 youtube_stream_setup(struct youtube_stream *p,
                      const struct youtube_setup_ops *ops,
                      void *userdata,
-                     const char *target)
+                     const char *start_url)
 {
 	if (ops && ops->before_tmpfile) {
 		check(ops->before_tmpfile(userdata));
@@ -356,29 +352,27 @@ youtube_stream_setup(struct youtube_stream *p,
 	}
 
 	protocol stream __attribute__((cleanup(protocol_cleanup_p))) = NULL;
-	check(youtube_stream_setup_sabr(p, target, tmpfd_early, &stream));
+	check(youtube_stream_setup_sabr(p, start_url, tmpfd_early, &stream));
 
-	char *target_sabr __attribute__((cleanup(str_free))) = NULL;
+	char *to_poll __attribute__((cleanup(str_free))) = NULL;
 	{
 		ada_string tmp = ada_get_href(p->url);
-		target_sabr = strndup(tmp.data, tmp.length);
+		to_poll = strndup(tmp.data, tmp.length);
 	}
-	check_if(target_sabr == NULL, ERR_JS_SABR_URL_ALLOC);
+	check_if(to_poll == NULL, ERR_JS_SABR_URL_ALLOC);
 
 	do {
 		char *sabr_post __attribute__((cleanup(str_free))) = NULL;
 		size_t sabr_post_sz = 0;
-
 		check(protocol_next_request(stream, &sabr_post, &sabr_post_sz));
-		check(download_and_mmap_tmpfd(&ump,
-		                              target_sabr,
-		                              &(struct string_view){
-						      .data = sabr_post,
-						      .sz = sabr_post_sz,
-					      },
-		                              NULL,
-		                              &p->context));
-		check(protocol_parse_response(stream, &ump.data, &target_sabr));
+
+		const struct string_view v = {
+			.data = sabr_post,
+			.sz = sabr_post_sz,
+		};
+		check(download_and_mmap_tmpfd(p, &ump, to_poll, &v));
+		check(protocol_parse_response(stream, &ump.data, &to_poll));
+
 		check(tmptruncate(ump.fd, &ump.data));
 	} while (protocol_at(stream) < protocol_ends_at(stream));
 
