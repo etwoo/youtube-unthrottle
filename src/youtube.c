@@ -316,12 +316,11 @@ youtube_stream_setup_sabr(struct youtube_stream *p,
 result_t
 youtube_stream_setup(struct youtube_stream *p,
                      const struct youtube_setup_ops *ops,
-                     void *userdata,
                      const char *start_url,
                      int fd_output[2])
 {
 	if (ops && ops->before_tmpfile) {
-		check(ops->before_tmpfile(userdata));
+		check(ops->before_tmpfile());
 	}
 
 	struct downloaded ump __attribute__((cleanup(downloaded_cleanup)));
@@ -336,11 +335,11 @@ youtube_stream_setup(struct youtube_stream *p,
 	check(tmpfd(tmpfd_early + 1));
 
 	if (ops && ops->after_tmpfile) {
-		check(ops->after_tmpfile(userdata));
+		check(ops->after_tmpfile());
 	}
 
 	if (ops && ops->before_inet) {
-		check(ops->before_inet(userdata));
+		check(ops->before_inet());
 	}
 
 	protocol stream __attribute__((cleanup(protocol_cleanup_p))) = NULL;
@@ -373,7 +372,7 @@ youtube_stream_setup(struct youtube_stream *p,
 	} while (protocol_at(stream) < protocol_ends_at(stream));
 
 	if (ops && ops->after_inet) {
-		check(ops->after_inet(userdata));
+		check(ops->after_inet());
 	}
 
 	return RESULT_OK;

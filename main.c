@@ -71,13 +71,13 @@ try_sandbox(void)
 }
 
 static __attribute__((warn_unused_result)) result_t
-after_tmpfile(void *userdata __attribute__((unused)))
+after_tmpfile(void)
 {
 	return sandbox_only_io_inet_rpath();
 }
 
 static __attribute__((warn_unused_result)) result_t
-after_inet(void *userdata __attribute__((unused)))
+after_inet(void)
 {
 	return sandbox_only_io();
 }
@@ -120,7 +120,7 @@ unthrottle(const char *target,
 		.before_inet = NULL,
 		.after_inet = after_inet,
 	};
-	check(youtube_stream_setup(*stream, &sops, NULL, target, output));
+	check(youtube_stream_setup(*stream, &sops, target, output));
 	return RESULT_OK;
 }
 

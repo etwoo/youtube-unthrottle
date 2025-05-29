@@ -51,7 +51,7 @@ url_simulate(const char *path)
 }
 
 static WARN_UNUSED result_t
-setup_callback_noop(void *userdata __attribute__((unused)))
+setup_callback_noop(void)
 {
 	return RESULT_OK;
 }
@@ -92,7 +92,7 @@ global_setup(void)
 	PASS();
 }
 
-static int TEST_FD[2] = {
+static int OFD[2] = {
 	STDOUT_FILENO,
 	STDOUT_FILENO,
 };
@@ -107,8 +107,7 @@ stream_setup_with_redirected_network_io(const char *(*custom_fn)(const char *),
 	ASSERT(stream);
 
 	test_request_path_to_response = custom_fn;
-	auto_result err =
-		youtube_stream_setup(stream, &NOOP, NULL, FAKE_URL, TEST_FD);
+	auto_result err = youtube_stream_setup(stream, &NOOP, FAKE_URL, OFD);
 	test_request_path_to_response = NULL;
 
 	ASSERT_EQ(OK, err.err);
@@ -139,8 +138,7 @@ stream_setup_with_null_ops(void)
 	youtube_handle_t stream = do_test_init();
 	ASSERT(stream);
 
-	auto_result err =
-		youtube_stream_setup(stream, &NULLOP, NULL, FAKE_URL, TEST_FD);
+	auto_result err = youtube_stream_setup(stream, &NULLOP, FAKE_URL, OFD);
 	ASSERT_EQ(OK, err.err);
 
 	youtube_stream_cleanup(stream);
@@ -224,8 +222,7 @@ stream_setup_edge_cases_n_param_missing(void)
 	ASSERT(stream);
 
 	test_request_path_to_response = test_request_n_param_missing;
-	auto_result err =
-		youtube_stream_setup(stream, &NOOP, NULL, FAKE_URL, TEST_FD);
+	auto_result err = youtube_stream_setup(stream, &NOOP, FAKE_URL, OFD);
 	test_request_path_to_response = NULL;
 
 	ASSERT_EQ(ERR_YOUTUBE_N_PARAM_FIND_IN_QUERY, err.err);
@@ -252,8 +249,7 @@ stream_setup_edge_cases_invalid_url(void)
 	ASSERT(stream);
 
 	test_request_path_to_response = test_request_invalid_url;
-	auto_result err =
-		youtube_stream_setup(stream, &NOOP, NULL, FAKE_URL, TEST_FD);
+	auto_result err = youtube_stream_setup(stream, &NOOP, FAKE_URL, OFD);
 	test_request_path_to_response = NULL;
 
 	ASSERT_EQ(ERR_YOUTUBE_STREAM_URL_INVALID, err.err);
