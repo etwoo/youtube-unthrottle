@@ -19,6 +19,7 @@ void url_context_cleanup(struct url_request_context *context);
 
 result_t url_download(const char *url,
                       const struct string_view *post_body,
+                      const char *post_header,
                       struct url_request_context *context,
                       int fd) WARN_UNUSED;
 

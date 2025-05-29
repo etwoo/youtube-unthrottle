@@ -97,7 +97,7 @@ static int OFD[2] = {
 	STDOUT_FILENO,
 };
 
-#define do_test_init() youtube_stream_init("UE9UCg==", url_simulate)
+#define do_test_init() youtube_stream_init("UE9UCg==", "VkQK", url_simulate)
 
 TEST
 stream_setup_with_redirected_network_io(const char *(*custom_fn)(const char *),

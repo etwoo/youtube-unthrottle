@@ -22,6 +22,7 @@ static const char ARG_N[] = "n";
 struct youtube_stream {
 	ada_url url;
 	const char *proof_of_origin;
+	const char *visitor_data; // TODO: remove unused visitor data
 	struct url_request_context context;
 };
 
@@ -39,14 +40,16 @@ youtube_global_cleanup(void)
 
 struct youtube_stream *
 youtube_stream_init(const char *proof_of_origin,
+                    const char *visitor_data,
                     const char *(*io_simulator)(const char *))
 {
-	assert(proof_of_origin);
+	assert(proof_of_origin && visitor_data);
 
 	struct youtube_stream *p = malloc(sizeof(*p));
 	if (p) {
 		memset(p, 0, sizeof(*p)); /* zero early, just in case */
 		p->proof_of_origin = proof_of_origin;
+		p->visitor_data = visitor_data;
 		p->context.simulator = io_simulator;
 		url_context_init(&p->context);
 	}
@@ -184,11 +187,12 @@ static WARN_UNUSED result_t
 download_and_mmap_tmpfd(struct youtube_stream *p,
                         struct downloaded *d,
                         const char *url,
-                        const struct string_view *post_body)
+                        const struct string_view *post_body,
+                        const char *post_header)
 {
 	assert(d->fd >= 0);
 
-	check(url_download(url, post_body, &p->context, d->fd));
+	check(url_download(url, post_body, post_header, &p->context, d->fd));
 	check(tmpmap(d->fd, &d->data));
 
 	debug("Downloaded %s to fd=%d", url, d->fd);
@@ -262,7 +266,7 @@ youtube_stream_setup_sabr(struct youtube_stream *p,
 	html.fd = tmpfd_early[0]; /* takes ownership */
 	js.fd = tmpfd_early[1];   /* takes ownership */
 
-	check(download_and_mmap_tmpfd(p, &html, start_url, NULL));
+	check(download_and_mmap_tmpfd(p, &html, start_url, NULL, NULL));
 
 	struct string_view playback_config = {0};
 	check(find_playback_config(&html.data, &playback_config));
@@ -294,7 +298,7 @@ youtube_stream_setup_sabr(struct youtube_stream *p,
 	check_if(rc < 0, ERR_JS_BASEJS_URL_ALLOC);
 	debug("Got base.js URL: %s", target_js);
 
-	check(download_and_mmap_tmpfd(p, &js, target_js, NULL));
+	check(download_and_mmap_tmpfd(p, &js, target_js, NULL, NULL));
 
 	struct deobfuscator deobfuscator = {0};
 	check(find_js_deobfuscator_magic_global(&js.data, &deobfuscator));
@@ -365,7 +369,7 @@ youtube_stream_setup(struct youtube_stream *p,
 			.data = sabr_post,
 			.sz = sabr_post_sz,
 		};
-		check(download_and_mmap_tmpfd(p, &ump, to_poll, &v));
+		check(download_and_mmap_tmpfd(p, &ump, to_poll, &v, NULL));
 		check(protocol_parse_response(stream, &ump.data, &to_poll));
 
 		check(tmptruncate(ump.fd, &ump.data));

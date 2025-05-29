@@ -11,11 +11,12 @@ typedef struct youtube_stream *youtube_handle_t;
 /*
  * Create a <youtube_handle_t> object.
  *
- * Note: caller must ensure that <proof_of_origin> remains valid for the
- * lifetime of the returned <youtube_handle_t>. In other words, this function
- * does not deep-copy any of the passed-in strings.
+ * Note: caller must ensure that <proof_of_origin> and <visitor_data> remain
+ * valid for the lifetime of the returned <youtube_handle_t>. In other words,
+ * this function does not deep-copy any of the passed-in strings.
  */
 youtube_handle_t youtube_stream_init(const char *proof_of_origin,
+                                     const char *visitor_data,
                                      const char *(*io_simulator)(const char *))
 	__attribute__((warn_unused_result));
 void youtube_stream_cleanup(youtube_handle_t h);

@@ -401,6 +401,9 @@ result_to_str(result_t r)
 	case ERR_YOUTUBE_N_PARAM_FIND_IN_QUERY:
 		s = my_asprintf("No n-parameter in query string: %s", r.msg);
 		break;
+	case ERR_YOUTUBE_VISITOR_DATA_HEADER_ALLOC:
+		s = strdup("Cannot allocate buffer for visitor data header");
+		break;
 	}
 
 	return s;

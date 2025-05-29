@@ -104,13 +104,14 @@ close_output_fd(int fd)
 static __attribute__((warn_unused_result)) result_t
 unthrottle(const char *target,
            const char *proof_of_origin,
+           const char *visitor_data,
            int output[2],
            youtube_handle_t *stream)
 {
 	check(youtube_global_init());
 	check_if(output[0] < 0 || output[1] < 0, OK);
 
-	*stream = youtube_stream_init(proof_of_origin, NULL);
+	*stream = youtube_stream_init(proof_of_origin, visitor_data, NULL);
 	check_if(*stream == NULL, OK);
 
 	check(sandbox_only_io_inet_tmpfile());
@@ -135,17 +136,19 @@ main(int argc, char *argv[])
 		ACTION_USAGE_ERROR,
 	} action = 0;
 	const char *proof_of_origin = NULL;
+	const char *visitor_data = NULL;
 
 	int synonym = 0;
 	struct option lo[] = {
 		{"help", no_argument, &synonym, 'h'},
 		{"try-sandbox", no_argument, &synonym, 't'},
 		{"proof-of-origin", required_argument, &synonym, 'p'},
+		{"visitor-data", required_argument, &synonym, 'v'},
 		{NULL, 0, NULL, 0},
 	};
 
 	int opt = 0;
-	while ((opt = getopt_long(argc, argv, "htp:", lo, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "htp:v:", lo, NULL)) != -1) {
 		switch (opt == 0 ? synonym : opt) {
 		case 'h':
 			action = MAX(action, ACTION_USAGE_HELP);
@@ -155,6 +158,9 @@ main(int argc, char *argv[])
 			break;
 		case 'p':
 			proof_of_origin = optarg;
+			break;
+		case 'v':
+			visitor_data = optarg;
 			break;
 		default:
 			action = MAX(action, ACTION_USAGE_ERROR);
@@ -171,6 +177,8 @@ main(int argc, char *argv[])
 			to_stderr("Missing URL argument after options");
 		} else if (!proof_of_origin || *proof_of_origin == '\0') {
 			to_stderr("Missing --proof-of-origin value");
+		} else if (!visitor_data || *visitor_data == '\0') {
+			to_stderr("Missing --visitor-data value");
 		} else {
 			int output[2] = {
 				get_output_fd("audio.out"),
@@ -179,6 +187,7 @@ main(int argc, char *argv[])
 			youtube_handle_t stream = NULL;
 			rc = result_to_status(unthrottle(argv[optind],
 			                                 proof_of_origin,
+			                                 visitor_data,
 			                                 output,
 			                                 &stream));
 
