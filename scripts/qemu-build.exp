@@ -146,6 +146,7 @@ proc install_test_dependencies_in_vm {} {
 		"cmake"
 		"curl"
 		"duktape"
+		"jansson"
 		"libseccomp"
 		"llvm"
 		"make"

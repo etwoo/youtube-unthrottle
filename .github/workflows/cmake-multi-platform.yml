@@ -91,7 +91,7 @@ jobs:
     - name: Configure, build, and test
       uses: vmactions/openbsd-vm@v1
       with:
-        prepare: pkg_add cmake git ada curl duktape pcre2 protobuf-c
+        prepare: pkg_add cmake git ada curl duktape jansson pcre2 protobuf-c
         run: >
           cmake --preset default &&
           cmake --build --preset default &&

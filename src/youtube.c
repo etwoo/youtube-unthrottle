@@ -263,21 +263,31 @@ static WARN_UNUSED result_t
 youtube_stream_setup_sabr(struct youtube_stream *p,
                           const char *start_url,
                           int fd_output[2],
-                          int tmpfd_early[2],
+                          int tmpfd_early[3],
                           protocol *stream)
 {
+	struct downloaded json __attribute__((cleanup(downloaded_cleanup)));
 	struct downloaded html __attribute__((cleanup(downloaded_cleanup)));
 	struct downloaded js __attribute__((cleanup(downloaded_cleanup)));
 
+	downloaded_init(&json, "JSON tmpfile");
 	downloaded_init(&html, "HTML tmpfile");
 	downloaded_init(&js, "JavaScript tmpfile");
 
-	html.fd = tmpfd_early[0]; /* takes ownership */
-	js.fd = tmpfd_early[1];   /* takes ownership */
+	json.fd = tmpfd_early[0]; /* takes ownership */
+	html.fd = tmpfd_early[1]; /* takes ownership */
+	js.fd = tmpfd_early[2];   /* takes ownership */
 
-	// TODO: use visitor ID + proof of origin to fetch playback config like getBasicInfo in youtubei JS library
-	char *sabr_header __attribute__((cleanup(str_free))) = NULL;
-	check(make_http_header_visitor_id(p->visitor_data, &sabr_header));
+	char *ipost __attribute__((cleanup(str_free))) = NULL;
+	check(make_innertube_json(start_url,
+	                          p->proof_of_origin,
+	                          timestamp, // TODO
+	                          &innertube_post));
+
+	char *iheader __attribute__((cleanup(str_free))) = NULL;
+	check(make_http_header_visitor_id(p->visitor_data, &innertube_header));
+
+	check(download_and_mmap_tmpfd(p, &json, start_url, ipost, iheader));
 
 	struct string_view playback_config = {0};
 	check(find_playback_config(&todo_json_response.data, &playback_config));
@@ -347,9 +357,11 @@ youtube_stream_setup(struct youtube_stream *p,
 	int tmpfd_early[2] = {
 		-1,
 		-1,
+		-1,
 	};
 	check(tmpfd(tmpfd_early));
 	check(tmpfd(tmpfd_early + 1));
+	check(tmpfd(tmpfd_early + 2));
 
 	if (ops && ops->after_tmpfile) {
 		check(ops->after_tmpfile());

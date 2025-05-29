@@ -14,6 +14,13 @@
  */
 #include <duktape.h>
 
+/*
+ * Some helpful Jansson references:
+ *
+ *   https://jansson.readthedocs.io/en/latest/apiref.html
+ */
+#include <jansson.h>
+
 static WARN_UNUSED const char *
 peek(duk_context *ctx)
 {
@@ -67,6 +74,61 @@ pretty_print_code(struct string_view in /* note: pass by value */, char **out)
 	(void)in;
 	*out = strdup("PRETTY_PRINT_NOT_IMPLEMENTED");
 #endif
+}
+
+result_t
+make_innertube_json(const char *target_url,
+                    const char *proof_of_origin,
+                    long long int timestamp,
+                    char **body)
+{
+	struct string_view id = {0};
+	struct string_view url = {.data = target_url, .sz = strlen(target_url)};
+
+	/* Note use of non-capturing group: (?:...) */
+	check(re_capture("(?:&|\\?)v=([^&]+)(?:&|$)", &url, &id));
+	if (id.data == NULL) {
+		return make_result(ERR_JS_MAKE_INNERTUBE_JSON_ID);
+	}
+	debug("Parsed ID: %.*s", (int)id.sz, id.data);
+
+	json_auto_t *obj = NULL;
+	obj = json_pack("{s{s{ss,ss,ss,ss,si}},ss%,s{ss},s{s{ss,si}},sb,sb}",
+	                "context",
+	                "client",
+	                "clientName",
+	                "WEB",
+	                "clientVersion",
+	                "2.20240726.00.00",
+	                "hl",
+	                "en",
+	                "timeZone",
+	                "UTC",
+	                "utcOffsetMinutes",
+	                0,
+	                "videoId",
+	                id.data,
+	                id.sz,
+	                "serviceIntegrityDimensions",
+	                "poToken",
+	                proof_of_origin,
+	                "playbackContext",
+	                "contentPlaybackContext",
+	                "html5Preference",
+	                "HTML5_PREF_WANTS",
+	                "signatureTimestamp",
+	                timestamp,
+	                "contentCheckOk",
+	                1,
+	                "racyCheckOk",
+	                1);
+	check_if(obj == NULL, ERR_JS_MAKE_INNERTUBE_JSON_ALLOC);
+
+	*body = json_dumps(obj, JSON_COMPACT);
+	check_if(*body == NULL, ERR_JS_MAKE_INNERTUBE_JSON_ALLOC);
+
+	debug("Formatted InnerTube POST body: %s", *body);
+	return RESULT_OK;
 }
 
 result_t

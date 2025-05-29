@@ -5,6 +5,11 @@
 #include "sys/compiler_features.h"
 #include "sys/string_view.h"
 
+result_t make_innertube_json(const char *target_url,
+                             const char *proof_of_origin,
+                             long long int timestamp,
+                             char **body);
+
 result_t find_base_js_url(const struct string_view *html,
                           struct string_view *basejs) WARN_UNUSED;
 result_t find_sabr_url(const struct string_view *html,
