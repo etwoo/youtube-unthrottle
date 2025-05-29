@@ -1,3 +1,4 @@
+// TODO: update header comment for new download behavior; ditto README.md
 /*
  * Extract video and audio stream URLs from a YouTube link passed via argv[1],
  * and then print the results to stdout, for use by mpv.
