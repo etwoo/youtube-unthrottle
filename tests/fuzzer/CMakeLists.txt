@@ -10,6 +10,5 @@ macro(add_fuzzer target)
 	target_link_options(${target} PRIVATE -fsanitize=fuzzer)
 endmacro()
 
-add_fuzzer(parse_json)
 add_fuzzer(find_js_deobfuscator)
 add_fuzzer(call_js_foreach)
