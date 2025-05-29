@@ -27,7 +27,7 @@ proc maybe_compress {target} {
 		debug "Compressed asset already exists: $p.zst"
 	} else {
 		debug "Compress to create: $p.zst"
-		puts [exec -ignorestderr zstd -T0 --compress $p]
+		puts [exec -ignorestderr zstd -T0 -15 --compress $p]
 	}
 }
 
