@@ -9,9 +9,6 @@ BinPackParameters: false
 BreakBeforeBraces: Linux
 ColumnLimit: 80
 ContinuationIndentWidth: 8
-ForEachMacros:
-  - 'json_array_foreach'
-  - 'json_object_foreach'
 IncludeBlocks: Regroup
 IndentWidth: 8
 UseTab:	AlignWithSpaces
