@@ -159,6 +159,15 @@ youtube_stream_update_n_param(const char *val, size_t pos, void *userdata)
 	return RESULT_OK;
 }
 
+static WARN_UNUSED result_t
+make_http_header_visitor_id(const char *visitor_data, char **strp)
+{
+	const int rc = asprintf(strp, "X-Goog-Visitor-Id: %s", visitor_data);
+	check_if(rc < 0, ERR_YOUTUBE_VISITOR_DATA_HEADER_ALLOC);
+	debug("Formatted InnerTube header: %s", *strp);
+	return RESULT_OK;
+}
+
 struct downloaded {
 	const char *description; /* does not own */
 	int fd;
@@ -266,16 +275,20 @@ youtube_stream_setup_sabr(struct youtube_stream *p,
 	html.fd = tmpfd_early[0]; /* takes ownership */
 	js.fd = tmpfd_early[1];   /* takes ownership */
 
-	check(download_and_mmap_tmpfd(p, &html, start_url, NULL, NULL));
+	// TODO: use visitor ID + proof of origin to fetch playback config like getBasicInfo in youtubei JS library
+	char *sabr_header __attribute__((cleanup(str_free))) = NULL;
+	check(make_http_header_visitor_id(p->visitor_data, &sabr_header));
 
 	struct string_view playback_config = {0};
-	check(find_playback_config(&html.data, &playback_config));
+	check(find_playback_config(&todo_json_response.data, &playback_config));
 
 	struct string_view poo = {
 		.data = p->proof_of_origin,
 		.sz = strlen(p->proof_of_origin),
 	};
 	check(protocol_init(&poo, &playback_config, fd_output, stream));
+
+	check(download_and_mmap_tmpfd(p, &html, start_url, NULL, NULL));
 
 	struct string_view sabr_raw = {0};
 	check(find_sabr_url(&html.data, &sabr_raw));
