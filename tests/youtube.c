@@ -143,7 +143,6 @@ stream_setup_with_null_ops(void)
 	ASSERT(stream);
 
 	auto_result err = youtube_stream_setup(stream, &NULLOP, FAKE_URL, OFD);
-	debug("Got err: %s", result_to_str(err));
 	ASSERT_EQ(OK, err.err);
 
 	youtube_stream_cleanup(stream);
