@@ -268,17 +268,17 @@ youtube_stream_setup_sabr(struct youtube_stream *p,
                           int tmpfd_early[3],
                           protocol *stream)
 {
-	struct downloaded json __attribute__((cleanup(downloaded_cleanup)));
 	struct downloaded html __attribute__((cleanup(downloaded_cleanup)));
 	struct downloaded js __attribute__((cleanup(downloaded_cleanup)));
+	struct downloaded json __attribute__((cleanup(downloaded_cleanup)));
 
-	downloaded_init(&json, "JSON tmpfile");
 	downloaded_init(&html, "HTML tmpfile");
 	downloaded_init(&js, "JavaScript tmpfile");
+	downloaded_init(&json, "JSON tmpfile");
 
-	json.fd = tmpfd_early[0]; /* takes ownership */
-	html.fd = tmpfd_early[1]; /* takes ownership */
-	js.fd = tmpfd_early[2];   /* takes ownership */
+	html.fd = tmpfd_early[0]; /* takes ownership */
+	js.fd = tmpfd_early[1];   /* takes ownership */
+	json.fd = tmpfd_early[2]; /* takes ownership */
 
 	check(download_and_mmap_tmpfd(p, &html, start_url, NULL, NULL));
 
