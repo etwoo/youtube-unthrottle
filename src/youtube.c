@@ -116,14 +116,16 @@ ada_search_params_set_helper(ada_url url, const char *key, const char *val)
 }
 
 static WARN_UNUSED result_t
-youtube_stream_set_url_with_n_param(struct youtube_stream *p, const char *val)
+youtube_stream_set_url_with_n_param(struct youtube_stream *p,
+                                    const struct string_view *url)
 {
-	const size_t val_sz = strlen(val);
-	if (!ada_can_parse(val, val_sz)) {
-		return make_result(ERR_YOUTUBE_STREAM_URL_INVALID, val, val_sz);
+	if (!ada_can_parse(url->data, url->sz)) {
+		return make_result(ERR_YOUTUBE_STREAM_URL_INVALID,
+		                   url->data,
+		                   url->sz);
 	}
 
-	p->url = ada_parse(val, strlen(val));
+	p->url = ada_parse(url->data, url->sz);
 	return RESULT_OK;
 }
 
@@ -231,36 +233,6 @@ protocol_cleanup_p(protocol *pp)
 	protocol_cleanup(*pp);
 }
 
-static const char AMPERSAND[] = "\\u0026"; /* URI-encoded ampersand character */
-static const size_t AMPERSAND_SZ = sizeof(AMPERSAND) - 1;
-
-static void
-decode_ampersands(struct string_view in /* note: pass by value */, char **out)
-{
-	char *buffer = malloc((in.sz + 1) * sizeof(*buffer));
-	*out = buffer;
-	while (buffer) {
-		const char *src_end =
-			memmem(in.data, in.sz, AMPERSAND, AMPERSAND_SZ);
-		if (src_end == NULL) {
-			memcpy(buffer, in.data, in.sz);
-			buffer[in.sz] = '\0';
-			break;
-		}
-
-		size_t n = src_end - in.data;
-		memcpy(buffer, in.data, n);
-
-		buffer += n;
-		*buffer = '&';
-		buffer += 1;
-
-		n += AMPERSAND_SZ; /* skip URI-encoded ampersand in <in.data> */
-		in.data += n;
-		in.sz -= n;
-	}
-}
-
 static WARN_UNUSED result_t
 youtube_stream_setup_sabr(struct youtube_stream *p,
                           const char *start_url,
@@ -322,15 +294,9 @@ youtube_stream_setup_sabr(struct youtube_stream *p,
 	};
 	check(protocol_init(&poo, &playback_config, fd_output, stream));
 
-	struct string_view sabr_raw = {0};
-	check(find_sabr_url(&json.data, &sabr_raw));
-	{
-		char *scratch_buffer __attribute__((cleanup(str_free))) = NULL;
-		decode_ampersands(sabr_raw, &scratch_buffer);
-		check_if(scratch_buffer == NULL, ERR_JS_SABR_URL_ALLOC);
-		debug("Decoded SABR URL: %s", scratch_buffer);
-		check(youtube_stream_set_url_with_n_param(p, scratch_buffer));
-	}
+	struct string_view sabr = {0};
+	check(find_sabr_url(&json.data, &sabr));
+	check(youtube_stream_set_url_with_n_param(p, &sabr));
 
 	char *ciphertexts[2] __attribute__((cleanup(ciphertexts_cleanup))) = {
 		NULL,

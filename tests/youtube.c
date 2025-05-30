@@ -273,25 +273,11 @@ stream_setup_edge_cases_invalid_url(void)
 	PASS();
 }
 
-static WARN_UNUSED const char *
-test_request_double_encoded_ampersands(const char *path)
-{
-	if (NULL == strstr(path, PATH_WANTS_JSON_RESPONSE)) {
-		return NULL;
-	}
-	return "\"serverAbrStreamingUrl\": \"https://a.test/"
-	       "sabr?first=ampersand\\u0026n=aaa\\u0026last=ampersand\"\n"
-	       "\"videoPlaybackUstreamerConfig\": \"Zm9vYmFyCg==\"";
-}
-
 SUITE(stream_setup_weird_urls)
 {
 	RUN_TEST(stream_setup_edge_cases_target_url_missing_stream_id);
 	RUN_TEST(stream_setup_edge_cases_n_param_missing);
 	RUN_TEST(stream_setup_edge_cases_invalid_url);
-	RUN_TESTp(stream_setup_with_redirected_network_io,
-	          test_request_double_encoded_ampersands,
-	          "https://a.test/sabr?first=ampersand&n=AAA&last=ampersand");
 }
 
 TEST
