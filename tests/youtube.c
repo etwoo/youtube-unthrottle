@@ -158,28 +158,6 @@ SUITE(stream_setup_simple)
 	RUN_TEST(stream_setup_with_null_ops);
 }
 
-static const char YT_MISSING_ID[] = "https://a.test/watch?v=";
-
-TEST
-stream_setup_edge_cases_target_url_missing_stream_id(void)
-{
-	youtube_handle_t stream = do_test_init();
-	ASSERT(stream);
-
-	auto_result err =
-		youtube_stream_setup(stream, &NOOP, YT_MISSING_ID, OFD);
-	ASSERT_EQ(ERR_JS_MAKE_INNERTUBE_JSON_ID, err.err);
-
-	youtube_stream_cleanup(stream);
-	PASS();
-}
-
-SUITE(stream_setup_target_url_variations)
-{
-	RUN_TEST(global_setup);
-	RUN_TEST(stream_setup_edge_cases_target_url_missing_stream_id);
-}
-
 static WARN_UNUSED const char *
 test_request_n_param_pos_middle(const char *path)
 {
@@ -225,6 +203,22 @@ SUITE(stream_setup_n_param_positions)
 	RUN_TESTp(stream_setup_with_redirected_network_io,
 	          test_request_n_param_pos_last,
 	          "https://a.test/sabr?first=foo&second=bar&n=AAA");
+}
+
+static const char YT_MISSING_ID[] = "https://a.test/watch?v=";
+
+TEST
+stream_setup_edge_cases_target_url_missing_stream_id(void)
+{
+	youtube_handle_t stream = do_test_init();
+	ASSERT(stream);
+
+	auto_result err =
+		youtube_stream_setup(stream, &NOOP, YT_MISSING_ID, OFD);
+	ASSERT_EQ(ERR_JS_MAKE_INNERTUBE_JSON_ID, err.err);
+
+	youtube_stream_cleanup(stream);
+	PASS();
 }
 
 static WARN_UNUSED const char *
@@ -292,6 +286,7 @@ test_request_double_encoded_ampersands(const char *path)
 
 SUITE(stream_setup_weird_urls)
 {
+	RUN_TEST(stream_setup_edge_cases_target_url_missing_stream_id);
 	RUN_TEST(stream_setup_edge_cases_n_param_missing);
 	RUN_TEST(stream_setup_edge_cases_invalid_url);
 	RUN_TESTp(stream_setup_with_redirected_network_io,
