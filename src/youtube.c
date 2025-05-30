@@ -322,10 +322,6 @@ youtube_stream_setup_sabr(struct youtube_stream *p,
 	};
 	check(protocol_init(&poo, &playback_config, fd_output, stream));
 
-	struct deobfuscator deobfuscator = {0};
-	check(find_js_deobfuscator_magic_global(&js.data, &deobfuscator));
-	check(find_js_deobfuscator(&js.data, &deobfuscator));
-
 	struct string_view sabr_raw = {0};
 	check(find_sabr_url(&json.data, &sabr_raw));
 	{
@@ -341,6 +337,10 @@ youtube_stream_setup_sabr(struct youtube_stream *p,
 		NULL,
 	};
 	check(youtube_stream_copy_n_param(p, &ciphertexts[0]));
+
+	struct deobfuscator deobfuscator = {0};
+	check(find_js_deobfuscator_magic_global(&js.data, &deobfuscator));
+	check(find_js_deobfuscator(&js.data, &deobfuscator));
 
 	struct call_ops cops = {
 		.got_result = youtube_stream_update_n_param,
