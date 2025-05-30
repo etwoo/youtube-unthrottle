@@ -278,29 +278,6 @@ youtube_stream_setup_sabr(struct youtube_stream *p,
 	html.fd = tmpfd_early[1]; /* takes ownership */
 	js.fd = tmpfd_early[2];   /* takes ownership */
 
-	long long int timestamp = 0;
-	check(find_js_timestamp(&js.data, &timestamp));
-
-	char *ipost __attribute__((cleanup(str_free))) = NULL;
-	check(make_innertube_json(start_url,
-	                          p->proof_of_origin,
-	                          timestamp, // TODO
-	                          &innertube_post));
-
-	char *iheader __attribute__((cleanup(str_free))) = NULL;
-	check(make_http_header_visitor_id(p->visitor_data, &innertube_header));
-
-	check(download_and_mmap_tmpfd(p, &json, start_url, ipost, iheader));
-
-	struct string_view playback_config = {0};
-	check(find_playback_config(&todo_json_response.data, &playback_config));
-
-	struct string_view poo = {
-		.data = p->proof_of_origin,
-		.sz = strlen(p->proof_of_origin),
-	};
-	check(protocol_init(&poo, &playback_config, fd_output, stream));
-
 	check(download_and_mmap_tmpfd(p, &html, start_url, NULL, NULL));
 
 	struct string_view sabr_raw = {0};
@@ -325,6 +302,29 @@ youtube_stream_setup_sabr(struct youtube_stream *p,
 	debug("Got base.js URL: %s", target_js);
 
 	check(download_and_mmap_tmpfd(p, &js, target_js, NULL, NULL));
+
+	long long int timestamp = 0;
+	check(find_js_timestamp(&js.data, &timestamp));
+
+	char *ipost __attribute__((cleanup(str_free))) = NULL;
+	check(make_innertube_json(start_url,
+	                          p->proof_of_origin,
+	                          timestamp,
+	                          &innertube_post));
+
+	char *iheader __attribute__((cleanup(str_free))) = NULL;
+	check(make_http_header_visitor_id(p->visitor_data, &innertube_header));
+
+	check(download_and_mmap_tmpfd(p, &json, start_url, ipost, iheader));
+
+	struct string_view playback_config = {0};
+	check(find_playback_config(&json.data, &playback_config));
+
+	struct string_view poo = {
+		.data = p->proof_of_origin,
+		.sz = strlen(p->proof_of_origin),
+	};
+	check(protocol_init(&poo, &playback_config, fd_output, stream));
 
 	struct deobfuscator deobfuscator = {0};
 	check(find_js_deobfuscator_magic_global(&js.data, &deobfuscator));
