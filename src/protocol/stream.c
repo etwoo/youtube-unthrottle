@@ -204,7 +204,7 @@ protocol_init_members(struct protocol_state *p)
 	video_streaming__streamer_context__client_info__init(&p->info);
 	p->info.has_client_name = true;
 	p->info.client_name = 1;
-	p->info.client_version = "2.20250312.04.00";
+	p->info.client_version = "2.20240726.00.00";
 	p->info.os_name = "Windows";
 	p->info.os_version = "10.0";
 
