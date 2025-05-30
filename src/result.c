@@ -134,6 +134,12 @@ result_to_str(result_t r)
 	case OK:
 		s = strdup("Success");
 		break;
+	case ERR_JS_MAKE_INNERTUBE_JSON_ID:
+		s = strdup("Cannot find video ID for InnerTube POST");
+		break;
+	case ERR_JS_MAKE_INNERTUBE_JSON_ALLOC:
+		s = strdup("Cannot allocate buffer for InnerTube POST");
+		break;
 	case ERR_JS_BASEJS_URL_FIND:
 		s = strdup("Cannot find base.js URL in HTML document");
 		break;
