@@ -7,7 +7,6 @@
 #include "sys/array.h"
 #include "sys/debug.h"
 #include "sys/tmpfile.h"
-#include "sys/write.h"
 
 #include <ada_c.h>
 #include <assert.h>
