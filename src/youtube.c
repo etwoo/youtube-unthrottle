@@ -306,16 +306,20 @@ youtube_stream_setup_sabr(struct youtube_stream *p,
 	long long int timestamp = 0;
 	check(find_js_timestamp(&js.data, &timestamp));
 
-	char *ipost __attribute__((cleanup(str_free))) = NULL;
+	char *innertube_post __attribute__((cleanup(str_free))) = NULL;
 	check(make_innertube_json(start_url,
 	                          p->proof_of_origin,
 	                          timestamp,
 	                          &innertube_post));
 
 	char *iheader __attribute__((cleanup(str_free))) = NULL;
-	check(make_http_header_visitor_id(p->visitor_data, &innertube_header));
+	check(make_http_header_visitor_id(p->visitor_data, &iheader));
 
-	check(download_and_mmap_tmpfd(p, &json, start_url, ipost, iheader));
+	const struct string_view ipost = {
+		.data = innertube_post,
+		.sz = strlen(innertube_post),
+	};
+	check(download_and_mmap_tmpfd(p, &json, start_url, &ipost, iheader));
 
 	struct string_view playback_config = {0};
 	check(find_playback_config(&json.data, &playback_config));
@@ -357,7 +361,7 @@ youtube_stream_setup(struct youtube_stream *p,
 	downloaded_init(&ump, "UMP response tmpfile");
 	check(tmpfd(&ump.fd));
 
-	int tmpfd_early[2] = {
+	int tmpfd_early[3] = {
 		-1,
 		-1,
 		-1,
