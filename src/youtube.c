@@ -19,7 +19,7 @@
 
 static const char ARG_N[] = "n";
 static const char INNERTUBE_URI[] =
-       "https://www.youtube.com/youtubei/v1/player";
+	"https://www.youtube.com/youtubei/v1/player";
 
 struct youtube_stream {
 	ada_url url;
