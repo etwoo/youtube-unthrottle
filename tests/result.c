@@ -44,7 +44,6 @@ make_ns(int err_type)
 static const char CANNOT_ALLOC[] = "Cannot allocate";
 static const char CANNOT_APPEND[] = "Cannot append";
 static const char CANNOT_FIND[] = "Cannot find";
-static const char CANNOT_GET[] = "Cannot get";
 static const char CANNOT_SET[] = "Cannot set";
 static const char CANNOT_UNPACK[] = "Cannot unpack";
 static const char CANNOT_ISSUE[] = "Error issuing";
