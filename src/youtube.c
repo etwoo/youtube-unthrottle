@@ -278,6 +278,9 @@ youtube_stream_setup_sabr(struct youtube_stream *p,
 	html.fd = tmpfd_early[1]; /* takes ownership */
 	js.fd = tmpfd_early[2];   /* takes ownership */
 
+	long long int timestamp = 0;
+	check(find_js_timestamp(&js.data, &timestamp));
+
 	char *ipost __attribute__((cleanup(str_free))) = NULL;
 	check(make_innertube_json(start_url,
 	                          p->proof_of_origin,

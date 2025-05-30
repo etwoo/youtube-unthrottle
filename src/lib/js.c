@@ -171,6 +171,34 @@ find_playback_config(const struct string_view *html, struct string_view *config)
 }
 
 result_t
+find_js_timestamp(const struct string_view *js, long long int *value)
+{
+	struct string_view ts = {0};
+	check(re_capture("signatureTimestamp:([0-9]+)", js, &ts));
+	if (ts.data == NULL) {
+		return make_result(ERR_JS_TIMESTAMP_FIND);
+	}
+
+	/*
+	 * strtoll() does not update errno on success, so we must clear it
+	 * explicitly if we want a predictable value.
+	 */
+	errno = 0;
+
+	long long int res = strtoll(ts.data, NULL, 10);
+	if (errno != 0) {
+		return make_result(ERR_JS_TIMESTAMP_PARSE_LL,
+		                   errno,
+		                   ts.data,
+		                   ts.sz);
+	}
+
+	debug("Parsed timestamp %.*s into %lld", (int)ts.sz, ts.data, res);
+	*value = res;
+	return RESULT_OK;
+}
+
+result_t
 find_js_deobfuscator_magic_global(const struct string_view *js,
                                   struct deobfuscator *d)
 {
