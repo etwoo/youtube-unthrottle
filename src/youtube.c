@@ -18,6 +18,8 @@
 #include <unistd.h>
 
 static const char ARG_N[] = "n";
+static const char INNERTUBE_URI[] =
+       "https://www.youtube.com/youtubei/v1/player";
 
 struct youtube_stream {
 	ada_url url;
@@ -280,16 +282,6 @@ youtube_stream_setup_sabr(struct youtube_stream *p,
 
 	check(download_and_mmap_tmpfd(p, &html, start_url, NULL, NULL));
 
-	struct string_view sabr_raw = {0};
-	check(find_sabr_url(&html.data, &sabr_raw));
-	{
-		char *scratch_buffer __attribute__((cleanup(str_free))) = NULL;
-		decode_ampersands(sabr_raw, &scratch_buffer);
-		check_if(scratch_buffer == NULL, ERR_JS_SABR_URL_ALLOC);
-		debug("Decoded SABR URL: %s", scratch_buffer);
-		check(youtube_stream_set_url_with_n_param(p, scratch_buffer));
-	}
-
 	struct string_view basejs_path = {0};
 	check(find_base_js_url(&html.data, &basejs_path));
 
@@ -312,14 +304,14 @@ youtube_stream_setup_sabr(struct youtube_stream *p,
 	                          timestamp,
 	                          &innertube_post));
 
-	char *iheader __attribute__((cleanup(str_free))) = NULL;
-	check(make_http_header_visitor_id(p->visitor_data, &iheader));
+	char *header __attribute__((cleanup(str_free))) = NULL;
+	check(make_http_header_visitor_id(p->visitor_data, &header));
 
 	const struct string_view ipost = {
 		.data = innertube_post,
 		.sz = strlen(innertube_post),
 	};
-	check(download_and_mmap_tmpfd(p, &json, start_url, &ipost, iheader));
+	check(download_and_mmap_tmpfd(p, &json, INNERTUBE_URI, &ipost, header));
 
 	struct string_view playback_config = {0};
 	check(find_playback_config(&json.data, &playback_config));
@@ -333,6 +325,16 @@ youtube_stream_setup_sabr(struct youtube_stream *p,
 	struct deobfuscator deobfuscator = {0};
 	check(find_js_deobfuscator_magic_global(&js.data, &deobfuscator));
 	check(find_js_deobfuscator(&js.data, &deobfuscator));
+
+	struct string_view sabr_raw = {0};
+	check(find_sabr_url(&json.data, &sabr_raw));
+	{
+		char *scratch_buffer __attribute__((cleanup(str_free))) = NULL;
+		decode_ampersands(sabr_raw, &scratch_buffer);
+		check_if(scratch_buffer == NULL, ERR_JS_SABR_URL_ALLOC);
+		debug("Decoded SABR URL: %s", scratch_buffer);
+		check(youtube_stream_set_url_with_n_param(p, scratch_buffer));
+	}
 
 	char *ciphertexts[2] __attribute__((cleanup(ciphertexts_cleanup))) = {
 		NULL,

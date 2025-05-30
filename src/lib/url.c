@@ -99,6 +99,7 @@ url_list_append(struct curl_slist **list, const char *str)
 static const char BROWSER_USERAGENT[] =
 	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, "
 	"like Gecko) Chrome/87.0.4280.101 Safari/537.36";
+static const char CONTENT_TYPE_JSON[] = "Content-Type: application/json";
 static const char CONTENT_TYPE_PROTOBUF[] =
 	"Content-Type: application/x-protobuf";
 
@@ -153,7 +154,11 @@ url_download(const char *url_str,
 	}
 
 	if (post_body && post_body->data && post_body->sz > 0) {
-		check(url_list_append(&headers, CONTENT_TYPE_PROTOBUF));
+		if (post_body->data[0] == '{') { // TODO: remove this kludge
+			check(url_list_append(&headers, CONTENT_TYPE_JSON));
+		} else {
+			check(url_list_append(&headers, CONTENT_TYPE_PROTOBUF));
+		}
 
 		res = curl_easy_setopt(curl,
 		                       CURLOPT_POSTFIELDS,
