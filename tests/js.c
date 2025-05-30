@@ -104,6 +104,64 @@ find_playback_config_positive(void)
 }
 
 TEST
+find_js_timestamp_negative_re_pattern(void)
+{
+	const struct string_view json =
+		MAKE_TEST_STRING("{signatureTimestamp:\"foobar\"}");
+
+	long long int timestamp = -1;
+	auto_result err = find_js_timestamp(&json, &timestamp);
+
+	ASSERT_EQ(ERR_JS_TIMESTAMP_FIND, err.err);
+	ASSERT_GT(0, timestamp);
+	PASS();
+}
+
+TEST
+find_js_timestamp_negative_strtoll_erange(void)
+{
+	const struct string_view json =
+		MAKE_TEST_STRING("{signatureTimestamp:9223372036854775808}");
+
+	long long int timestamp = -1;
+	auto_result err = find_js_timestamp(&json, &timestamp);
+
+	ASSERT_EQ(ERR_JS_TIMESTAMP_PARSE_LL, err.err);
+	ASSERT_EQ(ERANGE, err.num);
+	ASSERT_STR_EQ("9223372036854775808", err.msg);
+	ASSERT_GT(0, timestamp);
+	PASS();
+}
+
+TEST
+find_js_timestamp_positive_strtoll_max(void)
+{
+	const struct string_view json =
+		MAKE_TEST_STRING("{signatureTimestamp:9223372036854775807}");
+
+	long long int timestamp = 0;
+	auto_result err = find_js_timestamp(&json, &timestamp);
+
+	ASSERT_EQ(OK, err.err);
+	ASSERT_EQ(LLONG_MAX, timestamp);
+	PASS();
+}
+
+TEST
+find_js_timestamp_positive_simple(void)
+{
+	const struct string_view json =
+		MAKE_TEST_STRING("{signatureTimestamp:19957}");
+
+	long long int timestamp = 0;
+	auto_result err = find_js_timestamp(&json, &timestamp);
+
+	ASSERT_EQ(OK, err.err);
+	ASSERT_EQ(19957, timestamp);
+	PASS();
+}
+
+TEST
 find_js_deobfuscator_magic_global_negative_first(void)
 {
 	struct deobfuscator d = {0};
@@ -245,6 +303,10 @@ SUITE(find_with_pcre)
 {
 	RUN_TEST(find_base_js_url_negative);
 	RUN_TEST(find_base_js_url_positive);
+	RUN_TEST(find_js_timestamp_negative_re_pattern);
+	RUN_TEST(find_js_timestamp_negative_strtoll_erange);
+	RUN_TEST(find_js_timestamp_positive_strtoll_max);
+	RUN_TEST(find_js_timestamp_positive_simple);
 	RUN_TEST(find_sabr_url_negative);
 	RUN_TEST(find_sabr_url_positive);
 	RUN_TEST(find_playback_config_negative);

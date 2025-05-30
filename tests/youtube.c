@@ -15,6 +15,7 @@ static const char FAKE_HTML_RESPONSE[] =
 	"\"videoPlaybackUstreamerConfig\":\"Zm9vYmFyCg==\"";
 static const char FAKE_JS_RESPONSE[] =
 	"'use strict';var zzz=666666,aaa,bbb,ccc,ddd,eee,fff,ggg,hhh;"
+	"{signatureTimestamp:12345}"
 	"var mmm=88888888;"
 	"&&(c=X[0](c),\nvar X=[Y];\n"
 	"Y=function(a){"

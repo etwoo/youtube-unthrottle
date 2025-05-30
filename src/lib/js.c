@@ -88,6 +88,7 @@ make_innertube_json(const char *target_url,
 	/* Note use of non-capturing group: (?:...) */
 	check(re_capture("(?:&|\\?)v=([^&]+)(?:&|$)", &url, &id));
 	if (id.data == NULL) {
+		// TODO: restore tests/js.c testcase for this condition
 		return make_result(ERR_JS_MAKE_INNERTUBE_JSON_ID);
 	}
 	debug("Parsed ID: %.*s", (int)id.sz, id.data);
