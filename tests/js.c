@@ -62,12 +62,12 @@ find_sabr_url_positive(void)
 {
 	struct string_view p = {0};
 	const struct string_view html = MAKE_TEST_STRING(
-		"{ \"serverAbrStreamingUrl\":\"https://foobar.test\" }");
+		"{ \"serverAbrStreamingUrl\": \"https://foo.test\" }");
 
 	auto_result err = find_sabr_url(&html, &p);
 	ASSERT_EQ(OK, err.err);
 
-	const char expected[] = "https://foobar.test";
+	const char expected[] = "https://foo.test";
 	ASSERT_EQ(strlen(expected), p.sz);
 	ASSERT_STRN_EQ(expected, p.data, p.sz);
 	PASS();
@@ -92,12 +92,12 @@ find_playback_config_positive(void)
 {
 	struct string_view p = {0};
 	const struct string_view html = MAKE_TEST_STRING(
-		"{ \"videoPlaybackUstreamerConfig\":\"https://foobar.test\" }");
+		"{ \"videoPlaybackUstreamerConfig\": \"https://foo.test\" }");
 
 	auto_result err = find_playback_config(&html, &p);
 	ASSERT_EQ(OK, err.err);
 
-	const char expected[] = "https://foobar.test";
+	const char expected[] = "https://foo.test";
 	ASSERT_EQ(strlen(expected), p.sz);
 	ASSERT_STRN_EQ(expected, p.data, p.sz);
 	PASS();

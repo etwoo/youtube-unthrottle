@@ -11,8 +11,8 @@
 static const char FAKE_URL[] = "https://a.test/watch?v=FOOBAR";
 static const char FAKE_HTML_RESPONSE[] =
 	"\"/s/player/foobar/base.js\"\n"
-	"\"serverAbrStreamingUrl\":\"https://a.test/sabr?n=aaa\"\n"
-	"\"videoPlaybackUstreamerConfig\":\"Zm9vYmFyCg==\"";
+	"\"serverAbrStreamingUrl\":\" https://a.test/sabr?n=aaa\"\n"
+	"\"videoPlaybackUstreamerConfig\": \"Zm9vYmFyCg==\"";
 static const char FAKE_JS_RESPONSE[] =
 	"'use strict';var zzz=666666,aaa,bbb,ccc,ddd,eee,fff,ggg,hhh;"
 	"{signatureTimestamp:12345}"
@@ -184,9 +184,9 @@ test_request_n_param_pos_middle(const char *path)
 		return NULL;
 	}
 	return "\"/s/player/foobar/base.js\"\n"
-	       "\"serverAbrStreamingUrl\":\"https://a.test/"
+	       "\"serverAbrStreamingUrl\": \"https://a.test/"
 	       "sabr?first=foo&n=aaa&last=bar\"\n"
-	       "\"videoPlaybackUstreamerConfig\":\"Zm9vYmFyCg==\"";
+	       "\"videoPlaybackUstreamerConfig\": \"Zm9vYmFyCg==\"";
 }
 
 static WARN_UNUSED const char *
@@ -196,9 +196,9 @@ test_request_n_param_pos_first(const char *path)
 		return NULL;
 	}
 	return "\"/s/player/foobar/base.js\"\n"
-	       "\"serverAbrStreamingUrl\":\"https://a.test/"
+	       "\"serverAbrStreamingUrl\": \"https://a.test/"
 	       "sabr?n=aaa&second=foo&third=bar\"\n"
-	       "\"videoPlaybackUstreamerConfig\":\"Zm9vYmFyCg==\"";
+	       "\"videoPlaybackUstreamerConfig\": \"Zm9vYmFyCg==\"";
 }
 
 static WARN_UNUSED const char *
@@ -208,9 +208,9 @@ test_request_n_param_pos_last(const char *path)
 		return NULL;
 	}
 	return "\"/s/player/foobar/base.js\"\n"
-	       "\"serverAbrStreamingUrl\":\"https://a.test/"
+	       "\"serverAbrStreamingUrl\": \"https://a.test/"
 	       "sabr?first=foo&second=bar&n=aaa\"\n"
-	       "\"videoPlaybackUstreamerConfig\":\"Zm9vYmFyCg==\"";
+	       "\"videoPlaybackUstreamerConfig\": \"Zm9vYmFyCg==\"";
 }
 
 SUITE(stream_setup_n_param_positions)
@@ -234,8 +234,8 @@ test_request_n_param_missing(const char *path)
 		return NULL;
 	}
 	return "\"/s/player/foobar/base.js\"\n"
-	       "\"serverAbrStreamingUrl\":\"https://a.test/sabr?x=y\"\n"
-	       "\"videoPlaybackUstreamerConfig\":\"Zm9vYmFyCg==\"";
+	       "\"serverAbrStreamingUrl\": \"https://a.test/sabr?x=y\"\n"
+	       "\"videoPlaybackUstreamerConfig\": \"Zm9vYmFyCg==\"";
 }
 
 TEST
@@ -261,8 +261,8 @@ test_request_invalid_url(const char *path)
 		return NULL;
 	}
 	return "\"/s/player/foobar/base.js\"\n"
-	       "\"serverAbrStreamingUrl\":\"!@#$%^&*()\"\n"
-	       "\"videoPlaybackUstreamerConfig\":\"Zm9vYmFyCg==\"";
+	       "\"serverAbrStreamingUrl\": \"!@#$%^&*()\"\n"
+	       "\"videoPlaybackUstreamerConfig\": \"Zm9vYmFyCg==\"";
 }
 
 TEST
@@ -288,9 +288,9 @@ test_request_double_encoded_ampersands(const char *path)
 		return NULL;
 	}
 	return "\"/s/player/foobar/base.js\"\n"
-	       "\"serverAbrStreamingUrl\":\"https://a.test/"
+	       "\"serverAbrStreamingUrl\": \"https://a.test/"
 	       "sabr?first=ampersand\\u0026n=aaa\\u0026last=ampersand\"\n"
-	       "\"videoPlaybackUstreamerConfig\":\"Zm9vYmFyCg==\"";
+	       "\"videoPlaybackUstreamerConfig\": \"Zm9vYmFyCg==\"";
 }
 
 SUITE(stream_setup_weird_urls)
