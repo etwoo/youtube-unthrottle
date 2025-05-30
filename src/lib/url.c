@@ -75,6 +75,7 @@ url_context_init(struct url_request_context *context)
 	 */
 	auto_result err = url_download("https://www.youtube.com",
 	                               NULL,
+	                               CONTENT_TYPE_UNSET,
 	                               NULL,
 	                               context,
 	                               FD_DISCARD);
@@ -99,14 +100,15 @@ url_list_append(struct curl_slist **list, const char *str)
 static const char BROWSER_USERAGENT[] =
 	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, "
 	"like Gecko) Chrome/87.0.4280.101 Safari/537.36";
-static const char CONTENT_TYPE_JSON[] = "Content-Type: application/json";
-static const char CONTENT_TYPE_PROTOBUF[] =
+static const char HEADER_CONTENT_TYPE_JSON[] = "Content-Type: application/json";
+static const char HEADER_CONTENT_TYPE_PROTOBUF[] =
 	"Content-Type: application/x-protobuf";
 
 result_t
 url_download(const char *url_str,
-             const struct string_view *post_body, /* maybe NULL */
-             const char *post_header,             /* maybe NULL */
+             const struct string_view *post_body,
+             url_request_content_type post_content_type,
+             const char *post_header,
              struct url_request_context *context,
              int fd)
 {
@@ -154,12 +156,6 @@ url_download(const char *url_str,
 	}
 
 	if (post_body && post_body->data && post_body->sz > 0) {
-		if (post_body->data[0] == '{') { // TODO: remove this kludge
-			check(url_list_append(&headers, CONTENT_TYPE_JSON));
-		} else {
-			check(url_list_append(&headers, CONTENT_TYPE_PROTOBUF));
-		}
-
 		res = curl_easy_setopt(curl,
 		                       CURLOPT_POSTFIELDS,
 		                       post_body->data);
@@ -169,6 +165,17 @@ url_download(const char *url_str,
 		                       CURLOPT_POSTFIELDSIZE_LARGE,
 		                       post_body->sz);
 		check_if_num(res, ERR_URL_DOWNLOAD_SET_OPT_POST_BODY_SIZE);
+	}
+
+	switch (post_content_type) {
+	case CONTENT_TYPE_UNSET:
+		break;
+	case CONTENT_TYPE_JSON:
+		check(url_list_append(&headers, HEADER_CONTENT_TYPE_JSON));
+		break;
+	case CONTENT_TYPE_PROTOBUF:
+		check(url_list_append(&headers, HEADER_CONTENT_TYPE_PROTOBUF));
+		break;
 	}
 
 	if (post_header) {

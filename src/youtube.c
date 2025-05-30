@@ -18,8 +18,7 @@
 #include <unistd.h>
 
 static const char ARG_N[] = "n";
-static const char INNERTUBE_URI[] =
-	"https://www.youtube.com/youtubei/v1/player";
+static const char INNERTUBE[] = "https://www.youtube.com/youtubei/v1/player";
 
 struct youtube_stream {
 	ada_url url;
@@ -191,19 +190,31 @@ downloaded_cleanup(struct downloaded *d)
 }
 
 static WARN_UNUSED result_t
-download_and_mmap_tmpfd(struct youtube_stream *p,
-                        struct downloaded *d,
-                        const char *url,
-                        const struct string_view *post_body,
-                        const char *post_header)
+http_post(struct youtube_stream *p,
+          struct downloaded *d,
+          const char *url,
+          const struct string_view *post_body,
+          url_request_content_type post_content_type,
+          const char *post_header)
 {
 	assert(d->fd >= 0);
 
-	check(url_download(url, post_body, post_header, &p->context, d->fd));
+	check(url_download(url,
+	                   post_body,
+	                   post_content_type,
+	                   post_header,
+	                   &p->context,
+	                   d->fd));
 	check(tmpmap(d->fd, &d->data));
 
 	debug("Downloaded %s to fd=%d", url, d->fd);
 	return RESULT_OK;
+}
+
+static WARN_UNUSED result_t
+http_get(struct youtube_stream *p, struct downloaded *d, const char *url)
+{
+	return http_post(p, d, url, NULL, CONTENT_TYPE_UNSET, NULL);
 }
 
 static void
@@ -246,7 +257,7 @@ youtube_stream_setup_sabr(struct youtube_stream *p,
 	js.fd = tmpfd_early[1];   /* takes ownership */
 	json.fd = tmpfd_early[2]; /* takes ownership */
 
-	check(download_and_mmap_tmpfd(p, &html, start_url, NULL, NULL));
+	check(http_get(p, &html, start_url));
 
 	struct string_view basejs_path = {0};
 	check(find_base_js_url(&html.data, &basejs_path));
@@ -259,7 +270,7 @@ youtube_stream_setup_sabr(struct youtube_stream *p,
 	check_if(rc < 0, ERR_JS_BASEJS_URL_ALLOC);
 	debug("Got base.js URL: %s", target_js);
 
-	check(download_and_mmap_tmpfd(p, &js, target_js, NULL, NULL));
+	check(http_get(p, &js, target_js));
 
 	long long int timestamp = 0;
 	check(find_js_timestamp(&js.data, &timestamp));
@@ -273,11 +284,11 @@ youtube_stream_setup_sabr(struct youtube_stream *p,
 	char *header __attribute__((cleanup(str_free))) = NULL;
 	check(make_http_header_visitor_id(p->visitor_data, &header));
 
-	const struct string_view ipost = {
+	const struct string_view body = {
 		.data = innertube_post,
 		.sz = strlen(innertube_post),
 	};
-	check(download_and_mmap_tmpfd(p, &json, INNERTUBE_URI, &ipost, header));
+	check(http_post(p, &json, INNERTUBE, &body, CONTENT_TYPE_JSON, header));
 
 	struct string_view playback_config = {0};
 	check(find_playback_config(&json.data, &playback_config));
@@ -347,12 +358,12 @@ youtube_stream_setup(struct youtube_stream *p,
 	                                tmpfd_early,
 	                                &stream));
 
-	char *to_poll __attribute__((cleanup(str_free))) = NULL;
+	char *url __attribute__((cleanup(str_free))) = NULL;
 	{
 		ada_string tmp = ada_get_href(p->url);
-		to_poll = strndup(tmp.data, tmp.length);
+		url = strndup(tmp.data, tmp.length);
 	}
-	check_if(to_poll == NULL, ERR_JS_SABR_URL_ALLOC);
+	check_if(url == NULL, ERR_JS_SABR_URL_ALLOC);
 
 	do {
 		char *sabr_post __attribute__((cleanup(str_free))) = NULL;
@@ -363,8 +374,8 @@ youtube_stream_setup(struct youtube_stream *p,
 			.data = sabr_post,
 			.sz = sabr_post_sz,
 		};
-		check(download_and_mmap_tmpfd(p, &ump, to_poll, &v, NULL));
-		check(protocol_parse_response(stream, &ump.data, &to_poll));
+		check(http_post(p, &ump, url, &v, CONTENT_TYPE_PROTOBUF, NULL));
+		check(protocol_parse_response(stream, &ump.data, &url));
 
 		check(tmptruncate(ump.fd, &ump.data));
 	} while (protocol_at(stream) < protocol_ends_at(stream));
