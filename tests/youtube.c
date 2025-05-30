@@ -9,10 +9,8 @@
 #include <unistd.h>
 
 static const char FAKE_URL[] = "https://a.test/watch?v=FOOBAR";
-static const char FAKE_HTML_RESPONSE[] =
-	"\"/s/player/foobar/base.js\"\n"
-	"\"serverAbrStreamingUrl\":\" https://a.test/sabr?n=aaa\"\n"
-	"\"videoPlaybackUstreamerConfig\": \"Zm9vYmFyCg==\"";
+static const char PATH_WANTS_JSON_RESPONSE[] = "/youtubei/v1/player";
+static const char FAKE_HTML_RESPONSE[] = "\"/s/player/foobar/base.js\"\n";
 static const char FAKE_JS_RESPONSE[] =
 	"'use strict';var zzz=666666,aaa,bbb,ccc,ddd,eee,fff,ggg,hhh;"
 	"{signatureTimestamp:12345}"
@@ -22,6 +20,9 @@ static const char FAKE_JS_RESPONSE[] =
 	"if (typeof mmm === \"undefined\") { return \"FAIL_MAGIC_TYPEOF\"; }"
 	"b=[a.toUpperCase()]; return b.join(\"\")"
 	"};\nnext_global=0";
+static const char FAKE_JSON_RESPONSE[] =
+	"\"serverAbrStreamingUrl\": \"https://a.test/sabr?n=aaa\"\n"
+	"\"videoPlaybackUstreamerConfig\": \"Zm9vYmFyCg==\"";
 
 static const char *(*test_request_path_to_response)(const char *) = NULL;
 
@@ -43,6 +44,8 @@ url_simulate(const char *path)
 		to_write = FAKE_HTML_RESPONSE;
 	} else if (strstr(path, "/base.js")) {
 		to_write = FAKE_JS_RESPONSE;
+	} else if (strstr(path, PATH_WANTS_JSON_RESPONSE)) {
+		to_write = FAKE_JSON_RESPONSE;
 	} else if (strstr(path, "/sabr")) {
 		to_write = "\1\1\1"; /* return an empty-ish UMP response */
 	}
@@ -140,6 +143,7 @@ stream_setup_with_null_ops(void)
 	ASSERT(stream);
 
 	auto_result err = youtube_stream_setup(stream, &NULLOP, FAKE_URL, OFD);
+	debug("Got err: %s", result_to_str(err));
 	ASSERT_EQ(OK, err.err);
 
 	youtube_stream_cleanup(stream);
@@ -180,11 +184,10 @@ SUITE(stream_setup_target_url_variations)
 static WARN_UNUSED const char *
 test_request_n_param_pos_middle(const char *path)
 {
-	if (path == NULL || NULL == strstr(FAKE_URL, path)) {
+	if (NULL == strstr(path, PATH_WANTS_JSON_RESPONSE)) {
 		return NULL;
 	}
-	return "\"/s/player/foobar/base.js\"\n"
-	       "\"serverAbrStreamingUrl\": \"https://a.test/"
+	return "\"serverAbrStreamingUrl\": \"https://a.test/"
 	       "sabr?first=foo&n=aaa&last=bar\"\n"
 	       "\"videoPlaybackUstreamerConfig\": \"Zm9vYmFyCg==\"";
 }
@@ -192,11 +195,10 @@ test_request_n_param_pos_middle(const char *path)
 static WARN_UNUSED const char *
 test_request_n_param_pos_first(const char *path)
 {
-	if (path == NULL || NULL == strstr(FAKE_URL, path)) {
+	if (NULL == strstr(path, PATH_WANTS_JSON_RESPONSE)) {
 		return NULL;
 	}
-	return "\"/s/player/foobar/base.js\"\n"
-	       "\"serverAbrStreamingUrl\": \"https://a.test/"
+	return "\"serverAbrStreamingUrl\": \"https://a.test/"
 	       "sabr?n=aaa&second=foo&third=bar\"\n"
 	       "\"videoPlaybackUstreamerConfig\": \"Zm9vYmFyCg==\"";
 }
@@ -204,11 +206,10 @@ test_request_n_param_pos_first(const char *path)
 static WARN_UNUSED const char *
 test_request_n_param_pos_last(const char *path)
 {
-	if (path == NULL || NULL == strstr(FAKE_URL, path)) {
+	if (NULL == strstr(path, PATH_WANTS_JSON_RESPONSE)) {
 		return NULL;
 	}
-	return "\"/s/player/foobar/base.js\"\n"
-	       "\"serverAbrStreamingUrl\": \"https://a.test/"
+	return "\"serverAbrStreamingUrl\": \"https://a.test/"
 	       "sabr?first=foo&second=bar&n=aaa\"\n"
 	       "\"videoPlaybackUstreamerConfig\": \"Zm9vYmFyCg==\"";
 }
@@ -230,11 +231,10 @@ SUITE(stream_setup_n_param_positions)
 static WARN_UNUSED const char *
 test_request_n_param_missing(const char *path)
 {
-	if (path == NULL || NULL == strstr(FAKE_URL, path)) {
+	if (NULL == strstr(path, PATH_WANTS_JSON_RESPONSE)) {
 		return NULL;
 	}
-	return "\"/s/player/foobar/base.js\"\n"
-	       "\"serverAbrStreamingUrl\": \"https://a.test/sabr?x=y\"\n"
+	return "\"serverAbrStreamingUrl\": \"https://a.test/sabr?x=y\"\n"
 	       "\"videoPlaybackUstreamerConfig\": \"Zm9vYmFyCg==\"";
 }
 
@@ -257,11 +257,10 @@ stream_setup_edge_cases_n_param_missing(void)
 static WARN_UNUSED const char *
 test_request_invalid_url(const char *path)
 {
-	if (path == NULL || NULL == strstr(FAKE_URL, path)) {
+	if (NULL == strstr(path, PATH_WANTS_JSON_RESPONSE)) {
 		return NULL;
 	}
-	return "\"/s/player/foobar/base.js\"\n"
-	       "\"serverAbrStreamingUrl\": \"!@#$%^&*()\"\n"
+	return "\"serverAbrStreamingUrl\": \"!@#$%^&*()\"\n"
 	       "\"videoPlaybackUstreamerConfig\": \"Zm9vYmFyCg==\"";
 }
 
@@ -284,11 +283,10 @@ stream_setup_edge_cases_invalid_url(void)
 static WARN_UNUSED const char *
 test_request_double_encoded_ampersands(const char *path)
 {
-	if (path == NULL || NULL == strstr(FAKE_URL, path)) {
+	if (NULL == strstr(path, PATH_WANTS_JSON_RESPONSE)) {
 		return NULL;
 	}
-	return "\"/s/player/foobar/base.js\"\n"
-	       "\"serverAbrStreamingUrl\": \"https://a.test/"
+	return "\"serverAbrStreamingUrl\": \"https://a.test/"
 	       "sabr?first=ampersand\\u0026n=aaa\\u0026last=ampersand\"\n"
 	       "\"videoPlaybackUstreamerConfig\": \"Zm9vYmFyCg==\"";
 }

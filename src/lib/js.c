@@ -144,10 +144,10 @@ find_base_js_url(const struct string_view *html, struct string_view *basejs)
 }
 
 result_t
-find_sabr_url(const struct string_view *html, struct string_view *sabr)
+find_sabr_url(const struct string_view *json, struct string_view *sabr)
 {
 	check(re_capture("\"serverAbrStreamingUrl\": \"([^\"]+)\"",
-	                 html,
+	                 json,
 	                 sabr));
 	if (sabr->data == NULL) {
 		return make_result(ERR_JS_SABR_URL_FIND);
@@ -158,10 +158,10 @@ find_sabr_url(const struct string_view *html, struct string_view *sabr)
 }
 
 result_t
-find_playback_config(const struct string_view *html, struct string_view *config)
+find_playback_config(const struct string_view *json, struct string_view *config)
 {
 	check(re_capture("\"videoPlaybackUstreamerConfig\": \"([^\"]+)\"",
-	                 html,
+	                 json,
 	                 config));
 	if (config->data == NULL) {
 		return make_result(ERR_JS_PLAYBACK_CONFIG_FIND);
