@@ -7,6 +7,7 @@
 #include "sys/array.h"
 #include "sys/debug.h"
 #include "sys/tmpfile.h"
+#include "sys/write.h"
 
 #include <ada_c.h>
 #include <assert.h>
@@ -68,18 +69,12 @@ youtube_stream_cleanup(struct youtube_stream *p)
 	free(p);
 }
 
-static void
-youtube_stream_valid(struct youtube_stream *p)
-{
-	assert(ada_is_valid(p->url));
-}
-
 result_t
 youtube_stream_visitor(struct youtube_stream *p,
                        void (*visit)(const char *, size_t, void *),
                        void *userdata)
 {
-	youtube_stream_valid(p);
+	assert(ada_is_valid(p->url));
 	ada_string s = ada_get_href(p->url);
 	visit(s.data, s.length, userdata);
 	return RESULT_OK;
