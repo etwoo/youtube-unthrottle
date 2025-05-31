@@ -568,14 +568,6 @@ ump_parse_media_header(struct protocol_state *p,
                        bool *skip_media_blobs_until_next)
 {
 	set_header_media_type(p, header->header_id, header->itag);
-	if (header->has_sequence_number &&
-	    header->sequence_number <=
-	            get_sequence_number_cursor(p, header->header_id)) {
-		debug("Skipping repeated seq=%" PRIi64,
-		      header->sequence_number);
-		*skip_media_blobs_until_next = true;
-		return;
-	}
 
 	if (header->has_is_init_seg && header->is_init_seg) {
 		if (is_header_written(p, header->header_id)) {
@@ -586,6 +578,15 @@ ump_parse_media_header(struct protocol_state *p,
 		} else {
 			set_header_written(p, header->header_id);
 		}
+	}
+
+	if (header->has_sequence_number &&
+	    header->sequence_number <=
+	            get_sequence_number_cursor(p, header->header_id)) {
+		debug("Skipping repeated seq=%" PRIi64,
+		      header->sequence_number);
+		*skip_media_blobs_until_next = true;
+		return;
 	}
 
 	debug("Handling new seq=%" PRIi64 ", greatest=%" PRIi64,
