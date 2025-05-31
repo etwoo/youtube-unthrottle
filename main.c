@@ -96,7 +96,7 @@ get_output_fd(const char *path)
 static void
 close_output_fd(int fd)
 {
-	if (close(fd) < 0) {
+	if (fd > STDERR_FILENO && close(fd) < 0) {
 		to_stderr("Error closing output: %s", strerror(errno));
 	}
 }
