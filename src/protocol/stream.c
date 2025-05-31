@@ -39,7 +39,7 @@
  * Current heuristic for detecting an unexpected end-of-stream: UMP responses
  * under this condition always contain exactly 71 bytes.
  */
-static const size_t END_OF_STREAM_SZ = 71;
+static const size_t END_OF_STREAM_SZ = 71; // TODO: adjust or remove?
 
 static void
 str_free(char **strp)
