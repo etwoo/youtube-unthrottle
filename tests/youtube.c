@@ -114,7 +114,7 @@ stream_setup_with_redirected_network_io(const char *(*custom_fn)(const char *),
 	auto_result err = youtube_stream_setup(stream, &NOOP, FAKE_URL, OFD);
 	test_request_path_to_response = NULL;
 
-	ASSERT_EQ(OK, err.err);
+	ASSERT_EQ(ERR_YOUTUBE_EARLY_END_STREAM, err.err);
 
 	struct check_url_state cus = {
 		.got_correct_urls = true,
@@ -143,7 +143,7 @@ stream_setup_with_null_ops(void)
 	ASSERT(stream);
 
 	auto_result err = youtube_stream_setup(stream, &NULLOP, FAKE_URL, OFD);
-	ASSERT_EQ(OK, err.err);
+	ASSERT_EQ(ERR_YOUTUBE_EARLY_END_STREAM, err.err);
 
 	youtube_stream_cleanup(stream);
 	PASS();

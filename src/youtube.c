@@ -384,5 +384,6 @@ youtube_stream_setup(struct youtube_stream *p,
 		check(ops->after_inet());
 	}
 
+	check_if(protocol_ends_at(stream) == 0, ERR_YOUTUBE_EARLY_END_STREAM);
 	return RESULT_OK;
 }

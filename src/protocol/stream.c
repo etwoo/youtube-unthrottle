@@ -35,12 +35,6 @@
 #define ITAG_AUDIO 251
 #define ITAG_VIDEO 299
 
-/*
- * Current heuristic for detecting an unexpected end-of-stream: UMP responses
- * under this condition always contain exactly 71 bytes.
- */
-static const size_t END_OF_STREAM_SZ = 71; // TODO: adjust or remove?
-
 static void
 str_free(char **strp)
 {
@@ -736,7 +730,6 @@ ump_parse(struct protocol_state *p,
           char **target_url)
 {
 	debug("Got UMP response of sz=%zu", ump->sz);
-	check_if(ump->sz == END_OF_STREAM_SZ, ERR_PROTOCOL_EARLY_END_OF_STREAM);
 
 	size_t cursor = 0; /* position within UMP payload */
 	bool skip = false; /* whether to skip certain UMP sections */

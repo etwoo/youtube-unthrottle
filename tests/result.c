@@ -77,7 +77,6 @@ print_to_str_each_enum_value(void)
 	ASSERT_IN(make(ERR_PROTOCOL_STATE_ALLOC), CANNOT_ALLOC);
 	ASSERT_IN(make(ERR_PROTOCOL_STATE_BASE64_DECODE), "Error decoding");
 	ASSERT_IN(make(ERR_PROTOCOL_SABR_POST_BODY_ALLOC), CANNOT_ALLOC);
-	ASSERT_IN(make(ERR_PROTOCOL_EARLY_END_OF_STREAM), "Media stream ended");
 	ASSERT_IN(make_n(ERR_PROTOCOL_VARINT_READ_PRE),
 	          "UMP varint read fails precondition");
 	ASSERT_IN(make_n(ERR_PROTOCOL_VARINT_READ_POST),
@@ -151,6 +150,7 @@ print_to_str_each_enum_value(void)
 	ASSERT_IN(make(ERR_YOUTUBE_N_PARAM_QUERY_ALLOC), CANNOT_ALLOC);
 	ASSERT_IN(make_s(ERR_YOUTUBE_N_PARAM_FIND_IN_QUERY), "No n-parameter");
 	ASSERT_IN(make(ERR_YOUTUBE_VISITOR_DATA_HEADER_ALLOC), CANNOT_ALLOC);
+	ASSERT_IN(make(ERR_YOUTUBE_EARLY_END_STREAM), "Media stream ended");
 	PASS();
 }
 
