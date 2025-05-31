@@ -483,6 +483,7 @@ SUITE(protocol_parse)
 	RUN_TEST(protocol_init_base64_decode_negative);
 	RUN_TEST(protocol_init_base64_decode_positive);
 	RUN_TEST(protocol_parse_response_media_header_and_blob);
+	// TODO: add testcase for media header + is_init_seg skipping
 	RUN_TEST(protocol_parse_response_next_request_policy);
 	RUN_TEST(protocol_parse_response_format_initialization_metadata);
 	RUN_TEST(protocol_parse_response_sabr_redirect);
