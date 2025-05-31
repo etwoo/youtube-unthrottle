@@ -171,6 +171,7 @@ debug_protobuf_fmt_init(const VideoStreaming__FormatInitializationMetadata *fmt)
 struct protocol_state {
 	int32_t total_duration;
 	int outputs[2];
+	bool header_written[2];
 	int header_map[UCHAR_MAX + 1]; /* maps header_id number to itag */
 	VideoStreaming__ClientAbrState abr_state;
 	VideoStreaming__StreamerContext__ClientInfo info;
@@ -266,6 +267,12 @@ get_fd_for_header(const struct protocol_state *p, unsigned char header_id)
 	return p->outputs[get_index_of(p, header_id)];
 }
 
+static WARN_UNUSED bool
+is_header_written(const struct protocol_state *p, unsigned char header_id)
+{
+	return p->header_written[get_index_of(p, header_id)];
+}
+
 static WARN_UNUSED int64_t
 get_sequence_number_cursor(const struct protocol_state *p,
                            unsigned char header_id)
@@ -283,6 +290,12 @@ set_header_media_type(struct protocol_state *p,
 	p->header_map[header_id] = itag;
 	const int fd = get_fd_for_header(p, header_id);
 	debug("Map header_id=%u to fd=%d", header_id, fd);
+}
+
+static void
+set_header_written(struct protocol_state *p, unsigned char header_id)
+{
+	p->header_written[get_index_of(p, header_id)] = true;
 }
 
 static void
@@ -378,6 +391,9 @@ protocol_init(const struct string_view *proof_of_origin,
 
 	p->outputs[0] = outputs[0];
 	p->outputs[1] = outputs[1];
+
+	p->header_written[0] = false;
+	p->header_written[1] = false;
 
 	protocol_init_members(p);
 
@@ -559,6 +575,17 @@ ump_parse_media_header(struct protocol_state *p,
 		      header->sequence_number);
 		*skip_media_blobs_until_next = true;
 		return;
+	}
+
+	if (header->has_is_init_seg && header->is_init_seg) {
+		if (is_header_written(p, header->header_id)) {
+			debug("Skipping repeated init seg for itag=%d",
+			      header->itag);
+			*skip_media_blobs_until_next = true;
+			return;
+		} else {
+			set_header_written(p, header->header_id);
+		}
 	}
 
 	debug("Handling new seq=%" PRIi64 ", greatest=%" PRIi64,
