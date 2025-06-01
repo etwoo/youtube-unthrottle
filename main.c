@@ -104,7 +104,7 @@ get_output_fd(in_port_t port, int *out, size_t out_sz)
 
 	int rc = -1;
 	const int on = 1;
-	const int maxbuf = 268435456; /* 256MB */
+	const int maxbuf = 33554432; /* 32MB */
 
 	rc = setsockopt(sfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
 	if (rc < 0) {
