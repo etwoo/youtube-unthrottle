@@ -13,6 +13,7 @@
 #include "sandbox.h"
 #include "youtube.h"
 
+#include <arpa/inet.h>
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>  /* for open() */
@@ -22,6 +23,7 @@
 #include <stdio.h>
 #include <string.h>    /* for strerror() */
 #include <sys/param.h> /* for MAX() */
+#include <sys/socket.h>
 #include <sysexits.h>
 #include <unistd.h> /* for close() */
 
@@ -83,21 +85,73 @@ after_inet(void)
 	return sandbox_only_io();
 }
 
-static __attribute__((warn_unused_result)) int
-get_output_fd(const char *path)
-{
-	int fd = open(path, O_CREAT | O_TRUNC | O_WRONLY, 0644);
-	if (fd < 0) {
-		to_stderr("Can't open %s: %s", path, strerror(errno));
-	}
-	return fd;
-}
-
 static void
 close_output_fd(int fd)
 {
 	if (fd > STDERR_FILENO && close(fd) < 0) {
 		to_stderr("Error closing output: %s", strerror(errno));
+	}
+}
+
+static void
+get_output_fd(in_port_t port, int *out, size_t out_sz)
+{
+	int sfd = socket(AF_INET, SOCK_STREAM, 0);
+	if (sfd < 0) {
+		to_stderr("Can't create socket %d: %s", port, strerror(errno));
+		goto cleanup;
+	}
+
+	int rc = -1;
+	const int on = 1;
+
+	rc = setsockopt(sfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
+	if (rc < 0) {
+		to_stderr("Can't set SO_REUSEADDR for %d: %s",
+		          port, strerror(errno));
+		goto cleanup;
+	}
+
+	rc = setsockopt(sfd, SOL_SOCKET, SO_REUSEPORT, &on, sizeof(on));
+	if (rc < 0) {
+		to_stderr("Can't set SO_REUSEPORT for %d: %s",
+		          port, strerror(errno));
+		goto cleanup;
+	}
+
+	struct sockaddr_in sa;
+	memset(&sa, 0, sizeof(sa));
+	sa.sin_family = AF_INET;
+	sa.sin_port = htons(port);
+	sa.sin_addr.s_addr = htonl(INADDR_ANY);
+
+	rc = bind(sfd, (struct sockaddr *)&sa, sizeof(sa));
+	if (rc < 0) {
+		to_stderr("Can't bind to port %d: %s", port, strerror(errno));
+		goto cleanup;
+	}
+
+	rc = listen(sfd, /* backlog */ 10);
+	if (rc < 0) {
+		to_stderr("Can't listen on port %d: %s", port, strerror(errno));
+		goto cleanup;
+	}
+
+	struct sockaddr_storage their_addr;
+
+	for (size_t i = 0; i < out_sz; ++i) {
+		socklen_t their_sz = sizeof(their_addr);
+		int fd = accept(sfd, (struct sockaddr *)&their_addr, &their_sz);
+		if (fd < 0) {
+			to_stderr("Can't accept %d: %s", port, strerror(errno));
+			goto cleanup;
+		}
+		out[i] = fd;
+	}
+
+cleanup:
+	if (sfd >= 0) {
+		close_output_fd(sfd); /* done accepting connections */
 	}
 }
 
@@ -181,9 +235,11 @@ main(int argc, char *argv[])
 			to_stderr("Missing --visitor-data value");
 		} else {
 			int output[2] = {
-				get_output_fd("audio.out"),
-				get_output_fd("video.out"),
+				-1,
+				-1,
 			};
+			get_output_fd(20000, output, 2);
+
 			youtube_handle_t stream = NULL;
 			rc = result_to_status(unthrottle(argv[optind],
 			                                 proof_of_origin,
@@ -198,6 +254,7 @@ main(int argc, char *argv[])
 				to_stderr("Can't alloc stream");
 				rc = EX_OSERR;
 			}
+
 			youtube_stream_cleanup(stream);
 			youtube_global_cleanup();
 			close_output_fd(output[0]);
