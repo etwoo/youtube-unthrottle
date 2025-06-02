@@ -289,7 +289,6 @@ youtube_stream_setup_sabr(struct youtube_stream *p,
 		.sz = strlen(innertube_post),
 	};
 	check(http_post(p, &json, INNERTUBE, &body, CONTENT_TYPE_JSON, header));
-	debug("Got Innertube JSON: %.*s", (int)json.data.sz, json.data.data);
 
 	long long int itag = 0;
 	check(find_itag_video(&json.data, &itag));
