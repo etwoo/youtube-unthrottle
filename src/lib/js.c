@@ -175,9 +175,11 @@ result_t
 find_itag_video(const struct string_view *json, long long int *value)
 {
 	struct string_view itag = {0};
-	check(re_capture("[\\n\\r][ ]{8}\"itag\": ([0-9]+),"
-	                 "(?:[\\n\\r][ ]{8,10}(?:},|\"[a-zA-Z]+\": .*,?))*"
-	                 "[\\n\\r][ ]{8}\"quality\": \"hd1080\"",
+	check(re_capture("\\n[ ]{8}\"itag\": ([0-9]+),"
+	                 "(?:" /* non-capturing group: (?:...) */
+	                 "\\n[ ]{8,10}(?:}|\"[a-zA-Z]+\": .+),?"
+	                 ")*" /* zero or more matches of non-capturing group */
+	                 "\\n[ ]{8}\"quality\": \"hd1080\"",
 	                 json,
 	                 &itag));
 	if (itag.data == NULL) {
