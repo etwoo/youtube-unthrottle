@@ -213,10 +213,18 @@ find_itag_video_positive_simple(void)
 {
 	const struct string_view json = MAKE_TEST_STRING(
 		"\n        \"itag\": 400,"
+		"\n        \"initRange\": {"
+		"\n          \"start\": \"1\","
+		"\n          \"end\": \"100\""
+		"\n        },"
 		"\n        \"quality\": \"medium\","
 		"\n      },"
 		"\n      {"
 		"\n        \"itag\": 299,"
+		"\n        \"initRange\": {"
+		"\n          \"start\": \"2\","
+		"\n          \"end\": \"200\""
+		"\n        },"
 		"\n        \"quality\": \"hd1080\",");
 
 	long long int itag_video = 0;
