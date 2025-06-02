@@ -211,7 +211,8 @@ protocol_init_members(struct protocol_state *p, long long int itag_video)
 
 	misc__format_id__init(&p->selected_video_format);
 	p->selected_video_format.has_itag = true;
-	p->selected_video_format.itag = itag_video;
+	assert(itag_video < INT32_MAX);
+	p->selected_video_format.itag = (int32_t)itag_video;
 
 	p->selected_format_ids[0] = &p->selected_audio_format;
 	p->selected_format_ids[1] = &p->selected_video_format;
