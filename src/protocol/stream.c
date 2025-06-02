@@ -581,33 +581,14 @@ ump_parse_media_header(struct protocol_state *p,
 		}
 	}
 
-#if 0
 	if (header->has_sequence_number &&
 	    header->sequence_number <=
 	            get_sequence_number_cursor(p, header->header_id)) {
 		debug("Skipping repeated seq=%" PRIi64,
 		      header->sequence_number);
 		*skip_media_blobs_until_next = true;
-		//
-		// ^^^ TODO: with this commented out, i don't see as many file
-		// errors at the beginning of:
-		//
-		// https://www.youtube.com/watch?v=Ik4zBBRqSmI (saffitz pasta)
-		//
-		// ... BUT the audio desyncs from video, reverses, etc in the
-		// first 30s, seemingly because of issues in the audio stream
-		// (video looks fine other than slowing down to try to sync
-		// with bad audio)
-		//
-		// with this code enabled, the first >30s of the video plays
-		// normally, without the intro music skipping around and
-		// desyncing from the video, but there are tons of video
-		// parsing errors, presumably as mpv caches ahead and hits
-		// errors on later parts of the video stream
-		//
 		return;
 	}
-#endif
 
 	debug("Handling new seq=%" PRIi64 ", greatest=%" PRIi64,
 	      header->sequence_number,
