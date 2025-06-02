@@ -33,7 +33,6 @@
 #include "video_streaming/video_playback_abr_request.pb-c.h"
 
 #define ITAG_AUDIO 251
-#define ITAG_VIDEO 299
 
 static void
 str_free(char **strp)
@@ -186,7 +185,7 @@ struct protocol_state {
 };
 
 static void
-protocol_init_members(struct protocol_state *p)
+protocol_init_members(struct protocol_state *p, long long int itag_video)
 {
 	p->total_duration = 0;
 
@@ -212,7 +211,7 @@ protocol_init_members(struct protocol_state *p)
 
 	misc__format_id__init(&p->selected_video_format);
 	p->selected_video_format.has_itag = true;
-	p->selected_video_format.itag = ITAG_VIDEO;
+	p->selected_video_format.itag = itag_video;
 
 	p->selected_format_ids[0] = &p->selected_audio_format;
 	p->selected_format_ids[1] = &p->selected_video_format;
@@ -380,6 +379,7 @@ base64_decode(const struct string_view *in, struct ProtobufCBinaryData *out)
 result_t
 protocol_init(const struct string_view *proof_of_origin,
               const struct string_view *playback_config,
+              long long int itag_video,
               int outputs[2],
               struct protocol_state **out)
 {
@@ -395,7 +395,7 @@ protocol_init(const struct string_view *proof_of_origin,
 	p->header_written[0] = false;
 	p->header_written[1] = false;
 
-	protocol_init_members(p);
+	protocol_init_members(p, itag_video);
 
 	check(base64_decode(proof_of_origin, &p->context.po_token));
 	p->context.has_po_token = true;
@@ -796,4 +796,3 @@ protocol_parse_response(struct protocol_state *p,
 }
 
 #undef ITAG_AUDIO
-#undef ITAG_VIDEO

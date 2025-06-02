@@ -289,6 +289,10 @@ youtube_stream_setup_sabr(struct youtube_stream *p,
 		.sz = strlen(innertube_post),
 	};
 	check(http_post(p, &json, INNERTUBE, &body, CONTENT_TYPE_JSON, header));
+	debug("Got Innertube JSON: %.*s", (int)json.data.sz, json.data.data);
+
+	long long int itag = 0;
+	check(find_itag_video(&json.data, &itag));
 
 	struct string_view playback_config = {0};
 	check(find_playback_config(&json.data, &playback_config));
@@ -297,7 +301,7 @@ youtube_stream_setup_sabr(struct youtube_stream *p,
 		.data = p->proof_of_origin,
 		.sz = strlen(p->proof_of_origin),
 	};
-	check(protocol_init(&poo, &playback_config, fd_output, stream));
+	check(protocol_init(&poo, &playback_config, itag, fd_output, stream));
 
 	struct string_view sabr = {0};
 	check(find_sabr_url(&json.data, &sabr));

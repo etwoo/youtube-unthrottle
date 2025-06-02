@@ -11,6 +11,7 @@ typedef struct protocol_state *protocol;
 
 result_t protocol_init(const struct string_view *proof_of_origin,
                        const struct string_view *playback_config,
+                       long long int itag_video,
                        int outputs[2],
                        protocol *out) WARN_UNUSED;
 void protocol_cleanup(protocol stream);

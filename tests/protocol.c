@@ -210,7 +210,7 @@ protocol_init_base64_decode_negative(void)
 
 	protocol p __attribute__((cleanup(protocol_cleanup_p))) = NULL;
 	auto_result err =
-		protocol_init(&invalid_base64, &invalid_base64, fds, &p);
+		protocol_init(&invalid_base64, &invalid_base64, 0, fds, &p);
 	ASSERT_EQ(ERR_PROTOCOL_STATE_BASE64_DECODE, err.err);
 
 	PASS();
@@ -230,7 +230,7 @@ protocol_init_base64_decode_positive(void)
 
 	protocol p __attribute__((cleanup(protocol_cleanup_p))) = NULL;
 	auto_result err =
-		protocol_init(&underscore_to_slash, &dash_to_plus, fds, &p);
+		protocol_init(&underscore_to_slash, &dash_to_plus, 0, fds, &p);
 	ASSERT_EQ(OK, err.err);
 
 	PASS();
@@ -243,7 +243,7 @@ parse_and_get_next(const struct string_view *response,
                    char **url,
                    int *pfd)
 {
-	const struct string_view proof_of_origin = MAKE_TEST_STRING("UE9U");
+	const struct string_view proof = MAKE_TEST_STRING("UE9U");
 	const struct string_view playback = MAKE_TEST_STRING("UExBWUJBQ0s=");
 	int fd = pfd ? *pfd : STDOUT_FILENO;
 	int fds[2] = {
@@ -252,7 +252,7 @@ parse_and_get_next(const struct string_view *response,
 	};
 
 	protocol p __attribute__((cleanup(protocol_cleanup_p))) = NULL;
-	auto_result alloc = protocol_init(&proof_of_origin, &playback, fds, &p);
+	auto_result alloc = protocol_init(&proof, &playback, 299, fds, &p);
 	ASSERT_EQ(OK, alloc.err);
 
 	auto_result parse = protocol_parse_response(p, response, url);

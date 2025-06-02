@@ -109,21 +109,24 @@ get_output_fd(in_port_t port, int *out, size_t out_sz)
 	rc = setsockopt(sfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
 	if (rc < 0) {
 		to_stderr("Can't set SO_REUSEADDR for %d: %s",
-		          port, strerror(errno));
+		          port,
+		          strerror(errno));
 		goto cleanup;
 	}
 
 	rc = setsockopt(sfd, SOL_SOCKET, SO_REUSEPORT, &on, sizeof(on));
 	if (rc < 0) {
 		to_stderr("Can't set SO_REUSEPORT for %d: %s",
-		          port, strerror(errno));
+		          port,
+		          strerror(errno));
 		goto cleanup;
 	}
 
 	rc = setsockopt(sfd, SOL_SOCKET, SO_SNDBUF, &maxbuf, sizeof(maxbuf));
 	if (rc < 0) {
 		to_stderr("Can't set SO_SNDBUF for %d: %s",
-		          port, strerror(errno));
+		          port,
+		          strerror(errno));
 		goto cleanup;
 	}
 

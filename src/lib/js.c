@@ -144,34 +144,6 @@ find_base_js_url(const struct string_view *html, struct string_view *basejs)
 }
 
 result_t
-find_sabr_url(const struct string_view *json, struct string_view *sabr)
-{
-	check(re_capture("\"serverAbrStreamingUrl\": \"([^\"]+)\"",
-	                 json,
-	                 sabr));
-	if (sabr->data == NULL) {
-		return make_result(ERR_JS_SABR_URL_FIND);
-	}
-
-	debug("Parsed SABR URI: %.*s", (int)sabr->sz, sabr->data);
-	return RESULT_OK;
-}
-
-result_t
-find_playback_config(const struct string_view *json, struct string_view *config)
-{
-	check(re_capture("\"videoPlaybackUstreamerConfig\": \"([^\"]+)\"",
-	                 json,
-	                 config));
-	if (config->data == NULL) {
-		return make_result(ERR_JS_PLAYBACK_CONFIG_FIND);
-	}
-
-	debug("Parsed playback config: %.*s", (int)config->sz, config->data);
-	return RESULT_OK;
-}
-
-result_t
 find_js_timestamp(const struct string_view *js, long long int *value)
 {
 	struct string_view ts = {0};
@@ -196,6 +168,67 @@ find_js_timestamp(const struct string_view *js, long long int *value)
 
 	debug("Parsed timestamp %.*s into %lld", (int)ts.sz, ts.data, res);
 	*value = res;
+	return RESULT_OK;
+}
+
+result_t
+find_itag_video(const struct string_view *json, long long int *value)
+{
+	struct string_view itag = {0};
+	check(re_capture("(?s)" /* PCRE2_DOTALL: dot matches newline */
+	                 "\"itag\": ([0-9]+),"
+	                 ".*?" /* lazy (not greedy) quantifier: `*?` */
+	                 "\"quality\": \"hd1080\"",
+	                 json,
+	                 &itag));
+	if (itag.data == NULL) {
+		return make_result(ERR_JS_ITAG_VIDEO_FIND);
+	}
+
+	/*
+	 * strtoll() does not update errno on success, so we must clear it
+	 * explicitly if we want a predictable value.
+	 */
+	errno = 0;
+
+	long long int res = strtoll(itag.data, NULL, 10);
+	if (errno != 0) {
+		return make_result(ERR_JS_ITAG_VIDEO_PARSE_LL,
+		                   errno,
+		                   itag.data,
+		                   itag.sz);
+	}
+
+	debug("Parsed itag %.*s into %lld", (int)itag.sz, itag.data, res);
+	*value = res;
+	return RESULT_OK;
+}
+
+result_t
+find_sabr_url(const struct string_view *json, struct string_view *sabr)
+{
+	check(re_capture("\"serverAbrStreamingUrl\": \"([^\"]+)\"",
+	                 json,
+	                 sabr));
+	if (sabr->data == NULL) {
+		return make_result(ERR_JS_SABR_URL_FIND);
+	}
+
+	debug("Parsed SABR URI: %.*s", (int)sabr->sz, sabr->data);
+	return RESULT_OK;
+}
+
+result_t
+find_playback_config(const struct string_view *json, struct string_view *config)
+{
+	check(re_capture("\"videoPlaybackUstreamerConfig\": \"([^\"]+)\"",
+	                 json,
+	                 config));
+	if (config->data == NULL) {
+		return make_result(ERR_JS_PLAYBACK_CONFIG_FIND);
+	}
+
+	debug("Parsed playback config: %.*s", (int)config->sz, config->data);
 	return RESULT_OK;
 }
 

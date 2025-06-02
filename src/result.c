@@ -156,6 +156,22 @@ result_to_str(result_t r)
 	case ERR_JS_BASEJS_URL_ALLOC:
 		s = strdup("Cannot strndup() base.js URL");
 		break;
+	case ERR_JS_TIMESTAMP_FIND:
+		s = strdup("Cannot find timestamp in base.js");
+		break;
+	case ERR_JS_TIMESTAMP_PARSE_LL:
+		s = my_asprintf("Error in strtoll() on %s: %s",
+		                r.msg,
+		                my_strerror(r));
+		break;
+	case ERR_JS_ITAG_VIDEO_FIND:
+		s = strdup("Cannot find itag in JSON");
+		break;
+	case ERR_JS_ITAG_VIDEO_PARSE_LL:
+		s = my_asprintf("Error in strtoll() on %s: %s",
+		                r.msg,
+		                my_strerror(r));
+		break;
 	case ERR_JS_SABR_URL_FIND:
 		s = strdup("Cannot find SABR URL in JSON document");
 		break;
@@ -164,14 +180,6 @@ result_to_str(result_t r)
 		break;
 	case ERR_JS_PLAYBACK_CONFIG_FIND:
 		s = strdup("Cannot find playback config in JSON document");
-		break;
-	case ERR_JS_TIMESTAMP_FIND:
-		s = strdup("Cannot find timestamp in base.js");
-		break;
-	case ERR_JS_TIMESTAMP_PARSE_LL:
-		s = my_asprintf("Error in strtoll() on %s: %s",
-		                r.msg,
-		                my_strerror(r));
 		break;
 	case ERR_JS_DEOB_FIND_MAGIC_ONE:
 		s = strdup("Cannot find first deobfuscator magic in base.js");
