@@ -164,8 +164,9 @@ find_js_timestamp_positive_simple(void)
 TEST
 find_itag_video_negative_re_pattern(void)
 {
-	const struct string_view json =
-		MAKE_TEST_STRING("{\"itag\": \"foo\",\"quality\": \"hd1080\"}");
+	const struct string_view json = MAKE_TEST_STRING(
+		"\n        \"itag\": \"foo\","
+		"\n        \"quality\": \"hd1080\",");
 
 	long long int itag_video = -1;
 	auto_result err = find_itag_video(&json, &itag_video);
@@ -178,9 +179,9 @@ find_itag_video_negative_re_pattern(void)
 TEST
 find_itag_video_negative_strtoll_erange(void)
 {
-	const struct string_view json =
-		MAKE_TEST_STRING("{\"itag\": 9223372036854775808,"
-		                 "\"quality\": \"hd1080\"}");
+	const struct string_view json = MAKE_TEST_STRING(
+		"\n        \"itag\": 9223372036854775808,"
+		"\n        \"quality\": \"hd1080\",");
 
 	long long int itag_video = -1;
 	auto_result err = find_itag_video(&json, &itag_video);
@@ -195,9 +196,9 @@ find_itag_video_negative_strtoll_erange(void)
 TEST
 find_itag_video_positive_strtoll_max(void)
 {
-	const struct string_view json =
-		MAKE_TEST_STRING("{\"itag\": 9223372036854775807,"
-		                 "\"quality\": \"hd1080\"}");
+	const struct string_view json = MAKE_TEST_STRING(
+		"\n        \"itag\": 9223372036854775807,"
+		"\n        \"quality\": \"hd1080\",");
 
 	long long int itag_video = 0;
 	auto_result err = find_itag_video(&json, &itag_video);
@@ -210,8 +211,13 @@ find_itag_video_positive_strtoll_max(void)
 TEST
 find_itag_video_positive_simple(void)
 {
-	const struct string_view json =
-		MAKE_TEST_STRING("{\"itag\": 299,\"quality\": \"hd1080\"}");
+	const struct string_view json = MAKE_TEST_STRING(
+		"\n        \"itag\": 400,"
+		"\n        \"quality\": \"medium\","
+		"\n      },"
+		"\n      {"
+		"\n        \"itag\": 299,"
+		"\n        \"quality\": \"hd1080\",");
 
 	long long int itag_video = 0;
 	auto_result err = find_itag_video(&json, &itag_video);
