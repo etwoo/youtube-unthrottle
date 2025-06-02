@@ -88,7 +88,7 @@ after_inet(void)
 static void
 close_output_fd(int fd)
 {
-	if (fd > STDERR_FILENO && close(fd) < 0) {
+	if (fd >= 0 && close(fd) < 0) {
 		to_stderr("Error closing output: %s", strerror(errno));
 	}
 }
