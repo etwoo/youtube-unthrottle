@@ -162,6 +162,66 @@ find_js_timestamp_positive_simple(void)
 }
 
 TEST
+find_itag_video_negative_re_pattern(void)
+{
+	const struct string_view json =
+		MAKE_TEST_STRING("{\"itag\": \"foo\",\"quality\": \"hd1080\"}");
+
+	long long int itag_video = -1;
+	auto_result err = find_itag_video(&json, &itag_video);
+
+	ASSERT_EQ(ERR_JS_ITAG_VIDEO_FIND, err.err);
+	ASSERT_GT(0, itag_video);
+	PASS();
+}
+
+TEST
+find_itag_video_negative_strtoll_erange(void)
+{
+	const struct string_view json =
+		MAKE_TEST_STRING("{\"itag\": 9223372036854775808,"
+		                 "\"quality\": \"hd1080\"}");
+
+	long long int itag_video = -1;
+	auto_result err = find_itag_video(&json, &itag_video);
+
+	ASSERT_EQ(ERR_JS_ITAG_VIDEO_PARSE_LL, err.err);
+	ASSERT_EQ(ERANGE, err.num);
+	ASSERT_STR_EQ("9223372036854775808", err.msg);
+	ASSERT_GT(0, itag_video);
+	PASS();
+}
+
+TEST
+find_itag_video_positive_strtoll_max(void)
+{
+	const struct string_view json =
+		MAKE_TEST_STRING("{\"itag\": 9223372036854775807,"
+		                 "\"quality\": \"hd1080\"}");
+
+	long long int itag_video = 0;
+	auto_result err = find_itag_video(&json, &itag_video);
+
+	ASSERT_EQ(OK, err.err);
+	ASSERT_EQ(LLONG_MAX, itag_video);
+	PASS();
+}
+
+TEST
+find_itag_video_positive_simple(void)
+{
+	const struct string_view json =
+		MAKE_TEST_STRING("{\"itag\": 299,\"quality\": \"hd1080\"}");
+
+	long long int itag_video = 0;
+	auto_result err = find_itag_video(&json, &itag_video);
+
+	ASSERT_EQ(OK, err.err);
+	ASSERT_EQ(299, itag_video);
+	PASS();
+}
+
+TEST
 find_js_deobfuscator_magic_global_negative_first(void)
 {
 	struct deobfuscator d = {0};
@@ -307,6 +367,10 @@ SUITE(find_with_pcre)
 	RUN_TEST(find_js_timestamp_negative_strtoll_erange);
 	RUN_TEST(find_js_timestamp_positive_strtoll_max);
 	RUN_TEST(find_js_timestamp_positive_simple);
+	RUN_TEST(find_itag_video_negative_re_pattern);
+	RUN_TEST(find_itag_video_negative_strtoll_erange);
+	RUN_TEST(find_itag_video_positive_strtoll_max);
+	RUN_TEST(find_itag_video_positive_simple);
 	RUN_TEST(find_sabr_url_negative);
 	RUN_TEST(find_sabr_url_positive);
 	RUN_TEST(find_playback_config_negative);

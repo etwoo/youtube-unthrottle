@@ -22,7 +22,8 @@ static const char FAKE_JS_RESPONSE[] =
 	"};\nnext_global=0";
 static const char FAKE_JSON_RESPONSE[] =
 	"\"serverAbrStreamingUrl\": \"https://a.test/sabr?n=aaa\"\n"
-	"\"videoPlaybackUstreamerConfig\": \"Zm9vYmFyCg==\"";
+	"\"videoPlaybackUstreamerConfig\": \"Zm9vYmFyCg==\""
+	"\"itag\": 299,\n\"height\": 1080,\n\"quality\": \"hd1080\",\n";
 
 static const char *(*test_request_path_to_response)(const char *) = NULL;
 
@@ -166,7 +167,8 @@ test_request_n_param_pos_middle(const char *path)
 	}
 	return "\"serverAbrStreamingUrl\": \"https://a.test/"
 	       "sabr?first=foo&n=aaa&last=bar\"\n"
-	       "\"videoPlaybackUstreamerConfig\": \"Zm9vYmFyCg==\"";
+	       "\"videoPlaybackUstreamerConfig\": \"Zm9vYmFyCg==\""
+	       "\"itag\": 299,\n\"height\": 1080,\n\"quality\": \"hd1080\",\n";
 }
 
 static WARN_UNUSED const char *
@@ -177,7 +179,8 @@ test_request_n_param_pos_first(const char *path)
 	}
 	return "\"serverAbrStreamingUrl\": \"https://a.test/"
 	       "sabr?n=aaa&second=foo&third=bar\"\n"
-	       "\"videoPlaybackUstreamerConfig\": \"Zm9vYmFyCg==\"";
+	       "\"videoPlaybackUstreamerConfig\": \"Zm9vYmFyCg==\""
+	       "\"itag\": 299,\n\"height\": 1080,\n\"quality\": \"hd1080\",\n";
 }
 
 static WARN_UNUSED const char *
@@ -188,7 +191,8 @@ test_request_n_param_pos_last(const char *path)
 	}
 	return "\"serverAbrStreamingUrl\": \"https://a.test/"
 	       "sabr?first=foo&second=bar&n=aaa\"\n"
-	       "\"videoPlaybackUstreamerConfig\": \"Zm9vYmFyCg==\"";
+	       "\"videoPlaybackUstreamerConfig\": \"Zm9vYmFyCg==\""
+	       "\"itag\": 299,\n\"height\": 1080,\n\"quality\": \"hd1080\",\n";
 }
 
 SUITE(stream_setup_n_param_positions)
@@ -228,7 +232,8 @@ test_request_n_param_missing(const char *path)
 		return NULL;
 	}
 	return "\"serverAbrStreamingUrl\": \"https://a.test/sabr?x=y\"\n"
-	       "\"videoPlaybackUstreamerConfig\": \"Zm9vYmFyCg==\"";
+	       "\"videoPlaybackUstreamerConfig\": \"Zm9vYmFyCg==\""
+	       "\"itag\": 299,\n\"height\": 1080,\n\"quality\": \"hd1080\",\n";
 }
 
 TEST
@@ -254,7 +259,8 @@ test_request_invalid_url(const char *path)
 		return NULL;
 	}
 	return "\"serverAbrStreamingUrl\": \"!@#$%^&*()\"\n"
-	       "\"videoPlaybackUstreamerConfig\": \"Zm9vYmFyCg==\"";
+	       "\"videoPlaybackUstreamerConfig\": \"Zm9vYmFyCg==\""
+	       "\"itag\": 299,\n\"height\": 1080,\n\"quality\": \"hd1080\",\n";
 }
 
 TEST
