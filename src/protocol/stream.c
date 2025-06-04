@@ -586,6 +586,8 @@ ump_parse_media_header(struct protocol_state *p,
 		}
 	}
 
+	// TODO: debug audio sync on https://www.youtube.com/watch?v=Ik4zBBRqSmI
+	// audio makes it further before desyncing, but still fails at ~3m
 	if (header->has_sequence_number &&
 	    header->sequence_number <=
 	            get_sequence_number_cursor(p, header->header_id)) {
