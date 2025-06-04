@@ -582,6 +582,41 @@ ump_parse_media_header(struct protocol_state *p,
 	}
 
 	if (header->has_sequence_number &&
+	    /*
+	     * TODO: figure out audio desync/timestamp issues
+	     *
+	     * on this sample: https://www.youtube.com/watch?v=Ik4zBBRqSmI
+	     *
+	     * ... allowing seq skipping logic to occur at 10 or above causes
+	     * ffmpeg to fail with:
+	     *
+	     *     Error applying bitstream filters to an output packet for
+	     *     stream #0: Invalid data found when processing input
+	     *
+	     * ... so it seems we have to skip repeated seq=[2,4,6,8,9] early
+	     * in the audio stream -- but NOT higher values -- to get something
+	     * that parses
+	     *
+	     * ... but then we still end up with audio desync/rewind at ~1:40
+	     *
+	     * TODO: does correct seq skipping depend on another variable?
+	     *
+	     * one clue: in addition to avoiding the decoding error (above),
+	     * writing both versions of seq=10 also looks strange in the logs!
+	     * in particular, the second version of seq=10 obviously has more
+	     * media blobs within it, as the number of "Wrote media blob"
+	     * messages differs; first version of seq=10 has 5 "Wrote"
+	     * messages, while the second version of seq=10 has 35 (!!!)
+	     *
+	     * ... BUT in the latter case, the 35 media blobs are mostly for a
+	     * DIFFERENT header_id that just so happens to come later in the
+	     * same UMP buffer; this suggests a logic bug, where we should not
+	     * do *skip_media_blobs_until_next = true but rather only skip
+	     * media blobs for the specific header_id marked as a dup seq,
+	     * *NOT* media blobs with different header_id values that just so
+	     * happen to be packed into the same UMP buffer
+	     */
+	    header->sequence_number < 10 &&
 	    header->sequence_number <=
 	            get_sequence_number_cursor(p, header->header_id)) {
 		debug("Skipping repeated seq=%" PRIi64,
