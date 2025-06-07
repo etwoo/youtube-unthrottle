@@ -107,13 +107,9 @@ debug_hexdump_buffer(const char *buf, size_t sz)
 static void
 debug_protobuf_media_header(const VideoStreaming__MediaHeader *header)
 {
-	debug("Got header header_id=%" PRIu32 ", video=%s"
-	      ", itag=%d"
-	      ", xtags=%s"
-	      ", start_range=%" PRIi64
-	      ", is_init_seg=%d"
-	      ", seq=%" PRIi64 ", start_ms=%" PRIi64
-	      ", duration_ms=%" PRIi64
+	debug("Got header header_id=%" PRIu32 ", video=%s, itag=%d, xtags=%s"
+	      ", start_range=%" PRIi64 ", is_init_seg=%d"
+	      ", seq=%" PRIi64 ", start_ms=%" PRIi64 ", duration_ms=%" PRIi64
 	      ", content_length=%" PRIi64 ", time_range.start=%" PRIi64
 	      ", time_range.duration=%" PRIi64
 	      ", time_range.timescale=%" PRIi32,
@@ -145,8 +141,7 @@ debug_protobuf_fmt_init(const VideoStreaming__FormatInitializationMetadata *fmt)
 	      ", itag=%d"
 	      ", duration_ms=%d"
 	      ", end_time_ms=%d"
-	      ", end_segment_number=%" PRIi64
-	      ", init_start=%d"
+	      ", end_segment_number=%" PRIi64 ", init_start=%d"
 	      ", init_end=%d"
 	      ", index_start=%d"
 	      ", index_end=%d",
