@@ -661,7 +661,8 @@ static WARN_UNUSED result_t
 ump_parse_fmt_init(struct protocol_state *p,
                    const VideoStreaming__FormatInitializationMetadata *fmt)
 {
-	if (fmt->format_id->has_itag && fmt->has_end_segment_number) {
+	if (fmt->format_id && fmt->format_id->has_itag &&
+	    fmt->has_end_segment_number) {
 		const size_t idx = fmt->format_id->itag == ITAG_AUDIO ? 0 : 1;
 		p->ends_at[idx] = fmt->end_segment_number;
 		debug("Expecting ends_at=%" PRIi64, p->ends_at[idx]);
