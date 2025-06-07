@@ -172,6 +172,7 @@ struct protocol_state {
 	int outputs[2];
 	bool header_written[2];
 	int header_map[UCHAR_MAX + 1]; /* maps header_id number to itag */
+	bool header_id_latest_seq_is_repeated[UCHAR_MAX + 1];
 	VideoStreaming__ClientAbrState abr_state;
 	VideoStreaming__StreamerContext__ClientInfo info;
 	VideoStreaming__StreamerContext context;
@@ -563,14 +564,10 @@ ump_varint_read(const struct string_view *ump, size_t *pos, uint64_t *value)
 	return RESULT_OK;
 }
 
-static const int SKIP_MEDIA_BLOBS_NONE = 0x00;
-static const int SKIP_MEDIA_BLOBS_AUDIO = 0x01;
-static const int SKIP_MEDIA_BLOBS_VIDEO = 0x02;
-
 static void
 ump_parse_media_header(struct protocol_state *p,
                        const VideoStreaming__MediaHeader *header,
-                       int *skip_media_blobs_until_next)
+                       bool *skip_media_blobs_until_next)
 {
 	set_header_media_type(p, header->header_id, header->itag);
 
@@ -578,8 +575,7 @@ ump_parse_media_header(struct protocol_state *p,
 		if (is_header_written(p, header->header_id)) {
 			debug("Skipping repeated init seg for itag=%d",
 			      header->itag);
-			*skip_media_blobs_until_next |= SKIP_MEDIA_BLOBS_AUDIO;
-			*skip_media_blobs_until_next |= SKIP_MEDIA_BLOBS_VIDEO;
+			*skip_media_blobs_until_next = true;
 			return;
 		} else {
 			set_header_written(p, header->header_id);
@@ -588,15 +584,18 @@ ump_parse_media_header(struct protocol_state *p,
 
 	// TODO: debug audio sync on https://www.youtube.com/watch?v=Ik4zBBRqSmI
 	// audio makes it further before desyncing, but still fails at ~3m
-	if (header->has_sequence_number &&
-	    header->sequence_number <=
-	            get_sequence_number_cursor(p, header->header_id)) {
-		const size_t idx = get_index_of(p, header->header_id);
-		*skip_media_blobs_until_next |= (SKIP_MEDIA_BLOBS_AUDIO << idx);
-		debug("Skipping repeated seq=%" PRIi64 " for itag=%d",
-		      header->sequence_number,
-		      header->itag);
-		return;
+	if (header->has_sequence_number) {
+		int64_t cur = get_sequence_number_cursor(p, header->header_id);
+		p->header_id_latest_seq_is_repeated[header->header_id] =
+			header->sequence_number <= cur;
+		if (p->header_id_latest_seq_is_repeated[header->header_id]) {
+			debug("Skipping repeated seq=%" PRIi64
+			      " for itag=%d, header_id=%" PRIu32,
+			      header->sequence_number,
+			      header->itag,
+			      header->header_id);
+			return;
+		}
 	}
 
 	debug("Handling new seq=%" PRIi64 ", greatest=%" PRIi64,
@@ -669,7 +668,7 @@ ump_parse_part(struct protocol_state *p,
                struct string_view ump, /* note: pass by value */
                char **target_url,
                uint64_t part_type,
-               int *skip_media_blobs_until_next)
+               bool *skip_media_blobs_until_next)
 {
 	VideoStreaming__NextRequestPolicy *pol
 		__attribute__((cleanup(ump_request_policy_free))) = NULL;
@@ -682,7 +681,7 @@ ump_parse_part(struct protocol_state *p,
 
 	switch (part_type) {
 	case 20: /* MEDIA_HEADER */
-		*skip_media_blobs_until_next = SKIP_MEDIA_BLOBS_NONE;
+		*skip_media_blobs_until_next = false;
 		assert(sizeof(uint8_t) == sizeof(ump.data[0]));
 		header = video_streaming__media_header__unpack(
 			NULL,
@@ -702,9 +701,8 @@ ump_parse_part(struct protocol_state *p,
 		check_if(parsed_header_id > UCHAR_MAX,
 		         ERR_PROTOCOL_HEADER_ID_OVERFLOW,
 		         (int)parsed_header_id);
-		const size_t idx = get_index_of(p, parsed_header_id);
-		if (0 != (*skip_media_blobs_until_next &
-		          (SKIP_MEDIA_BLOBS_AUDIO << idx))) {
+		if (*skip_media_blobs_until_next ||
+		    p->header_id_latest_seq_is_repeated[parsed_header_id]) {
 			debug("Skipping media blob with header_id=%" PRIu64,
 			      parsed_header_id);
 		} else {
@@ -723,7 +721,7 @@ ump_parse_part(struct protocol_state *p,
 		break;
 	};
 	case 35: /* NEXT_REQUEST_POLICY */
-		*skip_media_blobs_until_next = SKIP_MEDIA_BLOBS_NONE;
+		*skip_media_blobs_until_next = false;
 		assert(sizeof(uint8_t) == sizeof(ump.data[0]));
 		pol = video_streaming__next_request_policy__unpack(
 			NULL,
@@ -733,7 +731,7 @@ ump_parse_part(struct protocol_state *p,
 		check(ump_parse_cookie(pol, &p->context));
 		break;
 	case 42: /* FORMAT_INITIALIZATION_METADATA */
-		*skip_media_blobs_until_next = SKIP_MEDIA_BLOBS_NONE;
+		*skip_media_blobs_until_next = false;
 		assert(sizeof(uint8_t) == sizeof(ump.data[0]));
 		fmt = video_streaming__format_initialization_metadata__unpack(
 			NULL,
@@ -744,7 +742,7 @@ ump_parse_part(struct protocol_state *p,
 		check(ump_parse_fmt_init(p, fmt));
 		break;
 	case 43: /* SABR_REDIRECT */
-		*skip_media_blobs_until_next = SKIP_MEDIA_BLOBS_NONE;
+		*skip_media_blobs_until_next = false;
 		assert(sizeof(uint8_t) == sizeof(ump.data[0]));
 		redir = video_streaming__sabr_redirect__unpack(
 			NULL,
@@ -757,7 +755,7 @@ ump_parse_part(struct protocol_state *p,
 		*target_url = strdup(redir->url);
 		break;
 	default:
-		*skip_media_blobs_until_next = SKIP_MEDIA_BLOBS_NONE;
+		*skip_media_blobs_until_next = false;
 		break;
 	}
 
@@ -772,7 +770,7 @@ ump_parse(struct protocol_state *p,
 	debug("Got UMP response of sz=%zu", ump->sz);
 
 	size_t cursor = 0; /* position within UMP payload */
-	int skip = SKIP_MEDIA_BLOBS_NONE;
+	bool skip = false; /* whether to skip certain UMP sections */
 
 	while (cursor < ump->sz) {
 		uint64_t part_type = 0;
