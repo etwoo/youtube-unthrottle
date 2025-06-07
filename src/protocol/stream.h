@@ -6,6 +6,7 @@
 #include "sys/string_view.h"
 
 #include <inttypes.h>
+#include <stdbool.h>
 
 typedef struct protocol_state *protocol;
 
@@ -16,8 +17,8 @@ result_t protocol_init(const struct string_view *proof_of_origin,
                        protocol *out) WARN_UNUSED;
 void protocol_cleanup(protocol stream);
 
-int64_t protocol_at(protocol stream) WARN_UNUSED;
-int32_t protocol_ends_at(protocol stream) WARN_UNUSED;
+bool protocol_knows_end(struct protocol_state *p) WARN_UNUSED;
+bool protocol_has_next(struct protocol_state *p) WARN_UNUSED;
 
 result_t protocol_next_request(protocol stream,
                                char **request,

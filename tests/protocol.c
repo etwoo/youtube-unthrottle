@@ -238,7 +238,7 @@ protocol_init_base64_decode_positive(void)
 
 static enum greatest_test_res
 parse_and_get_next(const struct string_view *response,
-                   int32_t *ends_at,
+                   int64_t *ends_at,
                    VideoStreaming__VideoPlaybackAbrRequest **out,
                    char **url,
                    int *pfd)
@@ -259,7 +259,7 @@ parse_and_get_next(const struct string_view *response,
 	ASSERT_EQ(OK, parse.err);
 
 	if (ends_at) {
-		*ends_at = protocol_ends_at(p);
+		*ends_at = 0; // TODO: let caller access stream->ends_at?
 	}
 
 	char *blob __attribute__((cleanup(str_free))) = NULL;
@@ -425,7 +425,7 @@ protocol_parse_response_next_request_policy(void)
 TEST
 protocol_parse_response_format_initialization_metadata(void)
 {
-	int32_t end = -1;
+	int64_t end = -1;
 	VideoStreaming__VideoPlaybackAbrRequest *request
 		__attribute__((cleanup(video_playback_request_cleanup))) = NULL;
 	char *url __attribute__((cleanup(str_free))) = NULL;

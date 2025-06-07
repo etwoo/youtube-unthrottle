@@ -381,12 +381,12 @@ youtube_stream_setup(struct youtube_stream *p,
 		check(protocol_parse_response(stream, &ump.data, &url));
 
 		check(tmptruncate(ump.fd, &ump.data));
-	} while (protocol_at(stream) < protocol_ends_at(stream));
+	} while (protocol_knows_end(stream) && protocol_has_next(stream));
 
 	if (ops && ops->after_inet) {
 		check(ops->after_inet());
 	}
 
-	check_if(protocol_ends_at(stream) == 0, ERR_YOUTUBE_EARLY_END_STREAM);
+	check_if(!protocol_knows_end(stream), ERR_YOUTUBE_EARLY_END_STREAM);
 	return RESULT_OK;
 }

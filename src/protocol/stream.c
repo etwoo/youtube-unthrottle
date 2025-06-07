@@ -110,10 +110,10 @@ debug_protobuf_media_header(const VideoStreaming__MediaHeader *header)
 	debug("Got header header_id=%" PRIu32 ", video=%s"
 	      ", itag=%d"
 	      ", xtags=%s"
-	      ", start_data_range=%d"
+	      ", start_range=%" PRIi64
 	      ", is_init_seg=%d"
-	      ", seq=%" PRIi64 ", start_ms=%d"
-	      ", duration_ms=%d"
+	      ", seq=%" PRIi64 ", start_ms=%" PRIi64
+	      ", duration_ms=%" PRIi64
 	      ", content_length=%" PRIi64 ", time_range.start=%" PRIi64
 	      ", time_range.duration=%" PRIi64
 	      ", time_range.timescale=%" PRIi32,
@@ -121,7 +121,7 @@ debug_protobuf_media_header(const VideoStreaming__MediaHeader *header)
 	      header->video_id,
 	      header->has_itag ? header->itag : -1,
 	      header->xtags,
-	      header->has_start_data_range ? header->start_data_range : -1,
+	      header->has_start_range ? header->start_range : -1,
 	      header->has_is_init_seg ? header->is_init_seg : -1,
 	      header->has_sequence_number ? header->sequence_number : -1,
 	      header->has_start_ms ? header->start_ms : -1,
@@ -143,7 +143,9 @@ debug_protobuf_fmt_init(const VideoStreaming__FormatInitializationMetadata *fmt)
 {
 	debug("Got format video=%s"
 	      ", itag=%d"
-	      ", duration=%d"
+	      ", duration_ms=%d"
+	      ", end_time_ms=%d"
+	      ", end_segment_number=%" PRIi64
 	      ", init_start=%d"
 	      ", init_end=%d"
 	      ", index_start=%d"
@@ -153,6 +155,8 @@ debug_protobuf_fmt_init(const VideoStreaming__FormatInitializationMetadata *fmt)
 	              ? fmt->format_id->itag
 	              : -1,
 	      (fmt->has_duration_ms ? fmt->duration_ms : -1),
+	      (fmt->has_end_time_ms ? fmt->end_time_ms : -1),
+	      (fmt->has_end_segment_number ? fmt->end_segment_number : -1),
 	      (fmt->init_range && fmt->init_range->has_start
 	               ? fmt->init_range->start
 	               : -1),
@@ -168,8 +172,8 @@ debug_protobuf_fmt_init(const VideoStreaming__FormatInitializationMetadata *fmt)
 }
 
 struct protocol_state {
-	int32_t total_duration;
 	int outputs[2];
+	int64_t ends_at[2];
 	bool header_written[2];
 	int header_map[UCHAR_MAX + 1]; /* maps header_id number to itag */
 	bool header_id_latest_seq_is_repeated[UCHAR_MAX + 1];
@@ -188,8 +192,6 @@ struct protocol_state {
 static void
 protocol_init_members(struct protocol_state *p, long long int itag_video)
 {
-	p->total_duration = 0;
-
 	video_streaming__client_abr_state__init(&p->abr_state);
 	p->abr_state.has_last_manual_selected_resolution = true;
 	p->abr_state.last_manual_selected_resolution = 1080;
@@ -394,6 +396,9 @@ protocol_init(const struct string_view *proof_of_origin,
 	p->outputs[0] = outputs[0];
 	p->outputs[1] = outputs[1];
 
+	p->ends_at[0] = 0;
+	p->ends_at[1] = 0;
+
 	p->header_written[0] = false;
 	p->header_written[1] = false;
 
@@ -422,16 +427,18 @@ protocol_cleanup(struct protocol_state *p)
 	}
 }
 
-int64_t
-protocol_at(struct protocol_state *p)
+bool
+protocol_knows_end(struct protocol_state *p)
 {
-	return p->abr_state.player_time_ms;
+	return p->buffered_ranges[0]->end_segment_index > 0 ||
+	       p->buffered_ranges[1]->end_segment_index > 0;
 }
 
-int32_t
-protocol_ends_at(struct protocol_state *p)
+bool
+protocol_has_next(struct protocol_state *p)
 {
-	return p->total_duration;
+	return p->buffered_ranges[0]->end_segment_index <= p->ends_at[0] ||
+	       p->buffered_ranges[1]->end_segment_index <= p->ends_at[1];
 }
 
 result_t
@@ -654,9 +661,10 @@ static WARN_UNUSED result_t
 ump_parse_fmt_init(struct protocol_state *p,
                    const VideoStreaming__FormatInitializationMetadata *fmt)
 {
-	if (fmt->has_duration_ms) {
-		p->total_duration = MAX(p->total_duration, fmt->duration_ms);
-		debug("Current total_duration=%" PRIi32, p->total_duration);
+	if (fmt->format_id->has_itag && fmt->has_end_segment_number) {
+		const size_t idx = fmt->format_id->itag == ITAG_AUDIO ? 0 : 1;
+		p->ends_at[idx] = fmt->end_segment_number;
+		debug("Expecting ends_at=%" PRIi64, p->ends_at[idx]);
 	}
 	return RESULT_OK;
 }

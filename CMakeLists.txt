@@ -12,7 +12,7 @@ include(get_cpm)
 CPMAddPackage(
 	NAME googlevideo
 	GITHUB_REPOSITORY LuanRT/googlevideo
-	GIT_TAG e217d50236486025e8813ed88ec16d15a7a60c89 # 3.0.0
+	GIT_TAG 159237ff92387e9100bd730c925dd737455ebcd3
 	DOWNLOAD_ONLY YES
 )
 
