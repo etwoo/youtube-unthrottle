@@ -279,6 +279,47 @@ parse_and_get_next(const struct string_view *response,
 }
 
 TEST
+protocol_parse_response_media_header_init_seg(void)
+{
+	VideoStreaming__VideoPlaybackAbrRequest *request
+		__attribute__((cleanup(video_playback_request_cleanup))) = NULL;
+	char *url __attribute__((cleanup(str_free))) = NULL;
+
+	const struct string_view response = MAKE_TEST_STRING(
+		"\x14" /* part_type = MEDIA_HEADER */
+		"\x0A" /* part_size = 10 */
+		/* clang-format off */
+		/*
+		 * $ cat /tmp/media_header.txt
+		 * header_id: 2
+		 * itag: 299
+		 * is_init_seg: true
+		 * duration_ms: 10000
+		 * $ cat /tmp/media_header.txt | protoc --proto_path=build/_deps/googlevideo-src/protos --encode=video_streaming.MediaHeader $(find build/_deps -type f -name '*.proto') | hexdump -C
+		 */
+		/* clang-format on */
+		"\x08\x02\x18\xAB\x02\x40\x01\x60\x90\x4E"
+		"\x14" /* part_type = MEDIA_HEADER */
+		"\x0B" /* part_size = 11 */
+		/*
+		 * $ cat /tmp/media_header.txt
+		 * header_id: 2
+		 * itag: 299
+		 * is_init_seg: true
+		 * duration_ms: 100000
+		 */
+		"\x08\x02\x18\xAB\x02\x40\x01\x60\xA0\x8D\x06");
+	CHECK_CALL(parse_and_get_next(&response, NULL, &request, &url, NULL));
+
+	/*
+	 * Verify that the <response> above affected the next request's
+	 * duration values like so: first init_seg used, second ignored.
+	 */
+	ASSERT_EQ(10000, request->buffered_ranges[1]->duration_ms);
+	PASS();
+}
+
+TEST
 protocol_parse_response_media_header_and_blob(void)
 {
 	VideoStreaming__VideoPlaybackAbrRequest *request
@@ -349,8 +390,8 @@ protocol_parse_response_media_header_and_blob(void)
 	 * Verify that:
 	 *
 	 * 1) FOOFOO media blob writes to provided fd
-	 * 2) NONONO media blob triggers skip_media_blobs_until_next == true
-	 * 3) BARBAR media blob triggers skip_media_blobs_until_next == false
+	 * 2) NONONO media blob triggers header_id_latest_seq_is_repeated
+	 * 3) BARBAR media blob triggers !header_id_latest_seq_is_repeated
 	 */
 	char written[6];
 	{
@@ -496,8 +537,8 @@ SUITE(protocol_parse)
 {
 	RUN_TEST(protocol_init_base64_decode_negative);
 	RUN_TEST(protocol_init_base64_decode_positive);
+	RUN_TEST(protocol_parse_response_media_header_init_seg);
 	RUN_TEST(protocol_parse_response_media_header_and_blob);
-	// TODO: add testcase for media header + is_init_seg skipping
 	RUN_TEST(protocol_parse_response_next_request_policy);
 	RUN_TEST(protocol_parse_response_format_initialization_metadata);
 	RUN_TEST(protocol_parse_response_sabr_redirect);
