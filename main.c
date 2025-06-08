@@ -1,12 +1,15 @@
-// TODO: update header comment for new download behavior; ditto README.md
 /*
  * Extract video and audio stream URLs from a YouTube link passed via argv[1],
- * and then print the results to stdout, for use by mpv.
+ * and offer the resulting stream data for download on localhost:20000.
  *
  * Our main challenge: YouTube stream URLs contain obfuscated parameters, and
  * YouTube web payloads contain JavaScript fragments that deobfuscate these
  * parameters. To solve this puzzle then requires applying the latter to the
  * former with a JavaScript engine (in this case, Duktape).
+ *
+ * A secondary challenge: media players like mpv do not (currently) support
+ * YouTube's streaming SABR/UMP format. This program bridges the gap by acting
+ * as a proxy, translating SABR/UMP traffic into plain video/audio data.
  */
 
 #include "result.h"

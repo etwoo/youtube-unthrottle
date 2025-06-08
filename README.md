@@ -3,22 +3,26 @@
 ## Usage
 
 `youtube-unthrottle` implements a small subset of tools like
+[LuanRT/googlevideo](https://github.com/LuanRT/googlevideo),
 [yt-dlp](https://github.com/yt-dlp/yt-dlp),
-[rusty_ytdl](https://github.com/Mithronn/rusty_ytdl),
-and of course, [youtube-dl](https://github.com/ytdl-org/youtube-dl).
+and the venerable [youtube-dl](https://github.com/ytdl-org/youtube-dl).
 
-Specifically, `youtube-unthrottle` extracts the video and audio stream URLs
+Specifically, `youtube-unthrottle` extracts the video and audio streams
 from a YouTube link passed via `argv[1]`. A program like `mpv` can act on
 this output like:
 
 ```sh
 uri="$(xclip -o)"
-x="/tmp/streams.txt"
-youtube-unthrottle "$uri" > "$x"
+youtube-unthrottle "$uri" --visitor-data ... --proof-of-origin ... &
 
-audio="$(head -1 $x)"
-video="$(tail -1 $x)"
-mpv --title="$uri" --audio-file="$audio" "$video"
+sleep 1
+
+# open TCP connections to youtube-unthrottle process
+exec 5< /dev/tcp/localhost/20000
+exec 6< /dev/tcp/localhost/20000
+
+# pass open file descriptors to mpv for streaming playback
+mpv --title="$uri" --window-scale=0.5 --audio-file=fd://5 fd://6
 ```
 
 ## Goals
