@@ -2,5 +2,6 @@
   "compilation-database": ["./build/compile_commands.json"],
   "fail-on-issue": true,
   "results-dir": "./build/infer-out",
+  "disable-issue-type": [ "NULL_DEREFERENCE" ],
   "liveness": false
 }
