@@ -302,7 +302,8 @@ protocol_parse_response_media_header_init_seg(void)
 		 * is_init_seg: true
 		 * duration_ms: 10000
 		 */
-		"\x08\x02\x18\xAB\x02\x40\x01\x60\x90\x4E"
+		"\x08\x02\x18\xAB\x02\x40\x01\x60" /* protoc above */
+		"\x90\x4E"                         /* protoc above */
 		"\x14" /* part_type = MEDIA_HEADER */
 		"\x0B" /* part_size = 11 */
 		/*
@@ -312,7 +313,8 @@ protocol_parse_response_media_header_init_seg(void)
 		 * is_init_seg: true
 		 * duration_ms: 100000
 		 */
-		"\x08\x02\x18\xAB\x02\x40\x01\x60\xA0\x8D\x06");
+		"\x08\x02\x18\xAB\x02\x40\x01\x60" /* protoc above */
+		"\xA0\x8D\x06");                   /* protoc above */
 	CHECK_CALL(parse_and_get_next(&response, NULL, &request, &url, NULL));
 
 	/*
@@ -351,7 +353,7 @@ protocol_parse_response_media_header_and_blob(void)
 		 * sequence_number: 4
 		 * duration_ms: 1000
 		 */
-		"\x08\x02\x18\xAB\x02\x48\x04\x60\xE8\x07"
+		"\x08\x02\x18\xAB\x02\x48\x04\x60\xE8\x07" /* protoc above */
 		"\x15" /* part_type = MEDIA */
 		"\x07" /* part_size = 7 */
 		"\x02" /* header_id = 2 */
@@ -365,7 +367,7 @@ protocol_parse_response_media_header_and_blob(void)
 	         * sequence_number: 3
 	         * duration_ms: 1000
 	         */
-		"\x08\x02\x18\xAB\x02\x48\x03\x60\xE8\x07"
+		"\x08\x02\x18\xAB\x02\x48\x03\x60\xE8\x07" /* protoc above */
 		"\x15" /* part_type = MEDIA */
 		"\x07" /* part_size = 7 */
 		"\x02" /* header_id = 2 */
@@ -379,7 +381,7 @@ protocol_parse_response_media_header_and_blob(void)
 	         * sequence_number: 5
 	         * duration_ms: 1000
 	         */
-		"\x08\x02\x18\xAB\x02\x48\x05\x60\xE8\x07"
+		"\x08\x02\x18\xAB\x02\x48\x05\x60\xE8\x07" /* protoc above */
 		"\x15" /* part_type = MEDIA */
 		"\x07" /* part_size = 7 */
 		"\x02" /* header_id = 2 */
@@ -449,7 +451,8 @@ protocol_parse_response_next_request_policy(void)
 		 *     }
 		 * }
 		 */
-		"\x3A\x0A\x3A\x03\x08\xAB\x02\x42\x03\x08\xFB\x01"
+		"\x3A\x0A\x3A\x03\x08\xAB\x02\x42" /* protoc above */
+		"\x03\x08\xFB\x01"                 /* protoc above */
 		/*
 	         * Verify that setting the playback cookie a second
 	         * time does not leak memory (assuming this test runs
@@ -457,7 +460,8 @@ protocol_parse_response_next_request_policy(void)
 	         */
 		"\x23" /* part_type = NEXT_REQUEST_POLICY */
 		"\x0C" /* part_size = 12 */
-		"\x3A\x0A\x3A\x03\x08\xAB\x02\x42\x03\x08\xFB\x01");
+		"\x3A\x0A\x3A\x03\x08\xAB\x02\x42" /* protoc above */
+		"\x03\x08\xFB\x01");               /* protoc above */
 	CHECK_CALL(parse_and_get_next(&response, NULL, &request, &url, NULL));
 
 	/*
@@ -500,7 +504,7 @@ protocol_parse_response_format_initialization_metadata(void)
 		 * }
 		 * end_segment_number: 8
 		 */
-		"\x12\x03\x08\xFB\x01\x20\x08"
+		"\x12\x03\x08\xFB\x01\x20\x08" /* protoc above */
 		"\x2A" /* part_type = FORMAT_INITIALIZATION_METADATA */
 		"\x07" /* part_size = 7 */
 		/*
@@ -510,7 +514,7 @@ protocol_parse_response_format_initialization_metadata(void)
 		 * }
 		 * end_segment_number: 9
 		 */
-		"\x12\x03\x08\xAB\x02\x20\x09");
+		"\x12\x03\x08\xAB\x02\x20\x09"); /* protoc above */
 	CHECK_CALL(parse_and_get_next(&response, &knows, &request, &url, NULL));
 
 	ASSERT(knows); /* protocol_knows_end() && protocol_has_next() */
@@ -538,9 +542,9 @@ protocol_parse_response_sabr_redirect(void)
 		 * $ cat /tmp/sabr_redirect.txt
 		 * url: "https://foo.test/bar"
 		 */
-		"\x0A\x14\x68\x74\x74\x70\x73\x3A"
-		"\x2F\x2F\x66\x6F\x6F\x2E\x74\x65"
-		"\x73\x74\x2F\x62\x61\x72");
+		"\x0A\x14\x68\x74\x74\x70\x73\x3A" /* protoc above */
+		"\x2F\x2F\x66\x6F\x6F\x2E\x74\x65" /* protoc above */
+		"\x73\x74\x2F\x62\x61\x72");       /* protoc above */
 	CHECK_CALL(parse_and_get_next(&response, NULL, &request, &url, NULL));
 
 	/*
