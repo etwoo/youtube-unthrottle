@@ -170,10 +170,10 @@ struct protocol_state {
 	struct {
 		int itag;
 		bool got_repeated;
-	} header_map[UCHAR_MAX + 1];   /* map header_id number to itag, etc.  */
-	int64_t ends_at[2];            /* audio/video ending sequence numbers */
-	bool header_written[2];        /* audio/video file headers written?   */
-	int outputs[2];                /* audio/video output file descriptors */
+	} header_map[UCHAR_MAX + 1]; /* map header_id number to itag, etc.  */
+	int64_t ends_at[2];          /* audio/video ending sequence numbers */
+	bool header_written[2];      /* audio/video file headers written?   */
+	int outputs[2];              /* audio/video output file descriptors */
 	VideoStreaming__ClientAbrState abr_state;
 	VideoStreaming__StreamerContext__ClientInfo info;
 	VideoStreaming__StreamerContext context;
