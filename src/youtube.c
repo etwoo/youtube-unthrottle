@@ -332,14 +332,13 @@ result_t
 youtube_stream_next(struct youtube_stream *p)
 {
 	char *start_url __attribute__((cleanup(str_free))) = NULL;
+	char *url __attribute__((cleanup(str_free))) = NULL;
 	{
 		ada_string tmp = ada_get_href(p->url);
-		start_url = strndup(tmp.data, tmp.length);
+		start_url = tmp.data ? strndup(tmp.data, tmp.length) : NULL;
+		url = start_url ? strdup(start_url) : NULL;
 	}
-	check_if(start_url == NULL, ERR_JS_SABR_URL_ALLOC);
-
-	char *url __attribute__((cleanup(str_free))) = strdup(start_url);
-	check_if(url == NULL, ERR_JS_SABR_URL_ALLOC);
+	check_if(start_url == NULL || url == NULL, ERR_JS_SABR_URL_ALLOC);
 
 	char *sabr_post __attribute__((cleanup(str_free))) = NULL;
 	size_t sabr_post_sz = 0;
