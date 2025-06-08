@@ -285,19 +285,23 @@ protocol_parse_response_media_header_init_seg(void)
 		__attribute__((cleanup(video_playback_request_cleanup))) = NULL;
 	char *url __attribute__((cleanup(str_free))) = NULL;
 
+	/* clang-format off */
+	/*
+	 * To generate binary protobuf blobs below:
+	 *
+	 * $ cat /tmp/media_header.txt | protoc --proto_path=build/_deps/googlevideo-src/protos --encode=video_streaming.MediaHeader $(find build/_deps -type f -name '*.proto') | hexdump -C
+	 */
+	/* clang-format on */
 	const struct string_view response = MAKE_TEST_STRING(
 		"\x14" /* part_type = MEDIA_HEADER */
 		"\x0A" /* part_size = 10 */
-		/* clang-format off */
 		/*
 		 * $ cat /tmp/media_header.txt
 		 * header_id: 2
 		 * itag: 299
 		 * is_init_seg: true
 		 * duration_ms: 10000
-		 * $ cat /tmp/media_header.txt | protoc --proto_path=build/_deps/googlevideo-src/protos --encode=video_streaming.MediaHeader $(find build/_deps -type f -name '*.proto') | hexdump -C
 		 */
-		/* clang-format on */
 		"\x08\x02\x18\xAB\x02\x40\x01\x60\x90\x4E"
 		"\x14" /* part_type = MEDIA_HEADER */
 		"\x0B" /* part_size = 11 */
@@ -330,20 +334,23 @@ protocol_parse_response_media_header_and_blob(void)
 	auto_result err = tmpfd(&fd);
 	ASSERT_EQ(OK, err.err);
 	ASSERT_LTE(0, fd);
-
+	/* clang-format off */
+	/*
+	 * To generate binary protobuf blobs below:
+	 *
+	 * $ cat /tmp/media_header.txt | protoc --proto_path=build/_deps/googlevideo-src/protos --encode=video_streaming.MediaHeader $(find build/_deps -type f -name '*.proto') | hexdump -C
+	 */
+	/* clang-format on */
 	const struct string_view response = MAKE_TEST_STRING(
 		"\x14" /* part_type = MEDIA_HEADER */
 		"\x0A" /* part_size = 10 */
-		/* clang-format off */
 		/*
 		 * $ cat /tmp/media_header.txt
 		 * header_id: 2
 		 * itag: 299
 		 * sequence_number: 4
 		 * duration_ms: 1000
-		 * $ cat /tmp/media_header.txt | protoc --proto_path=build/_deps/googlevideo-src/protos --encode=video_streaming.MediaHeader $(find build/_deps -type f -name '*.proto') | hexdump -C
 		 */
-		/* clang-format on */
 		"\x08\x02\x18\xAB\x02\x48\x04\x60\xE8\x07"
 		"\x15" /* part_type = MEDIA */
 		"\x07" /* part_size = 7 */
@@ -421,10 +428,16 @@ protocol_parse_response_next_request_policy(void)
 		__attribute__((cleanup(video_playback_request_cleanup))) = NULL;
 	char *url __attribute__((cleanup(str_free))) = NULL;
 
+	/* clang-format off */
+	/*
+	 * To generate binary protobuf blobs below:
+	 *
+	 * $ cat /tmp/next_request_policy.txt | protoc --proto_path=build/_deps/googlevideo-src/protos --encode=video_streaming.NextRequestPolicy $(find build/_deps -type f -name '*.proto') | hexdump -C
+	 */
+	/* clang-format on */
 	const struct string_view response = MAKE_TEST_STRING(
 		"\x23" /* part_type = NEXT_REQUEST_POLICY */
 		"\x0C" /* part_size = 12 */
-		/* clang-format off */
 		/*
 		 * $ cat /tmp/next_request_policy.txt
 		 * playback_cookie {
@@ -435,9 +448,7 @@ protocol_parse_response_next_request_policy(void)
 		 *         itag: 251
 		 *     }
 		 * }
-		 * $ cat /tmp/next_request_policy.txt | protoc --proto_path=build/_deps/googlevideo-src/protos --encode=video_streaming.NextRequestPolicy $(find build/_deps -type f -name '*.proto') | hexdump -C
 		 */
-		/* clang-format on */
 		"\x3A\x0A\x3A\x03\x08\xAB\x02\x42\x03\x08\xFB\x01"
 		/*
 	         * Verify that setting the playback cookie a second
@@ -472,19 +483,23 @@ protocol_parse_response_format_initialization_metadata(void)
 		__attribute__((cleanup(video_playback_request_cleanup))) = NULL;
 	char *url __attribute__((cleanup(str_free))) = NULL;
 
+	/* clang-format off */
+	/*
+	 * To generate binary protobuf blobs below:
+	 *
+	 * $ cat /tmp/format_initialization_metadata.txt | protoc --proto_path=build/_deps/googlevideo-src/protos --encode=video_streaming.FormatInitializationMetadata $(find build/_deps -type f -name '*.proto') | hexdump -C
+	 */
+	/* clang-format on */
 	const struct string_view response = MAKE_TEST_STRING(
 		"\x2A" /* part_type = FORMAT_INITIALIZATION_METADATA */
 		"\x07" /* part_size = 7 */
-		/* clang-format off */
 		/*
 		 * $ cat /tmp/format_initialization_metadata.txt
 		 * format_id {
 		 *     itag: 251
 		 * }
 		 * end_segment_number: 8
-		 * $ cat /tmp/format_initialization_metadata.txt | protoc --proto_path=build/_deps/googlevideo-src/protos --encode=video_streaming.FormatInitializationMetadata $(find build/_deps -type f -name '*.proto') | hexdump -C
 		 */
-		/* clang-format on */
 		"\x12\x03\x08\xFB\x01\x20\x08"
 		"\x2A" /* part_type = FORMAT_INITIALIZATION_METADATA */
 		"\x07" /* part_size = 7 */
@@ -509,16 +524,20 @@ protocol_parse_response_sabr_redirect(void)
 		__attribute__((cleanup(video_playback_request_cleanup))) = NULL;
 	char *url __attribute__((cleanup(str_free))) = NULL;
 
+	/* clang-format off */
+	/*
+	 * To generate binary protobuf blobs below:
+	 *
+	 * $ cat /tmp/sabr_redirect.txt | protoc --proto_path=build/_deps/googlevideo-src/protos --encode=video_streaming.SabrRedirect $(find build/_deps -type f -name '*.proto') | hexdump -C
+	 */
+	/* clang-format on */
 	const struct string_view response = MAKE_TEST_STRING(
 		"\x2B" /* part_type = SABR_REDIRECT */
 		"\x16" /* part_size = 22 */
-		/* clang-format off */
 		/*
 		 * $ cat /tmp/sabr_redirect.txt
 		 * url: "https://foo.test/bar"
-		 * $ cat /tmp/sabr_redirect.txt | protoc --proto_path=build/_deps/googlevideo-src/protos --encode=video_streaming.SabrRedirect $(find build/_deps -type f -name '*.proto') | hexdump -C
 		 */
-		/* clang-format on */
 		"\x0A\x14\x68\x74\x74\x70\x73\x3A"
 		"\x2F\x2F\x66\x6F\x6F\x2E\x74\x65"
 		"\x73\x74\x2F\x62\x61\x72");
