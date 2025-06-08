@@ -238,7 +238,7 @@ protocol_init_base64_decode_positive(void)
 
 static enum greatest_test_res
 parse_and_get_next(const struct string_view *response,
-                   int64_t *ends_at,
+                   bool *knows_end_and_has_next,
                    VideoStreaming__VideoPlaybackAbrRequest **out,
                    char **url,
                    int *pfd)
@@ -258,8 +258,9 @@ parse_and_get_next(const struct string_view *response,
 	auto_result parse = protocol_parse_response(p, response, url);
 	ASSERT_EQ(OK, parse.err);
 
-	if (ends_at) {
-		*ends_at = 0; // TODO: let caller access stream->ends_at?
+	if (knows_end_and_has_next) {
+		*knows_end_and_has_next =
+			protocol_knows_end(p) && protocol_has_next(p);
 	}
 
 	char *blob __attribute__((cleanup(str_free))) = NULL;
@@ -425,25 +426,38 @@ protocol_parse_response_next_request_policy(void)
 TEST
 protocol_parse_response_format_initialization_metadata(void)
 {
-	int64_t end = -1;
+	bool knows = false;
 	VideoStreaming__VideoPlaybackAbrRequest *request
 		__attribute__((cleanup(video_playback_request_cleanup))) = NULL;
 	char *url __attribute__((cleanup(str_free))) = NULL;
 
 	const struct string_view response = MAKE_TEST_STRING(
 		"\x2A" /* part_type = FORMAT_INITIALIZATION_METADATA */
-		"\x04" /* part_size = 4 */
+		"\x07" /* part_size = 7 */
 		/* clang-format off */
 		/*
 		 * $ cat /tmp/format_initialization_metadata.txt
-		 * duration_ms: 600000
+		 * format_id {
+		 *     itag: 251
+		 * }
+		 * end_segment_number: 8
 		 * $ cat /tmp/format_initialization_metadata.txt | protoc --proto_path=build/_deps/googlevideo-src/protos --encode=video_streaming.FormatInitializationMetadata $(find build/_deps -type f -name '*.proto') | hexdump -C
 		 */
 		/* clang-format on */
-		"\x48\xC0\xCF\x24");
-	CHECK_CALL(parse_and_get_next(&response, &end, &request, &url, NULL));
+		"\x12\x03\x08\xFB\x01\x20\x08"
+		"\x2A" /* part_type = FORMAT_INITIALIZATION_METADATA */
+		"\x07" /* part_size = 7 */
+		/*
+		 * $ cat /tmp/format_initialization_metadata.txt
+		 * format_id {
+		 *     itag: 299
+		 * }
+		 * end_segment_number: 9
+		 */
+		"\x12\x03\x08\xAB\x02\x20\x09");
+	CHECK_CALL(parse_and_get_next(&response, &knows, &request, &url, NULL));
 
-	ASSERT_EQ(600000, end);
+	ASSERT(knows); /* protocol_knows_end() && protocol_has_next() */
 	PASS();
 }
 
