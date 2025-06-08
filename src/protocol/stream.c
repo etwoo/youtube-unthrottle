@@ -298,6 +298,13 @@ set_header_media_type(struct protocol_state *p,
 }
 
 static void
+set_ends_at(struct protocol_state *p, int itag, int64_t value)
+{
+	p->ends_at[itag == ITAG_AUDIO ? 0 : 1] = value;
+	debug("Updated ends_at=%" PRIi64 " for itag=%d", value, itag);
+}
+
+static void
 set_header_written(struct protocol_state *p, unsigned char header_id)
 {
 	p->header_written[get_index_of(p, header_id)] = true;
@@ -672,9 +679,7 @@ ump_parse_fmt_init(struct protocol_state *p,
 {
 	if (fmt->format_id && fmt->format_id->has_itag &&
 	    fmt->has_end_segment_number) {
-		const size_t idx = fmt->format_id->itag == ITAG_AUDIO ? 0 : 1;
-		p->ends_at[idx] = fmt->end_segment_number;
-		debug("Expecting ends_at=%" PRIi64, p->ends_at[idx]);
+		set_ends_at(p, fmt->format_id->itag, fmt->end_segment_number);
 	}
 	return RESULT_OK;
 }
