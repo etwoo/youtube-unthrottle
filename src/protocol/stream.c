@@ -167,11 +167,13 @@ debug_protobuf_fmt_init(const VideoStreaming__FormatInitializationMetadata *fmt)
 }
 
 struct protocol_state {
-	int outputs[2];
-	int64_t ends_at[2];
-	bool header_written[2];
-	int header_map[UCHAR_MAX + 1]; /* maps header_id number to itag */
-	bool header_id_latest_seq_is_repeated[UCHAR_MAX + 1];
+	struct {
+		int itag;
+		bool got_repeated;
+	} header_map[UCHAR_MAX + 1];   /* map header_id number to itag, etc.  */
+	int64_t ends_at[2];            /* audio/video ending sequence numbers */
+	bool header_written[2];        /* audio/video file headers written?   */
+	int outputs[2];                /* audio/video output file descriptors */
 	VideoStreaming__ClientAbrState abr_state;
 	VideoStreaming__StreamerContext__ClientInfo info;
 	VideoStreaming__StreamerContext context;
@@ -256,26 +258,7 @@ protocol_update_members(struct protocol_state *p)
 static WARN_UNUSED size_t
 get_index_of(const struct protocol_state *p, unsigned char header_id)
 {
-	return p->header_map[header_id] == ITAG_AUDIO ? 0 : 1;
-}
-
-static WARN_UNUSED int
-get_fd_for_header(const struct protocol_state *p, unsigned char header_id)
-{
-	return p->outputs[get_index_of(p, header_id)];
-}
-
-static WARN_UNUSED bool
-is_header_written(const struct protocol_state *p, unsigned char header_id)
-{
-	return p->header_written[get_index_of(p, header_id)];
-}
-
-static WARN_UNUSED bool
-is_sequence_number_repeated(const struct protocol_state *p,
-                            unsigned char header_id)
-{
-	return p->header_id_latest_seq_is_repeated[header_id];
+	return p->header_map[header_id].itag == ITAG_AUDIO ? 0 : 1;
 }
 
 static WARN_UNUSED int64_t
@@ -285,38 +268,6 @@ get_sequence_number_cursor(const struct protocol_state *p,
 	VideoStreaming__BufferedRange *br =
 		p->buffered_ranges[get_index_of(p, header_id)];
 	return br->end_segment_index - 1;
-}
-
-static void
-set_header_media_type(struct protocol_state *p,
-                      unsigned char header_id,
-                      int itag)
-{
-	p->header_map[header_id] = itag;
-	const int fd = get_fd_for_header(p, header_id);
-	debug("Map header_id=%u to fd=%d", header_id, fd);
-}
-
-static void
-set_ends_at(struct protocol_state *p, int itag, int64_t value)
-{
-	p->ends_at[itag == ITAG_AUDIO ? 0 : 1] = value;
-	debug("Updated ends_at=%" PRIi64 " for itag=%d", value, itag);
-}
-
-static void
-set_header_written(struct protocol_state *p, unsigned char header_id)
-{
-	p->header_written[get_index_of(p, header_id)] = true;
-}
-
-static void
-update_sequence_number_repeated_check(struct protocol_state *p,
-                                      unsigned char header_id,
-                                      int64_t candidate)
-{
-	const int64_t cur = get_sequence_number_cursor(p, header_id);
-	p->header_id_latest_seq_is_repeated[header_id] = (candidate <= cur);
 }
 
 static void
@@ -339,7 +290,53 @@ increment_header_duration(struct protocol_state *p,
 	VideoStreaming__BufferedRange *br =
 		p->buffered_ranges[get_index_of(p, header_id)];
 	br->duration_ms += duration;
-	debug("Map header_id=%u to duration=%" PRIi64, header_id, duration);
+	debug("Increase header_id=%u duration by %" PRIi64 " to %" PRIi64,
+	      header_id,
+	      duration,
+	      br->duration_ms);
+}
+
+static void
+set_header_media_type(struct protocol_state *p,
+                      unsigned char header_id,
+                      int itag)
+{
+	p->header_map[header_id].itag = itag;
+	debug("Map header_id=%u to itag=%d", header_id, itag);
+}
+
+static WARN_UNUSED bool
+is_sequence_number_repeated(const struct protocol_state *p,
+                            unsigned char header_id)
+{
+	return p->header_map[header_id].got_repeated;
+}
+
+static void
+update_sequence_number_repeated_check(struct protocol_state *p,
+                                      unsigned char header_id,
+                                      int64_t candidate)
+{
+	const int64_t cur = get_sequence_number_cursor(p, header_id);
+	p->header_map[header_id].got_repeated = (candidate <= cur);
+}
+
+static WARN_UNUSED bool
+is_header_written(const struct protocol_state *p, unsigned char header_id)
+{
+	return p->header_written[get_index_of(p, header_id)];
+}
+
+static void
+set_header_written(struct protocol_state *p, unsigned char header_id)
+{
+	p->header_written[get_index_of(p, header_id)] = true;
+}
+
+static WARN_UNUSED int
+get_fd_for_header(const struct protocol_state *p, unsigned char header_id)
+{
+	return p->outputs[get_index_of(p, header_id)];
 }
 
 /*
@@ -414,12 +411,6 @@ protocol_init(const struct string_view *proof_of_origin,
 	p->outputs[0] = outputs[0];
 	p->outputs[1] = outputs[1];
 
-	p->ends_at[0] = 0;
-	p->ends_at[1] = 0;
-
-	p->header_written[0] = false;
-	p->header_written[1] = false;
-
 	protocol_init_members(p, itag_video);
 
 	check(base64_decode(proof_of_origin, &p->context.po_token));
@@ -456,6 +447,13 @@ protocol_done(struct protocol_state *p)
 {
 	return p->buffered_ranges[0]->end_segment_index > p->ends_at[0] &&
 	       p->buffered_ranges[1]->end_segment_index > p->ends_at[1];
+}
+
+static void
+set_ends_at(struct protocol_state *p, int itag, int64_t value)
+{
+	p->ends_at[itag == ITAG_AUDIO ? 0 : 1] = value;
+	debug("Updated ends_at=%" PRIi64 " for itag=%d", value, itag);
 }
 
 result_t
