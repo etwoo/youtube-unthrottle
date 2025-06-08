@@ -353,7 +353,8 @@ youtube_stream_next(struct youtube_stream *p)
 
 	check(tmptruncate(p->ump.fd, &p->ump.data));
 
-	info_if(0 != strcmp(start_url, url), "Sandbox may block SABR redirect");
+	info_if(0 != strcmp(start_url, url),
+	        "Sandbox may block SABR redirect; ignoring ...");
 	return protocol_knows_end(p->stream)
 	               ? RESULT_OK
 	               : make_result(ERR_YOUTUBE_EARLY_END_STREAM);
