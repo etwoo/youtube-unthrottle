@@ -271,6 +271,13 @@ is_header_written(const struct protocol_state *p, unsigned char header_id)
 	return p->header_written[get_index_of(p, header_id)];
 }
 
+static WARN_UNUSED bool
+is_sequence_number_repeated(const struct protocol_state *p,
+                            unsigned char header_id)
+{
+	return p->header_id_latest_seq_is_repeated[header_id];
+}
+
 static WARN_UNUSED int64_t
 get_sequence_number_cursor(const struct protocol_state *p,
                            unsigned char header_id)
@@ -294,6 +301,15 @@ static void
 set_header_written(struct protocol_state *p, unsigned char header_id)
 {
 	p->header_written[get_index_of(p, header_id)] = true;
+}
+
+static void
+update_sequence_number_repeated_check(struct protocol_state *p,
+                                      unsigned char header_id,
+                                      int64_t candidate)
+{
+	const int64_t cur = get_sequence_number_cursor(p, header_id);
+	p->header_id_latest_seq_is_repeated[header_id] = (candidate <= cur);
 }
 
 static void
@@ -583,10 +599,10 @@ ump_parse_media_header(struct protocol_state *p,
 	}
 
 	if (header->has_sequence_number) {
-		int64_t cur = get_sequence_number_cursor(p, header->header_id);
-		p->header_id_latest_seq_is_repeated[header->header_id] =
-			header->sequence_number <= cur;
-		if (p->header_id_latest_seq_is_repeated[header->header_id]) {
+		update_sequence_number_repeated_check(p,
+		                                      header->header_id,
+		                                      header->sequence_number);
+		if (is_sequence_number_repeated(p, header->header_id)) {
 			debug("Skipping repeated seq=%" PRIi64
 			      " for itag=%d, header_id=%" PRIu32,
 			      header->sequence_number,
@@ -702,7 +718,7 @@ ump_parse_part(struct protocol_state *p,
 		         ERR_PROTOCOL_HEADER_ID_OVERFLOW,
 		         (int)parsed_header_id);
 		if (*skip_media_blobs_until_next ||
-		    p->header_id_latest_seq_is_repeated[parsed_header_id]) {
+		    is_sequence_number_repeated(p, parsed_header_id)) {
 			debug("Skipping media blob with header_id=%" PRIu64,
 			      parsed_header_id);
 		} else {
