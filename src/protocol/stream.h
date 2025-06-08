@@ -18,7 +18,7 @@ result_t protocol_init(const struct string_view *proof_of_origin,
 void protocol_cleanup(protocol stream);
 
 bool protocol_knows_end(struct protocol_state *p) WARN_UNUSED;
-bool protocol_has_next(struct protocol_state *p) WARN_UNUSED;
+bool protocol_done(struct protocol_state *p) WARN_UNUSED;
 
 result_t protocol_next_request(protocol stream,
                                char **request,

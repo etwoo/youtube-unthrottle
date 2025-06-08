@@ -355,14 +355,14 @@ youtube_stream_next(struct youtube_stream *p)
 	check(tmptruncate(p->ump.fd, &p->ump.data));
 
 	info_if(0 != strcmp(start_url, url), "Sandbox may block SABR redirect");
-	check_if(!protocol_knows_end(p->stream), ERR_YOUTUBE_EARLY_END_STREAM);
-	return RESULT_OK;
+	return protocol_knows_end(p->stream)
+	               ? RESULT_OK
+	               : make_result(ERR_YOUTUBE_EARLY_END_STREAM);
 }
 
 bool
 youtube_stream_done(struct youtube_stream *p)
 {
-	return p->stream == NULL ||
-	       !protocol_knows_end(p->stream) ||
-	       !protocol_has_next(p->stream);
+	protocol s = p->stream;
+	return s == NULL || !protocol_knows_end(s) || protocol_done(s);
 }

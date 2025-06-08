@@ -260,7 +260,7 @@ parse_and_get_next(const struct string_view *response,
 
 	if (knows_end_and_has_next) {
 		*knows_end_and_has_next =
-			protocol_knows_end(p) && protocol_has_next(p);
+			protocol_knows_end(p) && !protocol_done(p);
 	}
 
 	char *blob __attribute__((cleanup(str_free))) = NULL;
@@ -517,7 +517,7 @@ protocol_parse_response_format_initialization_metadata(void)
 		"\x12\x03\x08\xAB\x02\x20\x09"); /* protoc above */
 	CHECK_CALL(parse_and_get_next(&response, &knows, &request, &url, NULL));
 
-	ASSERT(knows); /* protocol_knows_end() && protocol_has_next() */
+	ASSERT(knows); /* protocol_knows_end() && !protocol_done() */
 	PASS();
 }
 

@@ -429,10 +429,10 @@ protocol_knows_end(struct protocol_state *p)
 }
 
 bool
-protocol_has_next(struct protocol_state *p)
+protocol_done(struct protocol_state *p)
 {
-	return p->buffered_ranges[0]->end_segment_index <= p->ends_at[0] ||
-	       p->buffered_ranges[1]->end_segment_index <= p->ends_at[1];
+	return p->buffered_ranges[0]->end_segment_index > p->ends_at[0] &&
+	       p->buffered_ranges[1]->end_segment_index > p->ends_at[1];
 }
 
 result_t
