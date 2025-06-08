@@ -362,5 +362,7 @@ youtube_stream_next(struct youtube_stream *p)
 bool
 youtube_stream_done(struct youtube_stream *p)
 {
-	return !protocol_knows_end(p->stream) || !protocol_has_next(p->stream);
+	return p->stream == NULL ||
+	       !protocol_knows_end(p->stream) ||
+	       !protocol_has_next(p->stream);
 }

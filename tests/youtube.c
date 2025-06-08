@@ -106,6 +106,7 @@ stream_setup_with_redirected_network_io(const char *(*custom_fn)(const char *),
 	test_request_path_to_response = NULL;
 
 	ASSERT_EQ(ERR_YOUTUBE_EARLY_END_STREAM, err.err);
+	ASSERT(youtube_stream_done(stream));
 
 	struct check_url_state cus = {
 		.got_correct_urls = true,
@@ -191,6 +192,7 @@ stream_setup_edge_cases_target_url_missing_stream_id(void)
 
 	err = youtube_stream_open(stream, YT_MISSING_ID, OFD);
 	ASSERT_EQ(ERR_JS_MAKE_INNERTUBE_JSON_ID, err.err);
+	ASSERT(youtube_stream_done(stream));
 
 	youtube_stream_cleanup(stream);
 	PASS();
@@ -221,6 +223,7 @@ stream_setup_edge_cases_n_param_missing(void)
 	test_request_path_to_response = NULL;
 
 	ASSERT_EQ(ERR_YOUTUBE_N_PARAM_FIND_IN_QUERY, err.err);
+	ASSERT(youtube_stream_done(stream));
 
 	youtube_stream_cleanup(stream);
 	PASS();
@@ -251,6 +254,7 @@ stream_setup_edge_cases_invalid_url(void)
 	test_request_path_to_response = NULL;
 
 	ASSERT_EQ(ERR_YOUTUBE_STREAM_URL_INVALID, err.err);
+	ASSERT(youtube_stream_done(stream));
 
 	youtube_stream_cleanup(stream);
 	PASS();
