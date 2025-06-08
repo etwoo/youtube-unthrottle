@@ -345,7 +345,7 @@ static WARN_UNUSED result_t
 base64_decode(const struct string_view *in, struct ProtobufCBinaryData *out)
 {
 	/*
-	 * XXX: clang-tidy does not seem to understand __attribute__((cleanup))
+	 * clang-tidy does not seem to understand __attribute__((cleanup))
 	 * on <scratch_buffer>. As a workaround, suppress false positives of
 	 * clang-analyzer-unix.Malloc with NOLINTBEGIN/NOLINTEND.
 	 */
@@ -368,7 +368,7 @@ base64_decode(const struct string_view *in, struct ProtobufCBinaryData *out)
 	out->data = malloc(out->len);
 	check_if(out->data == NULL, ERR_PROTOCOL_STATE_ALLOC);
 
-	const size_t decode_len = out->len + 1; /* XXX: +1 needed on Linux? */
+	const size_t decode_len = out->len + 1; /* extra +1 needed on Linux */
 	rc = b64_pton(scratch_buffer, out->data, decode_len);
 	check_if(rc < 0, ERR_PROTOCOL_STATE_BASE64_DECODE);
 
@@ -528,7 +528,6 @@ ump_varint_read(const struct string_view *ump, size_t *pos, uint64_t *value)
 		            ((unsigned char)ump->data[*pos + 3] << 16) +
 		            ((unsigned char)ump->data[*pos + 2] << 8) +
 		            (unsigned char)ump->data[*pos + 1];
-		/* Note: remainder of ump->data[*pos] byte is unused */
 		break;
 	case VARINT_BYTES_FOUR:
 		parsed[3] = (unsigned char)ump->data[*pos + 3]
@@ -549,9 +548,9 @@ ump_varint_read(const struct string_view *ump, size_t *pos, uint64_t *value)
 	*pos += bytes_to_read;
 
 	/*
-	 * Note: this postcondition assumes a varint is never at the very end
-	 * of a buffer, i.e. that a varint is always used to describe the
-	 * type/size/etc of some subsequent payload.
+	 * Note: this postcondition assumes a buffer never ends with a dangling
+	 * (so to speak) varint, i.e. that a varint always describes the type
+	 * or size of an upcoming payload.
 	 */
 	if (*pos >= ump->sz) {
 		return make_result(ERR_PROTOCOL_VARINT_READ_POST, (int)*pos);
