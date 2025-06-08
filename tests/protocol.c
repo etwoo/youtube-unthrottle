@@ -409,8 +409,7 @@ protocol_parse_response_media_header_and_blob(void)
 		"\x07" /* part_size = 7 */
 
 		"\x02" /* header_id = 2 */
-		"BARBAR"
-	);
+		"BARBAR");
 	CHECK_CALL(parse_and_get_next(&response, NULL, &request, &url, &fd));
 
 	/*
@@ -486,8 +485,7 @@ protocol_parse_response_next_request_policy(void)
 	         */
 		"\x23" /* part_type = NEXT_REQUEST_POLICY */
 		"\x0C" /* part_size = 12 */
-		"\x3A\x0A\x3A\x03\x08\xAB\x02\x42\x03\x08\xFB\x01"
-	);
+		"\x3A\x0A\x3A\x03\x08\xAB\x02\x42\x03\x08\xFB\x01");
 	CHECK_CALL(parse_and_get_next(&response, NULL, &request, &url, NULL));
 
 	/*
