@@ -335,36 +335,26 @@ youtube_stream_next(struct youtube_stream *p)
 	size_t sabr_post_sz = 0;
 	check(protocol_next_request(p->stream, &sabr_post, &sabr_post_sz));
 
-	/*
-	 * XXX: clang-tidy does not seem to understand __attribute__((cleanup))
-	 * on <start_url>, <url>. As a workaround, suppress false positives of
-	 * clang-analyzer-unix.Malloc with NOLINTBEGIN/NOLINTEND.
-	 */
-
-	// NOLINTBEGIN(clang-analyzer-unix.Malloc)
-
-	char *start_url __attribute__((cleanup(str_free))) = NULL;
 	char *url __attribute__((cleanup(str_free))) = NULL;
 	{
 		ada_string tmp = ada_get_href(p->url);
-		start_url = tmp.data ? strndup(tmp.data, tmp.length) : NULL;
-		url = start_url ? strdup(start_url) : NULL;
+		url = tmp.data ? strndup(tmp.data, tmp.length) : NULL;
 	}
-	check_if(start_url == NULL || url == NULL, ERR_JS_SABR_URL_ALLOC);
-
-	// NOLINTEND(clang-analyzer-unix.Malloc)
+	check_if(url == NULL, ERR_JS_SABR_URL_ALLOC);
 
 	const struct string_view v = {
 		.data = sabr_post,
 		.sz = sabr_post_sz,
 	};
 	check(http_post(p, &p->ump, url, &v, CONTENT_TYPE_PROTOBUF, NULL));
-	check(protocol_parse_response(p->stream, &p->ump.data, &url));
+
+	char *redirect_url __attribute__((cleanup(str_free))) = NULL;
+	check(protocol_parse_response(p->stream, &p->ump.data, &redirect_url));
+	info_if(redirect_url != NULL && 0 != strcmp(url, redirect_url),
+	        "Sandbox may block SABR redirect; ignoring ...");
 
 	check(tmptruncate(p->ump.fd, &p->ump.data));
 
-	info_if(0 != strcmp(start_url, url),
-	        "Sandbox may block SABR redirect; ignoring ...");
 	return protocol_knows_end(p->stream)
 	               ? RESULT_OK
 	               : make_result(ERR_YOUTUBE_EARLY_END_STREAM);
