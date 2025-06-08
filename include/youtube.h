@@ -3,6 +3,8 @@
 
 #include "result.h"
 
+#include <stdbool.h>
+
 result_t youtube_global_init(void) __attribute__((warn_unused_result));
 void youtube_global_cleanup(void);
 
@@ -21,17 +23,13 @@ youtube_handle_t youtube_stream_init(const char *proof_of_origin,
 	__attribute__((warn_unused_result));
 void youtube_stream_cleanup(youtube_handle_t h);
 
-struct youtube_setup_ops {
-	result_t (*before_tmpfile)(void);
-	result_t (*after_tmpfile)(void);
-	result_t (*before_inet)(void);
-	result_t (*after_inet)(void);
-};
-
-result_t youtube_stream_setup(youtube_handle_t h,
-                              const struct youtube_setup_ops *ops,
-                              const char *target,
-                              int fd_output[2])
+result_t youtube_stream_prepare_tmpfiles(youtube_handle_t h)
+	__attribute__((warn_unused_result));
+result_t youtube_stream_open(youtube_handle_t h, const char *target, int fd[2])
+	__attribute__((warn_unused_result));
+result_t youtube_stream_next(youtube_handle_t h)
+	__attribute__((warn_unused_result));
+bool youtube_stream_done(youtube_handle_t h)
 	__attribute__((warn_unused_result));
 
 result_t youtube_stream_visitor(youtube_handle_t h,

@@ -20,11 +20,40 @@
 static const char ARG_N[] = "n";
 static const char INNERTUBE[] = "https://www.youtube.com/youtubei/v1/player";
 
+struct downloaded {
+	const char *description; /* does not own */
+	int fd;
+	struct string_view data;
+};
+
+static void
+downloaded_init(struct downloaded *d, const char *description)
+{
+	d->description = description;
+	d->fd = -1; /* guarantee invalid <fd> by default */
+	memset(&d->data, 0, sizeof(d->data));
+}
+
+static void
+downloaded_cleanup(struct downloaded *d)
+{
+	tmpunmap(&d->data);
+	info_m_if(d->fd > 0 && close(d->fd) < 0,
+	          "Ignoring error close()-ing %s",
+	          d->description);
+	d->fd = -1;
+}
+
 struct youtube_stream {
+	protocol stream;
 	ada_url url;
 	const char *proof_of_origin;
 	const char *visitor_data;
 	struct url_request_context context;
+	struct downloaded html;
+	struct downloaded js;
+	struct downloaded json;
+	struct downloaded ump;
 };
 
 result_t
@@ -61,9 +90,14 @@ void
 youtube_stream_cleanup(struct youtube_stream *p)
 {
 	if (p) {
+		protocol_cleanup(p->stream);
 		ada_free(p->url); /* handles NULL gracefully */
 		p->url = NULL;
 		url_context_cleanup(&p->context);
+		downloaded_cleanup(&p->html);
+		downloaded_cleanup(&p->js);
+		downloaded_cleanup(&p->json);
+		downloaded_cleanup(&p->ump);
 	}
 	free(p);
 }
@@ -76,6 +110,22 @@ youtube_stream_visitor(struct youtube_stream *p,
 	assert(ada_is_valid(p->url));
 	ada_string s = ada_get_href(p->url);
 	visit(s.data, s.length, userdata);
+	return RESULT_OK;
+}
+
+result_t
+youtube_stream_prepare_tmpfiles(struct youtube_stream *p)
+{
+	downloaded_init(&p->html, "HTML tmpfile");
+	downloaded_init(&p->js, "JavaScript tmpfile");
+	downloaded_init(&p->json, "JSON tmpfile");
+	downloaded_init(&p->ump, "UMP response tmpfile");
+
+	check(tmpfd(&p->html.fd));
+	check(tmpfd(&p->js.fd));
+	check(tmpfd(&p->json.fd));
+	check(tmpfd(&p->ump.fd));
+
 	return RESULT_OK;
 }
 
@@ -165,30 +215,6 @@ make_http_header_visitor_id(const char *visitor_data, char **strp)
 	return RESULT_OK;
 }
 
-struct downloaded {
-	const char *description; /* does not own */
-	int fd;
-	struct string_view data;
-};
-
-static void
-downloaded_init(struct downloaded *d, const char *description)
-{
-	d->description = description;
-	d->fd = -1; /* guarantee invalid <fd> by default */
-	memset(&d->data, 0, sizeof(d->data));
-}
-
-static void
-downloaded_cleanup(struct downloaded *d)
-{
-	tmpunmap(&d->data);
-	info_m_if(d->fd > 0 && close(d->fd) < 0,
-	          "Ignoring error close()-ing %s",
-	          d->description);
-	d->fd = -1;
-}
-
 static WARN_UNUSED result_t
 http_post(struct youtube_stream *p,
           struct downloaded *d,
@@ -232,35 +258,13 @@ ciphertexts_cleanup(char *ciphertexts[][2])
 	debug("free()-d n-param ciphertext bufs");
 }
 
-static void
-protocol_cleanup_p(protocol *pp)
+result_t
+youtube_stream_open(struct youtube_stream *p, const char *start_url, int out[2])
 {
-	protocol_cleanup(*pp);
-}
-
-static WARN_UNUSED result_t
-youtube_stream_setup_sabr(struct youtube_stream *p,
-                          const char *start_url,
-                          int fd_output[2],
-                          int tmpfd_early[3],
-                          protocol *stream)
-{
-	struct downloaded html __attribute__((cleanup(downloaded_cleanup)));
-	struct downloaded js __attribute__((cleanup(downloaded_cleanup)));
-	struct downloaded json __attribute__((cleanup(downloaded_cleanup)));
-
-	downloaded_init(&html, "HTML tmpfile");
-	downloaded_init(&js, "JavaScript tmpfile");
-	downloaded_init(&json, "JSON tmpfile");
-
-	html.fd = tmpfd_early[0]; /* takes ownership */
-	js.fd = tmpfd_early[1];   /* takes ownership */
-	json.fd = tmpfd_early[2]; /* takes ownership */
-
-	check(http_get(p, &html, start_url));
+	check(http_get(p, &p->html, start_url));
 
 	struct string_view basejs_path = {0};
-	check(find_base_js_url(&html.data, &basejs_path));
+	check(find_base_js_url(&p->html.data, &basejs_path));
 
 	char *target_js __attribute__((cleanup(str_free))) = NULL;
 	const int rc = asprintf(&target_js,
@@ -270,10 +274,10 @@ youtube_stream_setup_sabr(struct youtube_stream *p,
 	check_if(rc < 0, ERR_JS_BASEJS_URL_ALLOC);
 	debug("Got base.js URL: %s", target_js);
 
-	check(http_get(p, &js, target_js));
+	check(http_get(p, &p->js, target_js));
 
 	long long int timestamp = 0;
-	check(find_js_timestamp(&js.data, &timestamp));
+	check(find_js_timestamp(&p->js.data, &timestamp));
 
 	char *innertube_post __attribute__((cleanup(str_free))) = NULL;
 	check(make_innertube_json(start_url,
@@ -281,29 +285,29 @@ youtube_stream_setup_sabr(struct youtube_stream *p,
 	                          timestamp,
 	                          &innertube_post));
 
-	char *header __attribute__((cleanup(str_free))) = NULL;
-	check(make_http_header_visitor_id(p->visitor_data, &header));
+	char *hdr __attribute__((cleanup(str_free))) = NULL;
+	check(make_http_header_visitor_id(p->visitor_data, &hdr));
 
 	const struct string_view body = {
 		.data = innertube_post,
 		.sz = strlen(innertube_post),
 	};
-	check(http_post(p, &json, INNERTUBE, &body, CONTENT_TYPE_JSON, header));
+	check(http_post(p, &p->json, INNERTUBE, &body, CONTENT_TYPE_JSON, hdr));
 
 	long long int itag = 0;
-	check(find_itag_video(&json.data, &itag));
+	check(find_itag_video(&p->json.data, &itag));
 
 	struct string_view playback_config = {0};
-	check(find_playback_config(&json.data, &playback_config));
+	check(find_playback_config(&p->json.data, &playback_config));
 
 	struct string_view poo = {
 		.data = p->proof_of_origin,
 		.sz = strlen(p->proof_of_origin),
 	};
-	check(protocol_init(&poo, &playback_config, itag, fd_output, stream));
+	check(protocol_init(&poo, &playback_config, itag, out, &p->stream));
 
 	struct string_view sabr = {0};
-	check(find_sabr_url(&json.data, &sabr));
+	check(find_sabr_url(&p->json.data, &sabr));
 	check(youtube_stream_set_url_with_n_param(p, &sabr));
 
 	char *ciphertexts[2] __attribute__((cleanup(ciphertexts_cleanup))) = {
@@ -313,80 +317,50 @@ youtube_stream_setup_sabr(struct youtube_stream *p,
 	check(youtube_stream_copy_n_param(p, &ciphertexts[0]));
 
 	struct deobfuscator deobfuscator = {0};
-	check(find_js_deobfuscator_magic_global(&js.data, &deobfuscator));
-	check(find_js_deobfuscator(&js.data, &deobfuscator));
+	check(find_js_deobfuscator_magic_global(&p->js.data, &deobfuscator));
+	check(find_js_deobfuscator(&p->js.data, &deobfuscator));
 
 	struct call_ops cops = {
 		.got_result = youtube_stream_update_n_param,
 	};
 	check(call_js_foreach(&deobfuscator, ciphertexts, &cops, p));
-	return RESULT_OK;
+
+	return youtube_stream_next(p); /* trigger first protocol roundtrip */
 }
 
 result_t
-youtube_stream_setup(struct youtube_stream *p,
-                     const struct youtube_setup_ops *ops,
-                     const char *start_url,
-                     int fd_output[2])
+youtube_stream_next(struct youtube_stream *p)
 {
-	if (ops && ops->before_tmpfile) {
-		check(ops->before_tmpfile());
-	}
-
-	struct downloaded ump __attribute__((cleanup(downloaded_cleanup)));
-	downloaded_init(&ump, "UMP response tmpfile");
-	check(tmpfd(&ump.fd));
-
-	int tmpfd_early[3] = {
-		-1,
-		-1,
-		-1,
-	};
-	check(tmpfd(tmpfd_early));
-	check(tmpfd(tmpfd_early + 1));
-	check(tmpfd(tmpfd_early + 2));
-
-	if (ops && ops->after_tmpfile) {
-		check(ops->after_tmpfile());
-	}
-
-	if (ops && ops->before_inet) {
-		check(ops->before_inet());
-	}
-
-	protocol stream __attribute__((cleanup(protocol_cleanup_p))) = NULL;
-	check(youtube_stream_setup_sabr(p,
-	                                start_url,
-	                                fd_output,
-	                                tmpfd_early,
-	                                &stream));
-
-	char *url __attribute__((cleanup(str_free))) = NULL;
+	char *start_url __attribute__((cleanup(str_free))) = NULL;
 	{
 		ada_string tmp = ada_get_href(p->url);
-		url = strndup(tmp.data, tmp.length);
+		start_url = strndup(tmp.data, tmp.length);
 	}
+	check_if(start_url == NULL, ERR_JS_SABR_URL_ALLOC);
+
+	char *url __attribute__((cleanup(str_free))) = strdup(start_url);
 	check_if(url == NULL, ERR_JS_SABR_URL_ALLOC);
 
-	do {
-		char *sabr_post __attribute__((cleanup(str_free))) = NULL;
-		size_t sabr_post_sz = 0;
-		check(protocol_next_request(stream, &sabr_post, &sabr_post_sz));
+	char *sabr_post __attribute__((cleanup(str_free))) = NULL;
+	size_t sabr_post_sz = 0;
+	check(protocol_next_request(p->stream, &sabr_post, &sabr_post_sz));
 
-		const struct string_view v = {
-			.data = sabr_post,
-			.sz = sabr_post_sz,
-		};
-		check(http_post(p, &ump, url, &v, CONTENT_TYPE_PROTOBUF, NULL));
-		check(protocol_parse_response(stream, &ump.data, &url));
+	const struct string_view v = {
+		.data = sabr_post,
+		.sz = sabr_post_sz,
+	};
+	check(http_post(p, &p->ump, url, &v, CONTENT_TYPE_PROTOBUF, NULL));
+	check(protocol_parse_response(p->stream, &p->ump.data, &url));
 
-		check(tmptruncate(ump.fd, &ump.data));
-	} while (protocol_knows_end(stream) && protocol_has_next(stream));
+	check(tmptruncate(p->ump.fd, &p->ump.data));
 
-	if (ops && ops->after_inet) {
-		check(ops->after_inet());
-	}
-
-	check_if(!protocol_knows_end(stream), ERR_YOUTUBE_EARLY_END_STREAM);
+	info_if(0 != strcmp(start_url, url), "Sandbox may block SABR redirect");
+	check_if(!protocol_knows_end(p->stream), ERR_YOUTUBE_EARLY_END_STREAM);
 	return RESULT_OK;
+}
+
+bool
+youtube_stream_done(struct youtube_stream *p)
+{
+	return !protocol_knows_end(p->stream) || !protocol_has_next(p->stream);
 }

@@ -73,18 +73,6 @@ try_sandbox(void)
 	return RESULT_OK;
 }
 
-static __attribute__((warn_unused_result)) result_t
-after_tmpfile(void)
-{
-	return sandbox_only_io_inet_rpath();
-}
-
-static __attribute__((warn_unused_result)) result_t
-after_inet(void)
-{
-	return sandbox_only_io();
-}
-
 static void
 close_output_fd(int fd)
 {
@@ -180,14 +168,16 @@ unthrottle(const char *target,
 	check_if(*stream == NULL, OK);
 
 	check(sandbox_only_io_inet_tmpfile());
+	check(youtube_stream_prepare_tmpfiles(*stream));
 
-	struct youtube_setup_ops sops = {
-		.before_tmpfile = NULL,
-		.after_tmpfile = after_tmpfile,
-		.before_inet = NULL,
-		.after_inet = after_inet,
-	};
-	check(youtube_stream_setup(*stream, &sops, target, output));
+	check(sandbox_only_io_inet_rpath());
+	check(youtube_stream_open(*stream, target, output));
+
+	check(sandbox_only_io());
+	while (!youtube_stream_done(*stream)) {
+		check(youtube_stream_next(*stream));
+	}
+
 	return RESULT_OK;
 }
 
