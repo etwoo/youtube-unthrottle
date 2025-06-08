@@ -295,26 +295,33 @@ protocol_parse_response_media_header_init_seg(void)
 	const struct string_view response = MAKE_TEST_STRING(
 		"\x14" /* part_type = MEDIA_HEADER */
 		"\x0A" /* part_size = 10 */
-		/*
-		 * $ cat /tmp/media_header.txt
-		 * header_id: 2
-		 * itag: 299
-		 * is_init_seg: true
-		 * duration_ms: 10000
-		 */
-		"\x08\x02\x18\xAB\x02\x40\x01\x60" /* protoc above */
-		"\x90\x4E"                         /* protoc above */
+
+		"\x08" /************ protobuf blob ************/
+		"\x02" /*                                     */
+		"\x18" /* $ cat /tmp/media_header.txt         */
+		"\xAB" /* header_id: 2                        */
+		"\x02" /* itag: 299                           */
+		"\x40" /* is_init_seg: true                   */
+		"\x01" /* duration_ms: 10000                  */
+		"\x60" /*                                     */
+		"\x90" /*                                     */
+		"\x4E" /***************************************/
+
 		"\x14" /* part_type = MEDIA_HEADER */
 		"\x0B" /* part_size = 11 */
-		/*
-		 * $ cat /tmp/media_header.txt
-		 * header_id: 2
-		 * itag: 299
-		 * is_init_seg: true
-		 * duration_ms: 100000
-		 */
-		"\x08\x02\x18\xAB\x02\x40\x01\x60" /* protoc above */
-		"\xA0\x8D\x06");                   /* protoc above */
+
+		"\x08" /************ protobuf blob ************/
+		"\x02" /*                                     */
+		"\x18" /*                                     */
+		"\xAB" /* $ cat /tmp/media_header.txt         */
+		"\x02" /* header_id: 2                        */
+		"\x40" /* itag: 299                           */
+		"\x01" /* is_init_seg: true                   */
+		"\x60" /* duration_ms: 100000                 */
+		"\xA0" /*                                     */
+		"\x8D" /*                                     */
+		"\x06" /***************************************/
+	);
 	CHECK_CALL(parse_and_get_next(&response, NULL, &request, &url, NULL));
 
 	/*
@@ -346,46 +353,64 @@ protocol_parse_response_media_header_and_blob(void)
 	const struct string_view response = MAKE_TEST_STRING(
 		"\x14" /* part_type = MEDIA_HEADER */
 		"\x0A" /* part_size = 10 */
-		/*
-		 * $ cat /tmp/media_header.txt
-		 * header_id: 2
-		 * itag: 299
-		 * sequence_number: 4
-		 * duration_ms: 1000
-		 */
-		"\x08\x02\x18\xAB\x02\x48\x04\x60\xE8\x07" /* protoc above */
+
+		"\x08" /************ protobuf blob ************/
+		"\x02" /*                                     */
+		"\x18" /* $ cat /tmp/media_header.txt         */
+		"\xAB" /* header_id: 2                        */
+		"\x02" /* itag: 299                           */
+		"\x48" /* sequence_number: 4                  */
+		"\x04" /* duration_ms: 1000                   */
+		"\x60" /*                                     */
+		"\xE8" /*                                     */
+		"\x07" /***************************************/
+
 		"\x15" /* part_type = MEDIA */
 		"\x07" /* part_size = 7 */
+
 		"\x02" /* header_id = 2 */
 		"FOOFOO"
+
 		"\x14" /* part_type = MEDIA_HEADER */
 		"\x0A" /* part_size = 10 */
-		/*
-	         * $ cat /tmp/media_header.txt
-	         * header_id: 2
-	         * itag: 299
-	         * sequence_number: 3
-	         * duration_ms: 1000
-	         */
-		"\x08\x02\x18\xAB\x02\x48\x03\x60\xE8\x07" /* protoc above */
+
+		"\x08" /************ protobuf blob ************/
+		"\x02" /*                                     */
+		"\x18" /* $ cat /tmp/media_header.txt         */
+		"\xAB" /* header_id: 2                        */
+		"\x02" /* itag: 299                           */
+		"\x48" /* sequence_number: 3                  */
+		"\x03" /* duration_ms: 1000                   */
+		"\x60" /*                                     */
+		"\xE8" /*                                     */
+		"\x07" /***************************************/
+
 		"\x15" /* part_type = MEDIA */
 		"\x07" /* part_size = 7 */
+
 		"\x02" /* header_id = 2 */
 		"NONONO"
+
 		"\x14" /* part_type = MEDIA_HEADER */
 		"\x0A" /* part_size = 10 */
-		/*
-	         * $ cat /tmp/media_header.txt
-	         * header_id: 2
-	         * itag: 299
-	         * sequence_number: 5
-	         * duration_ms: 1000
-	         */
-		"\x08\x02\x18\xAB\x02\x48\x05\x60\xE8\x07" /* protoc above */
+
+		"\x08" /************ protobuf blob ************/
+		"\x02" /*                                     */
+		"\x18" /* $ cat /tmp/media_header.txt         */
+		"\xAB" /* header_id: 2                        */
+		"\x02" /* itag: 299                           */
+		"\x48" /* sequence_number: 5                  */
+		"\x05" /* duration_ms: 1000                   */
+		"\x60" /*                                     */
+		"\xE8" /*                                     */
+		"\x07" /***************************************/
+
 		"\x15" /* part_type = MEDIA */
 		"\x07" /* part_size = 7 */
+
 		"\x02" /* header_id = 2 */
-		"BARBAR");
+		"BARBAR"
+	);
 	CHECK_CALL(parse_and_get_next(&response, NULL, &request, &url, &fd));
 
 	/*
@@ -440,19 +465,20 @@ protocol_parse_response_next_request_policy(void)
 	const struct string_view response = MAKE_TEST_STRING(
 		"\x23" /* part_type = NEXT_REQUEST_POLICY */
 		"\x0C" /* part_size = 12 */
-		/*
-		 * $ cat /tmp/next_request_policy.txt
-		 * playback_cookie {
-		 *     video_fmt {
-		 *         itag: 299
-		 *     }
-		 *     audio_fmt {
-		 *         itag: 251
-		 *     }
-		 * }
-		 */
-		"\x3A\x0A\x3A\x03\x08\xAB\x02\x42" /* protoc above */
-		"\x03\x08\xFB\x01"                 /* protoc above */
+
+		"\x3A" /************ protobuf blob ************/
+		"\x0A" /*                                     */
+		"\x3A" /* $ cat /tmp/next_request_policy.txt  */
+		"\x03" /* playback_cookie {                   */
+		"\x08" /*     video_fmt {                     */
+		"\xAB" /*         itag: 299                   */
+		"\x02" /*     }                               */
+		"\x42" /*     audio_fmt {                     */
+		"\x03" /*         itag: 251                   */
+		"\x08" /*     }                               */
+		"\xFB" /* }                                   */
+		"\x01" /***************************************/
+
 		/*
 	         * Verify that setting the playback cookie a second
 	         * time does not leak memory (assuming this test runs
@@ -460,8 +486,8 @@ protocol_parse_response_next_request_policy(void)
 	         */
 		"\x23" /* part_type = NEXT_REQUEST_POLICY */
 		"\x0C" /* part_size = 12 */
-		"\x3A\x0A\x3A\x03\x08\xAB\x02\x42" /* protoc above */
-		"\x03\x08\xFB\x01");               /* protoc above */
+		"\x3A\x0A\x3A\x03\x08\xAB\x02\x42\x03\x08\xFB\x01"
+	);
 	CHECK_CALL(parse_and_get_next(&response, NULL, &request, &url, NULL));
 
 	/*
@@ -491,30 +517,32 @@ protocol_parse_response_format_initialization_metadata(void)
 	/*
 	 * To generate binary protobuf blobs below:
 	 *
-	 * $ cat /tmp/format_initialization_metadata.txt | protoc --proto_path=build/_deps/googlevideo-src/protos --encode=video_streaming.FormatInitializationMetadata $(find build/_deps -type f -name '*.proto') | hexdump -C
+	 * $ cat /tmp/format_init_metadata.txt | protoc --proto_path=build/_deps/googlevideo-src/protos --encode=video_streaming.FormatInitializationMetadata $(find build/_deps -type f -name '*.proto') | hexdump -C
 	 */
 	/* clang-format on */
 	const struct string_view response = MAKE_TEST_STRING(
 		"\x2A" /* part_type = FORMAT_INITIALIZATION_METADATA */
 		"\x07" /* part_size = 7 */
-		/*
-		 * $ cat /tmp/format_initialization_metadata.txt
-		 * format_id {
-		 *     itag: 251
-		 * }
-		 * end_segment_number: 8
-		 */
-		"\x12\x03\x08\xFB\x01\x20\x08" /* protoc above */
+
+		"\x12" /************ protobuf blob ************/
+		"\x03" /* $ cat /tmp/format_init_metadata.txt */
+		"\x08" /* format_id {                         */
+		"\xFB" /*     itag: 251                       */
+		"\x01" /* }                                   */
+		"\x20" /* end_segment_number: 8               */
+		"\x08" /***************************************/
+
 		"\x2A" /* part_type = FORMAT_INITIALIZATION_METADATA */
 		"\x07" /* part_size = 7 */
-		/*
-		 * $ cat /tmp/format_initialization_metadata.txt
-		 * format_id {
-		 *     itag: 299
-		 * }
-		 * end_segment_number: 9
-		 */
-		"\x12\x03\x08\xAB\x02\x20\x09"); /* protoc above */
+
+		"\x12" /************ protobuf blob ************/
+		"\x03" /* $ cat /tmp/format_init_metadata.txt */
+		"\x08" /* format_id {                         */
+		"\xAB" /*     itag: 299                       */
+		"\x02" /* }                                   */
+		"\x20" /* end_segment_number: 9               */
+		"\x09" /***************************************/
+	);
 	CHECK_CALL(parse_and_get_next(&response, &knows, &request, &url, NULL));
 
 	ASSERT(knows); /* protocol_knows_end() && !protocol_done() */
@@ -538,13 +566,14 @@ protocol_parse_response_sabr_redirect(void)
 	const struct string_view response = MAKE_TEST_STRING(
 		"\x2B" /* part_type = SABR_REDIRECT */
 		"\x16" /* part_size = 22 */
-		/*
-		 * $ cat /tmp/sabr_redirect.txt
-		 * url: "https://foo.test/bar"
-		 */
-		"\x0A\x14\x68\x74\x74\x70\x73\x3A" /* protoc above */
-		"\x2F\x2F\x66\x6F\x6F\x2E\x74\x65" /* protoc above */
-		"\x73\x74\x2F\x62\x61\x72");       /* protoc above */
+
+		"\x0A\x14\x68\x74" /************ protobuf blob ************/
+		"\x74\x70\x73\x3A" /*                                     */
+		"\x2F\x2F\x66\x6F" /* $ cat /tmp/sabr_redirect.txt        */
+		"\x6F\x2E\x74\x65" /* url: "https://foo.test/bar"         */
+		"\x73\x74\x2F\x62" /*                                     */
+		"\x61\x72"         /***************************************/
+	);
 	CHECK_CALL(parse_and_get_next(&response, NULL, &request, &url, NULL));
 
 	/*
