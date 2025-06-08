@@ -331,6 +331,18 @@ youtube_stream_open(struct youtube_stream *p, const char *start_url, int out[2])
 result_t
 youtube_stream_next(struct youtube_stream *p)
 {
+	char *sabr_post __attribute__((cleanup(str_free))) = NULL;
+	size_t sabr_post_sz = 0;
+	check(protocol_next_request(p->stream, &sabr_post, &sabr_post_sz));
+
+	/*
+	 * XXX: clang-tidy does not seem to understand __attribute__((cleanup))
+	 * on <start_url>, <url>. As a workaround, suppress false positives of
+	 * clang-analyzer-unix.Malloc with NOLINTBEGIN/NOLINTEND.
+	 */
+
+	// NOLINTBEGIN(clang-analyzer-unix.Malloc)
+
 	char *start_url __attribute__((cleanup(str_free))) = NULL;
 	char *url __attribute__((cleanup(str_free))) = NULL;
 	{
@@ -340,9 +352,7 @@ youtube_stream_next(struct youtube_stream *p)
 	}
 	check_if(start_url == NULL || url == NULL, ERR_JS_SABR_URL_ALLOC);
 
-	char *sabr_post __attribute__((cleanup(str_free))) = NULL;
-	size_t sabr_post_sz = 0;
-	check(protocol_next_request(p->stream, &sabr_post, &sabr_post_sz));
+	// NOLINTEND(clang-analyzer-unix.Malloc)
 
 	const struct string_view v = {
 		.data = sabr_post,
