@@ -5,9 +5,9 @@
 `youtube-unthrottle` implements a small subset of tools like
 [LuanRT/googlevideo](https://github.com/LuanRT/googlevideo),
 [yt-dlp](https://github.com/yt-dlp/yt-dlp),
-and the venerable [youtube-dl](https://github.com/ytdl-org/youtube-dl).
+and of course, [youtube-dl](https://github.com/ytdl-org/youtube-dl).
 
-Specifically, `youtube-unthrottle` extracts the video and audio streams
+In particular, `youtube-unthrottle` extracts the video and audio streams
 from a YouTube link passed via `argv[1]`. A program like `mpv` can act on
 this output like:
 
