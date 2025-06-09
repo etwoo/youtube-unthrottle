@@ -167,23 +167,8 @@ youtube_stream_set_url(struct youtube_stream *p, const struct string_view *url)
 		                   url->sz);
 	}
 
-	ada_url previous = p->url;
+	ada_free(p->url); /* handles NULL gracefully */
 	p->url = ada_parse(url->data, url->sz);
-
-	if (previous && p->url) {
-		ada_string x = ada_get_hostname(previous);
-		ada_string y = ada_get_hostname(p->url);
-		if (x.length != y.length ||
-		    0 != strncmp(x.data, y.data, y.length)) {
-			info("Target hostname changed: %.*s -> %.*s",
-			     (int)x.length,
-			     x.data,
-			     (int)y.length,
-			     y.data);
-		}
-	}
-	ada_free(previous); /* handles NULL gracefully */
-
 	return RESULT_OK;
 }
 
