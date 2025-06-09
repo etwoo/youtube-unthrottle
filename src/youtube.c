@@ -348,14 +348,13 @@ youtube_stream_next(struct youtube_stream *p)
 	};
 	check(http_post(p, &p->ump, url, &v, CONTENT_TYPE_PROTOBUF, NULL));
 	check(protocol_parse_response(p->stream, &p->ump.data, &url));
+	check(tmptruncate(p->ump.fd, &p->ump.data));
 
 	const struct string_view maybe_redirect = {
 		.data = url,
 		.sz = strlen(url),
 	};
 	check(youtube_stream_set_url(p, &maybe_redirect));
-
-	check(tmptruncate(p->ump.fd, &p->ump.data));
 
 	return protocol_knows_end(p->stream)
 	               ? RESULT_OK
