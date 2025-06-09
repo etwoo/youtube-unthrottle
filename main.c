@@ -16,9 +16,9 @@
 #include "sandbox.h"
 #include "youtube.h"
 
-#include <arpa/inet.h>
 #include <errno.h>
 #include <getopt.h> /* for getopt_long() */
+#include <netinet/in.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
