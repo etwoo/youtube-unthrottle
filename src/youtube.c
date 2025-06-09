@@ -159,8 +159,7 @@ ada_search_params_set_helper(ada_url url, const char *key, const char *val)
 }
 
 static WARN_UNUSED result_t
-youtube_stream_set_url_with_n_param(struct youtube_stream *p,
-                                    const struct string_view *url)
+youtube_stream_set_url(struct youtube_stream *p, const struct string_view *url)
 {
 	if (!ada_can_parse(url->data, url->sz)) {
 		return make_result(ERR_YOUTUBE_STREAM_URL_INVALID,
@@ -308,7 +307,7 @@ youtube_stream_open(struct youtube_stream *p, const char *start_url, int out[2])
 
 	struct string_view sabr = {0};
 	check(find_sabr_url(&p->json.data, &sabr));
-	check(youtube_stream_set_url_with_n_param(p, &sabr));
+	check(youtube_stream_set_url(p, &sabr));
 
 	char *ciphertexts[2] __attribute__((cleanup(ciphertexts_cleanup))) = {
 		NULL,
@@ -347,11 +346,13 @@ youtube_stream_next(struct youtube_stream *p)
 		.sz = sabr_post_sz,
 	};
 	check(http_post(p, &p->ump, url, &v, CONTENT_TYPE_PROTOBUF, NULL));
+	check(protocol_parse_response(p->stream, &p->ump.data, &url));
 
-	char *redirect_url __attribute__((cleanup(str_free))) = NULL;
-	check(protocol_parse_response(p->stream, &p->ump.data, &redirect_url));
-	info_if(redirect_url != NULL && 0 != strcmp(url, redirect_url),
-	        "Sandbox may block SABR redirect; ignoring ...");
+	const struct string_view maybe_redirect = {
+		.data = url,
+		.sz = strlen(url),
+	};
+	check(youtube_stream_set_url(p, &maybe_redirect));
 
 	check(tmptruncate(p->ump.fd, &p->ump.data));
 
