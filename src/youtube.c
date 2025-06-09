@@ -167,6 +167,7 @@ youtube_stream_set_url(struct youtube_stream *p, const struct string_view *url)
 		                   url->sz);
 	}
 
+	ada_free(p->url); /* handles NULL gracefully */
 	p->url = ada_parse(url->data, url->sz);
 	return RESULT_OK;
 }
