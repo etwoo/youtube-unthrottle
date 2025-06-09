@@ -128,7 +128,7 @@ url_download(const char *url_str,
 	CURLcode res = curl == NULL ? CURLE_OUT_OF_MEMORY : CURLE_OK;
 	check_if_num(res, ERR_URL_DOWNLOAD_ALLOC);
 
-#if 0
+#ifdef WITH_CURL_VERBOSE
 	res = curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 	check_if_num(res, ERR_URL_DOWNLOAD_SET_VERBOSE);
 #endif

@@ -26,7 +26,7 @@ vlog(const char *level,
 void
 debug_at_line(const char *fname, unsigned int lineno, const char *pattern, ...)
 {
-#ifdef WITH_DEBUG_OUTPUT
+#ifdef WITH_DEBUG_LOG
 	va_list ap;
 	va_start(ap, pattern);
 	vlog("DEBUG", fname, lineno, pattern, ap);

@@ -51,7 +51,7 @@ str_free(char **strp)
 static void
 pretty_print_code(struct string_view in /* note: pass by value */, char **out)
 {
-#ifdef WITH_DEBUG_OUTPUT
+#ifdef WITH_DEBUG_LOG
 	char *buffer = malloc((in.sz + 1) * sizeof(*buffer));
 	*out = buffer;
 	while (buffer) {
