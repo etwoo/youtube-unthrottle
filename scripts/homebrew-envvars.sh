@@ -9,6 +9,9 @@ echo "CFLAGS=-I$BREW_PREFIX/include"
 echo "LDFLAGS=-L$BREW_PREFIX/lib"
 echo "LD_LIBRARY_PATH=$BREW_PREFIX/lib"
 
+# Update PATH in case CC (below) depends on brew-managed assembler, linker, etc
+echo "PATH=$BREW_PREFIX/bin:$PATH"
+
 # For reference on this idiom for checking if a glob matched, see:
 #   https://unix.stackexchange.com/a/298302
 shopt -s nullglob
