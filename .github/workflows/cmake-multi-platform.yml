@@ -44,7 +44,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - uses: ./.github/actions/make-homebrew-devenv
-    - name: Configure
+    - name: Configure and build
       run: >
         cmake --preset default
         -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
