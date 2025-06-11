@@ -16,6 +16,7 @@
 #include "sandbox.h"
 #include "youtube.h"
 
+#include <assert.h>
 #include <errno.h>
 #include <getopt.h> /* for getopt_long() */
 #include <netinet/in.h>
@@ -28,6 +29,9 @@
 #include <sys/socket.h>
 #include <sysexits.h>
 #include <unistd.h> /* for close() */
+
+#define PCRE2_CODE_UNIT_WIDTH 8
+#include <pcre2.h>
 
 const char *__asan_default_options(void) // NOLINT(bugprone-reserved-identifier)
 	__attribute__((used));
@@ -73,6 +77,77 @@ try_sandbox(void)
 	check(sandbox_only_io_inet_rpath());
 	check(sandbox_only_io());
 	return RESULT_OK;
+}
+
+struct quality {
+	pcre2_code *re;
+	pcre2_match_data *md;
+};
+
+static __attribute__((warn_unused_result)) bool
+parse_quality_choices(const char *str, struct quality *q)
+{
+	assert(q->re == NULL && q->md == NULL);
+
+	int rc = 0;
+	PCRE2_SIZE loc = 0;
+	PCRE2_SPTR pat = (PCRE2_SPTR)str;
+	PCRE2_UCHAR err[256];
+
+	const char *action = "compiling";
+	q->re = pcre2_compile(pat, PCRE2_ZERO_TERMINATED, 0, &rc, &loc, NULL);
+	if (q->re == NULL) {
+		goto err;
+	}
+
+	action = "allocating match data block";
+	q->md = pcre2_match_data_create_from_pattern(q->re, NULL);
+	if (q->md == NULL) {
+		goto err;
+	}
+
+	return true;
+
+err:
+	if (pcre2_get_error_message(rc, err, sizeof(err)) < 0) {
+		to_stderr("(no details) %s regex \"%s\"", action, str);
+		return false;
+	}
+
+	to_stderr("%s \"%s\" at offset %zu: %s", action, str, loc, err);
+	return false;
+}
+
+static const result_t RESULT_QUALITY_BLOCK = {
+	.err = ERR_JS_PARSE_JSON_CALLBACK_QUALITY,
+};
+
+static __attribute__((warn_unused_result)) result_t
+choose_quality(const char *val, void *userdata)
+{
+	struct quality *q = (struct quality *)userdata;
+	size_t sz = strlen(val);
+
+	if (q->re == NULL || q->md == NULL) {
+		return RESULT_OK;
+	}
+
+	PCRE2_SPTR subject = (PCRE2_SPTR)val;
+	int rc = pcre2_match(q->re, subject, sz, 0, 0, q->md, NULL);
+	if (rc > 0) {
+		return RESULT_OK;
+	} else if (rc == PCRE2_ERROR_NOMATCH) {
+		return RESULT_QUALITY_BLOCK;
+	}
+
+	PCRE2_UCHAR err[256];
+	if (pcre2_get_error_message(rc, err, sizeof(err)) < 0) {
+		to_stderr("(no details) matching \"%.*s\"", (int)sz, val);
+		return RESULT_QUALITY_BLOCK;
+	}
+
+	to_stderr("matching \"%.*s\": %s", (int)sz, val, err);
+	return RESULT_QUALITY_BLOCK;
 }
 
 static void
@@ -160,6 +235,7 @@ static __attribute__((warn_unused_result)) result_t
 unthrottle(const char *target,
            const char *proof_of_origin,
            const char *visitor_data,
+           struct quality *q,
            int output[2],
            youtube_handle_t *stream)
 {
@@ -173,7 +249,7 @@ unthrottle(const char *target,
 	check(youtube_stream_prepare_tmpfiles(*stream));
 
 	check(sandbox_only_io_inet_rpath());
-	check(youtube_stream_open(*stream, target, output));
+	check(youtube_stream_open(*stream, target, choose_quality, q, output));
 
 	while (!youtube_stream_done(*stream)) {
 		check(youtube_stream_next(*stream));
@@ -190,6 +266,7 @@ main(int argc, char *argv[])
 		ACTION_USAGE_HELP,
 		ACTION_USAGE_ERROR,
 	} action = 0;
+	const char *q_str = NULL;
 	const char *proof_of_origin = NULL;
 	const char *visitor_data = NULL;
 
@@ -197,19 +274,23 @@ main(int argc, char *argv[])
 	struct option lo[] = {
 		{"help", no_argument, &synonym, 'h'},
 		{"try-sandbox", no_argument, &synonym, 't'},
+		{"quality", required_argument, &synonym, 'q'},
 		{"proof-of-origin", required_argument, &synonym, 'p'},
 		{"visitor-data", required_argument, &synonym, 'v'},
 		{NULL, 0, NULL, 0},
 	};
 
 	int opt = 0;
-	while ((opt = getopt_long(argc, argv, "htp:v:", lo, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "htq:p:v:", lo, NULL)) != -1) {
 		switch (opt == 0 ? synonym : opt) {
 		case 'h':
 			action = MAX(action, ACTION_USAGE_HELP);
 			break;
 		case 't':
 			action = MAX(action, ACTION_TRY_SANDBOX);
+			break;
+		case 'q':
+			q_str = optarg;
 			break;
 		case 'p':
 			proof_of_origin = optarg;
@@ -225,6 +306,7 @@ main(int argc, char *argv[])
 
 	int rc = EX_USAGE;  /* assume invalid arguments by default */
 	FILE *out = stderr; /* assume output to stderr by default */
+	struct quality q = {NULL, NULL};
 
 	switch (action) {
 	case ACTION_YOUTUBE_UNTHROTTLE:
@@ -234,6 +316,8 @@ main(int argc, char *argv[])
 			to_stderr("Missing --proof-of-origin value");
 		} else if (!visitor_data || *visitor_data == '\0') {
 			to_stderr("Missing --visitor-data value");
+		} else if (q_str && !parse_quality_choices(q_str, &q)) {
+			to_stderr("Invalid --quality value: %s", q_str);
 		} else {
 			int output[2] = {
 				-1,
@@ -245,6 +329,7 @@ main(int argc, char *argv[])
 			rc = result_to_status(unthrottle(argv[optind],
 			                                 proof_of_origin,
 			                                 visitor_data,
+			                                 &q,
 			                                 output,
 			                                 &stream));
 
@@ -277,5 +362,7 @@ main(int argc, char *argv[])
 		break;
 	}
 
+	pcre2_match_data_free(q.md); /* handles NULL gracefully */
+	pcre2_code_free(q.re);       /* handles NULL gracefully */
 	return rc;
 }

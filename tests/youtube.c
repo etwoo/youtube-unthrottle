@@ -102,7 +102,8 @@ stream_setup_with_redirected_network_io(const char *(*custom_fn)(const char *),
 	ASSERT_EQ(OK, err.err);
 
 	test_request_path_to_response = custom_fn;
-	err = youtube_stream_open(stream, FAKE_URL, OFD);
+	// TODO: add meaningful tests of choose_quality callback + userdata?
+	err = youtube_stream_open(stream, FAKE_URL, NULL, NULL, OFD);
 	test_request_path_to_response = NULL;
 
 	ASSERT_EQ(ERR_YOUTUBE_EARLY_END_STREAM, err.err);
@@ -190,7 +191,7 @@ stream_setup_edge_cases_target_url_missing_stream_id(void)
 	auto_result err = youtube_stream_prepare_tmpfiles(stream);
 	ASSERT_EQ(OK, err.err);
 
-	err = youtube_stream_open(stream, YT_MISSING_ID, OFD);
+	err = youtube_stream_open(stream, YT_MISSING_ID, NULL, NULL, OFD);
 	ASSERT_EQ(ERR_JS_MAKE_INNERTUBE_JSON_ID, err.err);
 	ASSERT(youtube_stream_done(stream));
 
@@ -219,7 +220,7 @@ stream_setup_edge_cases_n_param_missing(void)
 	ASSERT_EQ(OK, err.err);
 
 	test_request_path_to_response = test_request_n_param_missing;
-	err = youtube_stream_open(stream, FAKE_URL, OFD);
+	err = youtube_stream_open(stream, FAKE_URL, NULL, NULL, OFD);
 	test_request_path_to_response = NULL;
 
 	ASSERT_EQ(ERR_YOUTUBE_N_PARAM_FIND_IN_QUERY, err.err);
@@ -250,7 +251,7 @@ stream_setup_edge_cases_invalid_url(void)
 	ASSERT_EQ(OK, err.err);
 
 	test_request_path_to_response = test_request_invalid_url;
-	err = youtube_stream_open(stream, FAKE_URL, OFD);
+	err = youtube_stream_open(stream, FAKE_URL, NULL, NULL, OFD);
 	test_request_path_to_response = NULL;
 
 	ASSERT_EQ(ERR_YOUTUBE_STREAM_URL_INVALID, err.err);

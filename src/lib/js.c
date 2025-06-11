@@ -76,6 +76,87 @@ pretty_print_code(struct string_view in /* note: pass by value */, char **out)
 #endif
 }
 
+static const char MTVIDEO[] = "video/";
+
+result_t
+parse_json(const struct string_view *json,
+           const struct parse_ops *ops,
+           long long int *itag)
+{
+	// debug("Got JSON blob: %.*s", json->sz, json->data);
+	debug("Got JSON blob of size %zu", json->sz);
+
+	json_error_t json_error;
+
+	json_auto_t *obj = json_loadb(json->data, json->sz, 0, &json_error);
+	if (obj == NULL) {
+		return make_result(ERR_JS_PARSE_JSON_DECODE, json_error.text);
+	} else if (!json_is_object(obj)) {
+		return make_result(ERR_JS_PARSE_JSON_GET_STREAMINGDATA);
+	}
+
+	json_t *streamingData = json_object_get(obj, "streamingData");
+	if (streamingData == NULL) {
+		return make_result(ERR_JS_PARSE_JSON_GET_STREAMINGDATA);
+	} else if (!json_is_object(streamingData)) {
+		return make_result(ERR_JS_PARSE_JSON_GET_ADAPTIVEFORMATS);
+	}
+
+	json_t *adaptiveFormats =
+		json_object_get(streamingData, "adaptiveFormats");
+	if (adaptiveFormats == NULL) {
+		return make_result(ERR_JS_PARSE_JSON_GET_ADAPTIVEFORMATS);
+	} else if (!json_is_array(adaptiveFormats)) {
+		return make_result(ERR_JS_PARSE_JSON_ADAPTIVEFORMATS_TYPE);
+	}
+
+	size_t i = 0;
+	json_t *cur = NULL;
+	json_array_foreach (adaptiveFormats, i, cur) {
+		if (!json_is_object(cur)) {
+			return make_result(ERR_JS_PARSE_JSON_ELEM_TYPE);
+		}
+
+		json_t *json_mimetype = json_object_get(cur, "mimeType");
+		if (!json_is_string(json_mimetype)) {
+			return make_result(ERR_JS_PARSE_JSON_ELEM_MIMETYPE);
+		}
+
+		const char *mimetype = json_string_value(json_mimetype);
+		assert(mimetype != NULL);
+
+		if (0 != strncmp(mimetype, MTVIDEO, strlen(MTVIDEO))) {
+			continue;
+		}
+
+		json_t *quality = json_object_get(cur, "qualityLabel");
+		if (!json_is_string(quality)) {
+			continue;
+		}
+
+		const char *q = json_string_value(quality);
+		assert(q != NULL);
+
+		auto_result err =
+			ops->choose_quality(q, ops->choose_quality_userdata);
+		if (err.err != OK) {
+			continue;
+		}
+
+		json_t *json_itag = json_object_get(cur, "itag");
+		if (!json_is_integer(json_itag)) {
+			return make_result(ERR_JS_PARSE_JSON_ELEM_ITAG);
+		}
+
+		if (itag) {
+			*itag = json_integer_value(json_itag);
+		}
+		return RESULT_OK;
+	}
+
+	return RESULT_OK; /* no matches -- still OK */
+}
+
 result_t
 make_innertube_json(const char *target_url,
                     const char *proof_of_origin,
@@ -167,40 +248,6 @@ find_js_timestamp(const struct string_view *js, long long int *value)
 	}
 
 	debug("Parsed timestamp %.*s into %lld", (int)ts.sz, ts.data, res);
-	*value = res;
-	return RESULT_OK;
-}
-
-result_t
-find_itag_video(const struct string_view *json, long long int *value)
-{
-	struct string_view itag = {0};
-	check(re_capture("\\n[ ]{8}\"itag\": ([0-9]+),"
-	                 "(?:" /* non-capturing group: (?:...) */
-	                 "\\n[ ]{8,10}(?:}|\"(?!quality)[a-zA-Z]+\": .+),?"
-	                 ")*" /* zero or more matches of non-capturing group */
-	                 "\\n[ ]{8}\"quality\": \"hd1080\"",
-	                 json,
-	                 &itag));
-	if (itag.data == NULL) {
-		return make_result(ERR_JS_ITAG_VIDEO_FIND);
-	}
-
-	/*
-	 * strtoll() does not update errno on success, so we must clear it
-	 * explicitly if we want a predictable value.
-	 */
-	errno = 0;
-
-	long long int res = strtoll(itag.data, NULL, 10);
-	if (errno != 0) {
-		return make_result(ERR_JS_ITAG_VIDEO_PARSE_LL,
-		                   errno,
-		                   itag.data,
-		                   itag.sz);
-	}
-
-	debug("Parsed itag %.*s into %lld", (int)itag.sz, itag.data, res);
 	*value = res;
 	return RESULT_OK;
 }

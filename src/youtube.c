@@ -259,7 +259,11 @@ ciphertexts_cleanup(char *ciphertexts[][2])
 }
 
 result_t
-youtube_stream_open(struct youtube_stream *p, const char *start_url, int out[2])
+youtube_stream_open(struct youtube_stream *p,
+                    const char *start_url,
+                    result_t (*choose_quality)(const char *, void *),
+                    void *choose_quality_userdata,
+                    int out[2])
 {
 	check(http_get(p, &p->html, start_url));
 
@@ -294,8 +298,12 @@ youtube_stream_open(struct youtube_stream *p, const char *start_url, int out[2])
 	};
 	check(http_post(p, &p->json, INNERTUBE, &body, CONTENT_TYPE_JSON, hdr));
 
+	struct parse_ops pops = {
+		.choose_quality = choose_quality,
+		.choose_quality_userdata = choose_quality_userdata,
+	};
 	long long int itag = 0;
-	check(find_itag_video(&p->json.data, &itag));
+	check(parse_json(&p->json.data, &pops, &itag));
 
 	struct string_view playback_config = {0};
 	check(find_playback_config(&p->json.data, &playback_config));

@@ -8,6 +8,386 @@
 #include <assert.h>
 #include <limits.h>
 
+static WARN_UNUSED result_t
+parse_callback_noop(const char *val __attribute__((unused)),
+                    void *userdata __attribute__((unused)))
+{
+	return RESULT_OK;
+}
+
+static const struct parse_ops NOOP = {
+	.choose_quality = parse_callback_noop,
+	.choose_quality_userdata = NULL,
+};
+
+static WARN_UNUSED int
+parse(const char *str)
+{
+	struct string_view tmp = {.data = str, .sz = strlen(str)};
+	auto_result err = parse_json(&tmp, &NOOP, NULL);
+	return err.err;
+}
+
+TEST
+root_empty(void)
+{
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse(""));
+	PASS();
+}
+
+TEST
+root_number_NaN(void)
+{
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("NaN"));
+	PASS();
+}
+
+TEST
+root_string_missing_quotes(void)
+{
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("Hello, World!"));
+	PASS();
+}
+
+TEST
+root_string_missing_opening_quote(void)
+{
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("Hello, World!\""));
+	PASS();
+}
+
+TEST
+root_string_missing_closing_quote(void)
+{
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("\"Hello, World!"));
+	PASS();
+}
+
+TEST
+root_boolean_uppercase(void)
+{
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("FALSE"));
+	PASS();
+}
+
+TEST
+root_array_only_opening_brace(void)
+{
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("["));
+	PASS();
+}
+
+TEST
+root_array_only_closing_brace(void)
+{
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("]"));
+	PASS();
+}
+
+TEST
+root_array_missing_opening_brace(void)
+{
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("1, 2, 3]"));
+	PASS();
+}
+
+TEST
+root_array_missing_closing_brace(void)
+{
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("[1, 2, 3"));
+	PASS();
+}
+
+TEST
+root_object_only_closing_brace(void)
+{
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("}"));
+	PASS();
+}
+
+TEST
+root_object_only_opening_brace(void)
+{
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("{"));
+	PASS();
+}
+
+TEST
+root_object_missing_closing_brace(void)
+{
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("{\"foo\": \"bar\""));
+	PASS();
+}
+
+TEST
+root_object_missing_opening_brace(void)
+{
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("\"foo\": \"bar\"}"));
+	PASS();
+}
+
+/*
+ * Test that invalid JSON does not crash.
+ */
+SUITE(invalid_json)
+{
+	RUN_TEST(root_empty);
+	RUN_TEST(root_number_NaN);
+	RUN_TEST(root_string_missing_quotes);
+	RUN_TEST(root_string_missing_opening_quote);
+	RUN_TEST(root_string_missing_closing_quote);
+	RUN_TEST(root_boolean_uppercase);
+	RUN_TEST(root_array_only_opening_brace);
+	RUN_TEST(root_array_only_closing_brace);
+	RUN_TEST(root_array_missing_opening_brace);
+	RUN_TEST(root_array_missing_closing_brace);
+	RUN_TEST(root_object_only_opening_brace);
+	RUN_TEST(root_object_only_closing_brace);
+	RUN_TEST(root_object_missing_opening_brace);
+	RUN_TEST(root_object_missing_closing_brace);
+}
+
+TEST
+root_null(void)
+{
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("null"));
+	PASS();
+}
+
+TEST
+root_number(void)
+{
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("-123.456"));
+	PASS();
+}
+
+TEST
+root_string_empty(void)
+{
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("\"\""));
+	PASS();
+}
+
+TEST
+root_string_nonempty(void)
+{
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("\"Hello, World!\""));
+	PASS();
+}
+
+TEST
+root_boolean(void)
+{
+	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("false"));
+	PASS();
+}
+
+TEST
+root_array_empty(void)
+{
+	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA, parse("[]"));
+	PASS();
+}
+
+TEST
+root_array_nonempty(void)
+{
+	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA, parse("[1, 2, 3]"));
+	PASS();
+}
+
+/*
+ * Test that incorrect root JSON type does not crash.
+ */
+SUITE(incorrect_root_type)
+{
+	RUN_TEST(root_null);
+	RUN_TEST(root_number);
+	RUN_TEST(root_string_empty);
+	RUN_TEST(root_string_nonempty);
+	RUN_TEST(root_boolean);
+	RUN_TEST(root_array_empty);
+	RUN_TEST(root_array_nonempty);
+}
+
+TEST
+root_object_empty(void)
+{
+	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA, parse("{}"));
+	PASS();
+}
+
+TEST
+missing_streamingData_key(void)
+{
+	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA,
+	          parse("{\"foo\": \"bar\"}"));
+	PASS();
+}
+
+TEST
+incorrect_streamingData_value_type(void)
+{
+	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_ADAPTIVEFORMATS,
+	          parse("{\"streamingData\": 1}"));
+	PASS();
+}
+
+TEST
+missing_adaptiveFormats_key(void)
+{
+	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_ADAPTIVEFORMATS,
+	          parse("{\"streamingData\": {\"foo\": \"bar\"}}"));
+	PASS();
+}
+
+TEST
+incorrect_adaptiveFormats_value_type(void)
+{
+	ASSERT_EQ(ERR_JS_PARSE_JSON_ADAPTIVEFORMATS_TYPE,
+	          parse("{\"streamingData\": {\"adaptiveFormats\": 2}}"));
+	PASS();
+}
+
+TEST
+incorrect_adaptiveFormats_element_type(void)
+{
+	ASSERT_EQ(ERR_JS_PARSE_JSON_ELEM_TYPE,
+	          parse("{\"streamingData\": {\"adaptiveFormats\": [3]}}"));
+	PASS();
+}
+
+TEST
+missing_mimeType_key(void)
+{
+	ASSERT_EQ(ERR_JS_PARSE_JSON_ELEM_MIMETYPE,
+	          parse("{\"streamingData\": {\"adaptiveFormats\": "
+	                "[{\"foo\": \"bar\"}]"
+	                "}}"));
+	PASS();
+}
+
+TEST
+incorrect_mimeType_value_type(void)
+{
+	ASSERT_EQ(ERR_JS_PARSE_JSON_ELEM_MIMETYPE,
+	          parse("{\"streamingData\": {\"adaptiveFormats\": "
+	                "[{\"mimeType\": 4}]"
+	                "}}"));
+	PASS();
+}
+
+/*
+ * Test that incorrect JSON content shape does not crash.
+ */
+SUITE(incorrect_shape)
+{
+	RUN_TEST(root_object_empty);
+	RUN_TEST(missing_streamingData_key);
+	RUN_TEST(incorrect_streamingData_value_type);
+	RUN_TEST(missing_adaptiveFormats_key);
+	RUN_TEST(incorrect_adaptiveFormats_value_type);
+	RUN_TEST(incorrect_adaptiveFormats_element_type);
+	RUN_TEST(missing_mimeType_key);
+	RUN_TEST(incorrect_mimeType_value_type);
+	// TODO: add missing + incorrect type testcases for itag element
+}
+
+TEST
+minimum_json_with_correct_shape(void)
+{
+	// TODO: remove unnecessary "url" attributes, ditto other testcases
+	const struct string_view json = MAKE_TEST_STRING(
+		"{\"streamingData\": {\"adaptiveFormats\": ["
+		"{\"mimeType\": \"audio/foo\",\"url\": \"http://a.test\"},"
+		"{\"mimeType\": \"video/foo\",\"url\": \"http://v.test\"}"
+		"]}}");
+
+	struct parse_ops pops = {
+		.choose_quality = parse_callback_noop,
+		.choose_quality_userdata = NULL,
+	};
+	long long int itag = 0;
+	auto_result err = parse_json(&json, &pops, &itag);
+	ASSERT_EQ(OK, err.err);
+	// TODO: add itag to test string, check resulting value here
+
+	PASS();
+}
+
+TEST
+extra_adaptiveFormats_elements(void)
+{
+	const struct string_view json = MAKE_TEST_STRING(
+		"{\"streamingData\": {\"adaptiveFormats\": ["
+		"{\"mimeType\": \"audio/foo\",\"url\": \"http://a.test\"},"
+		"{\"mimeType\": \"audio/bar\",\"url\": \"http://extra.test\"},"
+		"{\"mimeType\": \"video/foo\",\"url\": \"http://v.test\"},"
+		"{\"mimeType\": \"video/bar\",\"url\": \"http://extra.test\"}"
+		"]}}");
+
+	struct parse_ops pops = {
+		.choose_quality = parse_callback_noop,
+		.choose_quality_userdata = NULL,
+	};
+	long long int itag = 0;
+	auto_result err = parse_json(&json, &pops, &itag);
+	ASSERT_EQ(OK, err.err);
+	// TODO: add itag to test string, check resulting value here
+
+	PASS();
+}
+
+static WARN_UNUSED result_t
+choose_quality_skip_marked_entries(const char *val, void *userdata)
+{
+	const char *skip_pattern = (const char *)userdata;
+	if (0 == strcmp(skip_pattern, val)) {
+		return make_result(ERR_JS_PARSE_JSON_CALLBACK_QUALITY);
+	}
+	return RESULT_OK;
+}
+
+TEST
+choose_adaptiveFormats_elements(void)
+{
+	const struct string_view json = MAKE_TEST_STRING(
+		"{ \"streamingData\": {\"adaptiveFormats\": [ {"
+		"\"mimeType\": \"audio/foo\","
+		"\"qualityLabel\": \"skip\","
+		"\"url\": \"http://bad.test\""
+		"},"
+		"{"
+		"\"mimeType\": \"audio/bar\","
+		"\"url\": \"http://a.test\""
+		"},"
+		"{\"mimeType\": \"video/foo\","
+		"\"qualityLabel\": \"skip\","
+		"\"url\": \"http://bad.test\""
+		"},"
+		"{\"mimeType\": \"video/bar\","
+		"\"url\": \"http://v.test\""
+		"} ] }}");
+
+	struct parse_ops pops = {
+		.choose_quality = choose_quality_skip_marked_entries,
+		.choose_quality_userdata = "skip",
+	};
+	long long int itag = 0;
+	auto_result err = parse_json(&json, &pops, &itag);
+	ASSERT_EQ(OK, err.err);
+	// TODO: add itag to test string, check resulting value here
+
+	PASS();
+}
+
+SUITE(correct_shape)
+{
+	RUN_TEST(minimum_json_with_correct_shape);
+	RUN_TEST(extra_adaptiveFormats_elements);
+	RUN_TEST(choose_adaptiveFormats_elements);
+}
+
 TEST
 find_base_js_url_negative(void)
 {
@@ -162,80 +542,6 @@ find_js_timestamp_positive_simple(void)
 }
 
 TEST
-find_itag_video_negative_re_pattern(void)
-{
-	const struct string_view json =
-		MAKE_TEST_STRING("\n        \"itag\": \"foo\","
-	                         "\n        \"quality\": \"hd1080\",");
-
-	long long int itag_video = -1;
-	auto_result err = find_itag_video(&json, &itag_video);
-
-	ASSERT_EQ(ERR_JS_ITAG_VIDEO_FIND, err.err);
-	ASSERT_GT(0, itag_video);
-	PASS();
-}
-
-TEST
-find_itag_video_negative_strtoll_erange(void)
-{
-	const struct string_view json =
-		MAKE_TEST_STRING("\n        \"itag\": 9223372036854775808,"
-	                         "\n        \"quality\": \"hd1080\",");
-
-	long long int itag_video = -1;
-	auto_result err = find_itag_video(&json, &itag_video);
-
-	ASSERT_EQ(ERR_JS_ITAG_VIDEO_PARSE_LL, err.err);
-	ASSERT_EQ(ERANGE, err.num);
-	ASSERT_STR_EQ("9223372036854775808", err.msg);
-	ASSERT_GT(0, itag_video);
-	PASS();
-}
-
-TEST
-find_itag_video_positive_strtoll_max(void)
-{
-	const struct string_view json =
-		MAKE_TEST_STRING("\n        \"itag\": 9223372036854775807,"
-	                         "\n        \"quality\": \"hd1080\",");
-
-	long long int itag_video = 0;
-	auto_result err = find_itag_video(&json, &itag_video);
-
-	ASSERT_EQ(OK, err.err);
-	ASSERT_EQ(LLONG_MAX, itag_video);
-	PASS();
-}
-
-TEST
-find_itag_video_positive_simple(void)
-{
-	const struct string_view json =
-		MAKE_TEST_STRING("\n        \"itag\": 400,"
-	                         "\n        \"initRange\": {"
-	                         "\n          \"start\": \"1\","
-	                         "\n          \"end\": \"100\""
-	                         "\n        },"
-	                         "\n        \"quality\": \"medium\","
-	                         "\n      },"
-	                         "\n      {"
-	                         "\n        \"itag\": 299,"
-	                         "\n        \"initRange\": {"
-	                         "\n          \"start\": \"2\","
-	                         "\n          \"end\": \"200\""
-	                         "\n        },"
-	                         "\n        \"quality\": \"hd1080\",");
-
-	long long int itag_video = 0;
-	auto_result err = find_itag_video(&json, &itag_video);
-
-	ASSERT_EQ(OK, err.err);
-	ASSERT_EQ(299, itag_video);
-	PASS();
-}
-
-TEST
 find_js_deobfuscator_magic_global_negative_first(void)
 {
 	struct deobfuscator d = {0};
@@ -381,10 +687,6 @@ SUITE(find_with_pcre)
 	RUN_TEST(find_js_timestamp_negative_strtoll_erange);
 	RUN_TEST(find_js_timestamp_positive_strtoll_max);
 	RUN_TEST(find_js_timestamp_positive_simple);
-	RUN_TEST(find_itag_video_negative_re_pattern);
-	RUN_TEST(find_itag_video_negative_strtoll_erange);
-	RUN_TEST(find_itag_video_positive_strtoll_max);
-	RUN_TEST(find_itag_video_positive_simple);
 	RUN_TEST(find_sabr_url_negative);
 	RUN_TEST(find_sabr_url_positive);
 	RUN_TEST(find_playback_config_negative);

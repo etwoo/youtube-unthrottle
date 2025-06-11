@@ -144,6 +144,36 @@ result_to_str(result_t r)
 	case OK:
 		s = strdup("Success");
 		break;
+	case ERR_JS_PARSE_JSON_ALLOC_HEAP:
+		s = strdup("Cannot allocate JavaScript interpreter heap");
+		break;
+	case ERR_JS_PARSE_JSON_DECODE:
+		s = my_asprintf("Error in json_load*(): %s", r.msg);
+		break;
+	case ERR_JS_PARSE_JSON_GET_STREAMINGDATA:
+		s = strdup("Cannot get .streamingData");
+		break;
+	case ERR_JS_PARSE_JSON_GET_ADAPTIVEFORMATS:
+		s = strdup("Cannot get .adaptiveFormats");
+		break;
+	case ERR_JS_PARSE_JSON_ADAPTIVEFORMATS_TYPE:
+		s = strdup("Cannot iterate over .adaptiveFormats");
+		break;
+	case ERR_JS_PARSE_JSON_ELEM_TYPE:
+		s = strdup("adaptiveFormats element is not object-coercible");
+		break;
+	case ERR_JS_PARSE_JSON_ELEM_MIMETYPE:
+		s = strdup("Cannot get mimeType of adaptiveFormats element");
+		break;
+	case ERR_JS_PARSE_JSON_ELEM_ITAG:
+		s = strdup("Cannot get itag of adaptiveFormats element");
+		break;
+	case ERR_JS_PARSE_JSON_CALLBACK_INVALID_URL:
+		s = my_asprintf("Cannot parse ciphertext URL: %s", r.msg);
+		break;
+	case ERR_JS_PARSE_JSON_CALLBACK_QUALITY:
+		s = strdup("Chose to skip stream based on qualityLevel");
+		break;
 	case ERR_JS_MAKE_INNERTUBE_JSON_ID:
 		s = strdup("Cannot find video ID for InnerTube POST");
 		break;
@@ -160,14 +190,6 @@ result_to_str(result_t r)
 		s = strdup("Cannot find timestamp in base.js");
 		break;
 	case ERR_JS_TIMESTAMP_PARSE_LL:
-		s = my_asprintf("Error in strtoll() on %s: %s",
-		                r.msg,
-		                my_strerror(r));
-		break;
-	case ERR_JS_ITAG_VIDEO_FIND:
-		s = strdup("Cannot find itag in JSON");
-		break;
-	case ERR_JS_ITAG_VIDEO_PARSE_LL:
 		s = my_asprintf("Error in strtoll() on %s: %s",
 		                r.msg,
 		                my_strerror(r));

@@ -44,6 +44,7 @@ make_ns(int err_type)
 static const char CANNOT_ALLOC[] = "Cannot allocate";
 static const char CANNOT_APPEND[] = "Cannot append";
 static const char CANNOT_FIND[] = "Cannot find";
+static const char CANNOT_GET[] = "Cannot get";
 static const char CANNOT_SET[] = "Cannot set";
 static const char CANNOT_UNPACK[] = "Cannot unpack";
 static const char CANNOT_ISSUE[] = "Error issuing";
@@ -54,14 +55,23 @@ TEST
 print_to_str_each_enum_value(void)
 {
 	ASSERT_IN(make(OK), "Success");
+	ASSERT_IN(make(ERR_JS_PARSE_JSON_ALLOC_HEAP), CANNOT_ALLOC);
+	ASSERT_IN(make_s(ERR_JS_PARSE_JSON_DECODE), "Error in json_load");
+	ASSERT_IN(make(ERR_JS_PARSE_JSON_GET_STREAMINGDATA), CANNOT_GET);
+	ASSERT_IN(make(ERR_JS_PARSE_JSON_GET_ADAPTIVEFORMATS), CANNOT_GET);
+	ASSERT_IN(make(ERR_JS_PARSE_JSON_ADAPTIVEFORMATS_TYPE), "Cannot iter");
+	ASSERT_IN(make(ERR_JS_PARSE_JSON_ELEM_TYPE), "not object-coercible");
+	ASSERT_IN(make(ERR_JS_PARSE_JSON_ELEM_MIMETYPE), CANNOT_GET);
+	ASSERT_IN(make(ERR_JS_PARSE_JSON_ELEM_ITAG), CANNOT_GET);
+	ASSERT_IN(make_n(ERR_JS_PARSE_JSON_CALLBACK_INVALID_URL),
+	          "Cannot parse ciphertext URL");
+	ASSERT_IN(make(ERR_JS_PARSE_JSON_CALLBACK_QUALITY), "Chose to skip");
 	ASSERT_IN(make(ERR_JS_MAKE_INNERTUBE_JSON_ID), CANNOT_FIND);
 	ASSERT_IN(make(ERR_JS_MAKE_INNERTUBE_JSON_ALLOC), CANNOT_ALLOC);
 	ASSERT_IN(make(ERR_JS_BASEJS_URL_FIND), CANNOT_FIND);
 	ASSERT_IN(make(ERR_JS_BASEJS_URL_ALLOC), "Cannot strndup");
 	ASSERT_IN(make(ERR_JS_TIMESTAMP_FIND), CANNOT_FIND);
 	ASSERT_IN(make_ns(ERR_JS_TIMESTAMP_PARSE_LL), "Error in strtoll");
-	ASSERT_IN(make(ERR_JS_ITAG_VIDEO_FIND), CANNOT_FIND);
-	ASSERT_IN(make_ns(ERR_JS_ITAG_VIDEO_PARSE_LL), "Error in strtoll");
 	ASSERT_IN(make(ERR_JS_SABR_URL_FIND), CANNOT_FIND);
 	ASSERT_IN(make(ERR_JS_SABR_URL_ALLOC), "Cannot strndup");
 	ASSERT_IN(make(ERR_JS_PLAYBACK_CONFIG_FIND), CANNOT_FIND);

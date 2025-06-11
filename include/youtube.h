@@ -25,8 +25,11 @@ void youtube_stream_cleanup(youtube_handle_t h);
 
 result_t youtube_stream_prepare_tmpfiles(youtube_handle_t h)
 	__attribute__((warn_unused_result));
-result_t youtube_stream_open(youtube_handle_t h, const char *target, int fd[2])
-	__attribute__((warn_unused_result));
+result_t youtube_stream_open(youtube_handle_t h,
+                             const char *target,
+                             result_t (*choose_quality)(const char *, void *),
+                             void *choose_quality_userdata,
+                             int fd[2]) __attribute__((warn_unused_result));
 result_t youtube_stream_next(youtube_handle_t h)
 	__attribute__((warn_unused_result));
 bool youtube_stream_done(youtube_handle_t h)
