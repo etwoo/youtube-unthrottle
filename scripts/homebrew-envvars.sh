@@ -9,6 +9,13 @@ echo "CFLAGS=-I$BREW_PREFIX/include"
 echo "LDFLAGS=-L$BREW_PREFIX/lib"
 echo "LD_LIBRARY_PATH=$BREW_PREFIX/lib"
 
+# TODO: verify that as --version == 2.44, i.e. newest binutils
+echo "Checking assembler version ..."
+which as
+as --version
+ls "$BREW_PREFIX/bin/as"
+"$BREW_PREFIX/bin/as" --version
+
 # For reference on this idiom for checking if a glob matched, see:
 #   https://unix.stackexchange.com/a/298302
 shopt -s nullglob
