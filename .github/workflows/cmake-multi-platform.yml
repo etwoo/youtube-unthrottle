@@ -18,7 +18,16 @@ jobs:
         os: [ubuntu-latest, macos-latest, macos-13]
         toolchain:
           - compiler: gcc
-            package: gcc
+            package: gcc@14
+            # gcc-14 (currently) required to workaround failures on gcc-15:
+            #
+            #     {standard input}: Assembler messages:
+            #     {standard input}:1921: Error: unknown pseudo-op: `.base64'
+            #
+            # related upstream issues:
+            #
+            #     https://gcc.gnu.org/bugzilla/show_bug.cgi?id=117342
+            #     https://gcc.gnu.org/bugzilla/show_bug.cgi?id=119657
           - compiler: clang
             package: llvm
     runs-on: ${{ matrix.os }}
