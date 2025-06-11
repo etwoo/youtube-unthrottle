@@ -156,49 +156,6 @@ cleanup:
 	}
 }
 
-struct check_url_state {
-	char *start_url;
-};
-
-static void
-check_url_state_cleanup(struct check_url_state *p)
-{
-	free(p->start_url);
-}
-
-static void
-check_url(const char *url, size_t sz, void *userdata)
-{
-	struct check_url_state *p = (struct check_url_state *)userdata;
-	if (p->start_url == NULL) {
-		p->start_url = strndup(url, sz);
-		return;
-	}
-
-	char *start_url_getargs_pos = strchr(p->start_url, '?');
-	if (start_url_getargs_pos == NULL) {
-		to_stderr("Start URL lacks GET args: %s", p->start_url);
-		return;
-	}
-
-	char *redir_url_getargs_pos = memchr(url, '?', sz);
-	if (redir_url_getargs_pos == NULL) {
-		to_stderr("Redirect URL lacks GET args: %.*s", (int)sz, url);
-		return;
-	}
-
-	const size_t start_url_prefix_sz = start_url_getargs_pos - p->start_url;
-	const size_t redir_url_prefix_sz = redir_url_getargs_pos - url;
-	if (start_url_prefix_sz != redir_url_prefix_sz ||
-	    0 != strncmp(p->start_url, url, start_url_prefix_sz)) {
-		to_stderr("Sandbox may block new hostname: %.*s -> %.*s",
-		          (int)start_url_prefix_sz,
-		          p->start_url,
-		          (int)redir_url_prefix_sz,
-		          url);
-	}
-}
-
 static __attribute__((warn_unused_result)) result_t
 unthrottle(const char *target,
            const char *proof_of_origin,
@@ -206,9 +163,6 @@ unthrottle(const char *target,
            int output[2],
            youtube_handle_t *stream)
 {
-	struct check_url_state cus
-		__attribute__((cleanup(check_url_state_cleanup))) = {0};
-
 	check(youtube_global_init());
 	check_if(output[0] < 0 || output[1] < 0, OK);
 
@@ -221,12 +175,9 @@ unthrottle(const char *target,
 	check(sandbox_only_io_inet_rpath());
 	check(youtube_stream_open(*stream, target, output));
 
-	check(sandbox_only_io());
 	while (!youtube_stream_done(*stream)) {
-		check(youtube_stream_visitor(*stream, check_url, &cus));
 		check(youtube_stream_next(*stream));
 	}
-
 	return RESULT_OK;
 }
 
