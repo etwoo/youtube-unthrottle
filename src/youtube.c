@@ -162,16 +162,17 @@ ada_search_params_set_helper(ada_url url, const char *key, const char *val)
 }
 
 static WARN_UNUSED result_t
-youtube_stream_set_url(struct youtube_stream *p, const struct string_view *url)
+youtube_stream_set_url(struct youtube_stream *p, char *url_as_cstr)
 {
-	if (!ada_can_parse(url->data, url->sz)) {
+	const size_t sz = strlen(url_as_cstr);
+	if (!ada_can_parse(url_as_cstr, sz)) {
 		return make_result(ERR_YOUTUBE_STREAM_URL_INVALID,
-		                   url->data,
-		                   url->sz);
+		                   url_as_cstr,
+		                   sz);
 	}
 
 	ada_free(p->url); /* handles NULL gracefully */
-	p->url = ada_parse(url->data, url->sz);
+	p->url = ada_parse(url_as_cstr, sz);
 	return RESULT_OK;
 }
 
@@ -262,9 +263,7 @@ ciphertexts_cleanup(char *ciphertexts[][2])
 }
 
 result_t
-youtube_stream_open(struct youtube_stream *p,
-                    const char *start_url,
-                    int out[2])
+youtube_stream_open(struct youtube_stream *p, const char *start_url, int out[2])
 {
 	check(http_get(p, &p->html, start_url));
 
@@ -299,21 +298,20 @@ youtube_stream_open(struct youtube_stream *p,
 	};
 	check(http_post(p, &p->json, INNERTUBE, &body, CONTENT_TYPE_JSON, hdr));
 
-	long long int itag = 0;
-	check(parse_json(&p->json.data, &p->pops, &itag));
-
-	struct string_view playback_config = {0};
-	check(find_playback_config(&p->json.data, &playback_config));
+	struct parse_values parsed
+		__attribute__((cleanup(parse_values_cleanup))) = {0};
+	check(parse_json(&p->json.data, &p->pops, &parsed));
+	check(youtube_stream_set_url(p, parsed.sabr_url));
 
 	struct string_view poo = {
 		.data = p->proof_of_origin,
 		.sz = strlen(p->proof_of_origin),
 	};
-	check(protocol_init(&poo, &playback_config, itag, out, &p->stream));
-
-	struct string_view sabr = {0};
-	check(find_sabr_url(&p->json.data, &sabr));
-	check(youtube_stream_set_url(p, &sabr));
+	struct string_view pbc = {
+		.data = parsed.playback_config,
+		.sz = strlen(parsed.playback_config),
+	};
+	check(protocol_init(&poo, &pbc, parsed.itag, out, &p->stream));
 
 	char *ciphertexts[2] __attribute__((cleanup(ciphertexts_cleanup))) = {
 		NULL,
@@ -354,12 +352,7 @@ youtube_stream_next(struct youtube_stream *p)
 	check(http_post(p, &p->ump, url, &v, CONTENT_TYPE_PROTOBUF, NULL));
 	check(protocol_parse_response(p->stream, &p->ump.data, &url));
 	check(tmptruncate(p->ump.fd, &p->ump.data));
-
-	const struct string_view maybe_redirect = {
-		.data = url,
-		.sz = strlen(url),
-	};
-	check(youtube_stream_set_url(p, &maybe_redirect));
+	check(youtube_stream_set_url(p, url));
 
 	return protocol_knows_end(p->stream)
 	               ? RESULT_OK

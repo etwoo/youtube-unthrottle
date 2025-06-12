@@ -10,9 +10,16 @@ struct parse_ops {
 	void *userdata;
 };
 
+struct parse_values {
+	long long int itag;
+	char *sabr_url;
+	char *playback_config;
+};
+
 result_t parse_json(const struct string_view *json,
                     const struct parse_ops *ops,
-                    long long int *itag) WARN_UNUSED;
+                    struct parse_values *values) WARN_UNUSED;
+void parse_values_cleanup(struct parse_values *p);
 
 result_t make_innertube_json(const char *target_url,
                              const char *proof_of_origin,
@@ -23,10 +30,6 @@ result_t find_base_js_url(const struct string_view *html,
                           struct string_view *basejs) WARN_UNUSED;
 result_t find_js_timestamp(const struct string_view *js,
                            long long int *value) WARN_UNUSED;
-result_t find_sabr_url(const struct string_view *json,
-                       struct string_view *sabr) WARN_UNUSED;
-result_t find_playback_config(const struct string_view *json,
-                              struct string_view *config) WARN_UNUSED;
 
 struct deobfuscator {
 	struct string_view magic[2];

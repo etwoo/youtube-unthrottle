@@ -24,7 +24,8 @@ static WARN_UNUSED int
 parse(const char *str)
 {
 	struct string_view tmp = {.data = str, .sz = strlen(str)};
-	auto_result err = parse_json(&tmp, &NOOP, NULL);
+	struct parse_values parsed = {0};
+	auto_result err = parse_json(&tmp, &NOOP, &parsed);
 	return err.err;
 }
 
@@ -282,8 +283,8 @@ missing_itag_key(void)
 {
 	ASSERT_EQ(ERR_JS_PARSE_JSON_ELEM_ITAG,
 	          parse("{\"streamingData\": {\"adaptiveFormats\": [{"
-		        "\"mimeType\": \"video/foo\","
-		        "\"qualityLabel\": \"foobar\""
+	                "\"mimeType\": \"video/foo\","
+	                "\"qualityLabel\": \"foobar\""
 	                "}]}}"));
 	PASS();
 }
@@ -293,10 +294,65 @@ incorrect_itag_value_type(void)
 {
 	ASSERT_EQ(ERR_JS_PARSE_JSON_ELEM_ITAG,
 	          parse("{\"streamingData\": {\"adaptiveFormats\": [{"
-		        "\"mimeType\": \"video/foo\","
-		        "\"qualityLabel\": \"foobar\","
-		        "\"itag\": \"fuzzbuzz\""
+	                "\"mimeType\": \"video/foo\","
+	                "\"qualityLabel\": \"foobar\","
+	                "\"itag\": \"fuzzbuzz\""
 	                "}]}}"));
+	PASS();
+}
+
+TEST
+missing_sabr_url_key(void)
+{
+	ASSERT_EQ(ERR_JS_SABR_URL_FIND,
+	          parse("{\"streamingData\": {\"adaptiveFormats\": [{"
+	                "\"mimeType\": \"video/foo\","
+	                "\"qualityLabel\": \"foobar\","
+	                "\"itag\": 299"
+	                "}]}}"));
+	PASS();
+}
+
+TEST
+incorrect_sabr_url_value_type(void)
+{
+	ASSERT_EQ(ERR_JS_SABR_URL_FIND,
+	          parse("{\"streamingData\": {\"adaptiveFormats\": [{"
+	                "\"mimeType\": \"video/foo\","
+	                "\"qualityLabel\": \"foobar\","
+	                "\"itag\": 299"
+	                "}]},"
+	                "\"serverAbrStreamingUrl\": 123"
+	                "}"));
+	PASS();
+}
+
+TEST
+missing_playback_config_key(void)
+{
+	ASSERT_EQ(ERR_JS_PLAYBACK_CONFIG_FIND,
+	          parse("{\"streamingData\": {\"adaptiveFormats\": [{"
+	                "\"mimeType\": \"video/foo\","
+	                "\"qualityLabel\": \"foobar\","
+	                "\"itag\": 299"
+	                "}]},"
+	                "\"serverAbrStreamingUrl\": \"https://foo.test\""
+	                "}"));
+	PASS();
+}
+
+TEST
+incorrect_playback_config_value_type(void)
+{
+	ASSERT_EQ(ERR_JS_PLAYBACK_CONFIG_FIND,
+	          parse("{\"streamingData\": {\"adaptiveFormats\": [{"
+	                "\"mimeType\": \"video/foo\","
+	                "\"qualityLabel\": \"foobar\","
+	                "\"itag\": 299"
+	                "}]},"
+	                "\"serverAbrStreamingUrl\": \"https://foo.test\","
+	                "\"videoPlaybackUstreamerConfig\": 456"
+	                "}"));
 	PASS();
 }
 
@@ -315,6 +371,10 @@ SUITE(incorrect_shape)
 	RUN_TEST(incorrect_mimeType_value_type);
 	RUN_TEST(missing_itag_key);
 	RUN_TEST(incorrect_itag_value_type);
+	RUN_TEST(missing_sabr_url_key);
+	RUN_TEST(incorrect_sabr_url_value_type);
+	RUN_TEST(missing_playback_config_key);
+	RUN_TEST(incorrect_playback_config_value_type);
 }
 
 TEST
@@ -325,12 +385,15 @@ minimum_json_with_correct_shape(void)
 		"\"mimeType\": \"video/foo\","
 		"\"qualityLabel\": \"foobar\","
 		"\"itag\": 299"
-		"}]}}");
+		"}]},"
+		"\"serverAbrStreamingUrl\": \"https://foo.test\","
+		"\"videoPlaybackUstreamerConfig\": \"cGxheWJhY2sK\""
+		"}");
 
-	long long int itag = 0;
-	auto_result err = parse_json(&json, &NOOP, &itag);
+	struct parse_values parsed = {0};
+	auto_result err = parse_json(&json, &NOOP, &parsed);
 	ASSERT_EQ(OK, err.err);
-	ASSERT_EQ(299, itag);
+	ASSERT_EQ(299, parsed.itag);
 
 	PASS();
 }
@@ -345,13 +408,15 @@ extra_adaptiveFormats_elements(void)
 		" \"itag\": 100},"
 		"{\"mimeType\": \"video/foo\","
 		" \"qualityLabel\": \"foobar\","
-		" \"itag\": 200}"
-		"]}}");
+		" \"itag\": 200}]},"
+		"\"serverAbrStreamingUrl\": \"https://foo.test\","
+		"\"videoPlaybackUstreamerConfig\": \"cGxheWJhY2sK\""
+		"}");
 
-	long long int itag = 0;
-	auto_result err = parse_json(&json, &NOOP, &itag);
+	struct parse_values parsed = {0};
+	auto_result err = parse_json(&json, &NOOP, &parsed);
 	ASSERT_EQ(OK, err.err);
-	ASSERT_EQ(100, itag);
+	ASSERT_EQ(100, parsed.itag);
 
 	PASS();
 }
@@ -376,17 +441,19 @@ choose_adaptiveFormats_elements(void)
 		" \"itag\": 100},"
 		"{\"mimeType\": \"video/foo\","
 		" \"qualityLabel\": \"foobar\","
-		" \"itag\": 200}"
-		"]}}");
+		" \"itag\": 200}]},"
+		"\"serverAbrStreamingUrl\": \"https://foo.test\","
+		"\"videoPlaybackUstreamerConfig\": \"cGxheWJhY2sK\""
+		"}");
 
 	struct parse_ops pops = {
 		.choose_quality = choose_quality_skip_marked_entries,
 		.userdata = "skip",
 	};
-	long long int itag = 0;
-	auto_result err = parse_json(&json, &pops, &itag);
+	struct parse_values parsed = {0};
+	auto_result err = parse_json(&json, &pops, &parsed);
 	ASSERT_EQ(OK, err.err);
-	ASSERT_EQ(200, itag);
+	ASSERT_EQ(200, parsed.itag);
 
 	PASS();
 }
@@ -428,66 +495,6 @@ find_base_js_url_positive(void)
 
 	const char expected[] =
 		"/s/player/deadbeef/player_ias.vflset/en_US/base.js";
-	ASSERT_EQ(strlen(expected), p.sz);
-	ASSERT_STRN_EQ(expected, p.data, p.sz);
-	PASS();
-}
-
-TEST
-find_sabr_url_negative(void)
-{
-	struct string_view p = {0};
-	const struct string_view html = MAKE_TEST_STRING("<html/>");
-
-	auto_result err = find_sabr_url(&html, &p);
-	ASSERT_EQ(ERR_JS_SABR_URL_FIND, err.err);
-
-	ASSERT_EQ(NULL, p.data);
-	ASSERT_EQ(0, p.sz);
-	PASS();
-}
-
-TEST
-find_sabr_url_positive(void)
-{
-	struct string_view p = {0};
-	const struct string_view html = MAKE_TEST_STRING(
-		"{ \"serverAbrStreamingUrl\": \"https://foo.test\" }");
-
-	auto_result err = find_sabr_url(&html, &p);
-	ASSERT_EQ(OK, err.err);
-
-	const char expected[] = "https://foo.test";
-	ASSERT_EQ(strlen(expected), p.sz);
-	ASSERT_STRN_EQ(expected, p.data, p.sz);
-	PASS();
-}
-
-TEST
-find_playback_config_negative(void)
-{
-	struct string_view p = {0};
-	const struct string_view html = MAKE_TEST_STRING("<html/>");
-
-	auto_result err = find_playback_config(&html, &p);
-	ASSERT_EQ(ERR_JS_PLAYBACK_CONFIG_FIND, err.err);
-
-	ASSERT_EQ(NULL, p.data);
-	ASSERT_EQ(0, p.sz);
-	PASS();
-}
-
-TEST
-find_playback_config_positive(void)
-{
-	struct string_view p = {0};
-	const struct string_view html = MAKE_TEST_STRING(
-		"{ \"videoPlaybackUstreamerConfig\": \"https://foo.test\" }");
-
-	auto_result err = find_playback_config(&html, &p);
-	ASSERT_EQ(OK, err.err);
-
-	const char expected[] = "https://foo.test";
 	ASSERT_EQ(strlen(expected), p.sz);
 	ASSERT_STRN_EQ(expected, p.data, p.sz);
 	PASS();
@@ -697,10 +704,6 @@ SUITE(find_with_pcre)
 	RUN_TEST(find_js_timestamp_negative_strtoll_erange);
 	RUN_TEST(find_js_timestamp_positive_strtoll_max);
 	RUN_TEST(find_js_timestamp_positive_simple);
-	RUN_TEST(find_sabr_url_negative);
-	RUN_TEST(find_sabr_url_positive);
-	RUN_TEST(find_playback_config_negative);
-	RUN_TEST(find_playback_config_positive);
 	RUN_TEST(find_js_deobfuscator_magic_global_negative_first);
 	RUN_TEST(find_js_deobfuscator_magic_global_negative_second);
 	RUN_TEST(find_js_deobfuscator_magic_global_positive);

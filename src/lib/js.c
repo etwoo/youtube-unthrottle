@@ -81,7 +81,7 @@ static const char MTVIDEO[] = "video/";
 result_t
 parse_json(const struct string_view *json,
            const struct parse_ops *ops,
-           long long int *itag)
+           struct parse_values *values)
 {
 	// debug("Got JSON blob: %.*s", json->sz, json->data);
 	debug("Got JSON blob of size %zu", json->sz);
@@ -109,6 +109,8 @@ parse_json(const struct string_view *json,
 	} else if (!json_is_array(adaptiveFormats)) {
 		return make_result(ERR_JS_PARSE_JSON_ADAPTIVEFORMATS_TYPE);
 	}
+
+	values->itag = -1; /* set sentinel value */
 
 	size_t i = 0;
 	json_t *cur = NULL;
@@ -150,14 +152,44 @@ parse_json(const struct string_view *json,
 			return make_result(ERR_JS_PARSE_JSON_ELEM_ITAG);
 		}
 
-		if (itag) {
-			*itag = json_integer_value(json_itag);
-			debug("Parsed itag=%lld", *itag);
-		}
-		return RESULT_OK;
+		values->itag = json_integer_value(json_itag);
+		debug("Parsed itag=%lld", values->itag);
+		break;
 	}
 
-	return make_result(ERR_JS_PARSE_JSON_NO_MATCH);
+	if (values->itag < 0) {
+		return make_result(ERR_JS_PARSE_JSON_NO_MATCH);
+	}
+
+	json_t *serverAbrStreamingUrl =
+		json_object_get(obj, "serverAbrStreamingUrl");
+	if (!json_is_string(serverAbrStreamingUrl)) {
+		return make_result(ERR_JS_SABR_URL_FIND);
+	}
+	values->sabr_url = strndup(json_string_value(serverAbrStreamingUrl),
+	                           json_string_length(serverAbrStreamingUrl));
+	debug("Parsed SABR URI: %p %s", values->sabr_url, values->sabr_url);
+
+	json_t *videoPlaybackUstreamerConfig =
+		json_object_get(obj, "videoPlaybackUstreamerConfig");
+	if (!json_is_string(videoPlaybackUstreamerConfig)) {
+		return make_result(ERR_JS_PLAYBACK_CONFIG_FIND);
+	}
+	values->playback_config =
+		strndup(json_string_value(videoPlaybackUstreamerConfig),
+	                json_string_length(videoPlaybackUstreamerConfig));
+	debug("Parsed playback config: %s", values->playback_config);
+
+	return RESULT_OK;
+}
+
+void
+parse_values_cleanup(struct parse_values *p)
+{
+	if (p) {
+		free(p->sabr_url);
+		free(p->playback_config);
+	}
 }
 
 result_t
@@ -252,36 +284,6 @@ find_js_timestamp(const struct string_view *js, long long int *value)
 
 	debug("Parsed timestamp %.*s into %lld", (int)ts.sz, ts.data, res);
 	*value = res;
-	return RESULT_OK;
-}
-
-result_t
-find_sabr_url(const struct string_view *json, struct string_view *sabr)
-{
-	// TODO: move logic to parse_json()
-	check(re_capture("\"serverAbrStreamingUrl\": \"([^\"]+)\"",
-	                 json,
-	                 sabr));
-	if (sabr->data == NULL) {
-		return make_result(ERR_JS_SABR_URL_FIND);
-	}
-
-	debug("Parsed SABR URI: %.*s", (int)sabr->sz, sabr->data);
-	return RESULT_OK;
-}
-
-result_t
-find_playback_config(const struct string_view *json, struct string_view *config)
-{
-	// TODO: move logic to parse_json()
-	check(re_capture("\"videoPlaybackUstreamerConfig\": \"([^\"]+)\"",
-	                 json,
-	                 config));
-	if (config->data == NULL) {
-		return make_result(ERR_JS_PLAYBACK_CONFIG_FIND);
-	}
-
-	debug("Parsed playback config: %.*s", (int)config->sz, config->data);
 	return RESULT_OK;
 }
 
