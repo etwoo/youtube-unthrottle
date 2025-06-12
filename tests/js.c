@@ -324,6 +324,26 @@ incorrect_itag_value_type(void)
 }
 
 TEST
+no_matching_adaptiveFormats_element_because_empty(void)
+{
+	ASSERT_EQ(ERR_JS_PARSE_JSON_NO_MATCH,
+	          parse("{\"streamingData\": {\"adaptiveFormats\": []}}"));
+	PASS();
+}
+
+TEST
+no_matching_adaptiveFormats_element_because_mimetype(void)
+{
+	ASSERT_EQ(ERR_JS_PARSE_JSON_NO_MATCH,
+	          parse("{\"streamingData\": {\"adaptiveFormats\": [{"
+	                "\"mimeType\": \"audio/foo\","
+	                "\"qualityLabel\": \"foobar\","
+	                "\"itag\": 251"
+	                "}]}}"));
+	PASS();
+}
+
+TEST
 missing_sabr_url_key(void)
 {
 	ASSERT_EQ(ERR_JS_SABR_URL_FIND,
@@ -398,6 +418,8 @@ SUITE(incorrect_shape)
 	RUN_TEST(incorrect_qualityLabel_value_type);
 	RUN_TEST(missing_itag_key);
 	RUN_TEST(incorrect_itag_value_type);
+	RUN_TEST(no_matching_adaptiveFormats_element_because_empty);
+	RUN_TEST(no_matching_adaptiveFormats_element_because_mimetype);
 	RUN_TEST(missing_sabr_url_key);
 	RUN_TEST(incorrect_sabr_url_value_type);
 	RUN_TEST(missing_playback_config_key);

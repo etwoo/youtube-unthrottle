@@ -158,7 +158,6 @@ parse_json(const struct string_view *json,
 	}
 
 	if (values->itag < 0) {
-		// TODO: add testcase to exercise lack of quality matches
 		return make_result(ERR_JS_PARSE_JSON_NO_MATCH);
 	}
 
