@@ -459,6 +459,35 @@ extra_adaptiveFormats_elements(void)
 	PASS();
 }
 
+TEST
+skip_non_video_adaptiveFormats_elements(void)
+{
+	const struct string_view json = MAKE_TEST_STRING(
+		"{\"streamingData\": {"
+		"\"adaptiveFormats\": ["
+		"{\"mimeType\": \"audio/foo\","
+		" \"qualityLabel\": \"foobar\","
+		" \"itag\": 100},"
+		"{\"mimeType\": \"video/foo\","
+		" \"qualityLabel\": \"foobar\","
+		" \"itag\": 10}"
+		"],"
+		"\"serverAbrStreamingUrl\": \"https://foo.test\"},"
+		"\"playerConfig\": {"
+		"\"mediaCommonConfig\": {"
+		"\"mediaUstreamerRequestConfig\": {"
+		"\"videoPlaybackUstreamerConfig\": \"cGxheWJhY2sK\""
+		"}}}}");
+
+	struct parse_values parsed
+		__attribute__((cleanup(parse_values_cleanup))) = {0};
+	auto_result err = parse_json(&json, &NOOP, &parsed);
+	ASSERT_EQ(OK, err.err);
+	ASSERT_EQ(10, parsed.itag);
+
+	PASS();
+}
+
 static WARN_UNUSED result_t
 choose_quality_skip_marked_entries(const char *val, void *userdata)
 {
@@ -506,6 +535,7 @@ SUITE(correct_shape)
 {
 	RUN_TEST(minimum_json_with_correct_shape);
 	RUN_TEST(extra_adaptiveFormats_elements);
+	RUN_TEST(skip_non_video_adaptiveFormats_elements);
 	RUN_TEST(choose_adaptiveFormats_elements);
 }
 

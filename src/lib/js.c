@@ -128,7 +128,6 @@ parse_json(const struct string_view *json,
 		assert(mimetype != NULL);
 
 		if (0 != strncmp(mimetype, MTVIDEO, strlen(MTVIDEO))) {
-			// TODO: add testcase for ignoring non-video mimetype
 			continue;
 		}
 
