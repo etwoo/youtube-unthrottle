@@ -277,6 +277,29 @@ incorrect_mimeType_value_type(void)
 	PASS();
 }
 
+TEST
+missing_itag_key(void)
+{
+	ASSERT_EQ(ERR_JS_PARSE_JSON_ELEM_ITAG,
+	          parse("{\"streamingData\": {\"adaptiveFormats\": [{"
+		        "\"mimeType\": \"video/foo\","
+		        "\"qualityLabel\": \"foobar\""
+	                "}]}}"));
+	PASS();
+}
+
+TEST
+incorrect_itag_value_type(void)
+{
+	ASSERT_EQ(ERR_JS_PARSE_JSON_ELEM_ITAG,
+	          parse("{\"streamingData\": {\"adaptiveFormats\": [{"
+		        "\"mimeType\": \"video/foo\","
+		        "\"qualityLabel\": \"foobar\","
+		        "\"itag\": \"fuzzbuzz\""
+	                "}]}}"));
+	PASS();
+}
+
 /*
  * Test that incorrect JSON content shape does not crash.
  */
@@ -290,7 +313,8 @@ SUITE(incorrect_shape)
 	RUN_TEST(incorrect_adaptiveFormats_element_type);
 	RUN_TEST(missing_mimeType_key);
 	RUN_TEST(incorrect_mimeType_value_type);
-	// TODO: add missing + incorrect type testcases for itag element
+	RUN_TEST(missing_itag_key);
+	RUN_TEST(incorrect_itag_value_type);
 }
 
 TEST
