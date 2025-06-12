@@ -317,13 +317,14 @@ TEST
 incorrect_sabr_url_value_type(void)
 {
 	ASSERT_EQ(ERR_JS_SABR_URL_FIND,
-	          parse("{\"streamingData\": {\"adaptiveFormats\": [{"
+	          parse("{\"streamingData\": {"
+	                "\"adaptiveFormats\": [{"
 	                "\"mimeType\": \"video/foo\","
 	                "\"qualityLabel\": \"foobar\","
 	                "\"itag\": 299"
-	                "}]},"
+	                "}],"
 	                "\"serverAbrStreamingUrl\": 123"
-	                "}"));
+	                "}}"));
 	PASS();
 }
 
@@ -331,13 +332,14 @@ TEST
 missing_playback_config_key(void)
 {
 	ASSERT_EQ(ERR_JS_PLAYBACK_CONFIG_FIND,
-	          parse("{\"streamingData\": {\"adaptiveFormats\": [{"
+	          parse("{\"streamingData\": {"
+	                "\"adaptiveFormats\": [{"
 	                "\"mimeType\": \"video/foo\","
 	                "\"qualityLabel\": \"foobar\","
 	                "\"itag\": 299"
-	                "}]},"
+	                "}],"
 	                "\"serverAbrStreamingUrl\": \"https://foo.test\""
-	                "}"));
+	                "}}"));
 	PASS();
 }
 
@@ -345,14 +347,15 @@ TEST
 incorrect_playback_config_value_type(void)
 {
 	ASSERT_EQ(ERR_JS_PLAYBACK_CONFIG_FIND,
-	          parse("{\"streamingData\": {\"adaptiveFormats\": [{"
+	          parse("{\"streamingData\": {"
+	                "\"adaptiveFormats\": [{"
 	                "\"mimeType\": \"video/foo\","
 	                "\"qualityLabel\": \"foobar\","
 	                "\"itag\": 299"
-	                "}]},"
+	                "}],"
 	                "\"serverAbrStreamingUrl\": \"https://foo.test\","
 	                "\"videoPlaybackUstreamerConfig\": 456"
-	                "}"));
+	                "}}"));
 	PASS();
 }
 
@@ -381,14 +384,15 @@ TEST
 minimum_json_with_correct_shape(void)
 {
 	const struct string_view json = MAKE_TEST_STRING(
-		"{\"streamingData\": {\"adaptiveFormats\": [{"
+	        "{\"streamingData\": {"
+	        "\"adaptiveFormats\": [{"
 		"\"mimeType\": \"video/foo\","
 		"\"qualityLabel\": \"foobar\","
 		"\"itag\": 299"
-		"}]},"
+		"}],"
 		"\"serverAbrStreamingUrl\": \"https://foo.test\","
 		"\"videoPlaybackUstreamerConfig\": \"cGxheWJhY2sK\""
-		"}");
+		"}}");
 
 	struct parse_values parsed = {0};
 	auto_result err = parse_json(&json, &NOOP, &parsed);
@@ -402,16 +406,18 @@ TEST
 extra_adaptiveFormats_elements(void)
 {
 	const struct string_view json = MAKE_TEST_STRING(
-		"{\"streamingData\": {\"adaptiveFormats\": ["
+	        "{\"streamingData\": {"
+	        "\"adaptiveFormats\": ["
 		"{\"mimeType\": \"video/foo\","
 		" \"qualityLabel\": \"foobar\","
 		" \"itag\": 100},"
 		"{\"mimeType\": \"video/foo\","
 		" \"qualityLabel\": \"foobar\","
-		" \"itag\": 200}]},"
+		" \"itag\": 200}"
+		"],"
 		"\"serverAbrStreamingUrl\": \"https://foo.test\","
 		"\"videoPlaybackUstreamerConfig\": \"cGxheWJhY2sK\""
-		"}");
+		"}}");
 
 	struct parse_values parsed = {0};
 	auto_result err = parse_json(&json, &NOOP, &parsed);
@@ -435,16 +441,18 @@ TEST
 choose_adaptiveFormats_elements(void)
 {
 	const struct string_view json = MAKE_TEST_STRING(
-		"{\"streamingData\": {\"adaptiveFormats\": ["
+	        "{\"streamingData\": {"
+	        "\"adaptiveFormats\": ["
 		"{\"mimeType\": \"video/foo\","
 		" \"qualityLabel\": \"skip\","
 		" \"itag\": 100},"
 		"{\"mimeType\": \"video/foo\","
 		" \"qualityLabel\": \"foobar\","
-		" \"itag\": 200}]},"
+		" \"itag\": 200}"
+		"],"
 		"\"serverAbrStreamingUrl\": \"https://foo.test\","
 		"\"videoPlaybackUstreamerConfig\": \"cGxheWJhY2sK\""
-		"}");
+		"}}");
 
 	struct parse_ops pops = {
 		.choose_quality = choose_quality_skip_marked_entries,

@@ -162,16 +162,17 @@ parse_json(const struct string_view *json,
 	}
 
 	json_t *serverAbrStreamingUrl =
-		json_object_get(obj, "serverAbrStreamingUrl");
+		json_object_get(streamingData, "serverAbrStreamingUrl");
 	if (!json_is_string(serverAbrStreamingUrl)) {
 		return make_result(ERR_JS_SABR_URL_FIND);
 	}
 	values->sabr_url = strndup(json_string_value(serverAbrStreamingUrl),
 	                           json_string_length(serverAbrStreamingUrl));
-	debug("Parsed SABR URI: %p %s", values->sabr_url, values->sabr_url);
+	debug("Parsed SABR URI: %s", values->sabr_url);
 
+	// TODO: "playerConfig" -> "mediaCommonConfig" -> "mediaUstreamerRequestConfig" -> "videoPlaybackUstreamerConfig"
 	json_t *videoPlaybackUstreamerConfig =
-		json_object_get(obj, "videoPlaybackUstreamerConfig");
+		json_object_get(streamingData, "videoPlaybackUstreamerConfig");
 	if (!json_is_string(videoPlaybackUstreamerConfig)) {
 		return make_result(ERR_JS_PLAYBACK_CONFIG_FIND);
 	}
