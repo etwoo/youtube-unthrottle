@@ -168,6 +168,9 @@ result_to_str(result_t r)
 	case ERR_JS_PARSE_JSON_ELEM_ITAG:
 		s = strdup("Cannot get itag of adaptiveFormats element");
 		break;
+	case ERR_JS_PARSE_JSON_NO_MATCH:
+		s = strdup("Cannot find matching adaptiveFormats element");
+		break;
 	case ERR_JS_PARSE_JSON_CALLBACK_INVALID_URL:
 		s = my_asprintf("Cannot parse ciphertext URL: %s", r.msg);
 		break;

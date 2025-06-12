@@ -154,7 +154,7 @@ parse_json(const struct string_view *json,
 		return RESULT_OK;
 	}
 
-	return RESULT_OK; /* no matches -- still OK */
+	return make_result(ERR_JS_PARSE_JSON_NO_MATCH);
 }
 
 result_t

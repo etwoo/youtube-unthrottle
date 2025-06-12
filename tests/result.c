@@ -63,6 +63,7 @@ print_to_str_each_enum_value(void)
 	ASSERT_IN(make(ERR_JS_PARSE_JSON_ELEM_TYPE), "not object-coercible");
 	ASSERT_IN(make(ERR_JS_PARSE_JSON_ELEM_MIMETYPE), CANNOT_GET);
 	ASSERT_IN(make(ERR_JS_PARSE_JSON_ELEM_ITAG), CANNOT_GET);
+	ASSERT_IN(make(ERR_JS_PARSE_JSON_NO_MATCH), CANNOT_FIND);
 	ASSERT_IN(make_n(ERR_JS_PARSE_JSON_CALLBACK_INVALID_URL),
 	          "Cannot parse ciphertext URL");
 	ASSERT_IN(make(ERR_JS_PARSE_JSON_CALLBACK_QUALITY), "Chose to skip");
