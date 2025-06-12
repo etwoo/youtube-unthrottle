@@ -378,22 +378,14 @@ TEST
 choose_adaptiveFormats_elements(void)
 {
 	const struct string_view json = MAKE_TEST_STRING(
-		"{ \"streamingData\": {\"adaptiveFormats\": [ {"
-		"\"mimeType\": \"audio/foo\","
-		"\"qualityLabel\": \"skip\","
-		"\"url\": \"http://bad.test\""
-		"},"
-		"{"
-		"\"mimeType\": \"audio/bar\","
-		"\"url\": \"http://a.test\""
-		"},"
+		"{\"streamingData\": {\"adaptiveFormats\": ["
 		"{\"mimeType\": \"video/foo\","
-		"\"qualityLabel\": \"skip\","
-		"\"url\": \"http://bad.test\""
-		"},"
-		"{\"mimeType\": \"video/bar\","
-		"\"url\": \"http://v.test\""
-		"} ] }}");
+		" \"qualityLabel\": \"skip\","
+		" \"itag\": 100},"
+		"{\"mimeType\": \"video/foo\","
+		" \"qualityLabel\": \"foobar\","
+		" \"itag\": 200}"
+		"]}}");
 
 	struct parse_ops pops = {
 		.choose_quality = choose_quality_skip_marked_entries,
@@ -402,7 +394,7 @@ choose_adaptiveFormats_elements(void)
 	long long int itag = 0;
 	auto_result err = parse_json(&json, &pops, &itag);
 	ASSERT_EQ(OK, err.err);
-	// TODO: add itag to test string, check resulting value here
+	ASSERT_EQ(200, itag);
 
 	PASS();
 }
