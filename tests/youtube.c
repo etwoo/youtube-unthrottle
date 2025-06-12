@@ -117,7 +117,6 @@ stream_setup_with_redirected_network_io(const char *(*custom_fn)(const char *),
 	err = youtube_stream_open(stream, FAKE_URL, OFD);
 	test_request_path_to_response = NULL;
 
-	debug("GOT RESULT: %s", result_to_str(err)); // TODO remove
 	ASSERT_EQ(ERR_YOUTUBE_EARLY_END_STREAM, err.err);
 	ASSERT(youtube_stream_done(stream));
 
