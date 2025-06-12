@@ -320,12 +320,12 @@ SUITE(incorrect_shape)
 TEST
 minimum_json_with_correct_shape(void)
 {
-	// TODO: remove unnecessary "url" attributes, ditto other testcases
 	const struct string_view json = MAKE_TEST_STRING(
-		"{\"streamingData\": {\"adaptiveFormats\": ["
-		"{\"mimeType\": \"audio/foo\",\"url\": \"http://a.test\"},"
-		"{\"mimeType\": \"video/foo\",\"url\": \"http://v.test\"}"
-		"]}}");
+		"{\"streamingData\": {\"adaptiveFormats\": [{"
+		"\"mimeType\": \"video/foo\","
+		"\"qualityLabel\": \"foobar\","
+		"\"itag\": 299"
+		"}]}}");
 
 	struct parse_ops pops = {
 		.choose_quality = parse_callback_noop,
@@ -334,7 +334,7 @@ minimum_json_with_correct_shape(void)
 	long long int itag = 0;
 	auto_result err = parse_json(&json, &pops, &itag);
 	ASSERT_EQ(OK, err.err);
-	// TODO: add itag to test string, check resulting value here
+	ASSERT_EQ(299, itag);
 
 	PASS();
 }
@@ -344,10 +344,12 @@ extra_adaptiveFormats_elements(void)
 {
 	const struct string_view json = MAKE_TEST_STRING(
 		"{\"streamingData\": {\"adaptiveFormats\": ["
-		"{\"mimeType\": \"audio/foo\",\"url\": \"http://a.test\"},"
-		"{\"mimeType\": \"audio/bar\",\"url\": \"http://extra.test\"},"
-		"{\"mimeType\": \"video/foo\",\"url\": \"http://v.test\"},"
-		"{\"mimeType\": \"video/bar\",\"url\": \"http://extra.test\"}"
+		"{\"mimeType\": \"video/foo\","
+		" \"qualityLabel\": \"foobar\","
+		" \"itag\": 100},"
+		"{\"mimeType\": \"video/foo\","
+		" \"qualityLabel\": \"foobar\","
+		" \"itag\": 200}"
 		"]}}");
 
 	struct parse_ops pops = {
@@ -357,7 +359,7 @@ extra_adaptiveFormats_elements(void)
 	long long int itag = 0;
 	auto_result err = parse_json(&json, &pops, &itag);
 	ASSERT_EQ(OK, err.err);
-	// TODO: add itag to test string, check resulting value here
+	ASSERT_EQ(100, itag);
 
 	PASS();
 }
