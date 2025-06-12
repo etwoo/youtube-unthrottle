@@ -385,8 +385,8 @@ TEST
 minimum_json_with_correct_shape(void)
 {
 	const struct string_view json = MAKE_TEST_STRING(
-	        "{\"streamingData\": {"
-	        "\"adaptiveFormats\": [{"
+		"{\"streamingData\": {"
+		"\"adaptiveFormats\": [{"
 		"\"mimeType\": \"video/foo\","
 		"\"qualityLabel\": \"foobar\","
 		"\"itag\": 299"
@@ -411,8 +411,8 @@ TEST
 extra_adaptiveFormats_elements(void)
 {
 	const struct string_view json = MAKE_TEST_STRING(
-	        "{\"streamingData\": {"
-	        "\"adaptiveFormats\": ["
+		"{\"streamingData\": {"
+		"\"adaptiveFormats\": ["
 		"{\"mimeType\": \"video/foo\","
 		" \"qualityLabel\": \"foobar\","
 		" \"itag\": 100},"
@@ -450,8 +450,8 @@ TEST
 choose_adaptiveFormats_elements(void)
 {
 	const struct string_view json = MAKE_TEST_STRING(
-	        "{\"streamingData\": {"
-	        "\"adaptiveFormats\": ["
+		"{\"streamingData\": {"
+		"\"adaptiveFormats\": ["
 		"{\"mimeType\": \"video/foo\","
 		" \"qualityLabel\": \"skip\","
 		" \"itag\": 100},"
