@@ -7,7 +7,7 @@
 
 struct parse_ops {
 	result_t (*choose_quality)(const char *, void *);
-	void *choose_quality_userdata;
+	void *userdata;
 };
 
 result_t parse_json(const struct string_view *json,

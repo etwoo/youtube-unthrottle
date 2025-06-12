@@ -17,7 +17,7 @@ parse_callback_noop(const char *val __attribute__((unused)),
 
 static const struct parse_ops NOOP = {
 	.choose_quality = parse_callback_noop,
-	.choose_quality_userdata = NULL,
+	.userdata = NULL,
 };
 
 static WARN_UNUSED int
@@ -327,12 +327,8 @@ minimum_json_with_correct_shape(void)
 		"\"itag\": 299"
 		"}]}}");
 
-	struct parse_ops pops = {
-		.choose_quality = parse_callback_noop,
-		.choose_quality_userdata = NULL,
-	};
 	long long int itag = 0;
-	auto_result err = parse_json(&json, &pops, &itag);
+	auto_result err = parse_json(&json, &NOOP, &itag);
 	ASSERT_EQ(OK, err.err);
 	ASSERT_EQ(299, itag);
 
@@ -352,12 +348,8 @@ extra_adaptiveFormats_elements(void)
 		" \"itag\": 200}"
 		"]}}");
 
-	struct parse_ops pops = {
-		.choose_quality = parse_callback_noop,
-		.choose_quality_userdata = NULL,
-	};
 	long long int itag = 0;
-	auto_result err = parse_json(&json, &pops, &itag);
+	auto_result err = parse_json(&json, &NOOP, &itag);
 	ASSERT_EQ(OK, err.err);
 	ASSERT_EQ(100, itag);
 
@@ -389,7 +381,7 @@ choose_adaptiveFormats_elements(void)
 
 	struct parse_ops pops = {
 		.choose_quality = choose_quality_skip_marked_entries,
-		.choose_quality_userdata = "skip",
+		.userdata = "skip",
 	};
 	long long int itag = 0;
 	auto_result err = parse_json(&json, &pops, &itag);

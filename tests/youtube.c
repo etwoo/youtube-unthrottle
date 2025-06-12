@@ -21,9 +21,15 @@ static const char FAKE_JS_RESPONSE[] =
 	"b=[a.toUpperCase()]; return b.join(\"\")"
 	"};\nnext_global=0";
 static const char FAKE_JSON_RESPONSE[] =
-	"\"serverAbrStreamingUrl\": \"https://a.test/sabr?n=aaa\"\n"
-	"\"videoPlaybackUstreamerConfig\": \"Zm9vYmFyCg==\"\n"
-	"        \"itag\": 299,\n        \"quality\": \"hd1080\",";
+	"{"
+	"\"serverAbrStreamingUrl\": \"https://a.test/sabr?n=aaa\","
+	"\"videoPlaybackUstreamerConfig\": \"Zm9vYmFyCg==\","
+	"\"streamingData\": {\"adaptiveFormats\": [{"
+	"\"mimeType\": \"video/foobar\","
+	"\"qualityLabel\": \"fuzzbuzz\","
+	"\"itag\": 200"
+	"}]}"
+	"}";
 
 static const char *(*test_request_path_to_response)(const char *) = NULL;
 
@@ -108,10 +114,10 @@ stream_setup_with_redirected_network_io(const char *(*custom_fn)(const char *),
 	ASSERT_EQ(OK, err.err);
 
 	test_request_path_to_response = custom_fn;
-	// TODO: add meaningful tests of choose_quality callback + userdata?
 	err = youtube_stream_open(stream, FAKE_URL, OFD);
 	test_request_path_to_response = NULL;
 
+	debug("GOT RESULT: %s", result_to_str(err)); // TODO remove
 	ASSERT_EQ(ERR_YOUTUBE_EARLY_END_STREAM, err.err);
 	ASSERT(youtube_stream_done(stream));
 
@@ -142,10 +148,16 @@ test_request_n_param_pos_middle(const char *path)
 	if (NULL == strstr(path, PATH_WANTS_JSON_RESPONSE)) {
 		return NULL;
 	}
-	return "\"serverAbrStreamingUrl\": \"https://a.test/"
-	       "sabr?first=foo&n=aaa&last=bar\"\n"
-	       "\"videoPlaybackUstreamerConfig\": \"Zm9vYmFyCg==\"\n"
-	       "        \"itag\": 299,\n        \"quality\": \"hd1080\",";
+	return "{"
+	       "\"serverAbrStreamingUrl\": \"https://a.test/"
+	       "sabr?first=foo&n=aaa&last=bar\","
+	       "\"videoPlaybackUstreamerConfig\": \"Zm9vYmFyCg==\","
+	       "\"streamingData\": {\"adaptiveFormats\": [{"
+	       "\"mimeType\": \"video/foobar\","
+	       "\"qualityLabel\": \"fuzzbuzz\","
+	       "\"itag\": 200"
+	       "}]}"
+	       "}";
 }
 
 static WARN_UNUSED const char *
@@ -154,10 +166,16 @@ test_request_n_param_pos_first(const char *path)
 	if (NULL == strstr(path, PATH_WANTS_JSON_RESPONSE)) {
 		return NULL;
 	}
-	return "\"serverAbrStreamingUrl\": \"https://a.test/"
-	       "sabr?n=aaa&second=foo&third=bar\"\n"
-	       "\"videoPlaybackUstreamerConfig\": \"Zm9vYmFyCg==\"\n"
-	       "        \"itag\": 299,\n        \"quality\": \"hd1080\",";
+	return "{"
+	       "\"serverAbrStreamingUrl\": \"https://a.test/"
+	       "sabr?n=aaa&second=foo&third=bar\","
+	       "\"videoPlaybackUstreamerConfig\": \"Zm9vYmFyCg==\","
+	       "\"streamingData\": {\"adaptiveFormats\": [{"
+	       "\"mimeType\": \"video/foobar\","
+	       "\"qualityLabel\": \"fuzzbuzz\","
+	       "\"itag\": 200"
+	       "}]}"
+	       "}";
 }
 
 static WARN_UNUSED const char *
@@ -166,10 +184,16 @@ test_request_n_param_pos_last(const char *path)
 	if (NULL == strstr(path, PATH_WANTS_JSON_RESPONSE)) {
 		return NULL;
 	}
-	return "\"serverAbrStreamingUrl\": \"https://a.test/"
-	       "sabr?first=foo&second=bar&n=aaa\"\n"
-	       "\"videoPlaybackUstreamerConfig\": \"Zm9vYmFyCg==\"\n"
-	       "        \"itag\": 299,\n        \"quality\": \"hd1080\",";
+	return "{"
+	       "\"serverAbrStreamingUrl\": \"https://a.test/"
+	       "sabr?first=foo&second=bar&n=aaa\","
+	       "\"videoPlaybackUstreamerConfig\": \"Zm9vYmFyCg==\","
+	       "\"streamingData\": {\"adaptiveFormats\": [{"
+	       "\"mimeType\": \"video/foobar\","
+	       "\"qualityLabel\": \"fuzzbuzz\","
+	       "\"itag\": 200"
+	       "}]}"
+	       "}";
 }
 
 SUITE(stream_setup_n_param_positions)
@@ -211,9 +235,15 @@ test_request_n_param_missing(const char *path)
 	if (NULL == strstr(path, PATH_WANTS_JSON_RESPONSE)) {
 		return NULL;
 	}
-	return "\"serverAbrStreamingUrl\": \"https://a.test/sabr?x=y\"\n"
-	       "\"videoPlaybackUstreamerConfig\": \"Zm9vYmFyCg==\"\n"
-	       "        \"itag\": 299,\n        \"quality\": \"hd1080\",";
+	return "{"
+	       "\"serverAbrStreamingUrl\": \"https://a.test/sabr?x=y\","
+	       "\"videoPlaybackUstreamerConfig\": \"Zm9vYmFyCg==\","
+	       "\"streamingData\": {\"adaptiveFormats\": [{"
+	       "\"mimeType\": \"video/foobar\","
+	       "\"qualityLabel\": \"fuzzbuzz\","
+	       "\"itag\": 200"
+	       "}]}"
+	       "}";
 }
 
 TEST
@@ -242,9 +272,15 @@ test_request_invalid_url(const char *path)
 	if (NULL == strstr(path, PATH_WANTS_JSON_RESPONSE)) {
 		return NULL;
 	}
-	return "\"serverAbrStreamingUrl\": \"!@#$%^&*()\"\n"
-	       "\"videoPlaybackUstreamerConfig\": \"Zm9vYmFyCg==\"\n"
-	       "        \"itag\": 299,\n        \"quality\": \"hd1080\",";
+	return "{"
+	       "\"serverAbrStreamingUrl\": \"!@#$%^&*()\","
+	       "\"videoPlaybackUstreamerConfig\": \"Zm9vYmFyCg==\","
+	       "\"streamingData\": {\"adaptiveFormats\": [{"
+	       "\"mimeType\": \"video/foobar\","
+	       "\"qualityLabel\": \"fuzzbuzz\","
+	       "\"itag\": 200"
+	       "}]}"
+	       "}";
 }
 
 TEST

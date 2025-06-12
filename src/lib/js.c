@@ -137,9 +137,11 @@ parse_json(const struct string_view *json,
 		const char *q = json_string_value(quality);
 		assert(q != NULL);
 
-		auto_result err =
-			ops->choose_quality(q, ops->choose_quality_userdata);
-		if (err.err != OK) {
+		auto_result chosen =
+			ops->choose_quality
+				? ops->choose_quality(q, ops->userdata)
+				: RESULT_OK;
+		if (chosen.err != OK) {
 			continue;
 		}
 
