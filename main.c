@@ -242,14 +242,19 @@ unthrottle(const char *target,
 	check(youtube_global_init());
 	check_if(output[0] < 0 || output[1] < 0, OK);
 
-	*stream = youtube_stream_init(proof_of_origin, visitor_data, NULL);
+	const struct youtube_setup_ops sops = {
+		.io_simulator = NULL,
+		.choose_quality = choose_quality,
+		.choose_quality_userdata = q,
+	};
+	*stream = youtube_stream_init(proof_of_origin, visitor_data, &sops);
 	check_if(*stream == NULL, OK);
 
 	check(sandbox_only_io_inet_tmpfile());
 	check(youtube_stream_prepare_tmpfiles(*stream));
 
 	check(sandbox_only_io_inet_rpath());
-	check(youtube_stream_open(*stream, target, choose_quality, q, output));
+	check(youtube_stream_open(*stream, target, output));
 
 	while (!youtube_stream_done(*stream)) {
 		check(youtube_stream_next(*stream));

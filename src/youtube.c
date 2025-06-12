@@ -50,6 +50,7 @@ struct youtube_stream {
 	const char *proof_of_origin;
 	const char *visitor_data;
 	struct url_request_context context;
+	struct parse_ops pops;
 	struct downloaded html;
 	struct downloaded js;
 	struct downloaded json;
@@ -71,7 +72,7 @@ youtube_global_cleanup(void)
 struct youtube_stream *
 youtube_stream_init(const char *proof_of_origin,
                     const char *visitor_data,
-                    const char *(*io_simulator)(const char *))
+                    const struct youtube_setup_ops *ops)
 {
 	assert(proof_of_origin && visitor_data);
 
@@ -80,8 +81,10 @@ youtube_stream_init(const char *proof_of_origin,
 		memset(p, 0, sizeof(*p)); /* zero early, just in case */
 		p->proof_of_origin = proof_of_origin;
 		p->visitor_data = visitor_data;
-		p->context.simulator = io_simulator;
+		p->context.simulator = ops->io_simulator;
 		url_context_init(&p->context);
+		p->pops.choose_quality = ops->choose_quality;
+		p->pops.choose_quality_userdata = ops->choose_quality_userdata;
 	}
 	return p;
 }
@@ -261,8 +264,6 @@ ciphertexts_cleanup(char *ciphertexts[][2])
 result_t
 youtube_stream_open(struct youtube_stream *p,
                     const char *start_url,
-                    result_t (*choose_quality)(const char *, void *),
-                    void *choose_quality_userdata,
                     int out[2])
 {
 	check(http_get(p, &p->html, start_url));
@@ -298,12 +299,8 @@ youtube_stream_open(struct youtube_stream *p,
 	};
 	check(http_post(p, &p->json, INNERTUBE, &body, CONTENT_TYPE_JSON, hdr));
 
-	struct parse_ops pops = {
-		.choose_quality = choose_quality,
-		.choose_quality_userdata = choose_quality_userdata,
-	};
 	long long int itag = 0;
-	check(parse_json(&p->json.data, &pops, &itag));
+	check(parse_json(&p->json.data, &p->pops, &itag));
 
 	struct string_view playback_config = {0};
 	check(find_playback_config(&p->json.data, &playback_config));
