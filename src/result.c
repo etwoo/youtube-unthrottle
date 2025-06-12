@@ -165,6 +165,10 @@ result_to_str(result_t r)
 	case ERR_JS_PARSE_JSON_ELEM_MIMETYPE:
 		s = strdup("Cannot get mimeType of adaptiveFormats element");
 		break;
+	case ERR_JS_PARSE_JSON_ELEM_QUALITY:
+		s = strdup(
+			"Cannot get qualityLabel of adaptiveFormats element");
+		break;
 	case ERR_JS_PARSE_JSON_ELEM_ITAG:
 		s = strdup("Cannot get itag of adaptiveFormats element");
 		break;

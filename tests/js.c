@@ -280,6 +280,27 @@ incorrect_mimeType_value_type(void)
 }
 
 TEST
+missing_qualityLabel_key(void)
+{
+	ASSERT_EQ(ERR_JS_PARSE_JSON_ELEM_QUALITY,
+	          parse("{\"streamingData\": {\"adaptiveFormats\": [{"
+	                "\"mimeType\": \"video/foo\""
+	                "}]}}"));
+	PASS();
+}
+
+TEST
+incorrect_qualityLabel_value_type(void)
+{
+	ASSERT_EQ(ERR_JS_PARSE_JSON_ELEM_QUALITY,
+	          parse("{\"streamingData\": {\"adaptiveFormats\": [{"
+	                "\"mimeType\": \"video/foo\","
+	                "\"qualityLabel\": 5"
+	                "}]}}"));
+	PASS();
+}
+
+TEST
 missing_itag_key(void)
 {
 	ASSERT_EQ(ERR_JS_PARSE_JSON_ELEM_ITAG,
@@ -324,7 +345,7 @@ incorrect_sabr_url_value_type(void)
 	                "\"qualityLabel\": \"foobar\","
 	                "\"itag\": 299"
 	                "}],"
-	                "\"serverAbrStreamingUrl\": 123"
+	                "\"serverAbrStreamingUrl\": 6"
 	                "}}"));
 	PASS();
 }
@@ -373,6 +394,8 @@ SUITE(incorrect_shape)
 	RUN_TEST(incorrect_adaptiveFormats_element_type);
 	RUN_TEST(missing_mimeType_key);
 	RUN_TEST(incorrect_mimeType_value_type);
+	RUN_TEST(missing_qualityLabel_key);
+	RUN_TEST(incorrect_qualityLabel_value_type);
 	RUN_TEST(missing_itag_key);
 	RUN_TEST(incorrect_itag_value_type);
 	RUN_TEST(missing_sabr_url_key);

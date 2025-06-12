@@ -128,12 +128,13 @@ parse_json(const struct string_view *json,
 		assert(mimetype != NULL);
 
 		if (0 != strncmp(mimetype, MTVIDEO, strlen(MTVIDEO))) {
+			// TODO: add testcase for ignoring non-video mimetype
 			continue;
 		}
 
 		json_t *quality = json_object_get(cur, "qualityLabel");
 		if (!json_is_string(quality)) {
-			continue;
+			return make_result(ERR_JS_PARSE_JSON_ELEM_QUALITY);
 		}
 
 		const char *q = json_string_value(quality);
@@ -158,6 +159,7 @@ parse_json(const struct string_view *json,
 	}
 
 	if (values->itag < 0) {
+		// TODO: add testcase to exercise lack of quality matches
 		return make_result(ERR_JS_PARSE_JSON_NO_MATCH);
 	}
 
