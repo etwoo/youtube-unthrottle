@@ -258,6 +258,7 @@ find_js_timestamp(const struct string_view *js, long long int *value)
 result_t
 find_sabr_url(const struct string_view *json, struct string_view *sabr)
 {
+	// TODO: move logic to parse_json()
 	check(re_capture("\"serverAbrStreamingUrl\": \"([^\"]+)\"",
 	                 json,
 	                 sabr));
@@ -272,6 +273,7 @@ find_sabr_url(const struct string_view *json, struct string_view *sabr)
 result_t
 find_playback_config(const struct string_view *json, struct string_view *config)
 {
+	// TODO: move logic to parse_json()
 	check(re_capture("\"videoPlaybackUstreamerConfig\": \"([^\"]+)\"",
 	                 json,
 	                 config));
