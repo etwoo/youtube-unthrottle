@@ -24,7 +24,8 @@ static WARN_UNUSED int
 parse(const char *str)
 {
 	struct string_view tmp = {.data = str, .sz = strlen(str)};
-	struct parse_values parsed = {0};
+	struct parse_values parsed
+		__attribute__((cleanup(parse_values_cleanup))) = {0};
 	auto_result err = parse_json(&tmp, &NOOP, &parsed);
 	return err.err;
 }
@@ -397,7 +398,8 @@ minimum_json_with_correct_shape(void)
 		"\"videoPlaybackUstreamerConfig\": \"cGxheWJhY2sK\""
 		"}}}}");
 
-	struct parse_values parsed = {0};
+	struct parse_values parsed
+		__attribute__((cleanup(parse_values_cleanup))) = {0};
 	auto_result err = parse_json(&json, &NOOP, &parsed);
 	ASSERT_EQ(OK, err.err);
 	ASSERT_EQ(299, parsed.itag);
@@ -425,7 +427,8 @@ extra_adaptiveFormats_elements(void)
 		"\"videoPlaybackUstreamerConfig\": \"cGxheWJhY2sK\""
 		"}}}}");
 
-	struct parse_values parsed = {0};
+	struct parse_values parsed
+		__attribute__((cleanup(parse_values_cleanup))) = {0};
 	auto_result err = parse_json(&json, &NOOP, &parsed);
 	ASSERT_EQ(OK, err.err);
 	ASSERT_EQ(100, parsed.itag);
@@ -467,7 +470,8 @@ choose_adaptiveFormats_elements(void)
 		.choose_quality = choose_quality_skip_marked_entries,
 		.userdata = "skip",
 	};
-	struct parse_values parsed = {0};
+	struct parse_values parsed
+		__attribute__((cleanup(parse_values_cleanup))) = {0};
 	auto_result err = parse_json(&json, &pops, &parsed);
 	ASSERT_EQ(OK, err.err);
 	ASSERT_EQ(200, parsed.itag);
