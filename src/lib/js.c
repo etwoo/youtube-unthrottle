@@ -152,6 +152,7 @@ parse_json(const struct string_view *json,
 
 		if (itag) {
 			*itag = json_integer_value(json_itag);
+			debug("Parsed itag=%lld", *itag);
 		}
 		return RESULT_OK;
 	}
