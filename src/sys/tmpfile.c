@@ -76,4 +76,21 @@ tmpunmap(struct string_view *addr)
 
 	const int rc = munmap((void *)addr->data, addr->sz);
 	info_m_if(rc < 0, "Ignoring error munmap()-ing tmpfile");
+
+	addr->data = NULL;
+	addr->sz = 0;
+}
+
+result_t
+tmptruncate(int fd, struct string_view *addr)
+{
+	tmpunmap(addr);
+
+	const off_t off = lseek(fd, 0, SEEK_SET);
+	check_if(off < 0, ERR_TMPFILE_LSEEK, errno);
+
+	const int rc = ftruncate(fd, 0);
+	check_if(rc < 0, ERR_TMPFILE_FTRUNCATE, errno);
+
+	return RESULT_OK;
 }

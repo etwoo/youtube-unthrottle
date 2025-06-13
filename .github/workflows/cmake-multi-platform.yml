@@ -18,7 +18,16 @@ jobs:
         os: [ubuntu-latest, macos-latest, macos-13]
         toolchain:
           - compiler: gcc
-            package: gcc
+            package: gcc@14
+            # gcc-14 (currently) required to workaround failures on gcc-15:
+            #
+            #     {standard input}: Assembler messages:
+            #     {standard input}:1921: Error: unknown pseudo-op: `.base64'
+            #
+            # related upstream issues:
+            #
+            #     https://gcc.gnu.org/bugzilla/show_bug.cgi?id=117342
+            #     https://gcc.gnu.org/bugzilla/show_bug.cgi?id=119657
           - compiler: clang
             package: llvm
     runs-on: ${{ matrix.os }}
@@ -44,11 +53,12 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - uses: ./.github/actions/make-homebrew-devenv
-    - name: Configure
+    - name: Configure and build
       run: >
         cmake --preset default
         -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
-        -DCMAKE_EXPORT_COMPILE_COMMANDS=1
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=1 &&
+        cmake --build --preset default --parallel
     - name: Run clang-format and clang-tidy, including clang-analyzer checks
       id: lint
       uses: cpp-linter/cpp-linter-action@v2
@@ -81,7 +91,7 @@ jobs:
         unique-suffix: coverage
     - name: Gather code coverage data
       run: >
-        ./scripts/coverage.sh -E 'main.c|linuxbrew' coverage.profraw ./build/coverage.xml
+        ./scripts/coverage.sh -E 'main.c|build/|linuxbrew' coverage.profraw ./build/coverage.xml
         | sed 's@^@    @g' >> "$GITHUB_STEP_SUMMARY"
 
   build-openbsd:
@@ -91,7 +101,7 @@ jobs:
     - name: Configure, build, and test
       uses: vmactions/openbsd-vm@v1
       with:
-        prepare: pkg_add cmake git ada curl duktape jansson pcre2
+        prepare: pkg_add cmake git ada curl duktape jansson pcre2 protobuf-c
         run: >
           cmake --preset default &&
           cmake --build --preset default &&

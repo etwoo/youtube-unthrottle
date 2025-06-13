@@ -9,6 +9,14 @@
           "type": "BOOL",
           "value": "ON"
         },
+        "WITH_DEBUG_LOG": {
+          "type": "BOOL",
+          "value": "ON"
+        },
+        "WITH_CURL_VERBOSE": {
+          "type": "BOOL",
+          "value": "OFF"
+        },
         "CMAKE_BUILD_TYPE": "Debug"
       },
       "warnings": {
