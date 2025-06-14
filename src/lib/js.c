@@ -144,6 +144,7 @@ parse_json(const struct string_view *json,
 				? ops->choose_quality(q, ops->userdata)
 				: RESULT_OK;
 		if (chosen.err != OK) {
+			debug("Skipping quality: %s", q);
 			continue;
 		}
 
