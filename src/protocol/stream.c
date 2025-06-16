@@ -693,18 +693,6 @@ ump_parse_cookie(const VideoStreaming__NextRequestPolicy *next_request_policy,
 		context->playback_cookie.data);
 
 	debug("Updated playback cookie of size=%zu", cookie_packed_sz);
-
-	if (next_request_policy->has_backoff_time_ms) {
-		debug("Handling backoff_time_ms=%" PRIi32,
-		      next_request_policy->backoff_time_ms);
-		int to_sleep =
-			MAX(next_request_policy->backoff_time_ms / 1000, 1);
-		while (to_sleep > 0) {
-			debug("Sleeping for %d seconds (rounded)", to_sleep);
-			to_sleep = sleep(to_sleep);
-		}
-	}
-
 	return RESULT_OK;
 }
 
@@ -758,6 +746,7 @@ static WARN_UNUSED result_t
 ump_parse_part(struct protocol_state *p,
                struct string_view ump, /* note: pass by value */
                char **target_url,
+               int *retry_after,
                uint64_t part_type,
                bool *skip_media_blobs_until_next)
 {
@@ -822,6 +811,11 @@ ump_parse_part(struct protocol_state *p,
 			(const uint8_t *)ump.data);
 		check_if(pol == NULL, ERR_PROTOCOL_UNPACK_NEXT_REQUEST_POLICY);
 		check(ump_parse_cookie(pol, &p->context));
+		if (pol->has_backoff_time_ms) {
+			debug("Got backoff_time_ms=%" PRIi32,
+			      pol->backoff_time_ms);
+			*retry_after = MAX(pol->backoff_time_ms / 1000, 1);
+		}
 		break;
 	case 42: /* FORMAT_INITIALIZATION_METADATA */
 		*skip_media_blobs_until_next = false;
@@ -869,7 +863,8 @@ ump_parse_part(struct protocol_state *p,
 static WARN_UNUSED result_t
 ump_parse(struct protocol_state *p,
           const struct string_view *ump,
-          char **target_url)
+          char **target_url,
+          int *retry_after)
 {
 	debug("Got UMP response of sz=%zu", ump->sz);
 
@@ -891,7 +886,12 @@ ump_parse(struct protocol_state *p,
 			.data = ump->data + cursor,
 			.sz = part_size,
 		};
-		check(ump_parse_part(p, part, target_url, part_type, &skip));
+		check(ump_parse_part(p,
+		                     part,
+		                     target_url,
+		                     retry_after,
+		                     part_type,
+		                     &skip));
 
 		cursor += part_size;
 	}
@@ -902,9 +902,10 @@ ump_parse(struct protocol_state *p,
 result_t
 protocol_parse_response(struct protocol_state *p,
                         const struct string_view *response,
-                        char **target_url)
+                        char **target_url,
+                        int *retry_after)
 {
-	check(ump_parse(p, response, target_url));
+	check(ump_parse(p, response, target_url, retry_after));
 	protocol_update_members(p);
 	return RESULT_OK;
 }

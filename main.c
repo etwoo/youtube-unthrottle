@@ -256,9 +256,21 @@ unthrottle(const char *target,
 	check(sandbox_only_io_inet_rpath());
 	check(youtube_stream_open(*stream, target, output));
 
-	while (!youtube_stream_done(*stream)) {
-		check(youtube_stream_next(*stream));
+	int retry_after = -1;
+	while (true) {
+		check(youtube_stream_next(*stream, &retry_after));
+
+		if (retry_after > 0) {
+			to_stderr("Retrying after %d second(s)", retry_after);
+			sleep(retry_after);
+			continue;
+		}
+
+		if (!youtube_stream_done(*stream)) {
+			break;
+		}
 	}
+
 	return RESULT_OK;
 }
 

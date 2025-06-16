@@ -255,7 +255,9 @@ parse_and_get_next(const struct string_view *response,
 	auto_result alloc = protocol_init(&proof, &playback, 299, fds, &p);
 	ASSERT_EQ(OK, alloc.err);
 
-	auto_result parse = protocol_parse_response(p, response, url);
+	int retry_after = -1;
+	auto_result parse =
+		protocol_parse_response(p, response, url, &retry_after);
 	ASSERT_EQ(OK, parse.err);
 
 	if (knows_end_and_has_next) {

@@ -122,8 +122,12 @@ stream_setup_with_redirected_network_io(const char *(*custom_fn)(const char *),
 	test_request_path_to_response = custom_fn;
 	err = youtube_stream_open(stream, FAKE_URL, OFD);
 	test_request_path_to_response = NULL;
+	ASSERT_EQ(OK, err.err);
 
+	int retry_after = -1;
+	err = youtube_stream_next(stream, &retry_after);
 	ASSERT_EQ(ERR_YOUTUBE_EARLY_END_STREAM, err.err);
+	ASSERT_EQ(-1, retry_after);
 	ASSERT(youtube_stream_done(stream));
 
 	struct check_url_state cus = {

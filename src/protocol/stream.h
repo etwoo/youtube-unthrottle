@@ -25,7 +25,8 @@ result_t protocol_next_request(protocol stream,
                                size_t *size) WARN_UNUSED;
 result_t protocol_parse_response(protocol stream,
                                  const struct string_view *response,
-                                 char **target_url) WARN_UNUSED;
+                                 char **target_url,
+                                 int *retry_after) WARN_UNUSED;
 
 /*
  * Expose a pure functional subset of parsing logic for UMP format.

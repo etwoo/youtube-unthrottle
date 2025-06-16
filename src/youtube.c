@@ -328,12 +328,14 @@ youtube_stream_open(struct youtube_stream *p, const char *start_url, int out[2])
 	};
 	check(call_js_foreach(&deobfuscator, ciphertexts, &cops, p));
 
-	return youtube_stream_next(p); /* trigger first protocol roundtrip */
+	return RESULT_OK;
 }
 
 result_t
-youtube_stream_next(struct youtube_stream *p)
+youtube_stream_next(struct youtube_stream *p, int *retry_after)
 {
+	*retry_after = -1;
+
 	char *sabr_post __attribute__((cleanup(str_free))) = NULL;
 	size_t sabr_post_sz = 0;
 	check(protocol_next_request(p->stream, &sabr_post, &sabr_post_sz));
@@ -349,12 +351,16 @@ youtube_stream_next(struct youtube_stream *p)
 		.data = sabr_post,
 		.sz = sabr_post_sz,
 	};
+
 	check(http_post(p, &p->ump, url, &v, CONTENT_TYPE_PROTOBUF, NULL));
-	check(protocol_parse_response(p->stream, &p->ump.data, &url));
+	check(protocol_parse_response(p->stream,
+	                              &p->ump.data,
+	                              &url,
+	                              retry_after));
 	check(tmptruncate(p->ump.fd, &p->ump.data));
 	check(youtube_stream_set_url(p, url));
 
-	return protocol_knows_end(p->stream)
+	return protocol_knows_end(p->stream) || *retry_after > 0
 	               ? RESULT_OK
 	               : make_result(ERR_YOUTUBE_EARLY_END_STREAM);
 }
