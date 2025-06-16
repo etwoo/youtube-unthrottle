@@ -33,7 +33,6 @@
 #include "video_streaming/sabr_redirect.pb-c.h"
 #include "video_streaming/video_playback_abr_request.pb-c.h"
 
-#define SABR_CONTEXT_UPDATE_TYPE 5
 #define ITAG_AUDIO 251
 
 static void
@@ -716,34 +715,28 @@ ump_parse_fmt_init(struct protocol_state *p,
 }
 
 static WARN_UNUSED result_t
+copy_sabr_context_update(const struct ProtobufCBinaryData *src,
+                         struct ProtobufCBinaryData *dst)
+{
+	dst->len = src->len;
+	dst->data = malloc(dst->len);
+	check_if(dst->data == NULL, ERR_PROTOCOL_SABR_UPDATE_ALLOC);
+
+	memcpy(dst->data, src->data, dst->len);
+	return RESULT_OK;
+}
+
+static WARN_UNUSED result_t
 ump_parse_sabr_context_update(struct protocol_state *p,
                               const VideoStreaming__SabrContextUpdate *update)
 {
 	if (update->has_type && update->has_value && update->has_write_policy) {
 		p->sabr_context.has_type = true;
-		p->sabr_context.type = SABR_CONTEXT_UPDATE_TYPE;
-
+		p->sabr_context.type = update->type;
 		// TODO: switch (update->write_policy)
 		p->sabr_context.has_value = true;
-
-#if 0
-		assert(sizeof(char) == sizeof(update->value.data[0]));
-		const struct string_view update_value = {
-			.data = (const char *)update->value.data,
-			.sz = update->value.len,
-		};
-		check(base64_decode(&update_value, &p->sabr_context.value));
-#endif
-		p->sabr_context.value.len = update->value.len;
-		p->sabr_context.value.data = malloc(p->sabr_context.value.len);
-		check_if(p->sabr_context.value.data == NULL,
-		         ERR_PROTOCOL_SABR_UPDATE_ALLOC);
-		memcpy(p->sabr_context.value.data,
-		       update->value.data,
-		       p->sabr_context.value.len);
-		debug("Set SABR context update with bytes=%zu",
-		      p->sabr_context.value.len);
-
+		check(copy_sabr_context_update(&update->value,
+		                               &p->sabr_context.value));
 		p->context.n_field5 = 1;
 		p->context.field5 = p->all_sabr_contexts;
 	}
@@ -918,5 +911,4 @@ protocol_parse_response(struct protocol_state *p,
 	return RESULT_OK;
 }
 
-#undef SABR_CONTEXT_UPDATE_TYPE
 #undef ITAG_AUDIO
