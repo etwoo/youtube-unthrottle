@@ -29,9 +29,11 @@
 #include "video_streaming/format_initialization_metadata.pb-c.h"
 #include "video_streaming/media_header.pb-c.h"
 #include "video_streaming/next_request_policy.pb-c.h"
+#include "video_streaming/sabr_context_update.pb-c.h"
 #include "video_streaming/sabr_redirect.pb-c.h"
 #include "video_streaming/video_playback_abr_request.pb-c.h"
 
+#define SABR_CONTEXT_UPDATE_TYPE 5
 #define ITAG_AUDIO 251
 
 static void
@@ -64,6 +66,12 @@ static void
 sabr_redirect_free(VideoStreaming__SabrRedirect **redirect)
 {
 	video_streaming__sabr_redirect__free_unpacked(*redirect, NULL);
+}
+
+static void
+sabr_context_update_free(VideoStreaming__SabrContextUpdate **update)
+{
+	video_streaming__sabr_context_update__free_unpacked(*update, NULL);
 }
 
 static void
@@ -166,6 +174,17 @@ debug_protobuf_fmt_init(const VideoStreaming__FormatInitializationMetadata *fmt)
 	               : -1));
 }
 
+static void
+debug_protobuf_sabr_context_update(const VideoStreaming__SabrContextUpdate *u)
+{
+	debug("Got SABR context update type=%" PRIi32
+	      ", scope=%u, value_sz=%zu, write_policy=%u",
+	      u->has_type ? u->type : -1,
+	      u->has_scope ? u->scope : UINT_MAX,
+	      u->has_value ? u->value.len : 0,
+	      u->has_write_policy ? u->write_policy : UINT_MAX);
+}
+
 struct protocol_state {
 	struct {
 		int itag;
@@ -176,6 +195,8 @@ struct protocol_state {
 	int outputs[2];              /* audio/video output file descriptors */
 	VideoStreaming__ClientAbrState abr_state;
 	VideoStreaming__StreamerContext__ClientInfo info;
+	VideoStreaming__StreamerContext__Fqa sabr_context;
+	VideoStreaming__StreamerContext__Fqa *all_sabr_contexts[1];
 	VideoStreaming__StreamerContext context;
 	Misc__FormatId selected_audio_format;
 	Misc__FormatId selected_video_format;
@@ -201,6 +222,9 @@ protocol_init_members(struct protocol_state *p, long long int itag_video)
 	p->info.client_version = "2.20240726.00.00";
 	p->info.os_name = "Windows";
 	p->info.os_version = "10.0";
+
+	video_streaming__streamer_context__fqa__init(&p->sabr_context);
+	p->all_sabr_contexts[0] = &p->sabr_context;
 
 	video_streaming__streamer_context__init(&p->context);
 	p->context.client_info = &p->info;
@@ -431,6 +455,7 @@ protocol_cleanup(struct protocol_state *p)
 	if (p) {
 		free(p->context.po_token.data);
 		free(p->context.playback_cookie.data);
+		free(p->sabr_context.value.data);
 		free(p->req.video_playback_ustreamer_config.data);
 		free(p);
 	}
@@ -668,6 +693,20 @@ ump_parse_cookie(const VideoStreaming__NextRequestPolicy *next_request_policy,
 		context->playback_cookie.data);
 
 	debug("Updated playback cookie of size=%zu", cookie_packed_sz);
+
+	if (next_request_policy->has_backoff_time_ms) {
+		debug("Handling backoff_time_ms=%" PRIi32,
+		      next_request_policy->backoff_time_ms);
+		int to_sleep =
+			MAX(next_request_policy->backoff_time_ms / 1000, 1);
+#if 0
+		while (to_sleep > 0) {
+			debug("Sleeping for %d seconds (rounded)", to_sleep);
+			to_sleep = sleep(to_sleep);
+		}
+#endif
+	}
+
 	return RESULT_OK;
 }
 
@@ -678,6 +717,41 @@ ump_parse_fmt_init(struct protocol_state *p,
 	if (fmt->format_id && fmt->format_id->has_itag &&
 	    fmt->has_end_segment_number) {
 		set_ends_at(p, fmt->format_id->itag, fmt->end_segment_number);
+	}
+	return RESULT_OK;
+}
+
+static WARN_UNUSED result_t
+ump_parse_sabr_context_update(struct protocol_state *p,
+                              const VideoStreaming__SabrContextUpdate *update)
+{
+	if (update->has_type && update->has_value && update->has_write_policy) {
+		p->sabr_context.has_type = true;
+		p->sabr_context.type = SABR_CONTEXT_UPDATE_TYPE;
+
+		// TODO: switch (update->write_policy)
+		p->sabr_context.has_value = true;
+
+#if 0
+		assert(sizeof(char) == sizeof(update->value.data[0]));
+		const struct string_view update_value = {
+			.data = (const char *)update->value.data,
+			.sz = update->value.len,
+		};
+		check(base64_decode(&update_value, &p->sabr_context.value));
+#endif
+		p->sabr_context.value.len = update->value.len;
+		p->sabr_context.value.data = malloc(p->sabr_context.value.len);
+		check_if(p->sabr_context.value.data == NULL,
+		         ERR_PROTOCOL_SABR_UPDATE_ALLOC);
+		memcpy(p->sabr_context.value.data,
+		       update->value.data,
+		       p->sabr_context.value.len);
+		debug("Set SABR context update with bytes=%zu",
+		      p->sabr_context.value.len);
+
+		p->context.n_field5 = 1;
+		p->context.field5 = p->all_sabr_contexts;
 	}
 	return RESULT_OK;
 }
@@ -697,6 +771,8 @@ ump_parse_part(struct protocol_state *p,
 		__attribute__((cleanup(ump_formats_free))) = NULL;
 	VideoStreaming__SabrRedirect *redir
 		__attribute__((cleanup(sabr_redirect_free))) = NULL;
+	VideoStreaming__SabrContextUpdate *update
+		__attribute__((cleanup(sabr_context_update_free))) = NULL;
 
 	switch (part_type) {
 	case 20: /* MEDIA_HEADER */
@@ -773,6 +849,17 @@ ump_parse_part(struct protocol_state *p,
 		free(*target_url);
 		*target_url = strdup(redir->url);
 		break;
+	case 57: /* SABR_CONTEXT_UPDATE */
+		*skip_media_blobs_until_next = false;
+		assert(sizeof(uint8_t) == sizeof(ump.data[0]));
+		update = video_streaming__sabr_context_update__unpack(
+			NULL,
+			ump.sz,
+			(const uint8_t *)ump.data);
+		check_if(update == NULL, ERR_PROTOCOL_UNPACK_SABR_UPDATE);
+		debug_protobuf_sabr_context_update(update);
+		check(ump_parse_sabr_context_update(p, update));
+		break;
 	default:
 		*skip_media_blobs_until_next = false;
 		break;
@@ -824,4 +911,5 @@ protocol_parse_response(struct protocol_state *p,
 	return RESULT_OK;
 }
 
+#undef SABR_CONTEXT_UPDATE_TYPE
 #undef ITAG_AUDIO

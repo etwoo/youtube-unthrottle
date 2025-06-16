@@ -270,6 +270,9 @@ result_to_str(result_t r)
 	case ERR_PROTOCOL_PLAYBACK_COOKIE_ALLOC:
 		s = strdup("Cannot allocate playback cookie buffer");
 		break;
+	case ERR_PROTOCOL_SABR_UPDATE_ALLOC:
+		s = strdup("Cannot allocate SABR update buffer");
+		break;
 	case ERR_PROTOCOL_HEADER_ID_OVERFLOW:
 		s = my_asprintf("Header ID is unexpectedly large: %d", r.num);
 		break;
@@ -284,6 +287,9 @@ result_to_str(result_t r)
 		break;
 	case ERR_PROTOCOL_UNPACK_SABR_REDIRECT:
 		s = strdup("Cannot unpack SABR redirect protobuf");
+		break;
+	case ERR_PROTOCOL_UNPACK_SABR_UPDATE:
+		s = strdup("Cannot unpack SABR context update protobuf");
 		break;
 	case ERR_RE_COMPILE:
 		s = my_asprintf("Error in pcre2_compile() with "
