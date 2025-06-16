@@ -266,7 +266,7 @@ unthrottle(const char *target,
 			continue;
 		}
 
-		if (!youtube_stream_done(*stream)) {
+		if (youtube_stream_done(*stream)) {
 			break;
 		}
 	}

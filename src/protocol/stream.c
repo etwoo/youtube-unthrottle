@@ -464,12 +464,20 @@ protocol_cleanup(struct protocol_state *p)
 bool
 protocol_knows_end(struct protocol_state *p)
 {
+	debug("knows_end() if %" PRIi64 " > 0 && %" PRIi64 " > 0",
+	      p->ends_at[0],
+	      p->ends_at[1]);
 	return p->ends_at[0] > 0 && p->ends_at[1] > 0;
 }
 
 bool
 protocol_done(struct protocol_state *p)
 {
+	debug("done() if %" PRIi32 " > %" PRIi64 " && %" PRIi32 " > %" PRIi64,
+	      p->buffered_ranges[0]->end_segment_index,
+	      p->ends_at[0],
+	      p->buffered_ranges[1]->end_segment_index,
+	      p->ends_at[1]);
 	return p->buffered_ranges[0]->end_segment_index > p->ends_at[0] &&
 	       p->buffered_ranges[1]->end_segment_index > p->ends_at[1];
 }
