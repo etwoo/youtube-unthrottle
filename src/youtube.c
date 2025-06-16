@@ -360,7 +360,7 @@ youtube_stream_next(struct youtube_stream *p, int *retry_after)
 	check(tmptruncate(p->ump.fd, &p->ump.data));
 	check(youtube_stream_set_url(p, url));
 
-	return protocol_knows_end(p->stream) || *retry_after > 0
+	return *retry_after > 0 || protocol_knows_end(p->stream)
 	               ? RESULT_OK
 	               : make_result(ERR_YOUTUBE_EARLY_END_STREAM);
 }

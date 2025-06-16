@@ -257,19 +257,13 @@ unthrottle(const char *target,
 	check(youtube_stream_open(*stream, target, output));
 
 	int retry_after = -1;
-	while (true) {
+	do {
 		check(youtube_stream_next(*stream, &retry_after));
-
 		if (retry_after > 0) {
 			to_stderr("Retrying after %d second(s)", retry_after);
 			sleep(retry_after);
-			continue;
 		}
-
-		if (youtube_stream_done(*stream)) {
-			break;
-		}
-	}
+	} while (retry_after > 0 || !youtube_stream_done(*stream));
 
 	return RESULT_OK;
 }
