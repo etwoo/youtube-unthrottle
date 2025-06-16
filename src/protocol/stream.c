@@ -699,12 +699,10 @@ ump_parse_cookie(const VideoStreaming__NextRequestPolicy *next_request_policy,
 		      next_request_policy->backoff_time_ms);
 		int to_sleep =
 			MAX(next_request_policy->backoff_time_ms / 1000, 1);
-#if 0
 		while (to_sleep > 0) {
 			debug("Sleeping for %d seconds (rounded)", to_sleep);
 			to_sleep = sleep(to_sleep);
 		}
-#endif
 	}
 
 	return RESULT_OK;
