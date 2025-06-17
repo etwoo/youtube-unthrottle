@@ -12,4 +12,3 @@ result_t ump_varint_read(const struct string_view *ump,
                          uint64_t *value) WARN_UNUSED;
 
 #endif
-
