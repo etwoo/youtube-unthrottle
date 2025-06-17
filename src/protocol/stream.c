@@ -730,14 +730,20 @@ copy_sabr_context_update(const struct ProtobufCBinaryData *src,
 	return RESULT_OK;
 }
 
+/*
+ * Note, this implementation of SABR_CONTEXT_UPDATE lacks support for:
+ *
+ * - multiple SabrContextUpdate values of different types
+ * - write_policy == KEEP_EXISTING
+ * - unsent SABR context updates, i.e. p->context.field6
+ */
 static WARN_UNUSED result_t
 ump_parse_sabr_context_update(struct protocol_state *p,
                               const VideoStreaming__SabrContextUpdate *update)
 {
-	if (update->has_type && update->has_value && update->has_write_policy) {
+	if (update->has_type && update->has_value) {
 		p->sabr_context.has_type = true;
 		p->sabr_context.type = update->type;
-		// TODO: switch (update->write_policy)
 		p->sabr_context.has_value = true;
 		check(copy_sabr_context_update(&update->value,
 		                               &p->sabr_context.value));
