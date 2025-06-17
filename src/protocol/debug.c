@@ -2,12 +2,11 @@
 
 #include "sys/compiler_features.h"
 #include "sys/debug.h"
-
-#include <inttypes.h>
-
 #include "video_streaming/format_initialization_metadata.pb-c.h"
 #include "video_streaming/media_header.pb-c.h"
 #include "video_streaming/sabr_context_update.pb-c.h"
+
+#include <inttypes.h>
 
 static WARN_UNUSED unsigned char
 get_byte(const char *buffer, size_t sz, size_t pos)
