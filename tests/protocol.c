@@ -619,6 +619,56 @@ protocol_parse_response_sabr_redirect(void)
 	PASS();
 }
 
+TEST
+protocol_parse_response_sabr_context_update(void)
+{
+	VideoStreaming__VideoPlaybackAbrRequest *request
+		__attribute__((cleanup(video_playback_request_cleanup))) = NULL;
+	char *url __attribute__((cleanup(str_free))) = NULL;
+
+	/* clang-format off */
+	/*
+	 * To generate binary protobuf blobs below:
+	 *
+	 * $ cat /tmp/sabr_context_update.txt | protoc --proto_path=build/_deps/googlevideo-src/protos --encode=video_streaming.SabrContextUpdate $(find build/_deps -type f -name '*.proto') | hexdump -C
+	 */
+	/* clang-format on */
+	const struct string_view resp = MAKE_TEST_STRING(
+		"\x39" /* part_type = SABR_CONTEXT_UPDATE */
+		"\x10" /* part_size = 16 */
+
+		"\x08" /************ protobuf blob ************/
+		"\x00" /*                                     */
+		"\x10" /*                                     */
+		"\x02" /*                                     */
+		"\x1A" /*                                     */
+		"\x08" /* $ cat /tmp/sabr_context_update.txt  */
+		"\x46" /* type: 0                             */
+		"\x55" /* scope: REQUEST                      */
+		"\x5A" /* value: "FUZZFUZZ"                   */
+		"\x5A" /* write_policy: KEEP_EXISTING         */
+		"\x46" /*                                     */
+		"\x55" /*                                     */
+		"\x5A" /*                                     */
+		"\x5A" /*                                     */
+		"\x28" /*                                     */
+		"\x02" /***************************************/
+	);
+	CHECK_CALL(parse_and_get_next(&resp, NULL, &request, &url, NULL, NULL));
+
+	/*
+	 * Verify that the <response> above affected the next request's SABR
+	 * context as expected.
+	 */
+	ASSERT_EQ(1, request->streamer_context->n_field5);
+	ASSERT(request->streamer_context->field5[0]->has_value);
+	ASSERT_EQ(8, request->streamer_context->field5[0]->value.len);
+	ASSERT_STRN_EQ("FUZZFUZZ",
+	               request->streamer_context->field5[0]->value.data,
+	               request->streamer_context->field5[0]->value.len);
+	PASS();
+}
+
 SUITE(protocol_parse)
 {
 	RUN_TEST(protocol_init_base64_decode_negative);
@@ -629,4 +679,5 @@ SUITE(protocol_parse)
 	RUN_TEST(protocol_parse_response_next_request_policy_backoff);
 	RUN_TEST(protocol_parse_response_format_initialization_metadata);
 	RUN_TEST(protocol_parse_response_sabr_redirect);
+	RUN_TEST(protocol_parse_response_sabr_context_update);
 }
