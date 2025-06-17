@@ -1,12 +1,11 @@
 #ifndef PROTOCOL_STATE_H
 #define PROTOCOL_STATE_H
 
-#include "result.h"
 #include "sys/compiler_features.h"
-#include "sys/string_view.h"
 
 #include <inttypes.h>
 #include <stdbool.h>
+#include <stddef.h> /* for size_t */
 
 struct protocol_state;
 
