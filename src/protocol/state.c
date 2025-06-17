@@ -2,15 +2,15 @@
 
 #include "sys/array.h"
 #include "sys/debug.h"
+#include "video_streaming/video_playback_abr_request.pb-c.h"
 
 #if defined(__OpenBSD__)
 #include <netinet/in.h> /* for resolv.h dependencies under OpenBSD */
 #endif
 #include <protobuf-c/protobuf-c.h>
-#include <resolv.h>    /* for b64_pton() */
+#include <resolv.h> /* for b64_pton() */
 #include <stdlib.h>
 #include <sys/param.h> /* for MIN() */
-#include "video_streaming/video_playback_abr_request.pb-c.h"
 
 #define ITAG_AUDIO 251
 
@@ -343,8 +343,7 @@ claim_playback_cookie(struct protocol_state *p,
 {
 	assert(data != NULL);
 
-	if (p->context.has_playback_cookie &&
-	    p->context.playback_cookie.data) {
+	if (p->context.has_playback_cookie && p->context.playback_cookie.data) {
 		free(p->context.playback_cookie.data);
 		p->context.playback_cookie.len = 0;
 		p->context.playback_cookie.data = NULL;
