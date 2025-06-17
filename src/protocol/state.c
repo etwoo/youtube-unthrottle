@@ -195,24 +195,6 @@ protocol_init(const struct string_view *proof_of_origin,
 }
 
 void
-protocol_cleanup(struct protocol_state *p)
-{
-	if (p) {
-		free(p->context.po_token.data);
-		free(p->context.playback_cookie.data);
-		free(p->sabr_context.value.data);
-		free(p->req.video_playback_ustreamer_config.data);
-		free(p);
-	}
-}
-
-struct VideoStreaming__VideoPlaybackAbrRequest *
-protocol_get_request(struct protocol_state *p)
-{
-	return &p->req;
-}
-
-void
 protocol_update_state(struct protocol_state *p)
 {
 	p->req.n_selected_format_ids = ARRAY_SIZE(p->selected_format_ids);
@@ -223,6 +205,18 @@ protocol_update_state(struct protocol_state *p)
 	p->abr_state.has_player_time_ms = true;
 	p->abr_state.player_time_ms = MIN(p->buffered_audio_range.duration_ms,
 	                                  p->buffered_video_range.duration_ms);
+}
+
+void
+protocol_cleanup(struct protocol_state *p)
+{
+	if (p) {
+		free(p->context.po_token.data);
+		free(p->context.playback_cookie.data);
+		free(p->sabr_context.value.data);
+		free(p->req.video_playback_ustreamer_config.data);
+		free(p);
+	}
 }
 
 bool
@@ -246,10 +240,22 @@ protocol_done(struct protocol_state *p)
 	       p->buffered_ranges[1]->end_segment_index > p->ends_at[1];
 }
 
+struct VideoStreaming__VideoPlaybackAbrRequest *
+protocol_get_request(struct protocol_state *p)
+{
+	return &p->req;
+}
+
 static WARN_UNUSED size_t
 get_index_of(const struct protocol_state *p, unsigned char header_id)
 {
 	return p->header_map[header_id].itag == ITAG_AUDIO ? 0 : 1;
+}
+
+int
+protocol_get_fd(const struct protocol_state *p, unsigned char header_id)
+{
+	return p->outputs[get_index_of(p, header_id)];
 }
 
 void
@@ -329,12 +335,6 @@ void
 protocol_set_header_written(struct protocol_state *p, unsigned char header_id)
 {
 	p->header_written[get_index_of(p, header_id)] = true;
-}
-
-int
-protocol_get_fd(const struct protocol_state *p, unsigned char header_id)
-{
-	return p->outputs[get_index_of(p, header_id)];
 }
 
 void

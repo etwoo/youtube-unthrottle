@@ -10,10 +10,13 @@
 
 struct protocol_state;
 
+void protocol_update_state(struct protocol_state *p);
+
 typedef struct VideoStreaming__VideoPlaybackAbrRequest VideoPlaybackAbrRequest;
 VideoPlaybackAbrRequest *protocol_get_request(struct protocol_state *p);
 
-void protocol_update_state(struct protocol_state *p);
+int protocol_get_fd(const struct protocol_state *p,
+                    unsigned char header_id) WARN_UNUSED;
 
 void protocol_update_header_map(struct protocol_state *p,
                                 unsigned char header_id,
@@ -42,15 +45,12 @@ bool protocol_is_header_written(const struct protocol_state *p,
 void protocol_set_header_written(struct protocol_state *p,
                                  unsigned char header_id);
 
-int protocol_get_fd(const struct protocol_state *p,
-                    unsigned char header_id) WARN_UNUSED;
-
 void protocol_claim_playback_cookie(struct protocol_state *p,
-                                    uint8_t *data, /* claim ownership */
+                                    uint8_t *data, /* claims ownership */
                                     size_t sz);
 void protocol_claim_sabr_context(struct protocol_state *p,
                                  int32_t sabr_context_update_type,
-                                 uint8_t *data, /* claim ownership */
+                                 uint8_t *data, /* claims ownership */
                                  size_t sz);
 
 #endif
