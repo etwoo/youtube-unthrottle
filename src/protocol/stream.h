@@ -1,8 +1,8 @@
 #ifndef PROTOCOL_STREAM_H
 #define PROTOCOL_STREAM_H
 
-#include "result.h"
 #include "protocol/state.h"
+#include "result.h"
 #include "sys/compiler_features.h"
 #include "sys/string_view.h"
 
