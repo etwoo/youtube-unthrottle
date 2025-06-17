@@ -685,6 +685,10 @@ ump_parse_cookie(const VideoStreaming__NextRequestPolicy *next_request_policy,
 		context->playback_cookie.data = NULL;
 	}
 
+	if (next_request_policy->playback_cookie == NULL) {
+		return RESULT_OK;
+	}
+
 	const size_t cookie_packed_sz =
 		video_streaming__playback_cookie__get_packed_size(
 			next_request_policy->playback_cookie);

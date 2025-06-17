@@ -241,6 +241,7 @@ parse_and_get_next(const struct string_view *response,
                    bool *knows_end_and_has_next,
                    VideoStreaming__VideoPlaybackAbrRequest **out,
                    char **url,
+                   int *retry_after,
                    int *pfd)
 {
 	const struct string_view proof = MAKE_TEST_STRING("UE9U");
@@ -251,13 +252,17 @@ parse_and_get_next(const struct string_view *response,
 		fd,
 	};
 
+	int unused_num = -1;
+	if (retry_after == NULL) {
+		retry_after = &unused_num;
+	}
+
 	protocol p __attribute__((cleanup(protocol_cleanup_p))) = NULL;
 	auto_result alloc = protocol_init(&proof, &playback, 299, fds, &p);
 	ASSERT_EQ(OK, alloc.err);
 
-	int retry_after = -1;
 	auto_result parse =
-		protocol_parse_response(p, response, url, &retry_after);
+		protocol_parse_response(p, response, url, retry_after);
 	ASSERT_EQ(OK, parse.err);
 
 	if (knows_end_and_has_next) {
@@ -294,7 +299,7 @@ protocol_parse_response_media_header_init_seg(void)
 	 * $ cat /tmp/media_header.txt | protoc --proto_path=build/_deps/googlevideo-src/protos --encode=video_streaming.MediaHeader $(find build/_deps -type f -name '*.proto') | hexdump -C
 	 */
 	/* clang-format on */
-	const struct string_view response = MAKE_TEST_STRING(
+	const struct string_view resp = MAKE_TEST_STRING(
 		"\x14" /* part_type = MEDIA_HEADER */
 		"\x0A" /* part_size = 10 */
 
@@ -324,7 +329,7 @@ protocol_parse_response_media_header_init_seg(void)
 		"\x8D" /*                                     */
 		"\x06" /***************************************/
 	);
-	CHECK_CALL(parse_and_get_next(&response, NULL, &request, &url, NULL));
+	CHECK_CALL(parse_and_get_next(&resp, NULL, &request, &url, NULL, NULL));
 
 	/*
 	 * Verify that the <response> above affected the next request's
@@ -352,7 +357,7 @@ protocol_parse_response_media_header_and_blob(void)
 	 * $ cat /tmp/media_header.txt | protoc --proto_path=build/_deps/googlevideo-src/protos --encode=video_streaming.MediaHeader $(find build/_deps -type f -name '*.proto') | hexdump -C
 	 */
 	/* clang-format on */
-	const struct string_view response = MAKE_TEST_STRING(
+	const struct string_view resp = MAKE_TEST_STRING(
 		"\x14" /* part_type = MEDIA_HEADER */
 		"\x0A" /* part_size = 10 */
 
@@ -412,7 +417,7 @@ protocol_parse_response_media_header_and_blob(void)
 
 		"\x02" /* header_id = 2 */
 		"BARBAR");
-	CHECK_CALL(parse_and_get_next(&response, NULL, &request, &url, &fd));
+	CHECK_CALL(parse_and_get_next(&resp, NULL, &request, &url, NULL, &fd));
 
 	/*
 	 * Verify that the <response> above affected the next request's
@@ -463,7 +468,7 @@ protocol_parse_response_next_request_policy(void)
 	 * $ cat /tmp/next_request_policy.txt | protoc --proto_path=build/_deps/googlevideo-src/protos --encode=video_streaming.NextRequestPolicy $(find build/_deps -type f -name '*.proto') | hexdump -C
 	 */
 	/* clang-format on */
-	const struct string_view response = MAKE_TEST_STRING(
+	const struct string_view resp = MAKE_TEST_STRING(
 		"\x23" /* part_type = NEXT_REQUEST_POLICY */
 		"\x0C" /* part_size = 12 */
 
@@ -488,7 +493,7 @@ protocol_parse_response_next_request_policy(void)
 		"\x23" /* part_type = NEXT_REQUEST_POLICY */
 		"\x0C" /* part_size = 12 */
 		"\x3A\x0A\x3A\x03\x08\xAB\x02\x42\x03\x08\xFB\x01");
-	CHECK_CALL(parse_and_get_next(&response, NULL, &request, &url, NULL));
+	CHECK_CALL(parse_and_get_next(&resp, NULL, &request, &url, NULL, NULL));
 
 	/*
 	 * Verify that the <response> above affected the next request's
@@ -506,9 +511,39 @@ protocol_parse_response_next_request_policy(void)
 }
 
 TEST
+protocol_parse_response_next_request_policy_backoff(void)
+{
+	VideoStreaming__VideoPlaybackAbrRequest *req
+		__attribute__((cleanup(video_playback_request_cleanup))) = NULL;
+	char *url __attribute__((cleanup(str_free))) = NULL;
+	int retry = -1;
+
+	/* clang-format off */
+	/*
+	 * To generate binary protobuf blobs below:
+	 *
+	 * $ cat /tmp/next_request_policy.txt | protoc --proto_path=build/_deps/googlevideo-src/protos --encode=video_streaming.NextRequestPolicy $(find build/_deps -type f -name '*.proto') | hexdump -C
+	 */
+	/* clang-format on */
+	const struct string_view resp = MAKE_TEST_STRING(
+		"\x23" /* part_type = NEXT_REQUEST_POLICY */
+		"\x04" /* part_size = 4 */
+
+		"\x20" /************ protobuf blob ************/
+		"\xB0" /* $ cat /tmp/next_request_policy.txt  */
+		"\xEA" /* backoff_time_ms: 30000              */
+		"\x01" /***************************************/
+	);
+	CHECK_CALL(parse_and_get_next(&resp, NULL, &req, &url, &retry, NULL));
+
+	ASSERT_EQ(30, retry);
+	PASS();
+}
+
+TEST
 protocol_parse_response_format_initialization_metadata(void)
 {
-	bool knows = false;
+	bool b = false;
 	VideoStreaming__VideoPlaybackAbrRequest *request
 		__attribute__((cleanup(video_playback_request_cleanup))) = NULL;
 	char *url __attribute__((cleanup(str_free))) = NULL;
@@ -520,7 +555,7 @@ protocol_parse_response_format_initialization_metadata(void)
 	 * $ cat /tmp/format_init_metadata.txt | protoc --proto_path=build/_deps/googlevideo-src/protos --encode=video_streaming.FormatInitializationMetadata $(find build/_deps -type f -name '*.proto') | hexdump -C
 	 */
 	/* clang-format on */
-	const struct string_view response = MAKE_TEST_STRING(
+	const struct string_view resp = MAKE_TEST_STRING(
 		"\x2A" /* part_type = FORMAT_INITIALIZATION_METADATA */
 		"\x07" /* part_size = 7 */
 
@@ -543,9 +578,9 @@ protocol_parse_response_format_initialization_metadata(void)
 		"\x20" /* end_segment_number: 9               */
 		"\x09" /***************************************/
 	);
-	CHECK_CALL(parse_and_get_next(&response, &knows, &request, &url, NULL));
+	CHECK_CALL(parse_and_get_next(&resp, &b, &request, &url, NULL, NULL));
 
-	ASSERT(knows); /* protocol_knows_end() && !protocol_done() */
+	ASSERT(b); /* protocol_knows_end() && !protocol_done() */
 	PASS();
 }
 
@@ -563,7 +598,7 @@ protocol_parse_response_sabr_redirect(void)
 	 * $ cat /tmp/sabr_redirect.txt | protoc --proto_path=build/_deps/googlevideo-src/protos --encode=video_streaming.SabrRedirect $(find build/_deps -type f -name '*.proto') | hexdump -C
 	 */
 	/* clang-format on */
-	const struct string_view response = MAKE_TEST_STRING(
+	const struct string_view resp = MAKE_TEST_STRING(
 		"\x2B" /* part_type = SABR_REDIRECT */
 		"\x16" /* part_size = 22 */
 
@@ -574,14 +609,13 @@ protocol_parse_response_sabr_redirect(void)
 		"\x73\x74\x2F\x62" /*                                     */
 		"\x61\x72"         /***************************************/
 	);
-	CHECK_CALL(parse_and_get_next(&response, NULL, &request, &url, NULL));
+	CHECK_CALL(parse_and_get_next(&resp, NULL, &request, &url, NULL, NULL));
 
 	/*
 	 * Verify that the <response> above affected the next request's target
 	 * URL as expected.
 	 */
 	ASSERT_STRN_EQ("https://foo.test/bar", url, 20);
-
 	PASS();
 }
 
@@ -592,6 +626,7 @@ SUITE(protocol_parse)
 	RUN_TEST(protocol_parse_response_media_header_init_seg);
 	RUN_TEST(protocol_parse_response_media_header_and_blob);
 	RUN_TEST(protocol_parse_response_next_request_policy);
+	RUN_TEST(protocol_parse_response_next_request_policy_backoff);
 	RUN_TEST(protocol_parse_response_format_initialization_metadata);
 	RUN_TEST(protocol_parse_response_sabr_redirect);
 }
