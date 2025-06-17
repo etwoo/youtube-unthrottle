@@ -47,24 +47,25 @@ ump_parse_media_header(struct protocol_state *p,
                        const VideoStreaming__MediaHeader *header,
                        bool *skip_media_blobs_until_next)
 {
-	set_header_media_type(p, header->header_id, header->itag);
+	protocol_update_header_map(p, header->header_id, header->itag);
 
 	if (header->has_is_init_seg && header->is_init_seg) {
-		if (is_header_written(p, header->header_id)) {
+		if (protocol_is_header_written(p, header->header_id)) {
 			debug("Skipping repeated init seg for itag=%d",
 			      header->itag);
 			*skip_media_blobs_until_next = true;
 			return;
 		} else {
-			set_header_written(p, header->header_id);
+			protocol_set_header_written(p, header->header_id);
 		}
 	}
 
 	if (header->has_sequence_number) {
-		update_sequence_number_repeated_check(p,
-		                                      header->header_id,
-		                                      header->sequence_number);
-		if (is_sequence_number_repeated(p, header->header_id)) {
+		protocol_update_repeated_check(p,
+		                               header->header_id,
+		                               header->sequence_number);
+		if (protocol_is_sequence_number_repeated(p,
+		                                         header->header_id)) {
 			debug("Skipping repeated seq=%" PRIi64
 			      " for itag=%d, header_id=%" PRIu32,
 			      header->sequence_number,
@@ -76,16 +77,16 @@ ump_parse_media_header(struct protocol_state *p,
 
 	debug("Handling new seq=%" PRIi64 ", greatest=%" PRIi64,
 	      header->sequence_number,
-	      get_sequence_number_cursor(p, header->header_id));
+	      protocol_get_cursor(p, header->header_id));
 	if (header->has_sequence_number) {
-		set_header_sequence_number(p,
-		                           header->header_id,
-		                           header->sequence_number);
+		protocol_set_cursor(p,
+		                    header->header_id,
+		                    header->sequence_number);
 	}
 	if (header->has_duration_ms) {
-		increment_header_duration(p,
-		                          header->header_id,
-		                          header->duration_ms);
+		protocol_increment_duration(p,
+		                            header->header_id,
+		                            header->duration_ms);
 	}
 }
 
@@ -94,7 +95,7 @@ ump_parse_media_blob(struct protocol_state *p,
                      const struct string_view *blob,
                      unsigned char header_id)
 {
-	int fd = get_fd_for_header(p, header_id);
+	int fd = protocol_get_fd(p, header_id);
 	const ssize_t written = write_with_retry(fd, blob->data, blob->sz);
 	check_if(written < 0, ERR_PROTOCOL_MEDIA_BLOB_WRITE, errno);
 	debug("Wrote media blob bytes=%zd to fd=%d", written, fd);
@@ -117,7 +118,7 @@ ump_parse_cookie(struct protocol_state *p,
 	video_streaming__playback_cookie__pack(
 		next_request_policy->playback_cookie,
 		packed);
-	claim_playback_cookie(p, packed, sz);
+	protocol_claim_playback_cookie(p, packed, sz);
 
 	return RESULT_OK;
 }
@@ -128,7 +129,9 @@ ump_parse_fmt_init(struct protocol_state *p,
 {
 	if (fmt->format_id && fmt->format_id->has_itag &&
 	    fmt->has_end_segment_number) {
-		set_ends_at(p, fmt->format_id->itag, fmt->end_segment_number);
+		protocol_set_ends_at(p,
+		                     fmt->format_id->itag,
+		                     fmt->end_segment_number);
 	}
 	return RESULT_OK;
 }
@@ -141,7 +144,10 @@ ump_parse_sabr_context_update(struct protocol_state *p,
 		uint8_t *tmp = malloc(update->value.len);
 		check_if(tmp == NULL, ERR_PROTOCOL_SABR_UPDATE_ALLOC);
 		memcpy(tmp, update->value.data, update->value.len);
-		claim_sabr_context(p, update->type, tmp, update->value.len);
+		protocol_claim_sabr_context(p,
+		                            update->type,
+		                            tmp,
+		                            update->value.len);
 	}
 	return RESULT_OK;
 }
@@ -220,7 +226,7 @@ ump_parse_part(struct protocol_state *p,
 		         ERR_PROTOCOL_HEADER_ID_OVERFLOW,
 		         (int)parsed_header_id);
 		if (*skip_media_blobs_until_next ||
-		    is_sequence_number_repeated(p, parsed_header_id)) {
+		    protocol_is_sequence_number_repeated(p, parsed_header_id)) {
 			debug("Skipping media blob with header_id=%" PRIu64,
 			      parsed_header_id);
 		} else {

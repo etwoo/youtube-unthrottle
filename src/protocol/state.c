@@ -253,17 +253,16 @@ get_index_of(const struct protocol_state *p, unsigned char header_id)
 }
 
 void
-set_header_media_type(struct protocol_state *p,
-                      unsigned char header_id,
-                      int itag)
+protocol_update_header_map(struct protocol_state *p,
+                           unsigned char header_id,
+                           int itag)
 {
 	p->header_map[header_id].itag = itag;
 	debug("Map header_id=%u to itag=%d", header_id, itag);
 }
 
 int64_t
-get_sequence_number_cursor(const struct protocol_state *p,
-                           unsigned char header_id)
+protocol_get_cursor(const struct protocol_state *p, unsigned char header_id)
 {
 	VideoStreaming__BufferedRange *br =
 		p->buffered_ranges[get_index_of(p, header_id)];
@@ -271,9 +270,9 @@ get_sequence_number_cursor(const struct protocol_state *p,
 }
 
 void
-set_header_sequence_number(struct protocol_state *p,
-                           unsigned char header_id,
-                           int64_t n)
+protocol_set_cursor(struct protocol_state *p,
+                    unsigned char header_id,
+                    int64_t n)
 {
 	VideoStreaming__BufferedRange *br =
 		p->buffered_ranges[get_index_of(p, header_id)];
@@ -283,25 +282,25 @@ set_header_sequence_number(struct protocol_state *p,
 }
 
 bool
-is_sequence_number_repeated(const struct protocol_state *p,
-                            unsigned char header_id)
+protocol_is_sequence_number_repeated(const struct protocol_state *p,
+                                     unsigned char header_id)
 {
 	return p->header_map[header_id].got_repeated;
 }
 
 void
-update_sequence_number_repeated_check(struct protocol_state *p,
-                                      unsigned char header_id,
-                                      int64_t candidate)
+protocol_update_repeated_check(struct protocol_state *p,
+                               unsigned char header_id,
+                               int64_t candidate)
 {
-	const int64_t cur = get_sequence_number_cursor(p, header_id);
+	const int64_t cur = protocol_get_cursor(p, header_id);
 	p->header_map[header_id].got_repeated = (candidate <= cur);
 }
 
 void
-increment_header_duration(struct protocol_state *p,
-                          unsigned char header_id,
-                          int64_t duration)
+protocol_increment_duration(struct protocol_state *p,
+                            unsigned char header_id,
+                            int64_t duration)
 {
 	VideoStreaming__BufferedRange *br =
 		p->buffered_ranges[get_index_of(p, header_id)];
@@ -313,34 +312,35 @@ increment_header_duration(struct protocol_state *p,
 }
 
 void
-set_ends_at(struct protocol_state *p, int itag, int64_t value)
+protocol_set_ends_at(struct protocol_state *p, int itag, int64_t value)
 {
 	p->ends_at[itag == ITAG_AUDIO ? 0 : 1] = value;
 	debug("Updated ends_at=%" PRIi64 " for itag=%d", value, itag);
 }
 
 bool
-is_header_written(const struct protocol_state *p, unsigned char header_id)
+protocol_is_header_written(const struct protocol_state *p,
+                           unsigned char header_id)
 {
 	return p->header_written[get_index_of(p, header_id)];
 }
 
 void
-set_header_written(struct protocol_state *p, unsigned char header_id)
+protocol_set_header_written(struct protocol_state *p, unsigned char header_id)
 {
 	p->header_written[get_index_of(p, header_id)] = true;
 }
 
 int
-get_fd_for_header(const struct protocol_state *p, unsigned char header_id)
+protocol_get_fd(const struct protocol_state *p, unsigned char header_id)
 {
 	return p->outputs[get_index_of(p, header_id)];
 }
 
 void
-claim_playback_cookie(struct protocol_state *p,
-                      uint8_t *data, /* claim ownership */
-                      size_t sz)
+protocol_claim_playback_cookie(struct protocol_state *p,
+                               uint8_t *data, /* claim ownership */
+                               size_t sz)
 {
 	assert(data != NULL);
 
@@ -365,10 +365,10 @@ claim_playback_cookie(struct protocol_state *p,
  * - unsent SABR context updates, i.e. p->context.field6
  */
 void
-claim_sabr_context(struct protocol_state *p,
-                   int32_t sabr_context_update_type,
-                   uint8_t *data, /* claim ownership */
-                   size_t sz)
+protocol_claim_sabr_context(struct protocol_state *p,
+                            int32_t sabr_context_update_type,
+                            uint8_t *data, /* claim ownership */
+                            size_t sz)
 {
 	p->sabr_context.has_type = true;
 	p->sabr_context.type = sabr_context_update_type;
