@@ -2,37 +2,16 @@
 #define PROTOCOL_STREAM_H
 
 #include "result.h"
+#include "protocol/state.h"
 #include "sys/compiler_features.h"
 #include "sys/string_view.h"
 
-#include <inttypes.h>
-#include <stdbool.h>
-
-typedef struct protocol_state *protocol;
-
-result_t protocol_init(const struct string_view *proof_of_origin,
-                       const struct string_view *playback_config,
-                       long long int itag_video,
-                       int outputs[2],
-                       protocol *out) WARN_UNUSED;
-void protocol_cleanup(protocol stream);
-
-bool protocol_knows_end(struct protocol_state *p) WARN_UNUSED;
-bool protocol_done(struct protocol_state *p) WARN_UNUSED;
-
-result_t protocol_next_request(protocol stream,
+result_t protocol_next_request(struct protocol_state *stream,
                                char **request,
                                size_t *size) WARN_UNUSED;
-result_t protocol_parse_response(protocol stream,
+result_t protocol_parse_response(struct protocol_state *stream,
                                  const struct string_view *response,
                                  char **target_url,
                                  int *retry_after) WARN_UNUSED;
-
-/*
- * Expose a pure functional subset of parsing logic for UMP format.
- */
-result_t ump_varint_read(const struct string_view *ump,
-                         size_t *pos,
-                         uint64_t *value) WARN_UNUSED;
 
 #endif

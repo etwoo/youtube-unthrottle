@@ -1,5 +1,6 @@
 #include "greatest.h"
 #include "protocol/stream.h"
+#include "protocol/varint.h"
 #include "sys/debug.h"
 #include "sys/tmpfile.h"
 #include "test_macros.h"
@@ -14,9 +15,9 @@ str_free(char **strp)
 }
 
 static void
-protocol_cleanup_p(protocol *pp)
+protocol_cleanup_p(struct protocol_state **p)
 {
-	protocol_cleanup(*pp);
+	protocol_cleanup(*p);
 }
 
 static void
@@ -208,7 +209,8 @@ protocol_init_base64_decode_negative(void)
 		STDOUT_FILENO,
 	};
 
-	protocol p __attribute__((cleanup(protocol_cleanup_p))) = NULL;
+	struct protocol_state *p __attribute__((cleanup(protocol_cleanup_p))) =
+		NULL;
 	auto_result err =
 		protocol_init(&invalid_base64, &invalid_base64, 0, fds, &p);
 	ASSERT_EQ(ERR_PROTOCOL_STATE_BASE64_DECODE, err.err);
@@ -228,7 +230,8 @@ protocol_init_base64_decode_positive(void)
 		STDOUT_FILENO,
 	};
 
-	protocol p __attribute__((cleanup(protocol_cleanup_p))) = NULL;
+	struct protocol_state *p __attribute__((cleanup(protocol_cleanup_p))) =
+		NULL;
 	auto_result err =
 		protocol_init(&underscore_to_slash, &dash_to_plus, 0, fds, &p);
 	ASSERT_EQ(OK, err.err);
@@ -257,7 +260,8 @@ parse_and_get_next(const struct string_view *response,
 		retry_after = &unused_num;
 	}
 
-	protocol p __attribute__((cleanup(protocol_cleanup_p))) = NULL;
+	struct protocol_state *p __attribute__((cleanup(protocol_cleanup_p))) =
+		NULL;
 	auto_result alloc = protocol_init(&proof, &playback, 299, fds, &p);
 	ASSERT_EQ(OK, alloc.err);
 

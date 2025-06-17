@@ -44,7 +44,7 @@ downloaded_cleanup(struct downloaded *d)
 }
 
 struct youtube_stream {
-	protocol stream;
+	struct protocol_state *stream;
 	ada_url url;
 	const char *proof_of_origin;
 	const char *visitor_data;
@@ -367,6 +367,6 @@ youtube_stream_next(struct youtube_stream *p, int *retry_after)
 bool
 youtube_stream_done(struct youtube_stream *p)
 {
-	protocol s = p->stream;
+	struct protocol_state *s = p->stream;
 	return s == NULL || !protocol_knows_end(s) || protocol_done(s);
 }

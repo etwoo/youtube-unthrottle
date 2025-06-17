@@ -27,7 +27,10 @@ add_library(youtube-protocol)
 
 target_sources(youtube-protocol PRIVATE
 	${PROTO_C}
+	debug.c
+	state.c
 	stream.c
+	varint.c
 )
 target_include_directories(youtube-protocol PRIVATE
 	${PROJECT_SOURCE_DIR}/include
