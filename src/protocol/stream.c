@@ -1,6 +1,7 @@
 #include "protocol/stream.h"
 
 #include "protocol/debug.h"
+#include "protocol/state.h"
 #include "protocol/varint.h"
 #include "sys/debug.h"
 #include "sys/write.h"

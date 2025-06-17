@@ -1,5 +1,6 @@
 #include "protocol/state.h"
 
+#include "protocol/stream.h"
 #include "sys/array.h"
 #include "sys/debug.h"
 #include "video_streaming/video_playback_abr_request.pb-c.h"

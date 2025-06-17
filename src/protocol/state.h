@@ -10,20 +10,10 @@
 
 struct protocol_state;
 
-result_t protocol_init(const struct string_view *proof_of_origin,
-                       const struct string_view *playback_config,
-                       long long int itag_video,
-                       int outputs[2],
-                       struct protocol_state **out) WARN_UNUSED;
-void protocol_cleanup(struct protocol_state *p);
-
 typedef struct VideoStreaming__VideoPlaybackAbrRequest VideoPlaybackAbrRequest;
 VideoPlaybackAbrRequest *protocol_get_request(struct protocol_state *p);
 
 void protocol_update_state(struct protocol_state *p);
-
-bool protocol_knows_end(struct protocol_state *p) WARN_UNUSED;
-bool protocol_done(struct protocol_state *p) WARN_UNUSED;
 
 void set_header_media_type(struct protocol_state *p,
                            unsigned char header_id,

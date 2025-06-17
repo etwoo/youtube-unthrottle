@@ -1,10 +1,23 @@
 #ifndef PROTOCOL_STREAM_H
 #define PROTOCOL_STREAM_H
 
-#include "protocol/state.h"
 #include "result.h"
 #include "sys/compiler_features.h"
 #include "sys/string_view.h"
+
+#include <stdbool.h>
+
+struct protocol_state;
+
+result_t protocol_init(const struct string_view *proof_of_origin,
+                       const struct string_view *playback_config,
+                       long long int itag_video,
+                       int outputs[2],
+                       struct protocol_state **out) WARN_UNUSED;
+void protocol_cleanup(struct protocol_state *p);
+
+bool protocol_knows_end(struct protocol_state *p) WARN_UNUSED;
+bool protocol_done(struct protocol_state *p) WARN_UNUSED;
 
 result_t protocol_next_request(struct protocol_state *stream,
                                char **request,
