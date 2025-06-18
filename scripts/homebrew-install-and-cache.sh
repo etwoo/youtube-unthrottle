@@ -14,6 +14,14 @@ else
 	find "$BREW_PREFIX" ! -type d | sort > homebrew-before.txt
 fi
 
+# Workaround https://github.com/actions/runner-images/issues/9966
+if [ "$(uname)" == Darwin ] ; then
+	sudo rm /usr/local/bin/idle3*
+	sudo rm /usr/local/bin/pip3*
+	sudo rm /usr/local/bin/pydoc*
+	sudo rm /usr/local/bin/python*
+fi
+
 # Install packages via Homebrew, quieting reinstall warnings if necessary
 brew install --quiet "$CC_PKG" cmake ada-url curl duktape jansson pcre2 protobuf-c
 
