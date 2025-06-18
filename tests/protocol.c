@@ -657,7 +657,15 @@ protocol_parse_response_sabr_context_update(void)
 		"\x5A" /*                                     */
 		"\x28" /*                                     */
 		"\x02" /***************************************/
-	);
+
+		/*
+	         * Verify that a second SABR context update does not leak
+	         * memory (assuming this test runs with LSan enabled).
+	         */
+		"\x39" /* part_type = SABR_CONTEXT_UPDATE */
+		"\x10" /* part_size = 16 */
+		"\x08\x00\x10\x02\x1A\x08\x46\x55"
+		"\x5A\x5A\x46\x55\x5A\x5A\x28\x02");
 	CHECK_CALL(parse_and_get_next(&resp, NULL, &request, &url, NULL, NULL));
 
 	/*
