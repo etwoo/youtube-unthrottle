@@ -195,7 +195,7 @@ SUITE(stream_setup_n_param_positions)
 static const char YT_MISSING_ID[] = "https://a.test/watch?v=";
 
 TEST
-stream_setup_edge_cases_target_url_missing_stream_id(void)
+edge_cases_target_url_missing_stream_id(void)
 {
 	youtube_handle_t stream = do_test_init();
 	ASSERT(stream);
@@ -211,17 +211,9 @@ stream_setup_edge_cases_target_url_missing_stream_id(void)
 	PASS();
 }
 
-static WARN_UNUSED const char *
-test_request_n_param_missing(const char *path)
-{
-	if (NULL == strstr(path, PATH_WANTS_JSON_RESPONSE)) {
-		return NULL;
-	}
-	return MAKE_FAKE_JSON("https://a.test/sabr?x=y");
-}
-
 TEST
-stream_setup_edge_cases_n_param_missing(void)
+edge_cases_with(const char *(*custom_fn)(const char *),
+                unsigned expected_result_type)
 {
 	youtube_handle_t stream = do_test_init();
 	ASSERT(stream);
@@ -229,15 +221,24 @@ stream_setup_edge_cases_n_param_missing(void)
 	auto_result err = youtube_stream_prepare_tmpfiles(stream);
 	ASSERT_EQ(OK, err.err);
 
-	test_request_path_to_response = test_request_n_param_missing;
+	test_request_path_to_response = custom_fn;
 	err = youtube_stream_open(stream, FAKE_URL, OFD);
 	test_request_path_to_response = NULL;
 
-	ASSERT_EQ(ERR_YOUTUBE_N_PARAM_FIND_IN_QUERY, err.err);
+	ASSERT_EQ(expected_result_type, err.err);
 	ASSERT(youtube_stream_done(stream));
 
 	youtube_stream_cleanup(stream);
 	PASS();
+}
+
+static WARN_UNUSED const char *
+test_request_n_param_missing(const char *path)
+{
+	if (NULL == strstr(path, PATH_WANTS_JSON_RESPONSE)) {
+		return NULL;
+	}
+	return MAKE_FAKE_JSON("https://a.test/sabr?x=y");
 }
 
 static WARN_UNUSED const char *
@@ -249,31 +250,21 @@ test_request_invalid_url(const char *path)
 	return MAKE_FAKE_JSON("!@#$%^&*()");
 }
 
-TEST
-stream_setup_edge_cases_invalid_url(void)
-{
-	youtube_handle_t stream = do_test_init();
-	ASSERT(stream);
-
-	auto_result err = youtube_stream_prepare_tmpfiles(stream);
-	ASSERT_EQ(OK, err.err);
-
-	test_request_path_to_response = test_request_invalid_url;
-	err = youtube_stream_open(stream, FAKE_URL, OFD);
-	test_request_path_to_response = NULL;
-
-	ASSERT_EQ(ERR_YOUTUBE_STREAM_URL_INVALID, err.err);
-	ASSERT(youtube_stream_done(stream));
-
-	youtube_stream_cleanup(stream);
-	PASS();
-}
+#define RUN_TEST_WITH_SUFFIX(base, suffix, expected_result_type)               \
+	do {                                                                   \
+		greatest_set_test_suffix(#suffix);                             \
+		RUN_TESTp(base, test_request_##suffix, expected_result_type);  \
+	} while (0)
 
 SUITE(stream_setup_weird_urls)
 {
-	RUN_TEST(stream_setup_edge_cases_target_url_missing_stream_id);
-	RUN_TEST(stream_setup_edge_cases_n_param_missing);
-	RUN_TEST(stream_setup_edge_cases_invalid_url);
+	RUN_TEST(edge_cases_target_url_missing_stream_id);
+	RUN_TEST_WITH_SUFFIX(edge_cases_with,
+	                     n_param_missing,
+	                     ERR_YOUTUBE_N_PARAM_FIND_IN_QUERY);
+	RUN_TEST_WITH_SUFFIX(edge_cases_with,
+	                     invalid_url,
+	                     ERR_YOUTUBE_STREAM_URL_INVALID);
 }
 
 TEST
