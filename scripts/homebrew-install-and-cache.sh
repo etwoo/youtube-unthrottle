@@ -16,10 +16,7 @@ fi
 
 # Workaround https://github.com/actions/runner-images/issues/9966
 if [ "$(uname)" == Darwin ] ; then
-	sudo rm /usr/local/bin/idle3*
-	sudo rm /usr/local/bin/pip3*
-	sudo rm /usr/local/bin/pydoc*
-	sudo rm /usr/local/bin/python*
+	sudo rm /usr/local/bin/{idle3,pip3,pydoc3,python3}*
 fi
 
 # Install packages via Homebrew, quieting reinstall warnings if necessary
