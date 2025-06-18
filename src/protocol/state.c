@@ -360,7 +360,7 @@ protocol_claim_playback_cookie(struct protocol_state *p,
 /*
  * Note, this implementation of SABR_CONTEXT_UPDATE lacks support for:
  *
- * - multiple SabrContextUpdate values of different types
+ * - two or more SabrContextUpdate values of different types
  * - write_policy == KEEP_EXISTING
  * - unsent SABR context updates, i.e. p->context.field6
  */

@@ -425,7 +425,7 @@ protocol_parse_response_media_header_and_blob(void)
 
 	/*
 	 * Verify that the <response> above affected the next request's
-	 * sequence numbers, duration values, et cetera as expected.
+	 * sequence numbers, duration values, etc as expected.
 	 */
 	ASSERT_EQ(6, request->buffered_ranges[1]->end_segment_index);
 	ASSERT_EQ(2000, request->buffered_ranges[1]->duration_ms);
@@ -434,8 +434,8 @@ protocol_parse_response_media_header_and_blob(void)
 	 * Verify that:
 	 *
 	 * 1) FOOFOO media blob writes to provided fd
-	 * 2) NONONO media blob triggers header_id_latest_seq_is_repeated
-	 * 3) BARBAR media blob triggers !header_id_latest_seq_is_repeated
+	 * 2) NONONO media blob not written due to sequence number
+	 * 3) BARBAR media blob writes to provided fd
 	 */
 	char written[6];
 	{
