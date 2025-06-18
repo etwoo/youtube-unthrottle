@@ -256,7 +256,7 @@ test_request_invalid_url(const char *path)
 		RUN_TESTp(base, test_request_##suffix, expected_result_type);  \
 	} while (0)
 
-SUITE(stream_setup_weird_urls)
+SUITE(stream_weird_urls)
 {
 	RUN_TEST(edge_cases_target_url_missing_stream_id);
 	RUN_TEST_WITH_SUFFIX(edge_cases_with,
