@@ -372,11 +372,21 @@ protocol_claim_sabr_context(struct protocol_state *p,
 {
 	p->sabr_context.has_type = true;
 	p->sabr_context.type = sabr_context_update_type;
+
+	if (p->sabr_context.has_value && p->sabr_context.value.data) {
+		free(p->sabr_context.value.data);
+		p->sabr_context.value.data = NULL;
+		p->sabr_context.value.len = 0;
+	}
+
 	p->sabr_context.has_value = true;
 	p->sabr_context.value.data = data;
 	p->sabr_context.value.len = sz;
+
 	p->context.n_field5 = 1;
 	p->context.field5 = p->all_sabr_contexts;
+
+	debug("Updated SABR context of size=%zu", sz);
 }
 
 #undef ITAG_AUDIO
