@@ -10,7 +10,8 @@ LLVMFuzzerTestOneInput(const char *data, size_t sz)
 		.choose_quality = NULL,
 		.userdata = NULL,
 	};
-	long long int itag = 0;
-	(void)parse_json(&json, &pops, &itag);
+	struct parse_values parsed
+		__attribute__((cleanup(parse_values_cleanup))) = {0};
+	auto_result r = parse_json(&json, &pops, &parsed);
 	return 0;
 }
