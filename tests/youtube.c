@@ -8,6 +8,20 @@
 #include <stdbool.h>
 #include <unistd.h>
 
+TEST
+global_setup(void)
+{
+	auto_result err = youtube_global_init();
+	ASSERT_EQ(OK, err.err);
+	PASS();
+}
+
+#define T(base, suffix, ...)                                                   \
+	do {                                                                   \
+		greatest_set_test_suffix(#suffix);                             \
+		RUN_TESTp(base, test_request_##suffix, __VA_ARGS__);           \
+	} while (0)
+
 static const char FAKE_URL[] = "https://a.test/watch?v=FOOBAR";
 static const char PATH_WANTS_JSON_RESPONSE[] = "/youtubei/v1/player";
 static const char FAKE_HTML_RESPONSE[] = "\"/s/player/foobar/base.js\"\n";
@@ -21,6 +35,7 @@ static const char FAKE_JS_RESPONSE[] =
 	"b=[a.toUpperCase()]; return b.join(\"\")"
 	"};\nnext_global=0";
 
+#define SABR(getargs) "https://a.test/sabr?" getargs
 #define MAKE_FAKE_JSON(sabrUrl)                                                \
 	"{\"streamingData\": {"                                                \
 	"\"adaptiveFormats\": [{"                                              \
@@ -34,10 +49,9 @@ static const char FAKE_JS_RESPONSE[] =
 	"\"mediaUstreamerRequestConfig\": {"                                   \
 	"\"videoPlaybackUstreamerConfig\": \"cGxheWJhY2sK\""                   \
 	"}}}}"
-static const char FAKE_JSON_RESPONSE[] =
-	MAKE_FAKE_JSON("https://a.test/sabr?n=aaa");
+static const char FAKE_JSON_RESPONSE[] = MAKE_FAKE_JSON(SABR("n=aaa"));
 
-static const char *(*test_request_path_to_response)(const char *) = NULL;
+static const char *(*test_request_default)(const char *) = NULL;
 
 static WARN_UNUSED const char *
 url_simulate(const char *path)
@@ -45,8 +59,8 @@ url_simulate(const char *path)
 	debug("Simulating request with url=%s", path);
 
 	const char *to_write = NULL;
-	if (test_request_path_to_response) {
-		to_write = test_request_path_to_response(path);
+	if (test_request_default) {
+		to_write = test_request_default(path);
 	}
 
 	if (to_write) {
@@ -66,6 +80,19 @@ url_simulate(const char *path)
 	assert(to_write && "Test logic bug? No fixture for given path!");
 	return to_write;
 }
+
+const struct youtube_setup_ops SIMULATE_OPS = {
+	.io_simulator = url_simulate,
+	.choose_quality = NULL,
+	.choose_quality_userdata = NULL,
+};
+
+#define MAKE_STREAM() youtube_stream_init("UE9UCg==", "VkQK", &SIMULATE_OPS)
+
+static int STDERR_FDS[2] = {
+	STDERR_FILENO,
+	STDERR_FILENO,
+};
 
 struct check_url_state {
 	bool got_correct_urls;
@@ -89,39 +116,19 @@ check_url(const char *url, size_t sz, void *userdata)
 }
 
 TEST
-global_setup(void)
+stream_with(const char *(*custom_fn)(const char *), const char *expected_url)
 {
-	auto_result err = youtube_global_init();
-	ASSERT_EQ(OK, err.err);
-	PASS();
-}
-
-static int OFD[2] = {
-	STDOUT_FILENO,
-	STDOUT_FILENO,
-};
-
-const struct youtube_setup_ops OPS = {
-	.io_simulator = url_simulate,
-	.choose_quality = NULL,
-	.choose_quality_userdata = NULL,
-};
-
-#define do_test_init() youtube_stream_init("UE9UCg==", "VkQK", &OPS)
-
-TEST
-stream_setup_with_redirected_network_io(const char *(*custom_fn)(const char *),
-                                        const char *expected_url)
-{
-	youtube_handle_t stream = do_test_init();
+	youtube_handle_t stream = MAKE_STREAM();
 	ASSERT(stream);
 
 	auto_result err = youtube_stream_prepare_tmpfiles(stream);
 	ASSERT_EQ(OK, err.err);
 
-	test_request_path_to_response = custom_fn;
-	err = youtube_stream_open(stream, FAKE_URL, OFD);
-	test_request_path_to_response = NULL;
+	if (test_request_default != custom_fn) {
+		test_request_default = custom_fn;
+	}
+	err = youtube_stream_open(stream, FAKE_URL, STDERR_FDS);
+	test_request_default = NULL;
 	ASSERT_EQ(OK, err.err);
 
 	int retry_after = -1;
@@ -143,21 +150,13 @@ stream_setup_with_redirected_network_io(const char *(*custom_fn)(const char *),
 	PASS();
 }
 
-SUITE(stream_setup_simple)
-{
-	RUN_TEST(global_setup);
-	RUN_TESTp(stream_setup_with_redirected_network_io,
-	          NULL,
-	          "https://a.test/sabr?n=AAA");
-}
-
 static WARN_UNUSED const char *
 test_request_n_param_pos_middle(const char *path)
 {
 	if (NULL == strstr(path, PATH_WANTS_JSON_RESPONSE)) {
 		return NULL;
 	}
-	return MAKE_FAKE_JSON("https://a.test/sabr?first=foo&n=aaa&last=bar");
+	return MAKE_FAKE_JSON(SABR("first=foo&n=aaa&last=bar"));
 }
 
 static WARN_UNUSED const char *
@@ -166,7 +165,7 @@ test_request_n_param_pos_first(const char *path)
 	if (NULL == strstr(path, PATH_WANTS_JSON_RESPONSE)) {
 		return NULL;
 	}
-	return MAKE_FAKE_JSON("https://a.test/sabr?n=aaa&second=foo&third=bar");
+	return MAKE_FAKE_JSON(SABR("n=aaa&second=foo&third=bar"));
 }
 
 static WARN_UNUSED const char *
@@ -175,21 +174,16 @@ test_request_n_param_pos_last(const char *path)
 	if (NULL == strstr(path, PATH_WANTS_JSON_RESPONSE)) {
 		return NULL;
 	}
-	return MAKE_FAKE_JSON("https://a.test/sabr?first=foo&second=bar&n=aaa");
+	return MAKE_FAKE_JSON(SABR("first=foo&second=bar&n=aaa"));
 }
 
-SUITE(stream_setup_n_param_positions)
+SUITE(stream_n_param_positions)
 {
 	RUN_TEST(global_setup);
-	RUN_TESTp(stream_setup_with_redirected_network_io,
-	          test_request_n_param_pos_middle,
-	          "https://a.test/sabr?first=foo&n=AAA&last=bar");
-	RUN_TESTp(stream_setup_with_redirected_network_io,
-	          test_request_n_param_pos_first,
-	          "https://a.test/sabr?n=AAA&second=foo&third=bar");
-	RUN_TESTp(stream_setup_with_redirected_network_io,
-	          test_request_n_param_pos_last,
-	          "https://a.test/sabr?first=foo&second=bar&n=AAA");
+	T(stream_with, default, SABR("n=AAA"));
+	T(stream_with, n_param_pos_middle, SABR("first=foo&n=AAA&last=bar"));
+	T(stream_with, n_param_pos_first, SABR("n=AAA&second=foo&third=bar"));
+	T(stream_with, n_param_pos_last, SABR("first=foo&second=bar&n=AAA"));
 }
 
 static const char YT_MISSING_ID[] = "https://a.test/watch?v=";
@@ -197,13 +191,13 @@ static const char YT_MISSING_ID[] = "https://a.test/watch?v=";
 TEST
 edge_cases_target_url_missing_stream_id(void)
 {
-	youtube_handle_t stream = do_test_init();
+	youtube_handle_t stream = MAKE_STREAM();
 	ASSERT(stream);
 
 	auto_result err = youtube_stream_prepare_tmpfiles(stream);
 	ASSERT_EQ(OK, err.err);
 
-	err = youtube_stream_open(stream, YT_MISSING_ID, OFD);
+	err = youtube_stream_open(stream, YT_MISSING_ID, STDERR_FDS);
 	ASSERT_EQ(ERR_JS_MAKE_INNERTUBE_JSON_ID, err.err);
 	ASSERT(youtube_stream_done(stream));
 
@@ -212,20 +206,21 @@ edge_cases_target_url_missing_stream_id(void)
 }
 
 TEST
-edge_cases_with(const char *(*custom_fn)(const char *),
-                unsigned expected_result_type)
+edge_cases_with(const char *(*custom_fn)(const char *), unsigned expected)
 {
-	youtube_handle_t stream = do_test_init();
+	youtube_handle_t stream = MAKE_STREAM();
 	ASSERT(stream);
 
 	auto_result err = youtube_stream_prepare_tmpfiles(stream);
 	ASSERT_EQ(OK, err.err);
 
-	test_request_path_to_response = custom_fn;
-	err = youtube_stream_open(stream, FAKE_URL, OFD);
-	test_request_path_to_response = NULL;
+	if (test_request_default != custom_fn) {
+		test_request_default = custom_fn;
+	}
+	err = youtube_stream_open(stream, FAKE_URL, STDERR_FDS);
+	test_request_default = NULL;
 
-	ASSERT_EQ(expected_result_type, err.err);
+	ASSERT_EQ(expected, err.err);
 	ASSERT(youtube_stream_done(stream));
 
 	youtube_stream_cleanup(stream);
@@ -238,7 +233,7 @@ test_request_n_param_missing(const char *path)
 	if (NULL == strstr(path, PATH_WANTS_JSON_RESPONSE)) {
 		return NULL;
 	}
-	return MAKE_FAKE_JSON("https://a.test/sabr?x=y");
+	return MAKE_FAKE_JSON(SABR("x=y"));
 }
 
 static WARN_UNUSED const char *
@@ -250,21 +245,12 @@ test_request_invalid_url(const char *path)
 	return MAKE_FAKE_JSON("!@#$%^&*()");
 }
 
-#define RUN_TEST_WITH_SUFFIX(base, suffix, expected_result_type)               \
-	do {                                                                   \
-		greatest_set_test_suffix(#suffix);                             \
-		RUN_TESTp(base, test_request_##suffix, expected_result_type);  \
-	} while (0)
-
-SUITE(stream_weird_urls)
+SUITE(stream_edge_cases)
 {
+	RUN_TEST(global_setup);
 	RUN_TEST(edge_cases_target_url_missing_stream_id);
-	RUN_TEST_WITH_SUFFIX(edge_cases_with,
-	                     n_param_missing,
-	                     ERR_YOUTUBE_N_PARAM_FIND_IN_QUERY);
-	RUN_TEST_WITH_SUFFIX(edge_cases_with,
-	                     invalid_url,
-	                     ERR_YOUTUBE_STREAM_URL_INVALID);
+	T(edge_cases_with, n_param_missing, ERR_YOUTUBE_N_PARAM_FIND_IN_QUERY);
+	T(edge_cases_with, invalid_url, ERR_YOUTUBE_STREAM_URL_INVALID);
 }
 
 TEST
@@ -279,5 +265,7 @@ SUITE(stream_cleanup)
 	RUN_TEST(global_cleanup);
 }
 
-#undef do_test_init
+#undef MAKE_STREAM
 #undef MAKE_FAKE_JSON
+#undef SABR
+#undef T
