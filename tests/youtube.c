@@ -84,8 +84,8 @@ url_simulate(const char *path)
 	return to_write;
 }
 
-static const char TEST_P[] = "UE9UCg==";
-static const char TEST_V[] = "VkQK";
+static const char TEST_P[] = "UE9UCg=="; /* base64-encoded "POT" */
+static const char TEST_V[] = "VkQK";     /* base64-encoded "VD" */
 static const struct youtube_stream_ops TEST_OP = {
 	.io_simulator = url_simulate,
 	.choose_quality = NULL,
