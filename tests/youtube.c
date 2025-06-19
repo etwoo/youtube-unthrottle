@@ -35,6 +35,7 @@ static const char FAKE_JS_RESPONSE[] =
 	"};\nnext_global=0";
 
 #define SABR(getargs) "https://a.test/sabr?" getargs
+
 #define MAKE_FAKE_JSON(sabrUrl)                                                \
 	"{\"streamingData\": {"                                                \
 	"\"adaptiveFormats\": [{"                                              \
@@ -49,10 +50,10 @@ static const char FAKE_JS_RESPONSE[] =
 	"\"videoPlaybackUstreamerConfig\": \"cGxheWJhY2sK\""                   \
 	"}}}}"
 
-#define T(base, testname_suffix, json_mock, expected)                          \
+#define T(base, testname_suffix, json_fragment, expected)                      \
 	do {                                                                   \
 		greatest_set_test_suffix(#testname_suffix);                    \
-		TEST_JSON_MOCK = MAKE_FAKE_JSON(json_mock);                    \
+		TEST_JSON_MOCK = MAKE_FAKE_JSON(json_fragment);                \
 		RUN_TESTp(base, expected);                                     \
 		TEST_JSON_MOCK = NULL;                                         \
 	} while (0)
@@ -151,19 +152,10 @@ stream_with(const char *expected_url)
 
 SUITE(stream_n_param_positions)
 {
-	T(stream_with, defaults, SABR("n=aaa"), SABR("n=AAA"));
-	T(stream_with,
-	  n_param_pos_middle,
-	  SABR("first=foo&n=aaa&last=bar"),
-	  SABR("first=foo&n=AAA&last=bar"));
-	T(stream_with,
-	  n_param_pos_first,
-	  SABR("n=aaa&second=foo&third=bar"),
-	  SABR("n=AAA&second=foo&third=bar"));
-	T(stream_with,
-	  n_param_pos_last,
-	  SABR("first=foo&second=bar&n=aaa"),
-	  SABR("first=foo&second=bar&n=AAA"));
+	T(stream_with, n_param_only, SABR("n=aaa"), SABR("n=AAA"));
+	T(stream_with, n_param_mid, SABR("a=a&n=b&c=c"), SABR("a=a&n=B&c=c"));
+	T(stream_with, n_param_first, SABR("n=a&b=b&c=c"), SABR("n=A&b=b&c=c"));
+	T(stream_with, n_param_last, SABR("a=a&b=b&n=c"), SABR("a=a&b=b&n=C"));
 }
 
 TEST
@@ -220,6 +212,6 @@ SUITE(cleanup)
 }
 
 #undef MAKE_STREAM
+#undef T
 #undef MAKE_FAKE_JSON
 #undef SABR
-#undef T
