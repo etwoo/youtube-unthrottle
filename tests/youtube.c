@@ -16,6 +16,11 @@ global_setup(void)
 	PASS();
 }
 
+SUITE(setup)
+{
+	RUN_TEST(global_setup);
+}
+
 #define T(base, suffix, ...)                                                   \
 	do {                                                                   \
 		greatest_set_test_suffix(#suffix);                             \
@@ -179,7 +184,6 @@ test_request_n_param_pos_last(const char *path)
 
 SUITE(stream_n_param_positions)
 {
-	RUN_TEST(global_setup);
 	T(stream_with, default, SABR("n=AAA"));
 	T(stream_with, n_param_pos_middle, SABR("first=foo&n=AAA&last=bar"));
 	T(stream_with, n_param_pos_first, SABR("n=AAA&second=foo&third=bar"));
@@ -247,7 +251,6 @@ test_request_invalid_url(const char *path)
 
 SUITE(stream_edge_cases)
 {
-	RUN_TEST(global_setup);
 	RUN_TEST(edge_cases_target_url_missing_stream_id);
 	T(edge_cases_with, n_param_missing, ERR_YOUTUBE_N_PARAM_FIND_IN_QUERY);
 	T(edge_cases_with, invalid_url, ERR_YOUTUBE_STREAM_URL_INVALID);
@@ -260,7 +263,7 @@ global_cleanup(void)
 	PASS();
 }
 
-SUITE(stream_cleanup)
+SUITE(cleanup)
 {
 	RUN_TEST(global_cleanup);
 }
