@@ -133,7 +133,7 @@ protocol_init_members(struct protocol_state *p, long long int itag_video)
 
 	misc__format_id__init(&p->selected_video_format);
 	p->selected_video_format.has_itag = true;
-	assert(itag_video < INT32_MAX);
+	assert(itag_video <= INT32_MAX);
 	p->selected_video_format.itag = (int32_t)itag_video;
 
 	p->selected_format_ids[0] = &p->selected_audio_format;
@@ -190,7 +190,7 @@ protocol_init(const struct string_view *proof_of_origin,
 	p->req.has_video_playback_ustreamer_config = true;
 
 	*out = p;
-	p = NULL; /* skip automatic cleanup */
+	p = NULL; /* skip automatic cleanup and let caller take ownership */
 	return RESULT_OK;
 }
 
