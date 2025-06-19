@@ -22,7 +22,6 @@ SUITE(setup)
 }
 
 static const char FAKE_URL[] = "https://a.test/watch?v=FOOBAR";
-static const char PATH_WANTS_JSON_RESPONSE[] = "/youtubei/v1/player";
 static const char FAKE_HTML_RESPONSE[] = "\"/s/player/foobar/base.js\"\n";
 static const char FAKE_JS_RESPONSE[] =
 	"'use strict';var zzz=666666,aaa,bbb,ccc,ddd,eee,fff,ggg,hhh;"
@@ -74,7 +73,7 @@ url_simulate(const char *path)
 		to_write = FAKE_HTML_RESPONSE;
 	} else if (strstr(path, "/base.js")) {
 		to_write = FAKE_JS_RESPONSE;
-	} else if (strstr(path, PATH_WANTS_JSON_RESPONSE)) {
+	} else if (strstr(path, "/youtubei/v1/player")) {
 		assert(TEST_JSON_MOCK && "Test bug? Missing JSON mock!");
 		to_write = TEST_JSON_MOCK;
 	} else if (strstr(path, "/sabr")) {
