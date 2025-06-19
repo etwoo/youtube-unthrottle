@@ -3,7 +3,9 @@
 #include "sys/debug.h"
 #include "sys/write.h"
 
+#include <ada_c.h>
 #include <assert.h>
+#include <stdlib.h>
 #include <unistd.h>
 
 /*
@@ -34,6 +36,12 @@ write_to_tmpfile(const char *ptr, size_t size, size_t nmemb, void *userdata)
 	info_m_if(written < 0, "Cannot write to tmpfile");
 
 	return real_size; /* always consider buffer entirely consumed */
+}
+
+static void
+str_free(char **strp)
+{
+	free(*strp);
 }
 
 static WARN_UNUSED CURLcode
@@ -67,11 +75,10 @@ url_context_init(struct url_request_context *context)
 	 */
 	auto_result err = url_download("https://www.youtube.com",
 	                               NULL,
+	                               CONTENT_TYPE_UNSET,
 	                               NULL,
-	                               NULL,
-	                               NULL,
-	                               FD_DISCARD,
-	                               context);
+	                               context,
+	                               FD_DISCARD);
 	info_if(err.err, "Error creating early URL worker threads");
 }
 
@@ -79,25 +86,6 @@ void
 url_context_cleanup(struct url_request_context *context)
 {
 	curl_easy_cleanup(context->state); /* handles NULL gracefully */
-}
-
-static WARN_UNUSED result_t
-url_prepare(const char *hostp, const char *pathp, CURLU **url)
-{
-	*url = curl_url();
-	CURLUcode uc = (*url == NULL) ? CURLUE_OUT_OF_MEMORY : CURLUE_OK;
-	check_if_num(uc, ERR_URL_PREPARE_ALLOC);
-
-	uc = curl_url_set(*url, CURLUPART_SCHEME, "https", 0);
-	check_if_num(uc, ERR_URL_PREPARE_SET_PART_SCHEME);
-
-	uc = curl_url_set(*url, CURLUPART_HOST, hostp, 0);
-	check_if_num(uc, ERR_URL_PREPARE_SET_PART_HOST);
-
-	uc = curl_url_set(*url, CURLUPART_PATH, pathp, 0);
-	check_if_num(uc, ERR_URL_PREPARE_SET_PART_PATH);
-
-	return RESULT_OK;
 }
 
 static WARN_UNUSED result_t
@@ -112,17 +100,17 @@ url_list_append(struct curl_slist **list, const char *str)
 static const char BROWSER_USERAGENT[] =
 	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, "
 	"like Gecko) Chrome/87.0.4280.101 Safari/537.36";
-static const char CONTENT_TYPE_JSON[] = "Content-Type: application/json";
-static const char DEFAULT_HOST_STR[] = "www.youtube.com";
+static const char HEADER_CONTENT_TYPE_JSON[] = "Content-Type: application/json";
+static const char HEADER_CONTENT_TYPE_PROTOBUF[] =
+	"Content-Type: application/x-protobuf";
 
 result_t
-url_download(const char *url_str,     /* maybe NULL */
-             const char *host_str,    /* maybe NULL */
-             const char *path_str,    /* maybe NULL */
-             const char *post_body,   /* maybe NULL */
-             const char *post_header, /* maybe NULL */
-             int fd,
-             struct url_request_context *context)
+url_download(const char *url_str,
+             const struct string_view *post_body,
+             url_request_content_type post_content_type,
+             const char *post_header,
+             struct url_request_context *context,
+             int fd)
 {
 	CURLU *url = NULL;
 	struct curl_slist *headers = NULL;
@@ -135,9 +123,15 @@ url_download(const char *url_str,     /* maybe NULL */
 		debug("Reset easy handle: %p", context->state);
 	}
 	CURL *curl = context->state;
+	url_simulator fn = context->simulator;
 
 	CURLcode res = curl == NULL ? CURLE_OUT_OF_MEMORY : CURLE_OK;
 	check_if_num(res, ERR_URL_DOWNLOAD_ALLOC);
+
+#ifdef WITH_CURL_VERBOSE
+	res = curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+	check_if_num(res, ERR_URL_DOWNLOAD_SET_VERBOSE);
+#endif
 
 	res = curl_easy_setopt(curl, CURLOPT_WRITEDATA, &fd);
 	check_if_num(res, ERR_URL_DOWNLOAD_SET_OPT_WRITEDATA);
@@ -148,32 +142,42 @@ url_download(const char *url_str,     /* maybe NULL */
 	res = curl_easy_setopt(curl, CURLOPT_USERAGENT, BROWSER_USERAGENT);
 	check_if_num(res, ERR_URL_DOWNLOAD_SET_OPT_USERAGENT);
 
-	const char *url_or_path = NULL;
-	if (url_str) {
-		res = curl_easy_setopt(curl, CURLOPT_URL, url_str);
-		check_if_num(res, ERR_URL_DOWNLOAD_SET_OPT_URL_STRING);
+	res = curl_easy_setopt(curl, CURLOPT_URL, url_str);
+	check_if_num(res, ERR_URL_DOWNLOAD_SET_OPT_URL_STRING);
 
-		url_or_path = strstr(url_str, DEFAULT_HOST_STR);
-		if (url_or_path) {
-			url_or_path += strlen(DEFAULT_HOST_STR);
+	char *url_or_path __attribute__((cleanup(str_free))) = NULL;
+	if (fn) {
+		ada_url tmp = ada_parse(url_str, strlen(url_str));
+		if (tmp) {
+			ada_string parsed = ada_get_pathname(tmp);
+			url_or_path = strndup(parsed.data, parsed.length);
+			debug("Got URL path for test io_simulator: %s",
+			      url_or_path);
 		}
-	} else {
-		assert(host_str != NULL && path_str != NULL);
-
-		check(url_prepare(host_str, path_str, &url));
-
-		res = curl_easy_setopt(curl, CURLOPT_CURLU, url);
-		check_if_num(res, ERR_URL_DOWNLOAD_SET_OPT_URL_OBJECT);
-
-		url_or_path = path_str;
+		ada_free(tmp);
 	}
 
-	if (post_body) {
-		check(url_list_append(&headers, CONTENT_TYPE_JSON));
-
-		res = curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_body);
-		/* Note: libcurl does not copy <post_body> */
+	if (post_body && post_body->data && post_body->sz > 0) {
+		res = curl_easy_setopt(curl,
+		                       CURLOPT_POSTFIELDS,
+		                       post_body->data);
 		check_if_num(res, ERR_URL_DOWNLOAD_SET_OPT_POST_BODY);
+
+		res = curl_easy_setopt(curl,
+		                       CURLOPT_POSTFIELDSIZE_LARGE,
+		                       post_body->sz);
+		check_if_num(res, ERR_URL_DOWNLOAD_SET_OPT_POST_BODY_SIZE);
+	}
+
+	switch (post_content_type) {
+	case CONTENT_TYPE_UNSET:
+		break;
+	case CONTENT_TYPE_JSON:
+		check(url_list_append(&headers, HEADER_CONTENT_TYPE_JSON));
+		break;
+	case CONTENT_TYPE_PROTOBUF:
+		check(url_list_append(&headers, HEADER_CONTENT_TYPE_PROTOBUF));
+		break;
 	}
 
 	if (post_header) {
@@ -185,7 +189,6 @@ url_download(const char *url_str,     /* maybe NULL */
 		check_if_num(res, ERR_URL_DOWNLOAD_SET_OPT_HTTP_HEADER);
 	}
 
-	url_simulator fn = context->simulator;
 	res = fn ? curl_simulate(fn(url_or_path), fd) : curl_easy_perform(curl);
 	check_if_num(res, ERR_URL_DOWNLOAD_PERFORM);
 

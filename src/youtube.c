@@ -3,6 +3,7 @@
 #include "lib/js.h"
 #include "lib/re.h"
 #include "lib/url.h"
+#include "protocol/stream.h"
 #include "sys/array.h"
 #include "sys/debug.h"
 #include "sys/tmpfile.h"
@@ -15,14 +16,44 @@
 #include <string.h>
 #include <unistd.h>
 
-static const char ARG_POT[] = "pot";
 static const char ARG_N[] = "n";
+static const char INNERTUBE[] = "https://www.youtube.com/youtubei/v1/player";
+
+struct downloaded {
+	const char *description; /* does not own */
+	int fd;
+	struct string_view data;
+};
+
+static void
+downloaded_init(struct downloaded *d, const char *description)
+{
+	d->description = description;
+	d->fd = -1; /* guarantee invalid <fd> by default */
+	memset(&d->data, 0, sizeof(d->data));
+}
+
+static void
+downloaded_cleanup(struct downloaded *d)
+{
+	tmpunmap(&d->data);
+	info_m_if(d->fd > 0 && close(d->fd) < 0,
+	          "Ignoring error close()-ing %s",
+	          d->description);
+	d->fd = -1;
+}
 
 struct youtube_stream {
-	ada_url url[2];
+	struct protocol_state *stream;
+	ada_url url;
 	const char *proof_of_origin;
 	const char *visitor_data;
-	struct url_request_context request_context;
+	struct url_request_context context;
+	struct parse_ops pops;
+	struct downloaded html;
+	struct downloaded js;
+	struct downloaded json;
+	struct downloaded ump;
 };
 
 result_t
@@ -40,7 +71,7 @@ youtube_global_cleanup(void)
 struct youtube_stream *
 youtube_stream_init(const char *proof_of_origin,
                     const char *visitor_data,
-                    const char *(*io_simulator)(const char *))
+                    const struct youtube_stream_ops *ops)
 {
 	assert(proof_of_origin && visitor_data);
 
@@ -49,8 +80,10 @@ youtube_stream_init(const char *proof_of_origin,
 		memset(p, 0, sizeof(*p)); /* zero early, just in case */
 		p->proof_of_origin = proof_of_origin;
 		p->visitor_data = visitor_data;
-		p->request_context.simulator = io_simulator;
-		url_context_init(&p->request_context);
+		p->context.simulator = ops->io_simulator;
+		url_context_init(&p->context);
+		p->pops.choose_quality = ops->choose_quality;
+		p->pops.userdata = ops->choose_quality_userdata;
 	}
 	return p;
 }
@@ -59,21 +92,16 @@ void
 youtube_stream_cleanup(struct youtube_stream *p)
 {
 	if (p) {
-		for (size_t i = 0; i < ARRAY_SIZE(p->url); ++i) {
-			ada_free(p->url[i]); /* handles NULL gracefully */
-			p->url[i] = NULL;
-		}
-		url_context_cleanup(&p->request_context);
+		protocol_cleanup(p->stream);
+		ada_free(p->url); /* handles NULL gracefully */
+		p->url = NULL;
+		url_context_cleanup(&p->context);
+		downloaded_cleanup(&p->html);
+		downloaded_cleanup(&p->js);
+		downloaded_cleanup(&p->json);
+		downloaded_cleanup(&p->ump);
 	}
 	free(p);
-}
-
-static void
-youtube_stream_valid(struct youtube_stream *p)
-{
-	for (size_t i = 0; i < ARRAY_SIZE(p->url); ++i) {
-		assert(ada_is_valid(p->url[i]));
-	}
 }
 
 result_t
@@ -81,11 +109,25 @@ youtube_stream_visitor(struct youtube_stream *p,
                        void (*visit)(const char *, size_t, void *),
                        void *userdata)
 {
-	youtube_stream_valid(p);
-	for (size_t i = 0; i < ARRAY_SIZE(p->url); ++i) {
-		ada_string s = ada_get_href(p->url[i]);
-		visit(s.data, s.length, userdata);
-	}
+	assert(ada_is_valid(p->url));
+	ada_string s = ada_get_href(p->url);
+	visit(s.data, s.length, userdata);
+	return RESULT_OK;
+}
+
+result_t
+youtube_stream_prepare_tmpfiles(struct youtube_stream *p)
+{
+	downloaded_init(&p->html, "HTML tmpfile");
+	downloaded_init(&p->js, "JavaScript tmpfile");
+	downloaded_init(&p->json, "JSON tmpfile");
+	downloaded_init(&p->ump, "UMP response tmpfile");
+
+	check(tmpfd(&p->html.fd));
+	check(tmpfd(&p->js.fd));
+	check(tmpfd(&p->json.fd));
+	check(tmpfd(&p->ump.fd));
+
 	return RESULT_OK;
 }
 
@@ -119,42 +161,17 @@ ada_search_params_set_helper(ada_url url, const char *key, const char *val)
 }
 
 static WARN_UNUSED result_t
-youtube_stream_set_one(struct youtube_stream *p, int idx, const char *val)
+youtube_stream_set_url(struct youtube_stream *p, char *url_as_cstr)
 {
-	const size_t val_sz = strlen(val);
-	if (!ada_can_parse(val, val_sz)) {
-		return make_result(ERR_JS_PARSE_JSON_CALLBACK_INVALID_URL,
-		                   val,
-		                   val_sz);
+	const size_t sz = strlen(url_as_cstr);
+	if (!ada_can_parse(url_as_cstr, sz)) {
+		return make_result(ERR_YOUTUBE_STREAM_URL_INVALID,
+		                   url_as_cstr,
+		                   sz);
 	}
 
-	assert(idx >= 0 && (unsigned int)idx < ARRAY_SIZE(p->url));
-	p->url[idx] = ada_parse(val, strlen(val));
-	ada_search_params_set_helper(p->url[idx], ARG_POT, p->proof_of_origin);
-	return RESULT_OK;
-}
-
-static WARN_UNUSED result_t
-youtube_stream_set_video(const char *val, void *userdata)
-{
-	struct youtube_stream *p = (struct youtube_stream *)userdata;
-	debug("Setting video stream: %s", val);
-	return youtube_stream_set_one(p, 1, val);
-}
-
-static WARN_UNUSED result_t
-youtube_stream_set_audio(const char *val, void *userdata)
-{
-	struct youtube_stream *p = (struct youtube_stream *)userdata;
-	debug("Setting audio stream: %s", val);
-	return youtube_stream_set_one(p, 0, val);
-}
-
-static WARN_UNUSED result_t
-youtube_stream_choose_quality_any(const char *val,
-                                  void *userdata __attribute__((unused)))
-{
-	debug("Any quality allowed: %s", val);
+	ada_free(p->url); /* handles NULL gracefully */
+	p->url = ada_parse(url_as_cstr, sz);
 	return RESULT_OK;
 }
 
@@ -164,15 +181,15 @@ youtube_stream_choose_quality_any(const char *val,
  * Caller has responsibility to free() the pointer returned in <result>.
  */
 static WARN_UNUSED result_t
-copy_n_param_one(ada_url url, char **result)
+youtube_stream_copy_n_param(struct youtube_stream *p, char **result)
 {
 	*result = NULL; /* NULL out early, just in case */
 
-	ada_string q_str = ada_get_search(url);
+	ada_string q_str = ada_get_search(p->url);
 	ada_url_search_params q __attribute__((cleanup(free_search_params))) =
 		ada_parse_search_params(q_str.data, q_str.length);
 	if (!ada_search_params_has(q, ARG_N, strlen(ARG_N))) {
-		return make_result(ERR_YOUTUBE_N_PARAM_FIND_IN_QUERY);
+		return make_result(ERR_YOUTUBE_N_PARAM_MISSING);
 	}
 
 	ada_string n_param = ada_search_params_get(q, ARG_N, strlen(ARG_N));
@@ -183,50 +200,14 @@ copy_n_param_one(ada_url url, char **result)
 	return RESULT_OK;
 }
 
-/*
- * Copy n-parameter values from all query strings in <p>.
- *
- * Caller has responsibility to free() the pointers returned in <results>.
- */
-static WARN_UNUSED result_t
-copy_n_param_all(struct youtube_stream *p, char **results)
-{
-	for (size_t i = 0; i < ARRAY_SIZE(p->url); ++i) {
-		check(copy_n_param_one(p->url[i], results + i));
-	}
-	return RESULT_OK;
-}
-
 static WARN_UNUSED result_t
 youtube_stream_update_n_param(const char *val, size_t pos, void *userdata)
 {
 	struct youtube_stream *p = (struct youtube_stream *)userdata;
-	assert(pos < ARRAY_SIZE(p->url));
-	ada_search_params_set_helper(p->url[pos], ARG_N, val);
+	assert(pos == 0);
+	ada_search_params_set_helper(p->url, ARG_N, val);
 	return RESULT_OK;
 }
-
-static WARN_UNUSED result_t
-download_and_mmap_tmpfd(const char *url,
-                        const char *host,
-                        const char *path,
-                        const char *post_body,
-                        const char *post_header,
-                        int fd,
-                        struct string_view *data,
-                        struct url_request_context *ctx)
-{
-	assert(fd >= 0);
-
-	check(url_download(url, host, path, post_body, post_header, fd, ctx));
-	check(tmpmap(fd, data));
-
-	debug("Downloaded %s to fd=%d", url ? url : path, fd);
-	return RESULT_OK;
-}
-
-static const char INNERTUBE_URI[] =
-	"https://www.youtube.com/youtubei/v1/player";
 
 static WARN_UNUSED result_t
 make_http_header_visitor_id(const char *visitor_data, char **strp)
@@ -237,27 +218,32 @@ make_http_header_visitor_id(const char *visitor_data, char **strp)
 	return RESULT_OK;
 }
 
-struct downloaded {
-	const char *description; /* does not own */
-	int fd;
-	struct string_view data;
-};
-
-static void
-downloaded_init(struct downloaded *d, const char *description)
+static WARN_UNUSED result_t
+http_post(struct youtube_stream *p,
+          struct downloaded *d,
+          const char *url,
+          const struct string_view *post_body,
+          url_request_content_type post_content_type,
+          const char *post_header)
 {
-	d->description = description;
-	d->fd = -1; /* guarantee invalid <fd> by default */
-	memset(&d->data, 0, sizeof(d->data));
+	assert(d->fd >= 0);
+
+	check(url_download(url,
+	                   post_body,
+	                   post_content_type,
+	                   post_header,
+	                   &p->context,
+	                   d->fd));
+	check(tmpmap(d->fd, &d->data));
+
+	debug("Downloaded %s to fd=%d", url, d->fd);
+	return RESULT_OK;
 }
 
-static void
-downloaded_cleanup(struct downloaded *d)
+static WARN_UNUSED result_t
+http_get(struct youtube_stream *p, struct downloaded *d, const char *url)
 {
-	tmpunmap(&d->data);
-	info_m_if(d->fd > 0 && close(d->fd) < 0,
-	          "Ignoring error close()-ing %s",
-	          d->description);
+	return http_post(p, d, url, NULL, CONTENT_TYPE_UNSET, NULL);
 }
 
 static void
@@ -267,149 +253,120 @@ str_free(char **strp)
 }
 
 static void
-ciphertexts_cleanup(char *ciphertexts[][3])
+ciphertexts_cleanup(char *ciphertexts[][2])
 {
-	size_t free_count = 0;
-	for (size_t i = 0; i < ARRAY_SIZE(*ciphertexts); ++i) {
-		if ((*ciphertexts)[i]) {
-			free((*ciphertexts)[i]);
-			(*ciphertexts)[i] = NULL;
-			++free_count;
-		}
-	}
-	debug("free()-d %zu n-param ciphertext bufs", free_count);
+	free((*ciphertexts)[0]);
+	(*ciphertexts)[0] = NULL;
+	assert((*ciphertexts)[1] == NULL);
+	debug("free()-d n-param ciphertext bufs");
 }
 
 result_t
-youtube_stream_setup(struct youtube_stream *p,
-                     const struct youtube_setup_ops *ops,
-                     void *userdata,
-                     const char *target)
+youtube_stream_open(struct youtube_stream *p, const char *start_url, int out[2])
 {
-	struct downloaded json __attribute__((cleanup(downloaded_cleanup)));
-	struct downloaded html __attribute__((cleanup(downloaded_cleanup)));
-	struct downloaded js __attribute__((cleanup(downloaded_cleanup)));
+	check(http_get(p, &p->html, start_url));
 
-	downloaded_init(&json, "JSON tmpfile");
-	downloaded_init(&html, "HTML tmpfile");
-	downloaded_init(&js, "JavaScript tmpfile");
+	struct string_view basejs_path = {0};
+	check(find_base_js_url(&p->html.data, &basejs_path));
 
-	if (ops && ops->before) {
-		check(ops->before(userdata));
-	}
+	char *target_js __attribute__((cleanup(str_free))) = NULL;
+	const int rc = asprintf(&target_js,
+	                        "https://www.youtube.com%.*s",
+	                        (int)basejs_path.sz,
+	                        basejs_path.data);
+	check_if(rc < 0, ERR_JS_BASEJS_URL_ALLOC);
+	debug("Got base.js URL: %s", target_js);
 
-	check(tmpfd(&json.fd));
-	check(tmpfd(&html.fd));
-	check(tmpfd(&js.fd));
-
-	if (ops && ops->before_inet) {
-		check(ops->before_inet(userdata));
-	}
-
-	check(download_and_mmap_tmpfd(target,
-	                              NULL,
-	                              NULL,
-	                              NULL,
-	                              NULL,
-	                              html.fd,
-	                              &html.data,
-	                              &p->request_context));
-
-	char *null_terminated_basejs __attribute__((cleanup(str_free))) = NULL;
-	{
-		struct string_view basejs = {0};
-		check(find_base_js_url(&html.data, &basejs));
-
-		debug("Setting base.js URL: %.*s", (int)basejs.sz, basejs.data);
-		null_terminated_basejs = strndup(basejs.data, basejs.sz);
-	}
-	check_if(null_terminated_basejs == NULL, ERR_JS_BASEJS_URL_ALLOC);
-
-	check(download_and_mmap_tmpfd(NULL,
-	                              "www.youtube.com",
-	                              null_terminated_basejs,
-	                              NULL,
-	                              NULL,
-	                              js.fd,
-	                              &js.data,
-	                              &p->request_context));
+	check(http_get(p, &p->js, target_js));
 
 	long long int timestamp = 0;
-	check(find_js_timestamp(&js.data, &timestamp));
+	check(find_js_timestamp(&p->js.data, &timestamp));
 
 	char *innertube_post __attribute__((cleanup(str_free))) = NULL;
-	check(make_innertube_json(target,
+	check(make_innertube_json(start_url,
 	                          p->proof_of_origin,
 	                          timestamp,
 	                          &innertube_post));
 
-	char *innertube_header __attribute__((cleanup(str_free))) = NULL;
-	check(make_http_header_visitor_id(p->visitor_data, &innertube_header));
+	char *hdr __attribute__((cleanup(str_free))) = NULL;
+	check(make_http_header_visitor_id(p->visitor_data, &hdr));
 
-	check(download_and_mmap_tmpfd(INNERTUBE_URI,
-	                              NULL,
-	                              NULL,
-	                              innertube_post,
-	                              innertube_header,
-	                              json.fd,
-	                              &json.data,
-	                              &p->request_context));
-
-	if (ops && ops->after_inet) {
-		check(ops->after_inet(userdata));
-	}
-
-	if (ops && ops->before_parse) {
-		check(ops->before_parse(userdata));
-	}
-
-	struct parse_ops pops = {
-		.got_video = youtube_stream_set_video,
-		.got_video_userdata = p,
-		.got_audio = youtube_stream_set_audio,
-		.got_audio_userdata = p,
-		.choose_quality = ops ? ops->during_parse_choose_quality : NULL,
-		.choose_quality_userdata = userdata,
+	const struct string_view body = {
+		.data = innertube_post,
+		.sz = strlen(innertube_post),
 	};
-	if (pops.choose_quality == NULL) {
-		pops.choose_quality = youtube_stream_choose_quality_any;
-	}
-	check(parse_json(&json.data, &pops));
+	check(http_post(p, &p->json, INNERTUBE, &body, CONTENT_TYPE_JSON, hdr));
 
-	for (size_t i = 0; i < ARRAY_SIZE(p->url); ++i) {
-		if (p->url[i] == NULL) {
-			return make_result(ERR_YOUTUBE_STREAM_URL_MISSING);
-		}
-	}
+	struct parse_values parsed
+		__attribute__((cleanup(parse_values_cleanup))) = {0};
+	check(parse_json(&p->json.data, &p->pops, &parsed));
+	check(youtube_stream_set_url(p, parsed.sabr_url));
 
-	if (ops && ops->after_parse) {
-		check(ops->after_parse(userdata));
-	}
+	struct string_view poo = {
+		.data = p->proof_of_origin,
+		.sz = strlen(p->proof_of_origin),
+	};
+	struct string_view pbc = {
+		.data = parsed.playback_config,
+		.sz = strlen(parsed.playback_config),
+	};
+	check(protocol_init(&poo, &pbc, parsed.itag, out, &p->stream));
 
-	if (ops && ops->before_eval) {
-		check(ops->before_eval(userdata));
-	}
+	char *ciphertexts[2] __attribute__((cleanup(ciphertexts_cleanup))) = {
+		NULL,
+		NULL,
+	};
+	check(youtube_stream_copy_n_param(p, &ciphertexts[0]));
 
-	struct deobfuscator d = {0};
-	check(find_js_deobfuscator_magic_global(&js.data, &d));
-	check(find_js_deobfuscator(&js.data, &d));
-
-	char *ciphertexts[ARRAY_SIZE(p->url) + 1]
-		__attribute__((cleanup(ciphertexts_cleanup))) = {NULL};
-	check(copy_n_param_all(p, ciphertexts));
+	struct deobfuscator deobfuscator = {0};
+	check(find_js_deobfuscator_magic_global(&p->js.data, &deobfuscator));
+	check(find_js_deobfuscator(&p->js.data, &deobfuscator));
 
 	struct call_ops cops = {
 		.got_result = youtube_stream_update_n_param,
 	};
-	check(call_js_foreach(&d, ciphertexts, &cops, p));
-
-	if (ops && ops->after_eval) {
-		check(ops->after_eval(userdata));
-	}
-
-	if (ops && ops->after) {
-		check(ops->after(userdata));
-	}
+	check(call_js_foreach(&deobfuscator, ciphertexts, &cops, p));
 
 	return RESULT_OK;
+}
+
+result_t
+youtube_stream_next(struct youtube_stream *p, int *retry_after)
+{
+	*retry_after = -1;
+
+	char *sabr_post __attribute__((cleanup(str_free))) = NULL;
+	size_t sabr_post_sz = 0;
+	check(protocol_next_request(p->stream, &sabr_post, &sabr_post_sz));
+
+	char *url __attribute__((cleanup(str_free))) = NULL;
+	{
+		ada_string tmp = ada_get_href(p->url);
+		url = tmp.data ? strndup(tmp.data, tmp.length) : NULL;
+	}
+	check_if(url == NULL, ERR_JS_SABR_URL_ALLOC);
+
+	const struct string_view v = {
+		.data = sabr_post,
+		.sz = sabr_post_sz,
+	};
+
+	check(http_post(p, &p->ump, url, &v, CONTENT_TYPE_PROTOBUF, NULL));
+	check(protocol_parse_response(p->stream,
+	                              &p->ump.data,
+	                              &url,
+	                              retry_after));
+	check(tmptruncate(p->ump.fd, &p->ump.data));
+	check(youtube_stream_set_url(p, url));
+
+	return *retry_after > 0 || protocol_knows_end(p->stream)
+	               ? RESULT_OK
+	               : make_result(ERR_YOUTUBE_EARLY_END_STREAM);
+}
+
+bool
+youtube_stream_done(struct youtube_stream *p)
+{
+	struct protocol_state *s = p->stream;
+	return s == NULL || !protocol_knows_end(s) || protocol_done(s);
 }

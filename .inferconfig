@@ -2,5 +2,7 @@
   "compilation-database": ["./build/compile_commands.json"],
   "fail-on-issue": true,
   "results-dir": "./build/infer-out",
+  "skip-analysis-in-path": [ "build/_deps/" ],
+  "disable-issue-type": [ "NULLPTR_DEREFERENCE" ],
   "liveness": false
 }

@@ -51,7 +51,7 @@ str_free(char **strp)
 static void
 pretty_print_code(struct string_view in /* note: pass by value */, char **out)
 {
-#ifdef WITH_DEBUG_OUTPUT
+#ifdef WITH_DEBUG_LOG
 	char *buffer = malloc((in.sz + 1) * sizeof(*buffer));
 	*out = buffer;
 	while (buffer) {
@@ -77,10 +77,11 @@ pretty_print_code(struct string_view in /* note: pass by value */, char **out)
 }
 
 static const char MTVIDEO[] = "video/";
-static const char MTAUDIO[] = "audio/";
 
 result_t
-parse_json(const struct string_view *json, const struct parse_ops *ops)
+parse_json(const struct string_view *json,
+           const struct parse_ops *ops,
+           struct parse_values *values)
 {
 	// debug("Got JSON blob: %.*s", json->sz, json->data);
 	debug("Got JSON blob of size %zu", json->sz);
@@ -109,9 +110,7 @@ parse_json(const struct string_view *json, const struct parse_ops *ops)
 		return make_result(ERR_JS_PARSE_JSON_ADAPTIVEFORMATS_TYPE);
 	}
 
-	bool got_video = false;
-	bool got_audio = false;
-	bool warned_about_signature_cipher = false;
+	values->itag = -1; /* set sentinel value */
 
 	size_t i = 0;
 	json_t *cur = NULL;
@@ -124,54 +123,79 @@ parse_json(const struct string_view *json, const struct parse_ops *ops)
 		if (!json_is_string(json_mimetype)) {
 			return make_result(ERR_JS_PARSE_JSON_ELEM_MIMETYPE);
 		}
+
 		const char *mimetype = json_string_value(json_mimetype);
 		assert(mimetype != NULL);
 
-		json_t *json_url = json_object_get(cur, "url");
-		if (!json_is_string(json_url)) {
-			return make_result(ERR_JS_PARSE_JSON_ELEM_URL);
+		if (0 != strncmp(mimetype, MTVIDEO, strlen(MTVIDEO))) {
+			continue;
 		}
-		const char *url = json_string_value(json_url);
-		assert(url != NULL);
 
-		bool choose_quality = true;
 		json_t *quality = json_object_get(cur, "qualityLabel");
-		if (json_is_string(quality)) {
-			const char *q = json_string_value(quality);
-			assert(q != NULL);
-			void *ud = ops->choose_quality_userdata;
-			auto_result err = ops->choose_quality(q, ud);
-			choose_quality = (err.err == OK);
+		if (!json_is_string(quality)) {
+			return make_result(ERR_JS_PARSE_JSON_ELEM_QUALITY);
 		}
 
-		if (choose_quality &&
-		    0 == strncmp(mimetype, MTVIDEO, strlen(MTVIDEO)) &&
-		    false == got_video) {
-			check(ops->got_video(url, ops->got_video_userdata));
-			got_video = true;
-		}
-		if (choose_quality &&
-		    0 == strncmp(mimetype, MTAUDIO, strlen(MTAUDIO)) &&
-		    false == got_audio) {
-			check(ops->got_audio(url, ops->got_audio_userdata));
-			got_audio = true;
+		const char *q = json_string_value(quality);
+		assert(q != NULL);
+
+		auto_result chosen =
+			ops->choose_quality
+				? ops->choose_quality(q, ops->userdata)
+				: RESULT_OK;
+		if (chosen.err != OK) {
+			debug("Skipping quality: %s", q);
+			continue;
 		}
 
-		/*
-		 * Check for <streamingCipher> attribute, which we do not
-		 * currently support. Streams with a <streamingCipher>
-		 * attribute instead of a plaintext <url> value require more
-		 * deobfuscation logic, distinct from n-parameter decoding.
-		 * */
-		json_t *get_streaming_cipher =
-			json_object_get(cur, "signatureCipher");
-		if (get_streaming_cipher && !warned_about_signature_cipher) {
-			warned_about_signature_cipher = true;
-			info("signatureCipher is unsupported!");
+		json_t *json_itag = json_object_get(cur, "itag");
+		if (!json_is_integer(json_itag)) {
+			return make_result(ERR_JS_PARSE_JSON_ELEM_ITAG);
 		}
+
+		values->itag = json_integer_value(json_itag);
+		debug("Parsed itag=%lld", values->itag);
+		break;
 	}
 
+	if (values->itag < 0) {
+		return make_result(ERR_JS_PARSE_JSON_NO_MATCH);
+	}
+
+	json_t *serverAbrStreamingUrl =
+		json_object_get(streamingData, "serverAbrStreamingUrl");
+	if (!json_is_string(serverAbrStreamingUrl)) {
+		return make_result(ERR_JS_SABR_URL_FIND);
+	}
+	values->sabr_url = strndup(json_string_value(serverAbrStreamingUrl),
+	                           json_string_length(serverAbrStreamingUrl));
+	debug("Parsed SABR URI: %s", values->sabr_url);
+
+	json_t *playbackConfig = /* chain json_get_object() calls for brevity */
+		json_object_get(
+			json_object_get(
+				json_object_get(
+					json_object_get(obj, "playerConfig"),
+					"mediaCommonConfig"),
+				"mediaUstreamerRequestConfig"),
+			"videoPlaybackUstreamerConfig");
+	if (!json_is_string(playbackConfig)) {
+		return make_result(ERR_JS_PLAYBACK_CONFIG_FIND);
+	}
+	values->playback_config = strndup(json_string_value(playbackConfig),
+	                                  json_string_length(playbackConfig));
+	debug("Parsed playback config: %s", values->playback_config);
+
 	return RESULT_OK;
+}
+
+void
+parse_values_cleanup(struct parse_values *p)
+{
+	if (p) {
+		free(p->sabr_url);
+		free(p->playback_config);
+	}
 }
 
 result_t

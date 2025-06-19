@@ -2,7 +2,7 @@ image: archlinux/archlinux:base-devel
 
 variables:
   PACKAGE_CMD: "pacman --noconfirm --needed -Sy"
-  PACKAGE_DEFAULT: "ada cmake clang curl duktape git jansson libseccomp pcre2"
+  PACKAGE_DEFAULT: "ada cmake clang curl duktape git jansson libseccomp pcre2 protobuf-c"
   PACKAGE_PER_JOB: ""
   TESTS_FAIL_LACK_OF_LANDLOCK_API_IN_CI_RUNNERS: "^(cli-try-sandbox|landlock|sandbox|seccomp)$"
 
@@ -63,7 +63,7 @@ build:clang-coverage:
     - export IMG=$((echo $BUMP && cat ./scripts/user-data) | sha256sum | cut -f1 -d' ')
     - export URI=$(./scripts/find-vm-artifact.sh "vm-images/$IMG.zst") && echo "Fetching $URI"
     - ./scripts/qemu-build.exp $IMG $URI
-    - ./scripts/coverage.sh -E main.c coverage.profraw ./build/coverage.xml
+    - ./scripts/coverage.sh -E 'main.c|build/' coverage.profraw ./build/coverage.xml
   after_script:
     - ./scripts/cleanup-vm-archive.sh vm-images
   coverage: '/^TOTAL.*\s+([\d\.]+\%)$/'
@@ -136,9 +136,8 @@ analyze:clang-tidy:
   variables:
     PACKAGE_PER_JOB: "jq"
   script:
-    - cmake --preset clang -DCMAKE_EXPORT_COMPILE_COMMANDS=1
+    - cmake --preset clang -DCMAKE_C_CLANG_TIDY=clang-tidy
     - cmake --build --preset default
-    - jq --raw-output0 .[].file ./build/compile_commands.json | xargs -0 clang-tidy -p ./build/
 
 #
 # Run the Infer static analyzer: https://fbinfer.com

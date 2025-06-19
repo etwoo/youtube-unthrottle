@@ -45,11 +45,13 @@ macro(generate_test_driver)
 		${CMAKE_CURRENT_SOURCE_DIR} # for coverage.h, test_macros.h, etc
 		${PROJECT_SOURCE_DIR}/src   # for debug.h, tmpfile.h, etc
 		${greatest_SOURCE_DIR}      # for greatest.h
+		${googlevideo_BINARY_DIR}   # for generated protobuf code
 	)
 	target_link_libraries(test-driver PRIVATE my_cflags sanitizers youtube)
 endmacro()
 
 register_test(js)
+register_test(protocol)
 register_test(re)
 register_test(result)
 register_test(sandbox "ASAN_OPTIONS=detect_leaks=0")

@@ -6,16 +6,20 @@
 #include "sys/string_view.h"
 
 struct parse_ops {
-	result_t (*got_video)(const char *, void *);
-	void *got_video_userdata;
-	result_t (*got_audio)(const char *, void *);
-	void *got_audio_userdata;
 	result_t (*choose_quality)(const char *, void *);
-	void *choose_quality_userdata;
+	void *userdata;
+};
+
+struct parse_values {
+	long long int itag;
+	char *sabr_url;
+	char *playback_config;
 };
 
 result_t parse_json(const struct string_view *json,
-                    const struct parse_ops *ops) WARN_UNUSED;
+                    const struct parse_ops *ops,
+                    struct parse_values *values) WARN_UNUSED;
+void parse_values_cleanup(struct parse_values *p);
 
 result_t make_innertube_json(const char *target_url,
                              const char *proof_of_origin,

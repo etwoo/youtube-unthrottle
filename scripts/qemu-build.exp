@@ -27,7 +27,7 @@ proc maybe_compress {target} {
 		debug "Compressed asset already exists: $p.zst"
 	} else {
 		debug "Compress to create: $p.zst"
-		puts [exec -ignorestderr zstd -T0 --compress $p]
+		puts [exec -ignorestderr zstd -T0 -15 --compress $p]
 	}
 }
 
@@ -151,6 +151,7 @@ proc install_test_dependencies_in_vm {} {
 		"llvm"
 		"make"
 		"pcre2"
+		"protobuf-c"
 	} " "]
 }
 
@@ -278,12 +279,12 @@ if {$slowpath} {
 	wait -i $qemu_id
 
 	debug "Stop adhoc IMDS webserver"
-	close -i $imds_server_id
+	exp_close -i $imds_server_id
 	wait -i $imds_server_id
 } else {
 	debug "Skip shutdown by killing VM forcefully"
 	exec kill -9 [exp_pid -i $qemu_id]
-	close -i $qemu_id
+	exp_close -i $qemu_id
 	wait -i $qemu_id
 }
 

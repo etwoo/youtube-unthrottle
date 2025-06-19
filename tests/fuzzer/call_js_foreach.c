@@ -42,6 +42,6 @@ LLVMFuzzerTestOneInput(const char *data, size_t sz)
 	args[6] = "t2yEuJMA6mZh68xBzwE";
 	args[7] = NULL;
 
-	(void)call_js_foreach(&d, args, &cops, NULL);
+	auto_result r = call_js_foreach(&d, args, &cops, NULL);
 	return 0;
 }

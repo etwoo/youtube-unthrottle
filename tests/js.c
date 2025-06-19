@@ -16,19 +16,17 @@ parse_callback_noop(const char *val __attribute__((unused)),
 }
 
 static const struct parse_ops NOOP = {
-	.got_video = parse_callback_noop,
-	.got_video_userdata = NULL,
-	.got_audio = parse_callback_noop,
-	.got_audio_userdata = NULL,
 	.choose_quality = parse_callback_noop,
-	.choose_quality_userdata = NULL,
+	.userdata = NULL,
 };
 
 static WARN_UNUSED int
 parse(const char *str)
 {
 	struct string_view tmp = {.data = str, .sz = strlen(str)};
-	auto_result err = parse_json(&tmp, &NOOP);
+	struct parse_values parsed
+		__attribute__((cleanup(parse_values_cleanup))) = {0};
+	auto_result err = parse_json(&tmp, &NOOP, &parsed);
 	return err.err;
 }
 
@@ -282,34 +280,124 @@ incorrect_mimeType_value_type(void)
 }
 
 TEST
-missing_url_key(void)
+missing_qualityLabel_key(void)
 {
-	ASSERT_EQ(ERR_JS_PARSE_JSON_ELEM_URL,
-	          parse("{\"streamingData\": {\"adaptiveFormats\": "
-	                "[{\"mimeType\": \"audio/foobar\"}]"
-	                "}}"));
-	PASS();
-}
-
-TEST
-incorrect_url_value_type(void)
-{
-	ASSERT_EQ(ERR_JS_PARSE_JSON_ELEM_URL,
-	          parse("{\"streamingData\": {\"adaptiveFormats\": "
-	                "[{\"mimeType\": \"audio/foobar\", \"url\": 5}]"
-	                "}}"));
-	PASS();
-}
-
-TEST
-unsupported_signatureCipher_key(void)
-{
-	ASSERT_EQ(OK,
+	ASSERT_EQ(ERR_JS_PARSE_JSON_ELEM_QUALITY,
 	          parse("{\"streamingData\": {\"adaptiveFormats\": [{"
-	                "\"mimeType\": \"audio/foobar\","
-	                "\"url\": \"foobar\","
-	                "\"signatureCipher\": \"foobar\""
+	                "\"mimeType\": \"video/foo\""
 	                "}]}}"));
+	PASS();
+}
+
+TEST
+incorrect_qualityLabel_value_type(void)
+{
+	ASSERT_EQ(ERR_JS_PARSE_JSON_ELEM_QUALITY,
+	          parse("{\"streamingData\": {\"adaptiveFormats\": [{"
+	                "\"mimeType\": \"video/foo\","
+	                "\"qualityLabel\": 5"
+	                "}]}}"));
+	PASS();
+}
+
+TEST
+missing_itag_key(void)
+{
+	ASSERT_EQ(ERR_JS_PARSE_JSON_ELEM_ITAG,
+	          parse("{\"streamingData\": {\"adaptiveFormats\": [{"
+	                "\"mimeType\": \"video/foo\","
+	                "\"qualityLabel\": \"foobar\""
+	                "}]}}"));
+	PASS();
+}
+
+TEST
+incorrect_itag_value_type(void)
+{
+	ASSERT_EQ(ERR_JS_PARSE_JSON_ELEM_ITAG,
+	          parse("{\"streamingData\": {\"adaptiveFormats\": [{"
+	                "\"mimeType\": \"video/foo\","
+	                "\"qualityLabel\": \"foobar\","
+	                "\"itag\": \"fuzzbuzz\""
+	                "}]}}"));
+	PASS();
+}
+
+TEST
+no_matching_adaptiveFormats_element_because_empty(void)
+{
+	ASSERT_EQ(ERR_JS_PARSE_JSON_NO_MATCH,
+	          parse("{\"streamingData\": {\"adaptiveFormats\": []}}"));
+	PASS();
+}
+
+TEST
+no_matching_adaptiveFormats_element_because_mimetype(void)
+{
+	ASSERT_EQ(ERR_JS_PARSE_JSON_NO_MATCH,
+	          parse("{\"streamingData\": {\"adaptiveFormats\": [{"
+	                "\"mimeType\": \"audio/foo\","
+	                "\"qualityLabel\": \"foobar\","
+	                "\"itag\": 251"
+	                "}]}}"));
+	PASS();
+}
+
+TEST
+missing_sabr_url_key(void)
+{
+	ASSERT_EQ(ERR_JS_SABR_URL_FIND,
+	          parse("{\"streamingData\": {\"adaptiveFormats\": [{"
+	                "\"mimeType\": \"video/foo\","
+	                "\"qualityLabel\": \"foobar\","
+	                "\"itag\": 299"
+	                "}]}}"));
+	PASS();
+}
+
+TEST
+incorrect_sabr_url_value_type(void)
+{
+	ASSERT_EQ(ERR_JS_SABR_URL_FIND,
+	          parse("{\"streamingData\": {"
+	                "\"adaptiveFormats\": [{"
+	                "\"mimeType\": \"video/foo\","
+	                "\"qualityLabel\": \"foobar\","
+	                "\"itag\": 299"
+	                "}],"
+	                "\"serverAbrStreamingUrl\": 6"
+	                "}}"));
+	PASS();
+}
+
+TEST
+missing_playback_config_key(void)
+{
+	ASSERT_EQ(ERR_JS_PLAYBACK_CONFIG_FIND,
+	          parse("{\"streamingData\": {"
+	                "\"adaptiveFormats\": [{"
+	                "\"mimeType\": \"video/foo\","
+	                "\"qualityLabel\": \"foobar\","
+	                "\"itag\": 299"
+	                "}],"
+	                "\"serverAbrStreamingUrl\": \"https://foo.test\""
+	                "}}"));
+	PASS();
+}
+
+TEST
+incorrect_playback_config_value_type(void)
+{
+	ASSERT_EQ(ERR_JS_PLAYBACK_CONFIG_FIND,
+	          parse("{\"streamingData\": {"
+	                "\"adaptiveFormats\": [{"
+	                "\"mimeType\": \"video/foo\","
+	                "\"qualityLabel\": \"foobar\","
+	                "\"itag\": 299"
+	                "}],"
+	                "\"serverAbrStreamingUrl\": \"https://foo.test\","
+	                "\"videoPlaybackUstreamerConfig\": 456"
+	                "}}"));
 	PASS();
 }
 
@@ -326,72 +414,41 @@ SUITE(incorrect_shape)
 	RUN_TEST(incorrect_adaptiveFormats_element_type);
 	RUN_TEST(missing_mimeType_key);
 	RUN_TEST(incorrect_mimeType_value_type);
-	RUN_TEST(missing_url_key);
-	RUN_TEST(incorrect_url_value_type);
-	RUN_TEST(unsupported_signatureCipher_key);
-}
-
-struct url_copy {
-	char video[16];
-	char audio[16];
-};
-
-static void
-url_copy_init(struct url_copy *c)
-{
-	c->video[0] = '\0';
-	c->audio[0] = '\0';
-}
-
-static WARN_UNUSED result_t
-copy_video(const char *val, void *userdata)
-{
-	struct url_copy *urls = (struct url_copy *)userdata;
-	const size_t sz = strlen(val);
-	assert(sizeof(urls->video) >= sz);
-	memcpy(urls->video, val, sz);
-	urls->video[sz] = '\0';
-	debug("Copied video URL: %s", urls->video);
-	return RESULT_OK;
-}
-
-static WARN_UNUSED result_t
-copy_audio(const char *val, void *userdata)
-{
-	struct url_copy *urls = (struct url_copy *)userdata;
-	const size_t sz = strlen(val);
-	assert(sizeof(urls->audio) >= sz);
-	memcpy(urls->audio, val, sz);
-	urls->audio[sz] = '\0';
-	debug("Copied audio URL: %s", urls->audio);
-	return RESULT_OK;
+	RUN_TEST(missing_qualityLabel_key);
+	RUN_TEST(incorrect_qualityLabel_value_type);
+	RUN_TEST(missing_itag_key);
+	RUN_TEST(incorrect_itag_value_type);
+	RUN_TEST(no_matching_adaptiveFormats_element_because_empty);
+	RUN_TEST(no_matching_adaptiveFormats_element_because_mimetype);
+	RUN_TEST(missing_sabr_url_key);
+	RUN_TEST(incorrect_sabr_url_value_type);
+	RUN_TEST(missing_playback_config_key);
+	RUN_TEST(incorrect_playback_config_value_type);
 }
 
 TEST
 minimum_json_with_correct_shape(void)
 {
 	const struct string_view json = MAKE_TEST_STRING(
-		"{\"streamingData\": {\"adaptiveFormats\": ["
-		"{\"mimeType\": \"audio/foo\",\"url\": \"http://a.test\"},"
-		"{\"mimeType\": \"video/foo\",\"url\": \"http://v.test\"}"
-		"]}}");
+		"{\"streamingData\": {"
+		"\"adaptiveFormats\": [{"
+		"\"mimeType\": \"video/foo\","
+		"\"qualityLabel\": \"foobar\","
+		"\"itag\": 299"
+		"}],"
+		"\"serverAbrStreamingUrl\": \"https://foo.test\"},"
+		"\"playerConfig\": {"
+		"\"mediaCommonConfig\": {"
+		"\"mediaUstreamerRequestConfig\": {"
+		"\"videoPlaybackUstreamerConfig\": \"cGxheWJhY2sK\""
+		"}}}}");
 
-	struct url_copy urls;
-	url_copy_init(&urls);
-
-	struct parse_ops pops = {
-		.got_video = copy_video,
-		.got_video_userdata = &urls,
-		.got_audio = copy_audio,
-		.got_audio_userdata = &urls,
-		.choose_quality = parse_callback_noop,
-		.choose_quality_userdata = NULL,
-	};
-	auto_result err = parse_json(&json, &pops);
+	struct parse_values parsed
+		__attribute__((cleanup(parse_values_cleanup))) = {0};
+	auto_result err = parse_json(&json, &NOOP, &parsed);
 	ASSERT_EQ(OK, err.err);
+	ASSERT_EQ(299, parsed.itag);
 
-	ASSERT_STR_EQ("http://a.test", urls.audio);
-	ASSERT_STR_EQ("http://v.test", urls.video);
 	PASS();
 }
 
@@ -399,29 +456,57 @@ TEST
 extra_adaptiveFormats_elements(void)
 {
 	const struct string_view json = MAKE_TEST_STRING(
-		"{\"streamingData\": {\"adaptiveFormats\": ["
-		"{\"mimeType\": \"audio/foo\",\"url\": \"http://a.test\"},"
-		"{\"mimeType\": \"audio/bar\",\"url\": \"http://extra.test\"},"
-		"{\"mimeType\": \"video/foo\",\"url\": \"http://v.test\"},"
-		"{\"mimeType\": \"video/bar\",\"url\": \"http://extra.test\"}"
-		"]}}");
+		"{\"streamingData\": {"
+		"\"adaptiveFormats\": ["
+		"{\"mimeType\": \"video/foo\","
+		" \"qualityLabel\": \"foobar\","
+		" \"itag\": 100},"
+		"{\"mimeType\": \"video/foo\","
+		" \"qualityLabel\": \"foobar\","
+		" \"itag\": 200}"
+		"],"
+		"\"serverAbrStreamingUrl\": \"https://foo.test\"},"
+		"\"playerConfig\": {"
+		"\"mediaCommonConfig\": {"
+		"\"mediaUstreamerRequestConfig\": {"
+		"\"videoPlaybackUstreamerConfig\": \"cGxheWJhY2sK\""
+		"}}}}");
 
-	struct url_copy urls;
-	url_copy_init(&urls);
-
-	struct parse_ops pops = {
-		.got_video = copy_video,
-		.got_video_userdata = &urls,
-		.got_audio = copy_audio,
-		.got_audio_userdata = &urls,
-		.choose_quality = parse_callback_noop,
-		.choose_quality_userdata = NULL,
-	};
-	auto_result err = parse_json(&json, &pops);
+	struct parse_values parsed
+		__attribute__((cleanup(parse_values_cleanup))) = {0};
+	auto_result err = parse_json(&json, &NOOP, &parsed);
 	ASSERT_EQ(OK, err.err);
+	ASSERT_EQ(100, parsed.itag);
 
-	ASSERT_STR_EQ("http://a.test", urls.audio);
-	ASSERT_STR_EQ("http://v.test", urls.video);
+	PASS();
+}
+
+TEST
+skip_non_video_adaptiveFormats_elements(void)
+{
+	const struct string_view json = MAKE_TEST_STRING(
+		"{\"streamingData\": {"
+		"\"adaptiveFormats\": ["
+		"{\"mimeType\": \"audio/foo\","
+		" \"qualityLabel\": \"foobar\","
+		" \"itag\": 100},"
+		"{\"mimeType\": \"video/foo\","
+		" \"qualityLabel\": \"foobar\","
+		" \"itag\": 10}"
+		"],"
+		"\"serverAbrStreamingUrl\": \"https://foo.test\"},"
+		"\"playerConfig\": {"
+		"\"mediaCommonConfig\": {"
+		"\"mediaUstreamerRequestConfig\": {"
+		"\"videoPlaybackUstreamerConfig\": \"cGxheWJhY2sK\""
+		"}}}}");
+
+	struct parse_values parsed
+		__attribute__((cleanup(parse_values_cleanup))) = {0};
+	auto_result err = parse_json(&json, &NOOP, &parsed);
+	ASSERT_EQ(OK, err.err);
+	ASSERT_EQ(10, parsed.itag);
+
 	PASS();
 }
 
@@ -439,39 +524,32 @@ TEST
 choose_adaptiveFormats_elements(void)
 {
 	const struct string_view json = MAKE_TEST_STRING(
-		"{ \"streamingData\": {\"adaptiveFormats\": [ {"
-		"\"mimeType\": \"audio/foo\","
-		"\"qualityLabel\": \"skip\","
-		"\"url\": \"http://bad.test\""
-		"},"
-		"{"
-		"\"mimeType\": \"audio/bar\","
-		"\"url\": \"http://a.test\""
-		"},"
+		"{\"streamingData\": {"
+		"\"adaptiveFormats\": ["
 		"{\"mimeType\": \"video/foo\","
-		"\"qualityLabel\": \"skip\","
-		"\"url\": \"http://bad.test\""
-		"},"
-		"{\"mimeType\": \"video/bar\","
-		"\"url\": \"http://v.test\""
-		"} ] }}");
-
-	struct url_copy urls;
-	url_copy_init(&urls);
+		" \"qualityLabel\": \"skip\","
+		" \"itag\": 100},"
+		"{\"mimeType\": \"video/foo\","
+		" \"qualityLabel\": \"foobar\","
+		" \"itag\": 200}"
+		"],"
+		"\"serverAbrStreamingUrl\": \"https://foo.test\"},"
+		"\"playerConfig\": {"
+		"\"mediaCommonConfig\": {"
+		"\"mediaUstreamerRequestConfig\": {"
+		"\"videoPlaybackUstreamerConfig\": \"cGxheWJhY2sK\""
+		"}}}}");
 
 	struct parse_ops pops = {
-		.got_video = copy_video,
-		.got_video_userdata = &urls,
-		.got_audio = copy_audio,
-		.got_audio_userdata = &urls,
 		.choose_quality = choose_quality_skip_marked_entries,
-		.choose_quality_userdata = "skip",
+		.userdata = "skip",
 	};
-	auto_result err = parse_json(&json, &pops);
+	struct parse_values parsed
+		__attribute__((cleanup(parse_values_cleanup))) = {0};
+	auto_result err = parse_json(&json, &pops, &parsed);
 	ASSERT_EQ(OK, err.err);
+	ASSERT_EQ(200, parsed.itag);
 
-	ASSERT_STR_EQ("http://a.test", urls.audio);
-	ASSERT_STR_EQ("http://v.test", urls.video);
 	PASS();
 }
 
@@ -479,6 +557,7 @@ SUITE(correct_shape)
 {
 	RUN_TEST(minimum_json_with_correct_shape);
 	RUN_TEST(extra_adaptiveFormats_elements);
+	RUN_TEST(skip_non_video_adaptiveFormats_elements);
 	RUN_TEST(choose_adaptiveFormats_elements);
 }
 
