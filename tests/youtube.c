@@ -84,7 +84,7 @@ url_simulate(const char *path)
 	return to_write;
 }
 
-const struct youtube_stream_ops SIMULATE_OPS = {
+static const struct youtube_stream_ops SIMULATE_OPS = {
 	.io_simulator = url_simulate,
 	.choose_quality = NULL,
 	.choose_quality_userdata = NULL,
