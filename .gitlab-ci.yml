@@ -136,8 +136,7 @@ analyze:clang-tidy:
   variables:
     PACKAGE_PER_JOB: "jq"
   script:
-    - export CLANG_TIDY=$(which clang-tidy) && echo "Using $CLANG_TIDY"
-    - cmake --preset clang -DCMAKE_C_CLANG_TIDY="$CLANG_TIDY"
+    - cmake --preset clang -DCMAKE_C_CLANG_TIDY=clang-tidy
     - cmake --build --preset default
 
 #
