@@ -242,7 +242,7 @@ unthrottle(const char *target,
 	check(youtube_global_init());
 	check_if(output[0] < 0 || output[1] < 0, OK);
 
-	const struct youtube_setup_ops sops = {
+	const struct youtube_stream_ops sops = {
 		.io_simulator = NULL,
 		.choose_quality = choose_quality,
 		.choose_quality_userdata = q,

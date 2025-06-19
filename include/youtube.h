@@ -10,7 +10,7 @@ void youtube_global_cleanup(void);
 
 typedef struct youtube_stream *youtube_handle_t;
 
-struct youtube_setup_ops {
+struct youtube_stream_ops {
 	const char *(*io_simulator)(const char *);
 	result_t (*choose_quality)(const char *, void *);
 	void *choose_quality_userdata;
@@ -25,7 +25,7 @@ struct youtube_setup_ops {
  */
 youtube_handle_t youtube_stream_init(const char *proof_of_origin,
                                      const char *visitor_data,
-                                     const struct youtube_setup_ops *ops)
+                                     const struct youtube_stream_ops *ops)
 	__attribute__((warn_unused_result));
 void youtube_stream_cleanup(youtube_handle_t h);
 

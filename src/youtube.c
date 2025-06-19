@@ -71,7 +71,7 @@ youtube_global_cleanup(void)
 struct youtube_stream *
 youtube_stream_init(const char *proof_of_origin,
                     const char *visitor_data,
-                    const struct youtube_setup_ops *ops)
+                    const struct youtube_stream_ops *ops)
 {
 	assert(proof_of_origin && visitor_data);
 
