@@ -189,7 +189,7 @@ youtube_stream_copy_n_param(struct youtube_stream *p, char **result)
 	ada_url_search_params q __attribute__((cleanup(free_search_params))) =
 		ada_parse_search_params(q_str.data, q_str.length);
 	if (!ada_search_params_has(q, ARG_N, strlen(ARG_N))) {
-		return make_result(ERR_YOUTUBE_N_PARAM_FIND_IN_QUERY);
+		return make_result(ERR_YOUTUBE_N_PARAM_MISSING);
 	}
 
 	ada_string n_param = ada_search_params_get(q, ARG_N, strlen(ARG_N));
