@@ -34,16 +34,16 @@ static const char FAKE_JS_RESPONSE[] =
 	"b=[a.toUpperCase()]; return b.join(\"\")"
 	"};\nnext_global=0";
 
-#define SABR(getargs) "https://a.test/sabr?" getargs
+#define SABR(get_args) "https://a.test/sabr?" get_args
 
-#define MAKE_FAKE_JSON(sabrUrl)                                                \
+#define MAKE_FAKE_JSON(sabr_url)                                               \
 	"{\"streamingData\": {"                                                \
 	"\"adaptiveFormats\": [{"                                              \
 	"\"mimeType\": \"video/foobar\","                                      \
 	"\"qualityLabel\": \"fuzzbuzz\","                                      \
 	"\"itag\": 200"                                                        \
 	"}],"                                                                  \
-	"\"serverAbrStreamingUrl\": \"" sabrUrl "\"},"                         \
+	"\"serverAbrStreamingUrl\": \"" sabr_url "\"},"                        \
 	"\"playerConfig\": {"                                                  \
 	"\"mediaCommonConfig\": {"                                             \
 	"\"mediaUstreamerRequestConfig\": {"                                   \
