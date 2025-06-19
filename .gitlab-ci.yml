@@ -133,8 +133,6 @@ lint:tcl:
 analyze:clang-tidy:
   <<: *build_dependencies
   stage: build
-  variables:
-    PACKAGE_PER_JOB: "jq"
   script:
     - cmake --preset clang -DCMAKE_C_CLANG_TIDY=clang-tidy
     - cmake --build --preset default
