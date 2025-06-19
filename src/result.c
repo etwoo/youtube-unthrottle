@@ -126,12 +126,6 @@ easy_error(result_t r)
 }
 
 static WARN_UNUSED const char *
-url_error(result_t r)
-{
-	return curl_url_strerror(r.num);
-}
-
-static WARN_UNUSED const char *
 regex_error(result_t r, PCRE2_UCHAR *buffer, size_t capacity)
 {
 	if (pcre2_get_error_message(r.num, buffer, capacity) < 0) {
@@ -171,8 +165,15 @@ result_to_str(result_t r)
 	case ERR_JS_PARSE_JSON_ELEM_MIMETYPE:
 		s = strdup("Cannot get mimeType of adaptiveFormats element");
 		break;
-	case ERR_JS_PARSE_JSON_ELEM_URL:
-		s = strdup("Cannot get url of adaptiveFormats element");
+	case ERR_JS_PARSE_JSON_ELEM_QUALITY:
+		s = strdup(
+			"Cannot get qualityLabel of adaptiveFormats element");
+		break;
+	case ERR_JS_PARSE_JSON_ELEM_ITAG:
+		s = strdup("Cannot get itag of adaptiveFormats element");
+		break;
+	case ERR_JS_PARSE_JSON_NO_MATCH:
+		s = strdup("Cannot find matching adaptiveFormats element");
 		break;
 	case ERR_JS_PARSE_JSON_CALLBACK_INVALID_URL:
 		s = my_asprintf("Cannot parse ciphertext URL: %s", r.msg);
@@ -199,6 +200,15 @@ result_to_str(result_t r)
 		s = my_asprintf("Error in strtoll() on %s: %s",
 		                r.msg,
 		                my_strerror(r));
+		break;
+	case ERR_JS_SABR_URL_FIND:
+		s = strdup("Cannot find SABR URL in JSON document");
+		break;
+	case ERR_JS_SABR_URL_ALLOC:
+		s = strdup("Cannot strndup() SABR URL");
+		break;
+	case ERR_JS_PLAYBACK_CONFIG_FIND:
+		s = strdup("Cannot find playback config in JSON document");
 		break;
 	case ERR_JS_DEOB_FIND_MAGIC_ONE:
 		s = strdup("Cannot find first deobfuscator magic in base.js");
@@ -232,6 +242,54 @@ result_to_str(result_t r)
 		break;
 	case ERR_JS_CALL_GET_RESULT:
 		s = strdup("Error fetching function result");
+		break;
+	case ERR_PROTOCOL_STATE_ALLOC:
+		s = strdup("Cannot allocate protocol state");
+		break;
+	case ERR_PROTOCOL_STATE_BASE64_DECODE:
+		s = strdup("Error decoding base64 protocol data");
+		break;
+	case ERR_PROTOCOL_SABR_POST_BODY_ALLOC:
+		s = strdup("Cannot allocate SABR POST body");
+		break;
+	case ERR_PROTOCOL_VARINT_READ_PRE:
+		s = my_asprintf("UMP varint read fails precondition at pos=%d",
+		                r.num);
+		break;
+	case ERR_PROTOCOL_VARINT_READ_POST:
+		s = my_asprintf("UMP varint read fails postcondition at pos=%d",
+		                r.num);
+		break;
+	case ERR_PROTOCOL_VARINT_READ_OUT_OF_BOUNDS:
+		s = my_asprintf("UMP varint size exceeds buffer bounds: %d",
+		                r.num);
+		break;
+	case ERR_PROTOCOL_MEDIA_BLOB_WRITE:
+		s = my_asprintf("Error writing media blob: %s", my_strerror(r));
+		break;
+	case ERR_PROTOCOL_PLAYBACK_COOKIE_ALLOC:
+		s = strdup("Cannot allocate playback cookie buffer");
+		break;
+	case ERR_PROTOCOL_SABR_UPDATE_ALLOC:
+		s = strdup("Cannot allocate SABR update buffer");
+		break;
+	case ERR_PROTOCOL_HEADER_ID_OVERFLOW:
+		s = my_asprintf("Header ID is unexpectedly large: %d", r.num);
+		break;
+	case ERR_PROTOCOL_UNPACK_MEDIA_HEADER:
+		s = strdup("Cannot unpack media header protobuf");
+		break;
+	case ERR_PROTOCOL_UNPACK_NEXT_REQUEST_POLICY:
+		s = strdup("Cannot unpack next request policy protobuf");
+		break;
+	case ERR_PROTOCOL_UNPACK_FORMAT_INIT:
+		s = strdup("Cannot unpack format init metadata protobuf");
+		break;
+	case ERR_PROTOCOL_UNPACK_SABR_REDIRECT:
+		s = strdup("Cannot unpack SABR redirect protobuf");
+		break;
+	case ERR_PROTOCOL_UNPACK_SABR_UPDATE:
+		s = strdup("Cannot unpack SABR context update protobuf");
 		break;
 	case ERR_RE_COMPILE:
 		s = my_asprintf("Error in pcre2_compile() with "
@@ -347,26 +405,23 @@ result_to_str(result_t r)
 	case ERR_TMPFILE_MMAP:
 		s = my_asprintf("Error mmap()-ing tmpfile: %s", my_strerror(r));
 		break;
+	case ERR_TMPFILE_LSEEK:
+		s = my_asprintf("Error seeking in tmpfile: %s", my_strerror(r));
+		break;
+	case ERR_TMPFILE_FTRUNCATE:
+		s = my_asprintf("Error truncating tmpfile: %s", my_strerror(r));
+		break;
 	case ERR_URL_GLOBAL_INIT:
 		s = strdup("Cannot use URL functions");
-		break;
-	case ERR_URL_PREPARE_ALLOC:
-		s = strdup("Cannot allocate URL handle");
-		break;
-	case ERR_URL_PREPARE_SET_PART_SCHEME:
-		s = my_asprintf("Cannot set URL scheme: %s", url_error(r));
-		break;
-	case ERR_URL_PREPARE_SET_PART_HOST:
-		s = my_asprintf("Cannot set URL host: %s", url_error(r));
-		break;
-	case ERR_URL_PREPARE_SET_PART_PATH:
-		s = my_asprintf("Cannot set URL path: %s", url_error(r));
 		break;
 	case ERR_URL_DOWNLOAD_ALLOC:
 		s = strdup("Cannot allocate easy handle");
 		break;
 	case ERR_URL_DOWNLOAD_LIST_APPEND:
 		s = strdup("Cannot append string to HTTP headers");
+		break;
+	case ERR_URL_DOWNLOAD_SET_VERBOSE:
+		s = my_asprintf("Cannot set verbose mode: %s", easy_error(r));
 		break;
 	case ERR_URL_DOWNLOAD_SET_OPT_WRITEDATA:
 		s = my_asprintf("Cannot set WRITEDATA: %s", easy_error(r));
@@ -380,30 +435,33 @@ result_to_str(result_t r)
 	case ERR_URL_DOWNLOAD_SET_OPT_URL_STRING:
 		s = my_asprintf("Cannot set URL via string: %s", easy_error(r));
 		break;
-	case ERR_URL_DOWNLOAD_SET_OPT_URL_OBJECT:
-		s = my_asprintf("Cannot set URL via object: %s", easy_error(r));
-		break;
 	case ERR_URL_DOWNLOAD_SET_OPT_HTTP_HEADER:
 		s = my_asprintf("Cannot set HTTP headers: %s", easy_error(r));
 		break;
 	case ERR_URL_DOWNLOAD_SET_OPT_POST_BODY:
 		s = my_asprintf("Cannot set POST body: %s", easy_error(r));
 		break;
+	case ERR_URL_DOWNLOAD_SET_OPT_POST_BODY_SIZE:
+		s = my_asprintf("Cannot set POST body size: %s", easy_error(r));
+		break;
 	case ERR_URL_DOWNLOAD_PERFORM:
 		s = my_asprintf("Error performing HTTP request: %s",
 		                easy_error(r));
 		break;
-	case ERR_YOUTUBE_STREAM_URL_MISSING:
-		s = strdup("Missing stream URL");
+	case ERR_YOUTUBE_STREAM_URL_INVALID:
+		s = strdup("Error parsing invalid stream URL");
 		break;
 	case ERR_YOUTUBE_N_PARAM_QUERY_ALLOC:
 		s = strdup("Cannot allocate ciphertext buffer");
 		break;
-	case ERR_YOUTUBE_N_PARAM_FIND_IN_QUERY:
+	case ERR_YOUTUBE_N_PARAM_MISSING:
 		s = my_asprintf("No n-parameter in query string: %s", r.msg);
 		break;
 	case ERR_YOUTUBE_VISITOR_DATA_HEADER_ALLOC:
 		s = strdup("Cannot allocate buffer for visitor data header");
+		break;
+	case ERR_YOUTUBE_EARLY_END_STREAM:
+		s = strdup("Media stream ended prematurely");
 		break;
 	}
 

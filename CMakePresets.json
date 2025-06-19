@@ -9,7 +9,16 @@
           "type": "BOOL",
           "value": "ON"
         },
-        "CMAKE_BUILD_TYPE": "Debug"
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CPM_SOURCE_CACHE": "~/.cache/cpm",
+        "WITH_CURL_VERBOSE": {
+          "type": "BOOL",
+          "value": "OFF"
+        },
+        "WITH_DEBUG_LOG": {
+          "type": "BOOL",
+          "value": "ON"
+        }
       },
       "warnings": {
         "dev": true,

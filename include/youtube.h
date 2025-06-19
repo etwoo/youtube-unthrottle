@@ -3,10 +3,18 @@
 
 #include "result.h"
 
+#include <stdbool.h>
+
 result_t youtube_global_init(void) __attribute__((warn_unused_result));
 void youtube_global_cleanup(void);
 
 typedef struct youtube_stream *youtube_handle_t;
+
+struct youtube_stream_ops {
+	const char *(*io_simulator)(const char *);
+	result_t (*choose_quality)(const char *, void *);
+	void *choose_quality_userdata;
+};
 
 /*
  * Create a <youtube_handle_t> object.
@@ -17,26 +25,17 @@ typedef struct youtube_stream *youtube_handle_t;
  */
 youtube_handle_t youtube_stream_init(const char *proof_of_origin,
                                      const char *visitor_data,
-                                     const char *(*io_simulator)(const char *))
+                                     const struct youtube_stream_ops *ops)
 	__attribute__((warn_unused_result));
 void youtube_stream_cleanup(youtube_handle_t h);
 
-struct youtube_setup_ops {
-	result_t (*before)(void *);
-	result_t (*before_inet)(void *);
-	result_t (*after_inet)(void *);
-	result_t (*before_parse)(void *);
-	result_t (*during_parse_choose_quality)(const char *, void *);
-	result_t (*after_parse)(void *);
-	result_t (*before_eval)(void *);
-	result_t (*after_eval)(void *);
-	result_t (*after)(void *);
-};
-
-result_t youtube_stream_setup(youtube_handle_t h,
-                              const struct youtube_setup_ops *ops,
-                              void *userdata,
-                              const char *target)
+result_t youtube_stream_prepare_tmpfiles(youtube_handle_t h)
+	__attribute__((warn_unused_result));
+result_t youtube_stream_open(youtube_handle_t h, const char *target, int fd[2])
+	__attribute__((warn_unused_result));
+result_t youtube_stream_next(youtube_handle_t h, int *retry_after)
+	__attribute__((warn_unused_result));
+bool youtube_stream_done(youtube_handle_t h)
 	__attribute__((warn_unused_result));
 
 result_t youtube_stream_visitor(youtube_handle_t h,

@@ -8,9 +8,19 @@ target_link_libraries(youtube-unthrottle PRIVATE my_cflags sanitizers youtube)
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 include(get_cpm)
 
+# Note: this use of CPMAddPackage() defines ${googlevideo_BINARY_DIR}
+CPMAddPackage(
+	NAME googlevideo
+	GITHUB_REPOSITORY LuanRT/googlevideo
+	GIT_TAG 159237ff92387e9100bd730c925dd737455ebcd3
+	DOWNLOAD_ONLY YES
+	PATCHES ./vendor/sabr_context_update.patch
+)
+
 add_subdirectory(src)
 
 if (BUILD_TESTING)
+	# Note: this use of CPMAddPackage() defines ${greatest_SOURCE_DIR}
 	CPMAddPackage(
 		NAME greatest
 		GITHUB_REPOSITORY silentbicycle/greatest
@@ -145,5 +155,7 @@ endif (CMAKE_C_COMPILER_ID STREQUAL "Clang")
 if (CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
 	message(STATUS "Making sure to use /usr/local/{include,lib} on OpenBSD")
 	target_include_directories(youtube PUBLIC /usr/local/include)
+	target_include_directories(youtube-protocol PUBLIC /usr/local/include)
 	target_link_directories(youtube PUBLIC /usr/local/lib)
+	target_link_directories(youtube-protocol PUBLIC /usr/local/lib)
 endif (CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")

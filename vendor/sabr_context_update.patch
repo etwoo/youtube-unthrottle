@@ -1,0 +1,29 @@
+diff --git a/protos/video_streaming/sabr_context_update.proto b/protos/video_streaming/sabr_context_update.proto
+new file mode 100644
+index 0000000..987bbef
+--- /dev/null
++++ b/protos/video_streaming/sabr_context_update.proto
+@@ -0,0 +1,22 @@
++syntax = "proto2";
++package video_streaming;
++
++message SabrContextUpdate {
++  enum SabrContextScope {
++    UNKNOWN = 0;
++    PLAYBACK = 1;
++    REQUEST = 2;
++    WATCH_ENDPOINT = 3;
++    CONTENT_ADS = 4;
++  }
++  enum SabrContextWritePolicy {
++    UNSPECIFIED = 0;
++    OVERWRITE = 1;
++    KEEP_EXISTING = 2;
++  }
++  optional int32 type = 1;
++  optional SabrContextScope scope = 2;
++  optional bytes value = 3;
++  optional bool send_by_default = 4;
++  optional SabrContextWritePolicy write_policy = 5;
++}
+\ No newline at end of file

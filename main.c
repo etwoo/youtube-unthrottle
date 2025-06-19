@@ -1,11 +1,15 @@
 /*
  * Extract video and audio stream URLs from a YouTube link passed via argv[1],
- * and then print the results to stdout, for use by mpv.
+ * and offer the resulting stream data for download on localhost:20000.
  *
  * Our main challenge: YouTube stream URLs contain obfuscated parameters, and
  * YouTube web payloads contain JavaScript fragments that deobfuscate these
  * parameters. To solve this puzzle then requires applying the latter to the
  * former with a JavaScript engine (in this case, Duktape).
+ *
+ * A secondary challenge: media players like mpv do not (currently) support
+ * YouTube's streaming SABR/UMP format. This program bridges the gap by acting
+ * as a proxy, translating SABR/UMP traffic into plain video/audio data.
  */
 
 #include "result.h"
@@ -13,13 +17,18 @@
 #include "youtube.h"
 
 #include <assert.h>
+#include <errno.h>
 #include <getopt.h> /* for getopt_long() */
+#include <netinet/in.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <string.h>    /* for strlen() */
+#include <stdlib.h>
+#include <string.h>    /* for strerror() */
 #include <sys/param.h> /* for MAX() */
+#include <sys/socket.h>
 #include <sysexits.h>
+#include <unistd.h> /* for close() */
 
 #define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
@@ -70,27 +79,6 @@ try_sandbox(void)
 	return RESULT_OK;
 }
 
-static __attribute__((warn_unused_result)) result_t
-before_inet(void *userdata __attribute__((unused)))
-{
-#if defined(__APPLE__)
-	/* macOS sandbox can drop filesystem access entirely at this point */
-	return sandbox_only_io();
-#else
-	return sandbox_only_io_inet_rpath();
-#endif
-}
-
-static __attribute__((warn_unused_result)) result_t
-after_inet(void *userdata __attribute__((unused)))
-{
-#if defined(__APPLE__)
-	return RESULT_OK;
-#else
-	return sandbox_only_io();
-#endif
-}
-
 struct quality {
 	pcre2_code *re;
 	pcre2_match_data *md;
@@ -135,7 +123,7 @@ static const result_t RESULT_QUALITY_BLOCK = {
 };
 
 static __attribute__((warn_unused_result)) result_t
-during_parse_choose_quality(const char *val, void *userdata)
+choose_quality(const char *val, void *userdata)
 {
 	struct quality *q = (struct quality *)userdata;
 	size_t sz = strlen(val);
@@ -163,9 +151,84 @@ during_parse_choose_quality(const char *val, void *userdata)
 }
 
 static void
-print_url(const char *url, size_t sz, void *userdata __attribute((unused)))
+close_output_fd(int fd)
 {
-	printf("%.*s\n", (int)sz, url);
+	if (fd >= 0 && close(fd) < 0) {
+		to_stderr("Error closing output: %s", strerror(errno));
+	}
+}
+
+static void
+get_output_fd(in_port_t port, int *out, size_t out_sz)
+{
+	int sfd = socket(AF_INET, SOCK_STREAM, 0);
+	if (sfd < 0) {
+		to_stderr("Can't create socket %d: %s", port, strerror(errno));
+		goto cleanup;
+	}
+
+	int rc = -1;
+	const int on = 1;
+	const int maxbuf = 33554432; /* 32MB */
+
+	rc = setsockopt(sfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
+	if (rc < 0) {
+		to_stderr("Can't set SO_REUSEADDR for %d: %s",
+		          port,
+		          strerror(errno));
+		goto cleanup;
+	}
+
+	rc = setsockopt(sfd, SOL_SOCKET, SO_REUSEPORT, &on, sizeof(on));
+	if (rc < 0) {
+		to_stderr("Can't set SO_REUSEPORT for %d: %s",
+		          port,
+		          strerror(errno));
+		goto cleanup;
+	}
+
+	rc = setsockopt(sfd, SOL_SOCKET, SO_SNDBUF, &maxbuf, sizeof(maxbuf));
+	if (rc < 0) {
+		to_stderr("Can't set SO_SNDBUF for %d: %s",
+		          port,
+		          strerror(errno));
+		goto cleanup;
+	}
+
+	struct sockaddr_in sa;
+	memset(&sa, 0, sizeof(sa));
+	sa.sin_family = AF_INET;
+	sa.sin_port = htons(port);
+	sa.sin_addr.s_addr = htonl(INADDR_ANY);
+
+	rc = bind(sfd, (struct sockaddr *)&sa, sizeof(sa));
+	if (rc < 0) {
+		to_stderr("Can't bind to port %d: %s", port, strerror(errno));
+		goto cleanup;
+	}
+
+	rc = listen(sfd, /* backlog */ 10);
+	if (rc < 0) {
+		to_stderr("Can't listen on port %d: %s", port, strerror(errno));
+		goto cleanup;
+	}
+
+	struct sockaddr_storage their_addr;
+
+	for (size_t i = 0; i < out_sz; ++i) {
+		socklen_t their_sz = sizeof(their_addr);
+		int fd = accept(sfd, (struct sockaddr *)&their_addr, &their_sz);
+		if (fd < 0) {
+			to_stderr("Can't accept %d: %s", port, strerror(errno));
+			goto cleanup;
+		}
+		out[i] = fd;
+	}
+
+cleanup:
+	if (sfd >= 0) {
+		close_output_fd(sfd); /* done accepting connections */
+	}
 }
 
 static __attribute__((warn_unused_result)) result_t
@@ -173,28 +236,35 @@ unthrottle(const char *target,
            const char *proof_of_origin,
            const char *visitor_data,
            struct quality *q,
+           int output[2],
            youtube_handle_t *stream)
 {
 	check(youtube_global_init());
+	check_if(output[0] < 0 || output[1] < 0, OK);
 
-	*stream = youtube_stream_init(proof_of_origin, visitor_data, NULL);
+	const struct youtube_stream_ops sops = {
+		.io_simulator = NULL,
+		.choose_quality = choose_quality,
+		.choose_quality_userdata = q,
+	};
+	*stream = youtube_stream_init(proof_of_origin, visitor_data, &sops);
 	check_if(*stream == NULL, OK);
 
 	check(sandbox_only_io_inet_tmpfile());
+	check(youtube_stream_prepare_tmpfiles(*stream));
 
-	struct youtube_setup_ops sops = {
-		.before = NULL,
-		.before_inet = before_inet,
-		.after_inet = after_inet,
-		.before_parse = NULL,
-		.during_parse_choose_quality = during_parse_choose_quality,
-		.after_parse = NULL,
-		.before_eval = NULL,
-		.after_eval = NULL,
-		.after = NULL,
-	};
-	check(youtube_stream_setup(*stream, &sops, q, target));
-	check(youtube_stream_visitor(*stream, print_url, NULL));
+	check(sandbox_only_io_inet_rpath());
+	check(youtube_stream_open(*stream, target, output));
+
+	int retry_after = -1;
+	do {
+		check(youtube_stream_next(*stream, &retry_after));
+		if (retry_after > 0) {
+			to_stderr("Retrying after %d second(s)", retry_after);
+			sleep(retry_after);
+		}
+	} while (retry_after > 0 || !youtube_stream_done(*stream));
+
 	return RESULT_OK;
 }
 
@@ -260,18 +330,32 @@ main(int argc, char *argv[])
 		} else if (q_str && !parse_quality_choices(q_str, &q)) {
 			to_stderr("Invalid --quality value: %s", q_str);
 		} else {
+			int output[2] = {
+				-1,
+				-1,
+			};
+			get_output_fd(20000, output, 2);
+
 			youtube_handle_t stream = NULL;
 			rc = result_to_status(unthrottle(argv[optind],
 			                                 proof_of_origin,
 			                                 visitor_data,
 			                                 &q,
+			                                 output,
 			                                 &stream));
-			if (stream == NULL) {
+
+			if (output[0] < 0 || output[1] < 0) {
+				/* get_output_fd() already logs to stderr */
+				rc = EX_CANTCREAT;
+			} else if (stream == NULL) {
 				to_stderr("Can't alloc stream");
 				rc = EX_OSERR;
 			}
+
 			youtube_stream_cleanup(stream);
 			youtube_global_cleanup();
+			close_output_fd(output[0]);
+			close_output_fd(output[1]);
 		}
 		break;
 	case ACTION_TRY_SANDBOX:
