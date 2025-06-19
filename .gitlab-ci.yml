@@ -136,9 +136,8 @@ analyze:clang-tidy:
   variables:
     PACKAGE_PER_JOB: "jq"
   script:
-    - cmake --preset clang -DCMAKE_EXPORT_COMPILE_COMMANDS=1
+    - cmake --preset clang -DCMAKE_C_CLANG_TIDY=$(which clang-tidy)
     - cmake --build --preset default
-    - jq --raw-output0 .[].file ./build/compile_commands.json | xargs -0 clang-tidy -p ./build/
 
 #
 # Run the Infer static analyzer: https://fbinfer.com

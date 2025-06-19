@@ -22,6 +22,7 @@ add_custom_command(
 	DEPENDS
 		${PROTO_FULLPATH}
 )
+set_source_files_properties(${PROTO_C} PROPERTIES SKIP_LINTING ON)
 
 add_library(youtube-protocol)
 
