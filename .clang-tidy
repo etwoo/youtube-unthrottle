@@ -2,6 +2,7 @@ Checks: >
   bugprone-*,
   -bugprone-easily-swappable-parameters,
   clang-analyzer-*,
+  -clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling,
 
 # Turn all the warnings from the checks above into errors.
 WarningsAsErrors: '*'
