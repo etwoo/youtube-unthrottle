@@ -151,9 +151,9 @@ stream_with(const char *expected_url)
 
 SUITE(stream_n_param_positions)
 {
-	T(stream_with, n_param_only, SABR("n=aaa"), SABR("n=AAA"));
-	T(stream_with, n_param_mid, SABR("a=a&n=b&c=c"), SABR("a=a&n=B&c=c"));
+	T(stream_with, n_param_only, SABR("n=a_b_c_d_e"), SABR("n=A_B_C_D_E"));
 	T(stream_with, n_param_first, SABR("n=a&b=b&c=c"), SABR("n=A&b=b&c=c"));
+	T(stream_with, n_param_mid, SABR("a=a&n=b&c=c"), SABR("a=a&n=B&c=c"));
 	T(stream_with, n_param_last, SABR("a=a&b=b&n=c"), SABR("a=a&b=b&n=C"));
 }
 
