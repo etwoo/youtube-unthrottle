@@ -423,10 +423,6 @@ result_to_str(result_t r)
 	case ERR_URL_DOWNLOAD_SET_VERBOSE:
 		s = my_asprintf("Cannot set verbose mode: %s", easy_error(r));
 		break;
-	case ERR_URL_DOWNLOAD_SET_OPT_MAXAGE_REUSE:
-		s = my_asprintf("Cannot set max age for connection reuse: %s",
-		                easy_error(r));
-		break;
 	case ERR_URL_DOWNLOAD_SET_OPT_WRITEDATA:
 		s = my_asprintf("Cannot set WRITEDATA: %s", easy_error(r));
 		break;

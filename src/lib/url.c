@@ -133,9 +133,6 @@ url_download(const char *url_str,
 	check_if_num(res, ERR_URL_DOWNLOAD_SET_VERBOSE);
 #endif
 
-	res = curl_easy_setopt(curl, CURLOPT_MAXAGE_CONN, LONG_MAX);
-	check_if_num(res, ERR_URL_DOWNLOAD_SET_OPT_MAXAGE_REUSE);
-
 	res = curl_easy_setopt(curl, CURLOPT_WRITEDATA, &fd);
 	check_if_num(res, ERR_URL_DOWNLOAD_SET_OPT_WRITEDATA);
 
