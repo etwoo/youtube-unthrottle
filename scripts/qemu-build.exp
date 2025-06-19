@@ -279,12 +279,12 @@ if {$slowpath} {
 	wait -i $qemu_id
 
 	debug "Stop adhoc IMDS webserver"
-	close -i $imds_server_id
+	exp_close -i $imds_server_id
 	wait -i $imds_server_id
 } else {
 	debug "Skip shutdown by killing VM forcefully"
 	exec kill -9 [exp_pid -i $qemu_id]
-	close -i $qemu_id
+	exp_close -i $qemu_id
 	wait -i $qemu_id
 }
 
