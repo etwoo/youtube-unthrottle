@@ -262,7 +262,9 @@ ciphertexts_cleanup(char *ciphertexts[][2])
 }
 
 result_t
-youtube_stream_open(struct youtube_stream *p, const char *start_url, int out[2])
+youtube_stream_open(struct youtube_stream *p,
+                    const char *start_url,
+                    const int output_fd[2])
 {
 	check(http_get(p, &p->html, start_url));
 
@@ -310,7 +312,7 @@ youtube_stream_open(struct youtube_stream *p, const char *start_url, int out[2])
 		.data = parsed.playback_config,
 		.sz = strlen(parsed.playback_config),
 	};
-	check(protocol_init(&poo, &pbc, parsed.itag, out, &p->stream));
+	check(protocol_init(&poo, &pbc, parsed.itag, output_fd, &p->stream));
 
 	char *ciphertexts[2] __attribute__((cleanup(ciphertexts_cleanup))) = {
 		NULL,

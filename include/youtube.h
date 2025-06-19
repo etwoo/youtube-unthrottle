@@ -31,7 +31,9 @@ void youtube_stream_cleanup(youtube_handle_t h);
 
 result_t youtube_stream_prepare_tmpfiles(youtube_handle_t h)
 	__attribute__((warn_unused_result));
-result_t youtube_stream_open(youtube_handle_t h, const char *target, int fd[2])
+result_t youtube_stream_open(youtube_handle_t h,
+                             const char *target,
+                             const int output_fd[2])
 	__attribute__((warn_unused_result));
 result_t youtube_stream_next(youtube_handle_t h, int *retry_after)
 	__attribute__((warn_unused_result));

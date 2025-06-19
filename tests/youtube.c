@@ -91,8 +91,7 @@ static const struct youtube_stream_ops TEST_OP = {
 	.choose_quality = NULL,
 	.choose_quality_userdata = NULL,
 };
-
-static int OFD[2] = {
+static const int TEST_OFD[2] = {
 	STDERR_FILENO,
 	STDERR_FILENO,
 };
@@ -127,7 +126,7 @@ stream_with(const char *expected_url)
 	auto_result err = youtube_stream_prepare_tmpfiles(stream);
 	ASSERT_EQ(OK, err.err);
 
-	err = youtube_stream_open(stream, FAKE_URL, OFD);
+	err = youtube_stream_open(stream, FAKE_URL, TEST_OFD);
 	ASSERT_EQ(OK, err.err);
 
 	int retry_after = -1;
@@ -166,7 +165,7 @@ edge_cases_target_url_missing_stream_id(void)
 	auto_result err = youtube_stream_prepare_tmpfiles(stream);
 	ASSERT_EQ(OK, err.err);
 
-	err = youtube_stream_open(stream, "https://a.test/watch?v=", OFD);
+	err = youtube_stream_open(stream, "https://a.test/watch?v=", TEST_OFD);
 	ASSERT_EQ(ERR_JS_MAKE_INNERTUBE_JSON_ID, err.err);
 	ASSERT(youtube_stream_done(stream));
 
@@ -183,7 +182,7 @@ err_with(unsigned expected)
 	auto_result err = youtube_stream_prepare_tmpfiles(stream);
 	ASSERT_EQ(OK, err.err);
 
-	err = youtube_stream_open(stream, FAKE_URL, OFD);
+	err = youtube_stream_open(stream, FAKE_URL, TEST_OFD);
 	ASSERT_EQ(expected, err.err);
 	ASSERT(youtube_stream_done(stream));
 
