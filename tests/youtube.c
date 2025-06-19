@@ -84,13 +84,13 @@ url_simulate(const char *path)
 	return to_write;
 }
 
-static const struct youtube_stream_ops SIMULATE_OPS = {
+static const char TEST_P[] = "UE9UCg==";
+static const char TEST_V[] = "VkQK";
+static const struct youtube_stream_ops TEST_OP = {
 	.io_simulator = url_simulate,
 	.choose_quality = NULL,
 	.choose_quality_userdata = NULL,
 };
-
-#define MAKE_STREAM() youtube_stream_init("UE9UCg==", "VkQK", &SIMULATE_OPS)
 
 static int OFD[2] = {
 	STDERR_FILENO,
@@ -121,7 +121,7 @@ check_url(const char *url, size_t sz, void *userdata)
 TEST
 stream_with(const char *expected_url)
 {
-	youtube_handle_t stream = MAKE_STREAM();
+	youtube_handle_t stream = youtube_stream_init(TEST_P, TEST_V, &TEST_OP);
 	ASSERT(stream);
 
 	auto_result err = youtube_stream_prepare_tmpfiles(stream);
@@ -160,7 +160,7 @@ SUITE(stream_n_param_positions)
 TEST
 edge_cases_target_url_missing_stream_id(void)
 {
-	youtube_handle_t stream = MAKE_STREAM();
+	youtube_handle_t stream = youtube_stream_init(TEST_P, TEST_V, &TEST_OP);
 	ASSERT(stream);
 
 	auto_result err = youtube_stream_prepare_tmpfiles(stream);
@@ -177,7 +177,7 @@ edge_cases_target_url_missing_stream_id(void)
 TEST
 err_with(unsigned expected)
 {
-	youtube_handle_t stream = MAKE_STREAM();
+	youtube_handle_t stream = youtube_stream_init(TEST_P, TEST_V, &TEST_OP);
 	ASSERT(stream);
 
 	auto_result err = youtube_stream_prepare_tmpfiles(stream);
@@ -210,7 +210,6 @@ SUITE(cleanup)
 	RUN_TEST(global_cleanup);
 }
 
-#undef MAKE_STREAM
 #undef T
 #undef MAKE_FAKE_JSON
 #undef SABR
