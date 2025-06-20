@@ -192,6 +192,13 @@ url_download(const char *url_str,
 	res = fn ? curl_simulate(fn(url_or_path), fd) : curl_easy_perform(curl);
 	check_if_num(res, ERR_URL_DOWNLOAD_PERFORM);
 
+	long status = -1;
+	res = curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status);
+	check_if_num(res, ERR_URL_DOWNLOAD_GET_STATUS);
+
+	const bool is_ok = (status < 400); /* consider 1XX/2XX/3XX successful */
+	check_if(!is_ok, ERR_URL_DOWNLOAD_4XX_5XX_STATUS, (int)status, url_str);
+
 	curl_slist_free_all(headers); /* handles NULL gracefully */
 	curl_url_cleanup(url);        /* handles NULL gracefully */
 	return RESULT_OK;
