@@ -210,7 +210,7 @@ make_innertube_json(const char *target_url,
 	/* Note use of non-capturing group: (?:...) */
 	check(re_capture("(?:&|\\?)v=([^&]+)(?:&|$)", &url, &id));
 	if (id.data == NULL) {
-		return make_result(ERR_JS_MAKE_INNERTUBE_JSON_ID);
+		return make_result(ERR_JS_MAKE_INNERTUBE_JSON_ID, target_url);
 	}
 	debug("Parsed ID: %.*s", (int)id.sz, id.data);
 
@@ -340,25 +340,29 @@ result_t
 find_js_deobfuscator(const struct string_view *js, struct deobfuscator *d)
 {
 	int rc = 0;
-	struct string_view n = {0};
 
+	struct string_view n1 = {0};
 	check(re_capture("&&\\([[:alpha:]]=([^\\]]+)\\[0\\]\\([[:alpha:]]\\)",
 	                 js,
-	                 &n));
-	if (n.data == NULL) {
+	                 &n1));
+	if (n1.data == NULL) {
 		return make_result(ERR_JS_DEOB_FIND_FUNC_ONE);
 	}
-	debug("Got function name 1: %.*s", (int)n.sz, n.data);
+	debug("Got function name 1: %.*s", (int)n1.sz, n1.data);
 
 	char *p2 __attribute__((cleanup(str_free))) = NULL;
-	rc = asprintf(&p2, "var \\Q%.*s\\E=\\[([^\\]]+)\\]", (int)n.sz, n.data);
+	rc = asprintf(&p2,
+	              "var \\Q%.*s\\E=\\[([^\\]]+)\\]",
+	              (int)n1.sz,
+	              n1.data);
 	check_if(rc < 0, ERR_JS_DEOBFUSCATOR_ALLOC);
 
-	check(re_capture(p2, js, &n));
-	if (n.data == NULL) {
-		return make_result(ERR_JS_DEOB_FIND_FUNC_TWO, n.data, n.sz);
+	struct string_view n2 = {0};
+	check(re_capture(p2, js, &n2));
+	if (n2.data == NULL) {
+		return make_result(ERR_JS_DEOB_FIND_FUNC_TWO, n1.data, n1.sz);
 	}
-	debug("Got function name 2: %.*s", (int)n.sz, n.data);
+	debug("Got function name 2: %.*s", (int)n2.sz, n2.data);
 
 	char *p3 __attribute__((cleanup(str_free))) = NULL;
 	rc = asprintf(&p3,
@@ -368,18 +372,18 @@ find_js_deobfuscator(const struct string_view *js, struct deobfuscator *d)
 	              "};"
 	              ")"
 	              "\\n[^\\s=]+=", /* stop before next global var decl */
-	              (int)n.sz,
-	              n.data);
+	              (int)n2.sz,
+	              n2.data);
 	check_if(rc < 0, ERR_JS_DEOBFUSCATOR_ALLOC);
 
 	check(re_capture(p3, js, &d->code));
 	if (d->code.data == NULL) {
-		return make_result(ERR_JS_DEOB_FIND_FUNC_BODY, n.data, n.sz);
+		return make_result(ERR_JS_DEOB_FIND_FUNC_BODY, n2.data, n2.sz);
 	}
 
-	char *pretty_print __attribute__((cleanup(str_free))) = NULL;
-	pretty_print_code(d->code, &pretty_print);
-	debug("Got function body of %.*s=%s", (int)n.sz, n.data, pretty_print);
+	char *pprint __attribute__((cleanup(str_free))) = NULL;
+	pretty_print_code(d->code, &pprint);
+	debug("Got function body of %.*s=%s", (int)n2.sz, n2.data, pprint);
 
 	return RESULT_OK;
 }

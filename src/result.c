@@ -1,6 +1,7 @@
 #include "result.h"
 
 #include "sys/compiler_features.h"
+#include "sys/debug.h"
 
 #include <assert.h>
 #include <curl/curl.h>
@@ -27,75 +28,85 @@ my_asprintf(const char *pattern, ...)
 	return result < 0 ? NULL : p;
 }
 
+static WARN_UNUSED result_t
+my_debug(result_t r)
+{
+	if (r.err != OK) {
+		auto_result_str str = result_to_str(r);
+		debug("Returning result: %s", str);
+	}
+	return r;
+}
+
 result_t
 make_result_t(int typ)
 {
-	return (result_t){
+	return my_debug((result_t){
 		.err = typ,
 		.num = 0,
 		.msg = NULL,
-	};
+	});
 }
 
 result_t
 make_result_ti(int typ, int num)
 {
-	return (result_t){
+	return my_debug((result_t){
 		.err = typ,
 		.num = num,
 		.msg = NULL,
-	};
+	});
 }
 
 result_t
 make_result_ts(int typ, const char *msg)
 {
-	return (result_t){
+	return my_debug((result_t){
 		.err = typ,
 		.num = 0,
 		.msg = strdup(msg),
-	};
+	});
 }
 
 result_t
 make_result_tss(int typ, const char *msg, size_t sz)
 {
-	return (result_t){
+	return my_debug((result_t){
 		.err = typ,
 		.num = 0,
 		.msg = strndup(msg, sz),
-	};
+	});
 }
 
 result_t
 make_result_tis(int typ, int num, const char *msg)
 {
-	return (result_t){
+	return my_debug((result_t){
 		.err = typ,
 		.num = num,
 		.msg = strdup(msg),
-	};
+	});
 }
 
 result_t
 make_result_tiss(int typ, int num, const char *msg, size_t sz)
 {
-	return (result_t){
+	return my_debug((result_t){
 		.err = typ,
 		.num = num,
 		.msg = strndup(msg, sz),
-	};
+	});
 }
 
 result_t
 make_result_re(int typ, int num, const char *pattern, size_t offset)
 {
-	return (result_t){
+	return my_debug((result_t){
 		.err = typ,
 		.num = num,
 		.re.pattern = strdup(pattern),
 		.re.offset = offset,
-	};
+	});
 }
 
 void
@@ -175,14 +186,11 @@ result_to_str(result_t r)
 	case ERR_JS_PARSE_JSON_NO_MATCH:
 		s = strdup("Cannot find matching adaptiveFormats element");
 		break;
-	case ERR_JS_PARSE_JSON_CALLBACK_INVALID_URL:
-		s = my_asprintf("Cannot parse ciphertext URL: %s", r.msg);
-		break;
 	case ERR_JS_PARSE_JSON_CALLBACK_QUALITY:
 		s = strdup("Chose to skip stream based on qualityLevel");
 		break;
 	case ERR_JS_MAKE_INNERTUBE_JSON_ID:
-		s = strdup("Cannot find video ID for InnerTube POST");
+		s = my_asprintf("Cannot find video ID in URL: %s", r.msg);
 		break;
 	case ERR_JS_MAKE_INNERTUBE_JSON_ALLOC:
 		s = strdup("Cannot allocate buffer for InnerTube POST");
@@ -378,7 +386,7 @@ result_to_str(result_t r)
 		s = my_asprintf("Error in seccomp_init(): %s", my_strerror(r));
 		break;
 	case ERR_SANDBOX_SECCOMP_RESOLVE_SYSCALL:
-		s = my_asprintf("Cannot resolve number of syscall: %s", r.msg);
+		s = my_asprintf("Cannot resolve number of syscall: %d", r.num);
 		break;
 	case ERR_SANDBOX_SECCOMP_RULE_ADD:
 		s = my_asprintf("Error adding seccomp rule for syscall %s: %s",
@@ -449,13 +457,14 @@ result_to_str(result_t r)
 		                easy_error(r));
 		break;
 	case ERR_YOUTUBE_STREAM_URL_INVALID:
-		s = strdup("Error parsing invalid stream URL");
+		s = my_asprintf("Error parsing invalid stream URL: %s", r.msg);
 		break;
 	case ERR_YOUTUBE_N_PARAM_QUERY_ALLOC:
 		s = strdup("Cannot allocate ciphertext buffer");
 		break;
 	case ERR_YOUTUBE_N_PARAM_MISSING:
-		s = my_asprintf("No n-parameter in query string: %s", r.msg);
+		s = my_asprintf("No n-parameter in query string of URL: %s",
+		                r.msg);
 		break;
 	case ERR_YOUTUBE_VISITOR_DATA_HEADER_ALLOC:
 		s = strdup("Cannot allocate buffer for visitor data header");

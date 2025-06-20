@@ -168,7 +168,7 @@ result_t
 protocol_init(const struct string_view *proof_of_origin,
               const struct string_view *playback_config,
               long long int itag_video,
-              int outputs[2],
+              const int outputs[2],
               struct protocol_state **out)
 {
 	struct protocol_state *p __attribute__((cleanup(protocol_cleanup_p))) =
