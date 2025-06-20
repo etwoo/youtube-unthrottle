@@ -189,7 +189,10 @@ youtube_stream_copy_n_param(struct youtube_stream *p, char **result)
 	ada_url_search_params q __attribute__((cleanup(free_search_params))) =
 		ada_parse_search_params(q_str.data, q_str.length);
 	if (!ada_search_params_has(q, ARG_N, strlen(ARG_N))) {
-		return make_result(ERR_YOUTUBE_N_PARAM_MISSING);
+		ada_string url_str = ada_get_href(p->url);
+		return make_result(ERR_YOUTUBE_N_PARAM_MISSING,
+		                   url_str.data,
+		                   url_str.length);
 	}
 
 	ada_string n_param = ada_search_params_get(q, ARG_N, strlen(ARG_N));
@@ -262,7 +265,9 @@ ciphertexts_cleanup(char *ciphertexts[][2])
 }
 
 result_t
-youtube_stream_open(struct youtube_stream *p, const char *start_url, int out[2])
+youtube_stream_open(struct youtube_stream *p,
+                    const char *start_url,
+                    const int output_fd[2])
 {
 	check(http_get(p, &p->html, start_url));
 
@@ -310,7 +315,7 @@ youtube_stream_open(struct youtube_stream *p, const char *start_url, int out[2])
 		.data = parsed.playback_config,
 		.sz = strlen(parsed.playback_config),
 	};
-	check(protocol_init(&poo, &pbc, parsed.itag, out, &p->stream));
+	check(protocol_init(&poo, &pbc, parsed.itag, output_fd, &p->stream));
 
 	char *ciphertexts[2] __attribute__((cleanup(ciphertexts_cleanup))) = {
 		NULL,
