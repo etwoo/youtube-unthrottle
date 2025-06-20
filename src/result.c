@@ -456,6 +456,13 @@ result_to_str(result_t r)
 		s = my_asprintf("Error performing HTTP request: %s",
 		                easy_error(r));
 		break;
+	case ERR_URL_DOWNLOAD_GET_STATUS:
+		s = my_asprintf("Cannot get HTTP status code: %s",
+		                easy_error(r));
+		break;
+	case ERR_URL_DOWNLOAD_4XX_5XX_STATUS:
+		s = my_asprintf("Got HTTP status code: %d", r.num);
+		break;
 	case ERR_YOUTUBE_STREAM_URL_INVALID:
 		s = my_asprintf("Error parsing invalid stream URL: %s", r.msg);
 		break;
