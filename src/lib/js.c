@@ -215,7 +215,7 @@ make_innertube_json(const char *target_url,
 	debug("Parsed ID: %.*s", (int)id.sz, id.data);
 
 	json_auto_t *obj = NULL;
-	obj = json_pack("{s{s{ss,ss,ss,ss,si}},ss%,s{ss},s{s{ss,si}},sb,sb}",
+	obj = json_pack("{s{s{ss,ss,ss,ss,si}},ss%,s{ss},s{s{ss,si,sb}},sb,sb}",
 	                "context",
 	                "client",
 	                "clientName",
@@ -240,6 +240,8 @@ make_innertube_json(const char *target_url,
 	                "HTML5_PREF_WANTS",
 	                "signatureTimestamp",
 	                timestamp,
+	                "isInlinePlaybackNoAd",
+	                1,
 	                "contentCheckOk",
 	                1,
 	                "racyCheckOk",
