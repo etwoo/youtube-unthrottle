@@ -64,7 +64,7 @@ url_simulate(const char *path)
 	debug("Simulating request with url=%s", path);
 	const char *to_write = NULL;
 
-	if (0 == strcmp(path, "/")) {
+	if (0 == strcmp(path, "https://www.youtube.com")) {
 		to_write = ""; /* handle thread warmup in url_context_init() */
 	} else if (strstr(path, "/watch")) {
 		to_write = MOCK_HTML_RESPONSE;
