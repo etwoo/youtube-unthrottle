@@ -21,7 +21,7 @@ SUITE(setup)
 	RUN_TEST(global_setup);
 }
 
-static const char MOCK_HTML_RESPONSE[] = "\"/s/player/foobar/base.js\"\n";
+static const char MOCK_HTML_RESPONSE[] = "\"/s/player/foobar/base.js\"";
 static const char MOCK_JS_RESPONSE[] =
 	"'use strict';var zzz=666666,aaa,bbb,ccc,ddd,eee,fff,ggg,hhh;"
 	"{signatureTimestamp:12345}"
@@ -51,12 +51,12 @@ static const char MOCK_JS_RESPONSE[] =
 #define T(base, testname_suffix, json_fragment, ...)                           \
 	do {                                                                   \
 		greatest_set_test_suffix(#testname_suffix);                    \
-		TEST_JSON_MOCK = MAKE_JSON_LITERAL(json_fragment);             \
+		MOCK_JSON_RESPONSE = MAKE_JSON_LITERAL(json_fragment);         \
 		RUN_TESTp(base, __VA_ARGS__);                                  \
-		TEST_JSON_MOCK = NULL;                                         \
+		MOCK_JSON_RESPONSE = NULL;                                     \
 	} while (0)
 
-static const char *TEST_JSON_MOCK = NULL;
+static const char *MOCK_JSON_RESPONSE = NULL;
 
 static WARN_UNUSED const char *
 url_simulate(const char *path)
@@ -64,17 +64,15 @@ url_simulate(const char *path)
 	debug("Simulating request with url=%s", path);
 	const char *to_write = NULL;
 
-	if (to_write) {
-		/* got a custom value from test-specific handler */
-	} else if (0 == strcmp(path, "/")) {
+	if (0 == strcmp(path, "https://www.youtube.com")) {
 		to_write = ""; /* handle thread warmup in url_context_init() */
 	} else if (strstr(path, "/watch")) {
 		to_write = MOCK_HTML_RESPONSE;
 	} else if (strstr(path, "/base.js")) {
 		to_write = MOCK_JS_RESPONSE;
 	} else if (strstr(path, "/youtubei/v1/player")) {
-		assert(TEST_JSON_MOCK && "Test bug? Missing JSON mock!");
-		to_write = TEST_JSON_MOCK;
+		assert(MOCK_JSON_RESPONSE && "Test bug? Missing JSON mock!");
+		to_write = MOCK_JSON_RESPONSE;
 	} else if (strstr(path, "/sabr")) {
 		to_write = "\1\1\1"; /* return an empty-ish UMP response */
 	}
