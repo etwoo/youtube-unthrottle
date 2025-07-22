@@ -245,7 +245,7 @@ parse_and_get_next(const struct string_view *response,
                    VideoStreaming__VideoPlaybackAbrRequest **out,
                    char **url,
                    int *retry_after,
-                   int *pfd)
+                   const int *pfd)
 {
 	const struct string_view proof = MAKE_TEST_STRING("UE9U");
 	const struct string_view playback = MAKE_TEST_STRING("UExBWUJBQ0s=");

@@ -12,10 +12,8 @@
 
 #include <stdint.h>
 
-int sandbox_init_with_parameters(const char *,
-                                 uint64_t,
-                                 const char **const,
-                                 char **);
+int
+sandbox_init_with_parameters(const char *, uint64_t, const char **, char **);
 
 void sandbox_free_error(char *);
 

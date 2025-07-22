@@ -36,6 +36,7 @@ macro(generate_test_driver)
 		test_driver.c
 		${TEST_SOURCES}
 	)
+	set_source_files_properties(test_driver.c PROPERTIES SKIP_LINTING ON)
 	add_executable(test-driver
 		${generated_sources}
 		test_suites.c

@@ -9,7 +9,7 @@ coverage_open(void)
 }
 
 void
-coverage_write_and_close(int fd __attribute__((unused)))
+coverage_write_and_close(int fd MAYBE_UNUSED)
 {
 }
 
@@ -117,7 +117,7 @@ coverage_write_and_close(int fd)
 #endif
 
 void
-coverage_cleanup(int *fd)
+coverage_cleanup(const int *fd)
 {
 	coverage_write_and_close(*fd);
 }

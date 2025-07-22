@@ -62,7 +62,7 @@ static const struct seatbelt_extension SEATBELT_EXTENSIONS[] = {
 	},
 };
 
-extern const char *SEATBELT_POLICY; /* defined by generated code */
+extern const char SEATBELT_POLICY[]; /* defined by generated code */
 
 result_t
 seatbelt_init(struct seatbelt_context *context)
@@ -106,8 +106,9 @@ seatbelt_init(struct seatbelt_context *context)
 		return make_result(ERR_SANDBOX_SEATBELT_INIT, errno);
 	}
 
-	assert(ARRAY_SIZE(SEATBELT_EXTENSIONS) ==
-	       ARRAY_SIZE(context->extensions));
+	static_assert((ARRAY_SIZE(SEATBELT_EXTENSIONS) ==
+	               ARRAY_SIZE(context->extensions)),
+	              "seatbelt_context.extensions is incorrectly sized");
 	for (size_t i = 0; i < ARRAY_SIZE(SEATBELT_EXTENSIONS); ++i) {
 		context->extensions[i] = sandbox_extension_consume(tokens[i]);
 		if (context->extensions[i] < 0) {

@@ -9,8 +9,7 @@
 #include <limits.h>
 
 static WARN_UNUSED result_t
-parse_callback_noop(const char *val __attribute__((unused)),
-                    void *userdata __attribute__((unused)))
+parse_callback_noop(const char *val MAYBE_UNUSED, void *userdata MAYBE_UNUSED)
 {
 	return RESULT_OK;
 }
@@ -814,9 +813,9 @@ SUITE(find_with_pcre)
 #define MAGIC_VARS MAKE_TEST_STRING("var M1=56"), MAKE_TEST_STRING("var M2=78")
 
 static WARN_UNUSED result_t
-got_result_noop(const char *val __attribute__((unused)),
-                size_t pos __attribute__((unused)),
-                void *userdata __attribute__((unused)))
+got_result_noop(const char *val MAYBE_UNUSED,
+                size_t pos MAYBE_UNUSED,
+                void *userdata MAYBE_UNUSED)
 {
 	return RESULT_OK;
 }
@@ -913,7 +912,7 @@ result_copy_init(struct result_copy *c)
 }
 
 static WARN_UNUSED result_t
-copy_result(const char *val, size_t pos __attribute__((unused)), void *userdata)
+copy_result(const char *val, size_t pos MAYBE_UNUSED, void *userdata)
 {
 	struct result_copy *result = (struct result_copy *)userdata;
 	const size_t sz = strlen(val);

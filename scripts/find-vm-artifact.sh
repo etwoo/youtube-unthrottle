@@ -3,7 +3,7 @@
 set -euo pipefail
 
 TARGET="$1"
-ARTIFACT_SIZE_MINIMUM=800000000
+ARTIFACT_SIZE_MINIMUM=500000000
 
 #
 # Some helpful GitLab API references:

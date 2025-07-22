@@ -11,6 +11,6 @@ void coverage_write_and_close(int fd);
  *
  *     int fd __attribute__((cleanup(coverage_cleanup))) = coverage_open();
  */
-void coverage_cleanup(int *fd);
+void coverage_cleanup(const int *fd);
 
 #endif

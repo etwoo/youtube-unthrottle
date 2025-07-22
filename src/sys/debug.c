@@ -14,20 +14,13 @@ vlog(const char *level,
 	/* magic number 5: longest logging level == 5 chars */
 	vfprintf(stderr, pattern, ap);
 	fputc('\n', stderr);
-
-#if 0
-	/* padded/aligned version: */
-	fprintf(stderr, "%*s:%-*u: ", 13, fname, 3, lineno);
-	/* magic number 13: longest source code filename == 13 chars */
-	/* magic number 3: longest source file has 3-digit line count */
-#endif
 }
 
 void
 debug_at_line(const char *fname, unsigned int lineno, const char *pattern, ...)
 {
 #ifdef WITH_DEBUG_LOG
-	va_list ap;
+	va_list ap; // NOLINT(cppcoreguidelines-init-variables)
 	va_start(ap, pattern);
 	vlog("DEBUG", fname, lineno, pattern, ap);
 	va_end(ap);
@@ -41,7 +34,7 @@ debug_at_line(const char *fname, unsigned int lineno, const char *pattern, ...)
 void
 info_at_line(const char *fname, unsigned int lineno, const char *pattern, ...)
 {
-	va_list ap;
+	va_list ap; // NOLINT(cppcoreguidelines-init-variables)
 	va_start(ap, pattern);
 	vlog("INFO", fname, lineno, pattern, ap);
 	va_end(ap);

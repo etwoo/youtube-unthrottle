@@ -27,20 +27,20 @@ youtube_handle_t youtube_stream_init(const char *proof_of_origin,
                                      const char *visitor_data,
                                      const struct youtube_stream_ops *ops)
 	__attribute__((warn_unused_result));
-void youtube_stream_cleanup(youtube_handle_t h);
+void youtube_stream_cleanup(youtube_handle_t p);
 
-result_t youtube_stream_prepare_tmpfiles(youtube_handle_t h)
+result_t youtube_stream_prepare_tmpfiles(youtube_handle_t p)
 	__attribute__((warn_unused_result));
-result_t youtube_stream_open(youtube_handle_t h,
-                             const char *target,
+result_t youtube_stream_open(youtube_handle_t p,
+                             const char *start_url,
                              const int output_fd[2])
 	__attribute__((warn_unused_result));
-result_t youtube_stream_next(youtube_handle_t h, int *retry_after)
+result_t youtube_stream_next(youtube_handle_t p, int *retry_after)
 	__attribute__((warn_unused_result));
-bool youtube_stream_done(youtube_handle_t h)
+bool youtube_stream_done(youtube_handle_t p)
 	__attribute__((warn_unused_result));
 
-result_t youtube_stream_visitor(youtube_handle_t h,
+result_t youtube_stream_visitor(youtube_handle_t p,
                                 void (*visit)(const char *, size_t, void *),
                                 void *userdata)
 	__attribute__((warn_unused_result));

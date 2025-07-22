@@ -77,13 +77,6 @@ build:clang-coverage:
         coverage_format: cobertura
         path: ./build/coverage.xml
 
-lint:global-variables:
-  stage: build
-  before_script:
-    - ${PACKAGE_CMD} ctags jq
-  script:
-    - ./scripts/check-global-variables.sh
-
 #
 # Based on https://gitlab.com/gitlab-ci-utils/container-images/vale
 #

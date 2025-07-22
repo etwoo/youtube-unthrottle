@@ -1,8 +1,24 @@
 Checks: >
   bugprone-*,
-  -bugprone-easily-swappable-parameters,
   clang-analyzer-*,
   -clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling,
+  cppcoreguidelines-*,
+  -cppcoreguidelines-avoid-magic-numbers,
+  hicpp-*,
+  -hicpp-signed-bitwise,
+  misc-*,
+  -misc-include-cleaner,
+  modernize-*,
+  performance-*,
+  portability-*,
+  readability-*,
+  -readability-else-after-return,
+  -readability-identifier-length,
+  -readability-magic-numbers,
+
+CheckOptions:
+  - {key: bugprone-easily-swappable-parameters.MinimumLength, value: 3}
+  - {key: readability-function-cognitive-complexity.IgnoreMacros, value: true}
 
 # Turn all the warnings from the checks above into errors.
 WarningsAsErrors: '*'

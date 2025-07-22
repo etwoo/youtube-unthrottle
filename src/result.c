@@ -20,7 +20,7 @@ my_asprintf(const char *pattern, ...)
 {
 	char *p = NULL;
 
-	va_list ap;
+	va_list ap; // NOLINT(cppcoreguidelines-init-variables)
 	va_start(ap, pattern);
 	int result = vasprintf(&p, pattern, ap);
 	va_end(ap);
@@ -318,6 +318,9 @@ result_to_str(result_t r)
 		                r.re.pattern,
 		                r.re.offset,
 		                regex_error(r, err, sizeof(err)));
+		break;
+	case ERR_SANDBOX_ALLOC:
+		s = strdup("Cannot allocate sandbox context");
 		break;
 	case ERR_SANDBOX_LANDLOCK_CREATE_RULESET:
 		s = my_asprintf("Error in landlock_create_ruleset(): %s",

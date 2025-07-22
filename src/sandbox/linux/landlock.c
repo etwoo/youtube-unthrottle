@@ -23,7 +23,7 @@ landlock_create_ruleset(const struct landlock_ruleset_attr *const attr,
                         const size_t size,
                         const __u32 flags)
 {
-	return syscall( // NOLINT(bugprone-narrowing-conversions)
+	return syscall( // NOLINT(*-narrowing-conversions)
 		__NR_landlock_create_ruleset,
 		attr,
 		size,
@@ -38,7 +38,7 @@ landlock_add_rule(const int ruleset_fd,
                   const void *const rule_attr,
                   const __u32 flags)
 {
-	return syscall( // NOLINT(bugprone-narrowing-conversions)
+	return syscall( // NOLINT(*-narrowing-conversions)
 		__NR_landlock_add_rule,
 		ruleset_fd,
 		rule_type,
@@ -51,7 +51,7 @@ landlock_add_rule(const int ruleset_fd,
 static inline int
 landlock_restrict_self(const int ruleset_fd, const __u32 flags)
 {
-	return syscall( // NOLINT(bugprone-narrowing-conversions)
+	return syscall( // NOLINT(*-narrowing-conversions)
 		__NR_landlock_restrict_self,
 		ruleset_fd,
 		flags);
@@ -88,7 +88,7 @@ ruleset_add_one(int fd, const char *path, struct landlock_path_beneath_attr *pb)
 }
 
 static WARN_UNUSED result_t
-ruleset_add_rule_paths(int fd, const char **paths, size_t sz)
+ruleset_add_rule_paths(int fd, const char *const *paths, size_t sz)
 {
 	struct landlock_path_beneath_attr pb = {
 		.allowed_access = LANDLOCK_ACCESS_FS_READ_FILE,
@@ -115,7 +115,7 @@ ruleset_add_rule_port(int fd, int port)
 }
 
 result_t
-landlock_apply(const char **paths, int sz, int port)
+landlock_apply(const char *const *paths, int sz, int port)
 {
 	int rc = -1;
 

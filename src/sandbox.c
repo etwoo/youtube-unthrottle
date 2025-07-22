@@ -25,10 +25,48 @@
 #include <sysexits.h> /* for EX_OSERR */
 #include <unistd.h>
 
+struct sandbox_context {
+#if defined(__APPLE__)
+	struct seatbelt_context seatbelt;
+#else
+	/*
+	 * In C (unlike in C++), empty structs lead to undefined behavior.
+	 *
+	 * gcc specifically supports empty structs as a GNU extension:
+	 *
+	 *   https://gcc.gnu.org/onlinedocs/gcc/Empty-Structures.html
+	 *
+	 * ... and clang seems to match gcc in this regard. Still, leaving this
+	 * struct empty produces a compiler warning under -Wpedantic.
+	 *
+	 * Out of caution, we declare an unused struct member explicitly. In
+	 * the future, please remove `ensure_struct_non_empty` on any platforms
+	 * that gain genuine struct members, like `struct seatbelt_context`.
+	 */
+	char ensure_struct_non_empty MAYBE_UNUSED;
+#endif
+};
+
+sandbox_handle_t
+sandbox_init(void)
+{
+	struct sandbox_context *p = malloc(sizeof(*p));
+	if (p) {
+		memset(p, 0, sizeof(*p));
+	}
+	return p;
+}
+
+void
+sandbox_cleanup(struct sandbox_context *context)
+{
+	free(context);
+}
+
 static const char NEVER_ALLOWED_CANARY[] = "/etc/passwd";
 
 static void
-sandbox_verify(const char **paths,
+sandbox_verify(const char *const *paths,
                size_t paths_allowed,
                size_t paths_total,
                bool connect_allowed)
@@ -52,7 +90,7 @@ sandbox_verify(const char **paths,
 	debug("sandbox verify: blocked kill()");
 #endif
 
-	size_t i;
+	size_t i = 0;
 
 	/* sanity-check sandbox: explicit path allowlist */
 	for (i = 0; i < paths_allowed; ++i) {
@@ -119,7 +157,7 @@ sandbox_verify(const char **paths,
 	      connect_allowed ? "allowed" : "blocked");
 }
 
-static const char *ALLOWED_PATHS[] = {
+static const char *const ALLOWED_PATHS[] = {
 	/* for temporary files */
 	P_tmpdir,
 #if defined(__OpenBSD__)
@@ -137,15 +175,14 @@ static const char *ALLOWED_PATHS[] = {
 #endif
 };
 
-#if defined(__APPLE__)
-static struct seatbelt_context SEATBELT_CONTEXT = {0};
-#endif
-
 static WARN_UNUSED result_t
 sandbox_with(
 #if defined(__OpenBSD__)
 	const char *promises
 #else
+#if defined(__APPLE__)
+	struct sandbox_context *context,
+#endif
 	unsigned flags
 #endif
 )
@@ -164,15 +201,15 @@ sandbox_with(
 	check(landlock_apply(ALLOWED_PATHS, sz, 443));
 	check(seccomp_apply(flags));
 #elif defined(__APPLE__)
-	check(seatbelt_init(&SEATBELT_CONTEXT));
-	check(seatbelt_revoke(&SEATBELT_CONTEXT, ~flags));
+	check(seatbelt_init(&context->seatbelt));
+	check(seatbelt_revoke(&context->seatbelt, ~flags));
 #endif
 	sandbox_verify(ALLOWED_PATHS, sz, sz, true);
 	return RESULT_OK;
 }
 
 result_t
-sandbox_only_io_inet_tmpfile(void)
+sandbox_only_io_inet_tmpfile(struct sandbox_context *context MAYBE_UNUSED)
 {
 	result_t tmp = sandbox_with(
 #if defined(__OpenBSD__)
@@ -180,6 +217,7 @@ sandbox_only_io_inet_tmpfile(void)
 #elif defined(__linux__)
 		SECCOMP_STDIO | SECCOMP_INET | SECCOMP_SANDBOX | SECCOMP_TMPFILE
 #elif defined(__APPLE__)
+		context,
 		SEATBELT_INET | SEATBELT_TMPFILE | SEATBELT_RPATH
 #endif
 	);
@@ -190,7 +228,7 @@ sandbox_only_io_inet_tmpfile(void)
 }
 
 result_t
-sandbox_only_io_inet_rpath(void)
+sandbox_only_io_inet_rpath(struct sandbox_context *context MAYBE_UNUSED)
 {
 	result_t tmp = sandbox_with(
 #if defined(__OpenBSD__)
@@ -198,6 +236,7 @@ sandbox_only_io_inet_rpath(void)
 #elif defined(__linux__)
 		SECCOMP_STDIO | SECCOMP_INET | SECCOMP_SANDBOX | SECCOMP_RPATH
 #elif defined(__APPLE__)
+		context,
 		SEATBELT_INET | SEATBELT_RPATH
 #endif
 	);
@@ -208,7 +247,7 @@ sandbox_only_io_inet_rpath(void)
 }
 
 result_t
-sandbox_only_io(void)
+sandbox_only_io(struct sandbox_context *context MAYBE_UNUSED)
 {
 #if defined(__OpenBSD__)
 	if (unveil(NULL, NULL) < 0) {
@@ -221,8 +260,8 @@ sandbox_only_io(void)
 	check(landlock_apply(NULL, 0, 0));
 	check(seccomp_apply(SECCOMP_STDIO));
 #elif defined(__APPLE__)
-	check(seatbelt_init(&SEATBELT_CONTEXT));
-	check(seatbelt_revoke(&SEATBELT_CONTEXT, 0xFFFFFFFF));
+	check(seatbelt_init(&context->seatbelt));
+	check(seatbelt_revoke(&context->seatbelt, 0xFFFFFFFF));
 #endif
 
 #if defined(__OpenBSD__)

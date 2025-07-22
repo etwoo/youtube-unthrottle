@@ -35,7 +35,7 @@
  *
  * See also: https://justine.lol/pledge/
  */
-static const char *SYSCALLS_STDIO[] = {
+static const char *const SYSCALLS_STDIO[] = {
 	"sigreturn",
 	"restart_syscall",
 	"sched_yield",
@@ -155,7 +155,7 @@ static const char *SYSCALLS_STDIO[] = {
 /*
  * Linux syscalls loosely corresponding to OpenBSD pledge("inet")
  */
-static const char *SYSCALLS_INET[] = {
+static const char *const SYSCALLS_INET[] = {
 	"socket",
 	"bind",
 	"connect",
@@ -175,7 +175,7 @@ static const char *SYSCALLS_INET[] = {
  * Linux syscalls corresponding to the ability to alter the sandbox itself, a
  * conceptual superset of OpenBSD pledge("unveil")
  */
-static const char *SYSCALLS_SANDBOX_MODIFY[] = {
+static const char *const SYSCALLS_SANDBOX_MODIFY[] = {
 	"landlock_create_ruleset",
 	"landlock_add_rule",
 	"landlock_restrict_self",
@@ -185,7 +185,7 @@ static const char *SYSCALLS_SANDBOX_MODIFY[] = {
 /*
  * Linux syscalls that we always allow, no matter what the caller specifies.
  */
-static const char *BASE[] = {
+static const char *const BASE[] = {
 	"exit_group",
 	"exit",
 	"rseq",
@@ -337,7 +337,7 @@ seccomp_allow_one(scmp_filter_ctx ctx, const char *syscall)
 }
 
 static WARN_UNUSED result_t
-seccomp_allow(scmp_filter_ctx ctx, const char **syscalls, size_t sz)
+seccomp_allow(scmp_filter_ctx ctx, const char *const *syscalls, size_t sz)
 {
 	result_t err = RESULT_OK;
 	for (size_t i = 0; i < sz; ++i) {
@@ -347,7 +347,9 @@ seccomp_allow(scmp_filter_ctx ctx, const char **syscalls, size_t sz)
 }
 
 static WARN_UNUSED result_t
-seccomp_allow_tmpfile(scmp_filter_ctx ctx, const char **syscalls, size_t sz)
+seccomp_allow_tmpfile(scmp_filter_ctx ctx,
+                      const char *const *syscalls,
+                      size_t sz)
 {
 	assert(syscalls == NULL);
 	assert(sz == 0);
@@ -370,7 +372,7 @@ seccomp_allow_tmpfile(scmp_filter_ctx ctx, const char **syscalls, size_t sz)
 }
 
 static WARN_UNUSED result_t
-seccomp_allow_rpath(scmp_filter_ctx ctx, const char **syscalls, size_t sz)
+seccomp_allow_rpath(scmp_filter_ctx ctx, const char *const *syscalls, size_t sz)
 {
 	assert(syscalls == NULL);
 	assert(sz == 0);
@@ -379,7 +381,7 @@ seccomp_allow_rpath(scmp_filter_ctx ctx, const char **syscalls, size_t sz)
 	 * Restrict openat() callers to landlock-related O_PATH calls and
 	 * O_RDONLY operations (i.e. all-zero flags).
 	 */
-	assert(O_RDONLY == 0);
+	static_assert(!O_RDONLY, "O_RDONLY is unexpectedly non-zero");
 	const int allowed_flags = O_PATH | O_RDONLY;
 	const struct scmp_arg_cmp op[] = {
 		SCMP_A2(SCMP_CMP_MASKED_EQ, ~allowed_flags, 0),
@@ -395,8 +397,8 @@ const unsigned SECCOMP_RPATH = 0x10;
 
 struct seccomp_apply_handler {
 	unsigned flag;
-	result_t (*handle)(scmp_filter_ctx, const char **, size_t);
-	const char **syscalls;
+	result_t (*handle)(scmp_filter_ctx, const char *const *, size_t);
+	const char *const *syscalls;
 	size_t sz;
 };
 

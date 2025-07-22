@@ -50,7 +50,7 @@ __asan_default_options(void)
 static __attribute__((format(printf, 1, 2))) void
 to_stderr(const char *pattern, ...)
 {
-	va_list ap;
+	va_list ap; // NOLINT(cppcoreguidelines-init-variables)
 	va_start(ap, pattern);
 	fprintf(stderr, "ERROR: ");
 	vfprintf(stderr, pattern, ap);
@@ -73,9 +73,11 @@ result_to_status(result_t r)
 static __attribute__((warn_unused_result)) result_t
 try_sandbox(void)
 {
-	check(sandbox_only_io_inet_tmpfile());
-	check(sandbox_only_io_inet_rpath());
-	check(sandbox_only_io());
+	sandbox_handle_t sandbox = sandbox_init();
+	check_if(sandbox == NULL, ERR_SANDBOX_ALLOC);
+	check(sandbox_only_io_inet_tmpfile(sandbox));
+	check(sandbox_only_io_inet_rpath(sandbox));
+	check(sandbox_only_io(sandbox));
 	return RESULT_OK;
 }
 
@@ -237,7 +239,8 @@ unthrottle(const char *target,
            const char *visitor_data,
            struct quality *q,
            int output[2],
-           youtube_handle_t *stream)
+           youtube_handle_t *stream,
+           sandbox_handle_t *sandbox)
 {
 	check(youtube_global_init());
 	check_if(output[0] < 0 || output[1] < 0, OK);
@@ -250,10 +253,13 @@ unthrottle(const char *target,
 	*stream = youtube_stream_init(proof_of_origin, visitor_data, &sops);
 	check_if(*stream == NULL, OK);
 
-	check(sandbox_only_io_inet_tmpfile());
+	*sandbox = sandbox_init();
+	check_if(*sandbox == NULL, OK);
+
+	check(sandbox_only_io_inet_tmpfile(*sandbox));
 	check(youtube_stream_prepare_tmpfiles(*stream));
 
-	check(sandbox_only_io_inet_rpath());
+	check(sandbox_only_io_inet_rpath(*sandbox));
 	check(youtube_stream_open(*stream, target, output));
 
 	int retry_after = -1;
@@ -337,23 +343,26 @@ main(int argc, char *argv[])
 			get_output_fd(20000, output, 2);
 
 			youtube_handle_t stream = NULL;
+			sandbox_handle_t sandbox = NULL;
 			rc = result_to_status(unthrottle(argv[optind],
 			                                 proof_of_origin,
 			                                 visitor_data,
 			                                 &q,
 			                                 output,
-			                                 &stream));
+			                                 &stream,
+			                                 &sandbox));
 
 			if (output[0] < 0 || output[1] < 0) {
 				/* get_output_fd() already logs to stderr */
 				rc = EX_CANTCREAT;
-			} else if (stream == NULL) {
+			} else if (stream == NULL || sandbox == NULL) {
 				to_stderr("Can't alloc stream");
 				rc = EX_OSERR;
 			}
 
 			youtube_stream_cleanup(stream);
 			youtube_global_cleanup();
+			sandbox_cleanup(sandbox);
 			close_output_fd(output[0]);
 			close_output_fd(output[1]);
 		}
