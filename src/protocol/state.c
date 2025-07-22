@@ -93,11 +93,11 @@ struct protocol_state {
 	int outputs[2];              /* audio/video output file descriptors */
 	VideoStreaming__ClientAbrState abr_state;
 	VideoStreaming__StreamerContext__ClientInfo info;
-	VideoStreaming__StreamerContext__Fqa sabr_context;
-	VideoStreaming__StreamerContext__Fqa *all_sabr_contexts[1];
+	VideoStreaming__StreamerContext__SabrContext sabr_context;
+	VideoStreaming__StreamerContext__SabrContext *all_sabr_contexts[1];
 	VideoStreaming__StreamerContext context;
-	Misc__FormatId selected_audio_format;
-	Misc__FormatId selected_video_format;
+	Misc__FormatId preferred_audio_format;
+	Misc__FormatId preferred_video_format;
 	Misc__FormatId *selected_format_ids[2];
 	VideoStreaming__BufferedRange buffered_audio_range;
 	VideoStreaming__BufferedRange buffered_video_range;
@@ -121,32 +121,32 @@ protocol_init_members(struct protocol_state *p, long long int itag_video)
 	p->info.os_name = "Windows";
 	p->info.os_version = "10.0";
 
-	video_streaming__streamer_context__fqa__init(&p->sabr_context);
+	video_streaming__streamer_context__sabr_context__init(&p->sabr_context);
 	p->all_sabr_contexts[0] = &p->sabr_context;
 
 	video_streaming__streamer_context__init(&p->context);
 	p->context.client_info = &p->info;
 
-	misc__format_id__init(&p->selected_audio_format);
-	p->selected_audio_format.has_itag = true;
-	p->selected_audio_format.itag = ITAG_AUDIO;
+	misc__format_id__init(&p->preferred_audio_format);
+	p->preferred_audio_format.has_itag = true;
+	p->preferred_audio_format.itag = ITAG_AUDIO;
 
-	misc__format_id__init(&p->selected_video_format);
-	p->selected_video_format.has_itag = true;
+	misc__format_id__init(&p->preferred_video_format);
+	p->preferred_video_format.has_itag = true;
 	assert(itag_video <= INT32_MAX);
-	p->selected_video_format.itag = (int32_t)itag_video;
+	p->preferred_video_format.itag = (int32_t)itag_video;
 
-	p->selected_format_ids[0] = &p->selected_audio_format;
-	p->selected_format_ids[1] = &p->selected_video_format;
+	p->selected_format_ids[0] = &p->preferred_audio_format;
+	p->selected_format_ids[1] = &p->preferred_video_format;
 
 	video_streaming__buffered_range__init(&p->buffered_audio_range);
-	p->buffered_audio_range.format_id = &p->selected_audio_format;
+	p->buffered_audio_range.format_id = &p->preferred_audio_format;
 	p->buffered_audio_range.duration_ms = 0;
 	p->buffered_audio_range.start_segment_index = 1;
 	p->buffered_audio_range.end_segment_index = 0;
 
 	video_streaming__buffered_range__init(&p->buffered_video_range);
-	p->buffered_video_range.format_id = &p->selected_video_format;
+	p->buffered_video_range.format_id = &p->preferred_video_format;
 	p->buffered_video_range.duration_ms = 0;
 	p->buffered_video_range.start_segment_index = 1;
 	p->buffered_video_range.end_segment_index = 0;
@@ -157,10 +157,10 @@ protocol_init_members(struct protocol_state *p, long long int itag_video)
 	video_streaming__video_playback_abr_request__init(&p->req);
 	p->req.client_abr_state = &p->abr_state;
 
-	p->req.n_selected_audio_format_ids = 1;
-	p->req.selected_audio_format_ids = p->selected_format_ids;
-	p->req.n_selected_video_format_ids = 1;
-	p->req.selected_video_format_ids = p->selected_format_ids + 1;
+	p->req.n_preferred_audio_format_ids = 1;
+	p->req.preferred_audio_format_ids = p->selected_format_ids;
+	p->req.n_preferred_video_format_ids = 1;
+	p->req.preferred_video_format_ids = p->selected_format_ids + 1;
 	p->req.streamer_context = &p->context;
 }
 
@@ -384,8 +384,8 @@ protocol_claim_sabr_context(struct protocol_state *p,
 	p->sabr_context.value.data = data;
 	p->sabr_context.value.len = sz;
 
-	p->context.n_field5 = 1;
-	p->context.field5 = p->all_sabr_contexts;
+	p->context.n_sabr_contexts = 1;
+	p->context.sabr_contexts = p->all_sabr_contexts;
 
 	debug("Updated SABR context of size=%zu", sz);
 }

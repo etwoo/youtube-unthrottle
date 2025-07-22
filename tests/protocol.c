@@ -672,12 +672,12 @@ protocol_parse_response_sabr_context_update(void)
 	 * Verify that the <response> above affected the next request's SABR
 	 * context as expected.
 	 */
-	ASSERT_EQ(1, request->streamer_context->n_field5);
-	ASSERT(request->streamer_context->field5[0]->has_value);
-	ASSERT_EQ(8, request->streamer_context->field5[0]->value.len);
+	ASSERT_EQ(1, request->streamer_context->n_sabr_contexts);
+	ASSERT(request->streamer_context->sabr_contexts[0]->has_value);
+	ASSERT_EQ(8, request->streamer_context->sabr_contexts[0]->value.len);
 	ASSERT_STRN_EQ("FUZZFUZZ",
-	               request->streamer_context->field5[0]->value.data,
-	               request->streamer_context->field5[0]->value.len);
+	               request->streamer_context->sabr_contexts[0]->value.data,
+	               request->streamer_context->sabr_contexts[0]->value.len);
 	PASS();
 }
 

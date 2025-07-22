@@ -12,9 +12,8 @@ include(get_cpm)
 CPMAddPackage(
 	NAME googlevideo
 	GITHUB_REPOSITORY LuanRT/googlevideo
-	GIT_TAG 159237ff92387e9100bd730c925dd737455ebcd3
+	GIT_TAG e185cbcd88a13e2c45a5668ffa6c860bf302efee # 4.0.1
 	DOWNLOAD_ONLY YES
-	PATCHES ./vendor/sabr_context_update.patch
 )
 
 add_subdirectory(src)

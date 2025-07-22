@@ -12,16 +12,15 @@
 /*
  * Some helpful references on YouTube's UMP format and SABR protobufs:
  *
- *   https://github.com/gsuberland/UMP_Format/blob/main/UMP_Format.md
- *   https://github.com/LuanRT/googlevideo/blob/HEAD/src/core/UMP.ts
- *   https://github.com/LuanRT/googlevideo/blob/HEAD/src/utils/helpers.ts
- *   https://github.com/LuanRT/googlevideo/blob/main/src/core/ServerAbrStream.ts
+ * https://github.com/gsuberland/UMP_Format/blob/main/UMP_Format.md
+ * https://github.com/LuanRT/googlevideo/blob/HEAD/src/core/UmpReader.ts
+ * https://github.com/LuanRT/googlevideo/blob/main/src/core/SabrUmpProcessor.ts
  *
- *   https://github.com/LuanRT/googlevideo/tree/main/protos/video_streaming
- *   https://github.com/LuanRT/googlevideo/blob/main/protos/misc/common.proto
+ * https://github.com/LuanRT/googlevideo/tree/main/protos/video_streaming
+ * https://github.com/LuanRT/googlevideo/blob/main/protos/misc/common.proto
  *
- *   https://github.com/LuanRT/googlevideo/blob/main/examples/downloader/main.ts
- *   https://github.com/LuanRT/googlevideo/blob/main/examples/README.md
+ * https://github.com/LuanRT/googlevideo/blob/main/examples/downloader/main.ts
+ * https://github.com/LuanRT/googlevideo/blob/main/examples/README.md
  */
 #include "video_streaming/format_initialization_metadata.pb-c.h"
 #include "video_streaming/media_header.pb-c.h"
