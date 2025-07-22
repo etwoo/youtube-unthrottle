@@ -3,9 +3,9 @@
 #include "test_macros.h"
 
 static WARN_UNUSED result_t
-got_result(const char *val __attribute__((unused)),
-           size_t pos __attribute__((unused)),
-           void *userdata __attribute__((unused)))
+got_result(const char *val MAYBE_UNUSED,
+           size_t pos MAYBE_UNUSED,
+           void *userdata MAYBE_UNUSED)
 {
 	return RESULT_OK;
 }

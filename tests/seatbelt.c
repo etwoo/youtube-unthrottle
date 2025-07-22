@@ -87,12 +87,10 @@ seatbelt_none(void)
 	PASS();
 }
 
-static struct seatbelt_context TEST_CONTEXT = {0};
-
 TEST
-seatbelt_filesystem_allows_tmpfile_create(void)
+seatbelt_filesystem_allows_tmpfile_create(struct seatbelt_context *c)
 {
-	auto_result err = seatbelt_init(&TEST_CONTEXT);
+	auto_result err = seatbelt_init(c);
 	ASSERT_EQ(OK, err.err);
 
 	CHECK_CALL(check_seatbelt_filesystem(ALLOW_TMPFILE_CREATE));
@@ -101,9 +99,9 @@ seatbelt_filesystem_allows_tmpfile_create(void)
 }
 
 TEST
-seatbelt_filesystem_allows_tmpfile_read(void)
+seatbelt_filesystem_allows_tmpfile_read(struct seatbelt_context *c)
 {
-	auto_result err = seatbelt_revoke(&TEST_CONTEXT, SEATBELT_TMPFILE);
+	auto_result err = seatbelt_revoke(c, SEATBELT_TMPFILE);
 	ASSERT_EQ(OK, err.err);
 
 	CHECK_CALL(check_seatbelt_filesystem(ALLOW_TMPFILE_READ));
@@ -112,9 +110,9 @@ seatbelt_filesystem_allows_tmpfile_read(void)
 }
 
 TEST
-seatbelt_filesystem_blocks_tmpfile(void)
+seatbelt_filesystem_blocks_tmpfile(struct seatbelt_context *c)
 {
-	auto_result err = seatbelt_revoke(&TEST_CONTEXT, SEATBELT_RPATH);
+	auto_result err = seatbelt_revoke(c, SEATBELT_RPATH);
 	ASSERT_EQ(OK, err.err);
 
 	CHECK_CALL(check_seatbelt_filesystem(ALLOW_NONE));
@@ -123,9 +121,9 @@ seatbelt_filesystem_blocks_tmpfile(void)
 }
 
 TEST
-seatbelt_filesystem_blocks_tmpfile_blocks_network(void)
+seatbelt_filesystem_blocks_tmpfile_blocks_network(struct seatbelt_context *c)
 {
-	auto_result err = seatbelt_revoke(&TEST_CONTEXT, SEATBELT_INET);
+	auto_result err = seatbelt_revoke(c, SEATBELT_INET);
 	ASSERT_EQ(OK, err.err);
 
 	CHECK_CALL(check_seatbelt_filesystem(ALLOW_NONE));
@@ -135,9 +133,10 @@ seatbelt_filesystem_blocks_tmpfile_blocks_network(void)
 
 SUITE(seatbelt_variants)
 {
+	struct seatbelt_context context = {0};
 	RUN_TEST(seatbelt_none);
-	RUN_TEST(seatbelt_filesystem_allows_tmpfile_create);
-	RUN_TEST(seatbelt_filesystem_allows_tmpfile_read);
-	RUN_TEST(seatbelt_filesystem_blocks_tmpfile);
-	RUN_TEST(seatbelt_filesystem_blocks_tmpfile_blocks_network);
+	RUN_TESTp(seatbelt_filesystem_allows_tmpfile_create, &context);
+	RUN_TESTp(seatbelt_filesystem_allows_tmpfile_read, &context);
+	RUN_TESTp(seatbelt_filesystem_blocks_tmpfile, &context);
+	RUN_TESTp(seatbelt_filesystem_blocks_tmpfile_blocks_network, &context);
 }

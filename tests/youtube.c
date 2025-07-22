@@ -56,6 +56,7 @@ static const char MOCK_JS_RESPONSE[] =
 		MOCK_JSON_RESPONSE = NULL;                                     \
 	} while (0)
 
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static const char *MOCK_JSON_RESPONSE = NULL;
 
 static WARN_UNUSED const char *

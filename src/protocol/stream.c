@@ -192,6 +192,9 @@ ump_parse_part(struct protocol_state *p,
                uint64_t part_type,
                bool *skip_media_blobs_until_next)
 {
+	static_assert(sizeof(uint8_t) == sizeof(ump.data[0]),
+	              "unpack argument does not safely cast to uint8_t array");
+
 	VideoStreaming__NextRequestPolicy *pol
 		__attribute__((cleanup(ump_request_policy_free))) = NULL;
 	VideoStreaming__MediaHeader *header
@@ -206,7 +209,6 @@ ump_parse_part(struct protocol_state *p,
 	switch (part_type) {
 	case 20: /* MEDIA_HEADER */
 		*skip_media_blobs_until_next = false;
-		assert(sizeof(uint8_t) == sizeof(ump.data[0]));
 		header = video_streaming__media_header__unpack(
 			NULL,
 			ump.sz,
@@ -246,7 +248,6 @@ ump_parse_part(struct protocol_state *p,
 	};
 	case 35: /* NEXT_REQUEST_POLICY */
 		*skip_media_blobs_until_next = false;
-		assert(sizeof(uint8_t) == sizeof(ump.data[0]));
 		pol = video_streaming__next_request_policy__unpack(
 			NULL,
 			ump.sz,
@@ -261,7 +262,6 @@ ump_parse_part(struct protocol_state *p,
 		break;
 	case 42: /* FORMAT_INITIALIZATION_METADATA */
 		*skip_media_blobs_until_next = false;
-		assert(sizeof(uint8_t) == sizeof(ump.data[0]));
 		fmt = video_streaming__format_initialization_metadata__unpack(
 			NULL,
 			ump.sz,
@@ -272,7 +272,6 @@ ump_parse_part(struct protocol_state *p,
 		break;
 	case 43: /* SABR_REDIRECT */
 		*skip_media_blobs_until_next = false;
-		assert(sizeof(uint8_t) == sizeof(ump.data[0]));
 		redir = video_streaming__sabr_redirect__unpack(
 			NULL,
 			ump.sz,
@@ -285,7 +284,6 @@ ump_parse_part(struct protocol_state *p,
 		break;
 	case 57: /* SABR_CONTEXT_UPDATE */
 		*skip_media_blobs_until_next = false;
-		assert(sizeof(uint8_t) == sizeof(ump.data[0]));
 		update = video_streaming__sabr_context_update__unpack(
 			NULL,
 			ump.sz,

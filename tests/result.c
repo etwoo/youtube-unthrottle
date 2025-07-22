@@ -51,6 +51,7 @@ static const char CANNOT_ISSUE[] = "Error issuing";
 static const char CANNOT_CONSUME[] = "Error consuming";
 static const char CANNOT_RELEASE[] = "Error releasing";
 
+// NOLINTBEGIN(hicpp-function-size,readability-function-size)
 TEST
 print_to_str_each_enum_value(void)
 {
@@ -109,6 +110,7 @@ print_to_str_each_enum_value(void)
 	ASSERT_IN(make(ERR_RE_ALLOC_MATCH_DATA), CANNOT_ALLOC);
 	ASSERT_IN(make_s(ERR_RE_CAPTURE_GROUP_COUNT), "Wrong number");
 	ASSERT_IN(make_s(ERR_RE_TRY_MATCH), "Error in pcre2_match");
+	ASSERT_IN(make(ERR_SANDBOX_ALLOC), CANNOT_ALLOC);
 	ASSERT_IN(make_n(ERR_SANDBOX_LANDLOCK_CREATE_RULESET),
 	          "Error in landlock");
 	ASSERT_IN(make_ns(ERR_SANDBOX_LANDLOCK_OPEN_O_PATH), "Error opening");
@@ -169,6 +171,7 @@ print_to_str_each_enum_value(void)
 	ASSERT_IN(make(ERR_YOUTUBE_EARLY_END_STREAM), "Media stream ended");
 	PASS();
 }
+// NOLINTEND(hicpp-function-size,readability-function-size)
 
 SUITE(print_to_str)
 {
