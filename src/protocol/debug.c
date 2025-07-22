@@ -43,13 +43,13 @@ debug_hexdump_buffer(const char *buf, size_t sz)
 void
 debug_protobuf_media_header(const VideoStreaming__MediaHeader *header)
 {
-	debug("Got header header_id=%" PRIu32 ", video=%s, itag=%d, xtags=%s"
-	      ", start_range=%" PRIi64 ", is_init_seg=%d"
+	debug("Got header header_id=%" PRIu32 ", video=%s, itag=%" PRIi32
+	      ", xtags=%s, start_range=%" PRIi64 ", is_init_seg=%d"
 	      ", seq=%" PRIi64 ", start_ms=%" PRIi64 ", duration_ms=%" PRIi64
 	      ", content_length=%" PRIi64 ", time_range.start=%" PRIi64
 	      ", time_range.duration=%" PRIi64
 	      ", time_range.timescale=%" PRIi32,
-	      header->header_id,
+	      header->has_header_id ? header->header_id : 0,
 	      header->video_id,
 	      header->has_itag ? header->itag : -1,
 	      header->xtags,
@@ -59,11 +59,11 @@ debug_protobuf_media_header(const VideoStreaming__MediaHeader *header)
 	      header->has_start_ms ? header->start_ms : -1,
 	      header->has_duration_ms ? header->duration_ms : -1,
 	      header->has_content_length ? header->content_length : -1,
-	      (header->time_range && header->time_range->has_start
-	               ? header->time_range->start
+	      (header->time_range && header->time_range->has_start_ticks
+	               ? header->time_range->start_ticks
 	               : -1),
-	      (header->time_range && header->time_range->has_duration
-	               ? header->time_range->duration
+	      (header->time_range && header->time_range->has_duration_ticks
+	               ? header->time_range->duration_ticks
 	               : -1),
 	      (header->time_range && header->time_range->has_timescale
 	               ? header->time_range->timescale
@@ -75,8 +75,7 @@ debug_protobuf_fmt_init(const VideoStreaming__FormatInitializationMetadata *fmt)
 {
 	debug("Got format video=%s"
 	      ", itag=%d"
-	      ", duration_ms=%d"
-	      ", end_time_ms=%d"
+	      ", duration_ms=%" PRIi64 ", end_time_ms=%" PRIi64
 	      ", end_segment_number=%" PRIi64 ", init_start=%d"
 	      ", init_end=%d"
 	      ", index_start=%d"
@@ -85,7 +84,7 @@ debug_protobuf_fmt_init(const VideoStreaming__FormatInitializationMetadata *fmt)
 	      (fmt->format_id && fmt->format_id->has_itag)
 	              ? fmt->format_id->itag
 	              : -1,
-	      (fmt->has_duration_ms ? fmt->duration_ms : -1),
+	      (fmt->has_duration_units ? fmt->duration_units : -1),
 	      (fmt->has_end_time_ms ? fmt->end_time_ms : -1),
 	      (fmt->has_end_segment_number ? fmt->end_segment_number : -1),
 	      (fmt->init_range && fmt->init_range->has_start

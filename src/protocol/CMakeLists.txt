@@ -3,6 +3,7 @@ file(GLOB PROTOS RELATIVE "${PROTO_PREFIX}"
 	"${PROTO_PREFIX}/misc/*.proto"
 	"${PROTO_PREFIX}/video_streaming/*.proto"
 )
+list(FILTER PROTOS EXCLUDE REGEX "onesie_.*\.proto")
 
 set(PROTO_FULLPATH ${PROTOS})
 list(TRANSFORM PROTO_FULLPATH PREPEND "${PROTO_PREFIX}/")

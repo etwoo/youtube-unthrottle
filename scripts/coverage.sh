@@ -17,7 +17,7 @@ BUILD='./build'
 BIN="$BUILD/youtube-unthrottle"
 PROFILE_DATA="$BUILD/coverage.profdata"
 LCOV_FMT="$BUILD/coverage.lcov"
-LCOV_TO_COBERTURA=$(find ~/.cache/cpm -name lcov_cobertura.py)
+LCOV_TO_COBERTURA=$(find "$BUILD" -name lcov_cobertura.py)
 
 find "$BUILD" -path "*/$COVERAGE_PROFILE_DIR/*" -print0 | \
 	xargs -0 llvm-profdata merge -sparse -o "$PROFILE_DATA"
