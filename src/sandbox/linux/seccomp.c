@@ -186,6 +186,7 @@ static const char *const SYSCALLS_SANDBOX_MODIFY[] = {
  * Linux syscalls that we always allow, no matter what the caller specifies.
  */
 static const char *const BASE[] = {
+	"clone3",
 	"exit_group",
 	"exit",
 	"rseq",
@@ -364,7 +365,8 @@ seccomp_allow_tmpfile(scmp_filter_ctx ctx,
 	 * Restrict openat() callers to landlock-related O_PATH calls and
 	 * tmpfile-creation O_TMPFILE|O_EXCL calls.
 	 */
-	const int allowed_flags = O_PATH | O_TMPFILE | O_EXCL | O_RDWR;
+	const int allowed_flags =
+		O_CLOEXEC | O_PATH | O_TMPFILE | O_EXCL | O_RDWR;
 	const struct scmp_arg_cmp op[] = {
 		SCMP_A2(SCMP_CMP_MASKED_EQ, ~allowed_flags, 0),
 	};
@@ -382,7 +384,7 @@ seccomp_allow_rpath(scmp_filter_ctx ctx, const char *const *syscalls, size_t sz)
 	 * O_RDONLY operations (i.e. all-zero flags).
 	 */
 	static_assert(!O_RDONLY, "O_RDONLY is unexpectedly non-zero");
-	const int allowed_flags = O_PATH | O_RDONLY;
+	const int allowed_flags = O_CLOEXEC | O_PATH | O_RDONLY;
 	const struct scmp_arg_cmp op[] = {
 		SCMP_A2(SCMP_CMP_MASKED_EQ, ~allowed_flags, 0),
 	};

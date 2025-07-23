@@ -18,19 +18,23 @@
  */
 #include <curl/curl.h>
 
+#if defined(__APPLE__)
 static const int FD_DISCARD = -1;
+#endif
 
 static WARN_UNUSED size_t
 write_to_tmpfile(const char *ptr, size_t size, size_t nmemb, void *userdata)
 {
 	const size_t real_size = size * nmemb;
 	const int *fd = (const int *)userdata;
+#if defined(__APPLE__)
 	if (*fd == FD_DISCARD) {
 		/*
 		 * FD_DISCARD means caller wants us to discard data
 		 */
 		return real_size;
 	}
+#endif
 
 	const ssize_t written = write_with_retry(*fd, ptr, real_size);
 	info_m_if(written < 0, "Cannot write to tmpfile");
@@ -61,11 +65,13 @@ url_global_cleanup(void)
 }
 
 void
-url_context_init(struct url_request_context *context)
+url_context_init(struct url_request_context *context MAYBE_UNUSED)
 {
+#if defined(__APPLE__)
 	/*
-	 * Nudge curl into creating its DNS resolver thread(s) now, before the
-	 * the process sandbox closes and blocks the clone3() syscall.
+	 * Nudge curl into doing initial DNS resolver work, before the process
+	 * sandbox closes. We currently require this workaround only on macOS,
+	 * potentially due to an overly restrictive Seatbelt policy.
 	 */
 	auto_result err = url_download("https://www.youtube.com",
 	                               NULL,
@@ -74,6 +80,7 @@ url_context_init(struct url_request_context *context)
 	                               context,
 	                               FD_DISCARD);
 	info_if(err.err, "Error creating early URL worker threads");
+#endif
 }
 
 void
