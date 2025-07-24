@@ -169,9 +169,12 @@ static const char *const ALLOWED_PATHS[] = {
 	"/etc/ssl/certs/ca-certificates.crt",
 #elif defined(__APPLE__)
 	/* for other potential locations of temporary files */
-	"/private/tmp",
-	"/private/var/tmp",
 	"/tmp",
+	"/private/var/tmp",
+	"/private/tmp",
+	/* for outbound HTTPS */
+	"/etc/ssl/cert.pem",
+	"/private/etc/ssl/cert.pem",
 #endif
 };
 
