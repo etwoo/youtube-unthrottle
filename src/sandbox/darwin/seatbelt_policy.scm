@@ -9,6 +9,10 @@
 (deny file-map-executable)
 
 (define tmpdir-dynamic (param "TMPDIR"))
+(define ext-file-read "com.apple.app-sandbox.read")
+(define ext-file-write "com.apple.app-sandbox.write")
+(define ext-network-client "com.apple.security.network.client")
+
 (define (require-any-tmpdir extension-id)
   (require-all
     (require-any
@@ -20,11 +24,27 @@
       (literal "/var/tmp"))
     (extension extension-id)))
 
+(define (require-tls-certs extension-id)
+  (require-all
+    (require-any
+      (literal "/etc")
+      (literal "/private/etc/ssl/cert.pem"))
+    (extension extension-id)))
+
+(define (require-dev-random extension-id)
+  (require-all
+    (require-any
+      (literal "/dev/random")
+      (literal "/dev/urandom"))
+    (extension extension-id)))
+
 (allow file-read*
-  (require-any-tmpdir "com.apple.app-sandbox.read"))
+  (require-any-tmpdir ext-file-read)
+  (require-tls-certs  ext-network-client)
+  (require-dev-random ext-network-client))
 
 (allow file-read* file-write*
-  (require-any-tmpdir "com.apple.app-sandbox.write"))
+  (require-any-tmpdir ext-file-write))
 
 (allow network-outbound
   (require-all
@@ -32,7 +52,7 @@
       (control-name "com.apple.netsrc")
       (literal "/private/var/run/mDNSResponder")
       (remote tcp))
-    (extension "com.apple.security.network.client")))
+    (extension ext-network-client)))
 
 (allow mach-lookup
   (require-all
@@ -43,4 +63,4 @@
       (global-name "com.apple.trustd.agent")
       (global-name "com.apple.SystemConfiguration.DNSConfiguration")
       (global-name "com.apple.SystemConfiguration.configd"))
-    (extension "com.apple.security.network.client")))
+    (extension ext-network-client)))
