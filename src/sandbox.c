@@ -67,7 +67,7 @@ sandbox_cleanup(struct sandbox_context *context)
 /*
  * gcc-15's -Wanalyzer-fd-leak check does not seem to understand how
  * __attribute__((cleanup)) closes the test socket in sandbox_verify()
- * on certain error paths, like when VERIFY(sfd < 0) fails and triggers
+ * on certain error paths, like when verify(sfd < 0) fails and triggers
  * an early return.
  *
  * The analyzer in particular does not seem to see that (sfd >= 0) in
@@ -104,13 +104,13 @@ open_socket(int *sfd)
 	return *sfd;
 }
 
-#define VERIFY(cond)                                                           \
+#define verify(cond)                                                           \
 	do {                                                                   \
 		if (cond) {                                                    \
 			debug("sandbox check succeeded: " #cond);              \
 		} else {                                                       \
 			info("sandbox check failed: " #cond);                  \
-			return make_result(ERR_SANDBOX_VERIFY, #cond);         \
+			return make_result(ERR_SANDBOX_verify, #cond);         \
 		}                                                              \
 	} while (0)
 
@@ -130,30 +130,30 @@ sandbox_verify(const char *const *paths,
 	 * proceed, or kill() incorrectly runs, stopping this process before
 	 * any unexpected actions can occur.
 	 */
-	VERIFY(kill(getpid(), SIGKILL) < 0);
-	VERIFY(errno == EACCES);
+	verify(kill(getpid(), SIGKILL) < 0);
+	verify(errno == EACCES);
 	debug("sandbox verify: blocked kill()");
 #endif
 
 	/* sanity-check sandbox: explicit path allowlist */
 	for (size_t i = 0; i < paths_allowed; ++i) {
 		auto_descriptor fd = -1;
-		VERIFY(open_file(&fd, paths[i]) >= 0);
+		verify(open_file(&fd, paths[i]) >= 0);
 		debug("sandbox verify: allowed %s", paths[i]);
 	}
 
 	/* sanity-check sandbox: implicit path blocklist */
 	for (size_t i = paths_allowed; i < paths_total; ++i) {
 		auto_descriptor fd = -1;
-		VERIFY(open_file(&fd, paths[i]) < 0);
-		VERIFY(errno == EACCES || errno == ENOENT || errno == EPERM);
+		verify(open_file(&fd, paths[i]) < 0);
+		verify(errno == EACCES || errno == ENOENT || errno == EPERM);
 		debug("sandbox verify: blocked %s", paths[i]);
 	}
 
 	{
 		auto_descriptor fd = -1;
-		VERIFY(open_file(&fd, NEVER_ALLOWED_CANARY) < 0);
-		VERIFY(errno == EACCES || errno == ENOENT || errno == EPERM);
+		verify(open_file(&fd, NEVER_ALLOWED_CANARY) < 0);
+		verify(errno == EACCES || errno == ENOENT || errno == EPERM);
 		debug("sandbox verify: blocked %s", NEVER_ALLOWED_CANARY);
 	}
 
@@ -161,14 +161,14 @@ sandbox_verify(const char *const *paths,
 
 	auto_descriptor sfd = -1;
 	if (connect_allowed) {
-		VERIFY(open_socket(&sfd) >= 0);
+		verify(open_socket(&sfd) >= 0);
 	}
 #if !defined(__APPLE__)
 	else {
 		/*
 		 * On most platforms, sandboxing blocks socket() entirely.
 		 */
-		VERIFY(open_socket(&sfd) < 0);
+		verify(open_socket(&sfd) < 0);
 		debug("sandbox verify: blocked connect()");
 		return RESULT_OK;
 	}
@@ -181,14 +181,14 @@ sandbox_verify(const char *const *paths,
 	inet_pton(AF_INET, "23.192.228.68", &sa.sin_addr); /* example.com */
 
 	if (connect_allowed) {
-		VERIFY(connect(sfd, (struct sockaddr *)&sa, sizeof(sa)) == 0);
+		verify(connect(sfd, (struct sockaddr *)&sa, sizeof(sa)) == 0);
 	}
 #if defined(__APPLE__)
 	else {
 		/*
 		 * On macOS, sandboxing allows socket(), then blocks connect().
 		 */
-		VERIFY(connect(sfd, (struct sockaddr *)&sa, sizeof(sa)) != 0);
+		verify(connect(sfd, (struct sockaddr *)&sa, sizeof(sa)) != 0);
 	}
 #endif
 
@@ -198,7 +198,7 @@ sandbox_verify(const char *const *paths,
 }
 
 #undef auto_descriptor
-#undef VERIFY
+#undef verify
 
 #pragma GCC diagnostic pop /* restore -Wanalyzer-fd-leak */
 
