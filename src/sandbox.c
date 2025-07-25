@@ -65,7 +65,7 @@ sandbox_cleanup(struct sandbox_context *context)
 static void
 descriptor_cleanup(const int *file_or_socket)
 {
-	info_m_if(*file_or_socket >= 0 && close(*file_or_socket) < 0,
+	info_m_if(*file_or_socket != -1 && close(*file_or_socket) == -1,
 	          "Ignoring error close()-ing test socket descriptor");
 }
 
@@ -113,21 +113,21 @@ sandbox_verify(const char *const *paths,
 	/* sanity-check sandbox: explicit path allowlist */
 	for (size_t i = 0; i < paths_allowed; ++i) {
 		auto_descriptor fd = -1;
-		EVAL_VERIFY(fd = open(paths[i], 0), fd >= 0);
+		EVAL_VERIFY(fd = open(paths[i], 0), fd != -1);
 		debug("sandbox verify: allowed %s", paths[i]);
 	}
 
 	/* sanity-check sandbox: implicit path blocklist */
 	for (size_t i = paths_allowed; i < paths_total; ++i) {
 		auto_descriptor fd = -1;
-		EVAL_VERIFY(fd = open(paths[i], 0), fd < 0);
+		EVAL_VERIFY(fd = open(paths[i], 0), fd == -1);
 		VERIFY(errno == EACCES || errno == ENOENT || errno == EPERM);
 		debug("sandbox verify: blocked %s", paths[i]);
 	}
 
 	{
 		auto_descriptor fd = -1;
-		EVAL_VERIFY(fd = open(NEVER_ALLOWED_CANARY, 0), fd < 0);
+		EVAL_VERIFY(fd = open(NEVER_ALLOWED_CANARY, 0), fd == -1);
 		VERIFY(errno == EACCES || errno == ENOENT || errno == EPERM);
 		debug("sandbox verify: blocked %s", NEVER_ALLOWED_CANARY);
 	}
@@ -136,14 +136,14 @@ sandbox_verify(const char *const *paths,
 
 	auto_descriptor sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (connect_allowed) {
-		VERIFY(sfd >= 0);
+		VERIFY(sfd != -1);
 	}
 #if !defined(__APPLE__)
 	else {
 		/*
 		 * On most platforms, sandboxing blocks socket() entirely.
 		 */
-		VERIFY(sfd < 0);
+		VERIFY(sfd == -1);
 		debug("sandbox verify: blocked connect()");
 		return RESULT_OK;
 	}
