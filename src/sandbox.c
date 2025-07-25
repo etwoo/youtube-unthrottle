@@ -108,23 +108,23 @@ sandbox_verify(const char *const *paths,
 	debug("sandbox verify: blocked kill()");
 #endif
 
-	int fd __attribute__((cleanup(descriptor_cleanup))) = -1;
-
 	/* sanity-check sandbox: explicit path allowlist */
 	for (size_t i = 0; i < paths_allowed; ++i) {
+		int fd __attribute__((cleanup(descriptor_cleanup))) = -1;
 		EVAL_VERIFY(fd = open(paths[i], 0), fd >= 0);
-		info_m_if(close(fd) < 0, "Ignoring error close()-ing test fd");
 		debug("sandbox verify: allowed %s", paths[i]);
 	}
 
 	/* sanity-check sandbox: implicit path blocklist */
 	for (size_t i = paths_allowed; i < paths_total; ++i) {
+		int fd __attribute__((cleanup(descriptor_cleanup))) = -1;
 		EVAL_VERIFY(fd = open(paths[i], 0), fd < 0);
 		VERIFY(errno == EACCES || errno == ENOENT || errno == EPERM);
 		debug("sandbox verify: blocked %s", paths[i]);
 	}
 
 	{
+		int fd __attribute__((cleanup(descriptor_cleanup))) = -1;
 		EVAL_VERIFY(fd = open(NEVER_ALLOWED_CANARY, 0), fd < 0);
 		VERIFY(errno == EACCES || errno == ENOENT || errno == EPERM);
 		debug("sandbox verify: blocked %s", NEVER_ALLOWED_CANARY);
