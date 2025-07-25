@@ -88,6 +88,8 @@ descriptor_cleanup(const int *file_or_socket)
 	          "Ignoring error close()-ing test socket descriptor");
 }
 
+#define auto_descriptor int __attribute__((cleanup(descriptor_cleanup)))
+
 static WARN_UNUSED int
 open_file(int *fd, const char *path)
 {
@@ -101,8 +103,6 @@ open_socket(int *sfd)
 	*sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	return *sfd;
 }
-
-#define auto_descriptor int __attribute__((cleanup(descriptor_cleanup)))
 
 #define VERIFY(cond)                                                           \
 	do {                                                                   \
