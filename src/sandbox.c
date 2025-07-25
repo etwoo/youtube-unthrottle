@@ -63,13 +63,13 @@ sandbox_cleanup(struct sandbox_context *context)
 }
 
 static void
-descriptor_cleanup(const int *file_or_socket)
+sandbox_verify_fd_cleanup(const int *fd)
 {
-	info_m_if(*file_or_socket >= 0 && close(*file_or_socket) < 0,
-	          "Ignoring error close()-ing test socket descriptor");
+	info_m_if(*fd >= 0 && close(*fd) < 0,
+	          "Ignoring error close()-ing test fd");
 }
 
-#define auto_descriptor int __attribute__((cleanup(descriptor_cleanup)))
+#define auto_fd int __attribute__((cleanup(sandbox_verify_fd_cleanup)))
 
 #define VERIFY_WITH_MSG(cond, msg)                                             \
 	do {                                                                   \
@@ -112,21 +112,21 @@ sandbox_verify(const char *const *paths,
 
 	/* sanity-check sandbox: explicit path allowlist */
 	for (size_t i = 0; i < paths_allowed; ++i) {
-		auto_descriptor fd = -1;
+		auto_fd fd = -1;
 		EVAL_VERIFY(fd = open(paths[i], 0), fd >= 0);
 		debug("sandbox verify: allowed %s", paths[i]);
 	}
 
 	/* sanity-check sandbox: implicit path blocklist */
 	for (size_t i = paths_allowed; i < paths_total; ++i) {
-		auto_descriptor fd = -1;
+		auto_fd fd = -1;
 		EVAL_VERIFY(fd = open(paths[i], 0), fd < 0);
 		VERIFY(errno == EACCES || errno == ENOENT || errno == EPERM);
 		debug("sandbox verify: blocked %s", paths[i]);
 	}
 
 	{
-		auto_descriptor fd = -1;
+		auto_fd fd = -1;
 		EVAL_VERIFY(fd = open(NEVER_ALLOWED_CANARY, 0), fd < 0);
 		VERIFY(errno == EACCES || errno == ENOENT || errno == EPERM);
 		debug("sandbox verify: blocked %s", NEVER_ALLOWED_CANARY);
@@ -134,12 +134,19 @@ sandbox_verify(const char *const *paths,
 
 	/* sanity-check sandbox: network connect() */
 
-	auto_descriptor sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	int sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (connect_allowed) {
 		VERIFY(sfd >= 0);
 	}
 #if !defined(__APPLE__)
 	else {
+		if (sfd >= 0) {
+			/*
+			 * Make sure not to leak a file descriptor, even if
+			 * socket() unexpectedly succeeds.
+			 */
+			close(sfd);
+		}
 		/*
 		 * On most platforms, sandboxing blocks socket() entirely.
 		 */
@@ -155,15 +162,19 @@ sandbox_verify(const char *const *paths,
 	sa.sin_port = htons(443);
 	inet_pton(AF_INET, "23.192.228.68", &sa.sin_addr); /* example.com */
 
+	const bool connected =
+		0 == connect(sfd, (struct sockaddr *)&sa, sizeof(sa));
+	info_m_if(close(sfd) < 0, "Ignoring error close()-ing test socket");
+
 	if (connect_allowed) {
-		VERIFY(connect(sfd, (struct sockaddr *)&sa, sizeof(sa)) == 0);
+		VERIFY(connected);
 	}
 #if defined(__APPLE__)
 	else {
 		/*
 		 * On macOS, sandboxing allows socket(), then blocks connect().
 		 */
-		VERIFY(connect(sfd, (struct sockaddr *)&sa, sizeof(sa)) != 0);
+		VERIFY(!connected);
 	}
 #endif
 
@@ -172,7 +183,7 @@ sandbox_verify(const char *const *paths,
 	return RESULT_OK;
 }
 
-#undef auto_descriptor
+#undef auto_fd
 #undef VERIFY_WITH_MSG
 #undef VERIFY
 #undef EVAL_VERIFY
