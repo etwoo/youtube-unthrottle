@@ -11,6 +11,7 @@
 #include "sys/debug.h"
 
 #include <arpa/inet.h>
+#include <assert.h>
 #if defined(__OpenBSD__)
 #include <err.h> /* for err() */
 #endif
@@ -162,9 +163,9 @@ sandbox_verify(const char *const *paths,
 		connect(sfd, (struct sockaddr *)&sa, sizeof(sa)) == 0;
 #if defined(__APPLE__)
 	VERIFY((connect_allowed && connected) ||
-		/*
-		 * On macOS, sandboxing allows socket(), then blocks connect().
-		 */
+	       /*
+	        * On macOS, sandboxing allows socket(), then blocks connect().
+	        */
 	       (!connect_allowed && !connected));
 #else
 	assert(connect_allowed);
