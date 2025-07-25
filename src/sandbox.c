@@ -138,7 +138,7 @@ sandbox_verify(const char *const *paths,
 		 */
 		VERIFY(socket(AF_INET, SOCK_STREAM, IPPROTO_TCP) < 0);
 		debug("sandbox verify: blocked connect()");
-		return;
+		return RESULT_OK;
 	}
 #endif
 
