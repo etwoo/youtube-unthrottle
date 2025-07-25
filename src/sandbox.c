@@ -121,41 +121,43 @@ sandbox_verify(const char *const *paths,
 	debug("sandbox verify: blocked kill()");
 #endif
 
+	// NOLINTBEGIN(bugprone-assignment-in-if-condition)
+
 	/* sanity-check sandbox: explicit path allowlist */
 	for (size_t i = 0; i < paths_allowed; ++i) {
-		auto_descriptor fd = open(paths[i], 0);
-		VERIFY(fd >= 0);
+		auto_descriptor fd = -1;
+		VERIFY((fd = open(paths[i], 0)) >= 0);
 		debug("sandbox verify: allowed %s", paths[i]);
 	}
 
 	/* sanity-check sandbox: implicit path blocklist */
 	for (size_t i = paths_allowed; i < paths_total; ++i) {
-		auto_descriptor fd = open(paths[i], 0);
-		VERIFY(fd < 0);
+		auto_descriptor fd = -1;
+		VERIFY((fd = open(paths[i], 0)) < 0);
 		VERIFY(errno == EACCES || errno == ENOENT || errno == EPERM);
 		debug("sandbox verify: blocked %s", paths[i]);
 	}
 
 	{
-		auto_descriptor fd = open(NEVER_ALLOWED_CANARY, 0);
-		VERIFY(fd < 0);
+		auto_descriptor fd = -1;
+		VERIFY((fd = open(NEVER_ALLOWED_CANARY, 0)) < 0);
 		VERIFY(errno == EACCES || errno == ENOENT || errno == EPERM);
 		debug("sandbox verify: blocked %s", NEVER_ALLOWED_CANARY);
 	}
 
 	/* sanity-check sandbox: network connect() */
 
-	auto_descriptor sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	auto_descriptor sfd = -1;
 
 	if (connect_allowed) {
-		VERIFY(sfd >= 0);
+		VERIFY((sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) >= 0);
 	}
 #if !defined(__APPLE__)
 	else {
 		/*
 		 * On most platforms, sandboxing blocks socket() entirely.
 		 */
-		VERIFY(sfd < 0);
+		VERIFY((sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0);
 		debug("sandbox verify: blocked connect()");
 		return RESULT_OK;
 	}
@@ -178,6 +180,8 @@ sandbox_verify(const char *const *paths,
 		VERIFY(connect(sfd, (struct sockaddr *)&sa, sizeof(sa)) != 0);
 	}
 #endif
+
+	// NOLINTEND(bugprone-assignment-in-if-condition)
 
 	debug("sandbox verify: %s connect()",
 	      connect_allowed ? "allowed" : "blocked");
