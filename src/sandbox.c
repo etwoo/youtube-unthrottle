@@ -62,6 +62,25 @@ sandbox_cleanup(struct sandbox_context *context)
 	free(context);
 }
 
+#pragma GCC diagnostic push
+#if defined(__GNUC__) && !defined(__clang__)
+/*
+ * gcc-15's -Wanalyzer-fd-leak check does not seem to understand how
+ * __attribute__((cleanup)) closes the test socket in sandbox_verify()
+ * on certain error paths, like when VERIFY(sfd < 0) fails and triggers
+ * an early return.
+ *
+ * The analyzer in particular does not seem to see that (sfd >= 0) in
+ * the body of sandbox_verify() guarantees that (*file_or_socket >= 0)
+ * in descriptor_cleanup().
+ *
+ * If `gcc -fanalyzer` handles this scenario differently in the future,
+ * we can remove the #pragma directives surrounding sandbox_verify() and
+ * its helper functions.
+ */
+#pragma GCC diagnostic ignored "-Wanalyzer-fd-leak"
+#endif
+
 static void
 descriptor_cleanup(const int *file_or_socket)
 {
@@ -180,6 +199,8 @@ sandbox_verify(const char *const *paths,
 
 #undef auto_descriptor
 #undef VERIFY
+
+#pragma GCC diagnostic pop /* restore -Wanalyzer-fd-leak */
 
 static const char *const ALLOWED_PATHS[] = {
 	/* for temporary files */
