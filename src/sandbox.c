@@ -62,6 +62,13 @@ sandbox_cleanup(struct sandbox_context *context)
 	free(context);
 }
 
+static void
+socket_cleanup(const int *sfd)
+{
+	info_m_if(*sfd > 0 && close(*sfd) < 0,
+	          "Ignoring error close()-ing test socket descriptor");
+}
+
 #define TO_STRING(x) #x
 #define INT_TO_STRING(x) TO_STRING(x)
 #define TO_MSG(cond) "(" #cond ") at " __FILE_NAME__ ":" INT_TO_STRING(__LINE__)
@@ -125,7 +132,8 @@ sandbox_verify(const char *const *paths,
 
 	/* sanity-check sandbox: network connect() */
 
-	const int sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	const int sfd __attribute__((cleanup(socket_cleanup))) =
+		socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (connect_allowed) {
 		VERIFY(sfd >= 0);
 	}
@@ -134,12 +142,6 @@ sandbox_verify(const char *const *paths,
 		/*
 		 * On most platforms, sandboxing blocks socket() entirely.
 		 */
-		/*
-		 * Close socket descriptor early to avoid -Wanalyzer-fd-leak
-		 * compiler warning from gcc, caused by (sfd >= 0) scenario.
-		 */
-		info_m_if(sfd >= 0 && close(sfd) < 0,
-		          "Ignoring error close()-ing test socket early");
 		VERIFY(sfd < 0);
 		debug("sandbox verify: blocked connect()");
 		return RESULT_OK;
@@ -164,11 +166,8 @@ sandbox_verify(const char *const *paths,
 	}
 #endif
 
-	info_m_if(connect_allowed && sfd > 0 && close(sfd) < 0,
-	          "Ignoring error close()-ing test socket");
 	debug("sandbox verify: %s connect()",
 	      connect_allowed ? "allowed" : "blocked");
-
 	return RESULT_OK;
 }
 
