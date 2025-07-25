@@ -148,7 +148,7 @@ sandbox_verify(const char *const *paths,
 	 * in descriptor_cleanup().
 	 *
 	 * If `gcc -fanalyzer` handles this scenario differently in the future,
-	 * we can then compiler pragmas surrounding this variable.
+	 * we can remove the #pragma directives surrounding this variable.
 	 */
 	auto_descriptor sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 #pragma GCC diagnostic pop
