@@ -69,22 +69,22 @@ socket_cleanup(const int *sfd)
 	          "Ignoring error close()-ing test socket descriptor");
 }
 
-#define TO_STRING(x) #x
-#define INT_TO_STRING(x) TO_STRING(x)
-#define TO_MSG(cond) "(" #cond ") at " __FILE_NAME__ ":" INT_TO_STRING(__LINE__)
-#define VERIFY(cond)                                                           \
+#define VERIFY_M(cond, msg)                                                    \
 	do {                                                                   \
 		if (cond) {                                                    \
-			debug("sandbox check pass: %s", #cond);                \
+			debug("sandbox check succeeded: " msg);                \
 		} else {                                                       \
-			return make_result(ERR_SANDBOX_VERIFY, TO_MSG(cond));  \
+			info("sandbox check failed: " msg);                    \
+			return make_result(ERR_SANDBOX_VERIFY, msg);           \
 		}                                                              \
 	} while (0)
-#define ASSIGN_THEN_VERIFY(var, expr, cond)                                    \
+
+#define VERIFY(cond) VERIFY_M(cond, #cond)
+
+#define EVAL_VERIFY(expr, cond)                                                \
 	do {                                                                   \
-		(var) = (expr);                                                \
-		debug("sandbox check prep: %s = %s", #var, #expr);             \
-		VERIFY(cond);                                                  \
+		expr;                                                          \
+		VERIFY_M(cond, "setup: " #expr "; check: " #cond);             \
 	} while (0)
 
 static const char NEVER_ALLOWED_CANARY[] = "/etc/passwd";
@@ -112,37 +112,38 @@ sandbox_verify(const char *const *paths,
 
 	/* sanity-check sandbox: explicit path allowlist */
 	for (size_t i = 0; i < paths_allowed; ++i) {
-		ASSIGN_THEN_VERIFY(fd, open(paths[i], 0), fd >= 0);
+		EVAL_VERIFY(fd = open(paths[i], 0), fd >= 0);
 		info_m_if(close(fd) < 0, "Ignoring error close()-ing test fd");
 		debug("sandbox verify: allowed %s", paths[i]);
 	}
 
 	/* sanity-check sandbox: implicit path blocklist */
 	for (size_t i = paths_allowed; i < paths_total; ++i) {
-		ASSIGN_THEN_VERIFY(fd, open(paths[i], 0), fd < 0);
+		EVAL_VERIFY(fd = open(paths[i], 0), fd < 0);
 		VERIFY(errno == EACCES || errno == ENOENT || errno == EPERM);
 		debug("sandbox verify: blocked %s", paths[i]);
 	}
 
 	{
-		ASSIGN_THEN_VERIFY(fd, open(NEVER_ALLOWED_CANARY, 0), fd < 0);
+		EVAL_VERIFY(fd = open(NEVER_ALLOWED_CANARY, 0), fd < 0);
 		VERIFY(errno == EACCES || errno == ENOENT || errno == EPERM);
 		debug("sandbox verify: blocked %s", NEVER_ALLOWED_CANARY);
 	}
 
 	/* sanity-check sandbox: network connect() */
 
-	const int sfd __attribute__((cleanup(socket_cleanup))) =
-		socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	int sfd __attribute__((cleanup(socket_cleanup))) = -1;
 	if (connect_allowed) {
-		VERIFY(sfd >= 0);
+		EVAL_VERIFY(sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP),
+		            sfd >= 0);
 	}
 #if !defined(__APPLE__)
 	else {
 		/*
 		 * On most platforms, sandboxing blocks socket() entirely.
 		 */
-		VERIFY(sfd < 0);
+		EVAL_VERIFY(sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP),
+		            sfd < 0);
 		debug("sandbox verify: blocked connect()");
 		return RESULT_OK;
 	}
@@ -171,11 +172,9 @@ sandbox_verify(const char *const *paths,
 	return RESULT_OK;
 }
 
-#undef TO_STRING
-#undef INT_TO_STRING
-#undef TO_MSG
+#undef VERIFY_M
 #undef VERIFY
-#undef ASSIGN_THEN_VERIFY
+#undef EVAL_VERIFY
 
 static const char *const ALLOWED_PATHS[] = {
 	/* for temporary files */

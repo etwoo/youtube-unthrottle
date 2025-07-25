@@ -400,7 +400,7 @@ result_to_str(result_t r)
 		s = my_asprintf("Error in seccomp_load(): %s", my_strerror(r));
 		break;
 	case ERR_SANDBOX_VERIFY:
-		s = my_asprintf("Failed sandbox verification %s", r.msg);
+		s = my_asprintf("Failed sandbox verification: %s", r.msg);
 		break;
 	case ERR_TMPFILE:
 		s = my_asprintf("Error in tmpfile(): %s", my_strerror(r));
