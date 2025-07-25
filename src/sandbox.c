@@ -69,7 +69,7 @@ socket_cleanup(const int *sfd)
 	          "Ignoring error close()-ing test socket descriptor");
 }
 
-#define VERIFY_M(cond, msg)                                                    \
+#define VERIFY_WITH_MSG(cond, msg)                                             \
 	do {                                                                   \
 		if (cond) {                                                    \
 			debug("sandbox check succeeded: " msg);                \
@@ -79,12 +79,12 @@ socket_cleanup(const int *sfd)
 		}                                                              \
 	} while (0)
 
-#define VERIFY(cond) VERIFY_M(cond, #cond)
+#define VERIFY(cond) VERIFY_WITH_MSG(cond, #cond)
 
 #define EVAL_VERIFY(expr, cond)                                                \
 	do {                                                                   \
 		expr;                                                          \
-		VERIFY_M(cond, "setup: " #expr "; check: " #cond);             \
+		VERIFY_WITH_MSG(cond, "setup: " #expr "; check: " #cond);      \
 	} while (0)
 
 static const char NEVER_ALLOWED_CANARY[] = "/etc/passwd";
@@ -172,7 +172,7 @@ sandbox_verify(const char *const *paths,
 	return RESULT_OK;
 }
 
-#undef VERIFY_M
+#undef VERIFY_WITH_MSG
 #undef VERIFY
 #undef EVAL_VERIFY
 
