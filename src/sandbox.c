@@ -11,7 +11,6 @@
 #include "sys/debug.h"
 
 #include <arpa/inet.h>
-#include <assert.h>
 #if defined(__OpenBSD__)
 #include <err.h> /* for err() */
 #endif
