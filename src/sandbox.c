@@ -151,7 +151,6 @@ sandbox_verify(const char *const *paths,
 	 * we can remove the #pragma directives surrounding this variable.
 	 */
 	auto_descriptor sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-#pragma GCC diagnostic pop
 
 	if (connect_allowed) {
 		VERIFY(sfd >= 0);
@@ -188,6 +187,7 @@ sandbox_verify(const char *const *paths,
 	debug("sandbox verify: %s connect()",
 	      connect_allowed ? "allowed" : "blocked");
 	return RESULT_OK;
+#pragma GCC diagnostic pop
 }
 
 #undef auto_descriptor
