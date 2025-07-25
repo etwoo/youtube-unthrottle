@@ -142,15 +142,11 @@ sandbox_verify(const char *const *paths,
 	/* sanity-check sandbox: network connect() */
 
 	int sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-#if defined(__APPLE__)
-	/*
-	 * On macOS, socket() succeeds even when connect_allowed == false.
-	 */
-	VERIFY(sfd >= 0);
-#else
 	if (connect_allowed) {
 		VERIFY_WITH(sfd >= 0, "socket() >= 0", noop());
-	} else {
+	}
+#if !defined(__APPLE__)
+	else {
 		/*
 		 * On most platforms, sandboxing blocks socket() entirely.
 		 */
@@ -170,18 +166,16 @@ sandbox_verify(const char *const *paths,
 		connect(sfd, (struct sockaddr *)&sa, sizeof(sa)) == 0;
 	close(sfd);
 
-#if defined(__APPLE__)
 	if (connect_allowed) {
 		VERIFY(connected);
-	} else {
+	}
+#if defined(__APPLE__)
+	else {
 		/*
 		 * On macOS, sandboxing allows socket(), then blocks connect().
 		 */
 		VERIFY(!connected);
 	}
-#else
-	assert(connect_allowed);
-	VERIFY(connected);
 #endif
 
 	debug("sandbox verify: %s connect()",
