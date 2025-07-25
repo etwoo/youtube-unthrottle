@@ -174,9 +174,9 @@ sandbox_verify(const char *const *paths,
 	if (connect_allowed) {
 		VERIFY(connected);
 	} else {
-	       /*
-	        * On macOS, sandboxing allows socket(), then blocks connect().
-	        */
+		/*
+		 * On macOS, sandboxing allows socket(), then blocks connect().
+		 */
 		VERIFY(!connected);
 	}
 #else
