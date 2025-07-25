@@ -139,7 +139,7 @@ sandbox_verify(const char *const *paths,
 		 * compiler warning from gcc, caused by (sfd >= 0) scenario.
 		 */
 		info_m_if(sfd > 0 && close(sfd) < 0,
-			  "Ignoring error close()-ing test socket early");
+		          "Ignoring error close()-ing test socket early");
 		VERIFY(sfd < 0);
 		debug("sandbox verify: blocked connect()");
 		return RESULT_OK;
