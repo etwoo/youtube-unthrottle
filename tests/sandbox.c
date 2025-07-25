@@ -7,9 +7,14 @@ sandbox_ok(void)
 {
 	sandbox_handle_t context = sandbox_init();
 	ASSERT_NEQ(NULL, context);
-	ASSERT_EQ(OK, sandbox_only_io_inet_tmpfile(context).err);
-	ASSERT_EQ(OK, sandbox_only_io_inet_rpath(context).err);
-	ASSERT_EQ(OK, sandbox_only_io(context).err);
+
+	auto_result err = sandbox_only_io_inet_tmpfile(context);
+	ASSERT_EQ(OK, err.err);
+	err = sandbox_only_io_inet_rpath(context);
+	ASSERT_EQ(OK, err.err);
+	err = sandbox_only_io(context);
+	ASSERT_EQ(OK, err.err);
+
 	sandbox_cleanup(context);
 	PASS();
 }
