@@ -65,8 +65,7 @@ sandbox_cleanup(struct sandbox_context *context)
 static void
 descriptor_cleanup(const int *file_or_socket)
 {
-	info_m_if(*file_or_socket >= 0 && close(*file_or_socket) < 0,
-	          "Ignoring error close()-ing test socket descriptor");
+	close(*file_or_socket); // TODO: restore conditional close()
 }
 
 #define auto_descriptor int __attribute__((cleanup(descriptor_cleanup)))
