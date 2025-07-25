@@ -66,7 +66,7 @@ static void
 sandbox_verify_fd_cleanup(const int *fd)
 {
 	info_m_if(*fd >= 0 && close(*fd) < 0,
-	          "Ignoring error close()-ing sandbox_verify() fd");
+	          "Ignoring error close()-ing sandbox_verify() descriptor");
 }
 
 #define auto_sandbox_fd int __attribute__((cleanup(sandbox_verify_fd_cleanup)))
@@ -134,23 +134,19 @@ sandbox_verify(const char *const *paths,
 
 	/* sanity-check sandbox: network connect() */
 
-	int sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	if (connect_allowed) {
-		VERIFY(sfd >= 0);
-	}
-#if !defined(__APPLE__)
-	else {
-		if (sfd >= 0) {
-			/*
-			 * Make sure not to leak a file descriptor, even if
-			 * socket() unexpectedly succeeds.
-			 */
-			close(sfd);
-		}
-		/*
-		 * On most platforms, sandboxing blocks socket() entirely.
-		 */
-		VERIFY(sfd < 0);
+	auto_sandbox_fd sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+#if defined(__APPLE__)
+	/*
+	 * On macOS, socket() succeeds even when connect_allowed == false.
+	 */
+	VERIFY(sfd >= 0);
+#else
+	VERIFY((connect_allowed && sfd >= 0) ||
+	       /*
+	        * On most platforms, sandboxing blocks socket() entirely.
+	        */
+	       (!connect_allowed && sfd < 0));
+	if (!connect_allowed) {
 		debug("sandbox verify: blocked connect()");
 		return RESULT_OK;
 	}
@@ -163,19 +159,16 @@ sandbox_verify(const char *const *paths,
 	inet_pton(AF_INET, "23.192.228.68", &sa.sin_addr); /* example.com */
 
 	const bool connected =
-		0 == connect(sfd, (struct sockaddr *)&sa, sizeof(sa));
-	info_m_if(close(sfd) < 0, "Ignoring error close()-ing test socket");
-
-	if (connect_allowed) {
-		VERIFY(connected);
-	}
+		connect(sfd, (struct sockaddr *)&sa, sizeof(sa)) == 0;
 #if defined(__APPLE__)
-	else {
+	VERIFY((connect_allowed && connected) ||
 		/*
 		 * On macOS, sandboxing allows socket(), then blocks connect().
 		 */
-		VERIFY(!connected);
-	}
+	       (!connect_allowed && !connected));
+#else
+	assert(connect_allowed);
+	VERIFY(connected);
 #endif
 
 	debug("sandbox verify: %s connect()",
