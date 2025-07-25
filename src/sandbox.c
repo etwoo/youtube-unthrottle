@@ -65,7 +65,7 @@ sandbox_cleanup(struct sandbox_context *context)
 static void
 socket_cleanup(const int *sfd)
 {
-	info_m_if(*sfd > 0 && close(*sfd) < 0,
+	info_m_if(*sfd >= 0 && close(*sfd) < 0,
 	          "Ignoring error close()-ing test socket descriptor");
 }
 
