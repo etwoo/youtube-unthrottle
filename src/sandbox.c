@@ -75,7 +75,8 @@ sandbox_cleanup(struct sandbox_context *context)
  * in descriptor_cleanup().
  *
  * If `gcc -fanalyzer` handles this scenario differently in the future,
- * we can remove the #pragma directives surrounding this variable.
+ * we can remove the #pragma directives surrounding sandbox_verify() and
+ * its helper functions.
  */
 #pragma GCC diagnostic ignored "-Wanalyzer-fd-leak"
 #endif
