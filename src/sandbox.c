@@ -140,6 +140,14 @@ sandbox_verify(const char *const *paths,
 	}
 #if !defined(__APPLE__)
 	else {
+		if (sfd >= 0) { // TODO: why does -Wanalyzer-fd-leak need this?
+			/*
+			 * Make sure not to leak a file descriptor, even if
+			 * socket() unexpectedly succeeds.
+			 */
+			close(sfd);
+			sfd = -1;
+		}
 		/*
 		 * On most platforms, sandboxing blocks socket() entirely.
 		 */
