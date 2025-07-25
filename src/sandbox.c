@@ -110,7 +110,7 @@ open_socket(int *sfd)
 			debug("sandbox check succeeded: " #cond);              \
 		} else {                                                       \
 			info("sandbox check failed: " #cond);                  \
-			return make_result(ERR_SANDBOX_verify, #cond);         \
+			return make_result(ERR_SANDBOX_VERIFY, #cond);         \
 		}                                                              \
 	} while (0)
 
