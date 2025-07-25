@@ -138,7 +138,7 @@ sandbox_verify(const char *const *paths,
 		 * Close socket descriptor early to avoid -Wanalyzer-fd-leak
 		 * compiler warning from gcc, caused by (sfd >= 0) scenario.
 		 */
-		info_m_if(sfd > 0 && close(sfd) < 0,
+		info_m_if(sfd >= 0 && close(sfd) < 0,
 		          "Ignoring error close()-ing test socket early");
 		VERIFY(sfd < 0);
 		debug("sandbox verify: blocked connect()");
