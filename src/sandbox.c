@@ -88,6 +88,20 @@ descriptor_cleanup(const int *file_or_socket)
 	          "Ignoring error close()-ing test socket descriptor");
 }
 
+static WARN_UNUSED int
+open_file(int *fd, const char *path)
+{
+	*fd = open(path, 0);
+	return *fd;
+}
+
+static WARN_UNUSED int
+open_socket(int *sfd)
+{
+	*sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	return *sfd;
+}
+
 #define auto_descriptor int __attribute__((cleanup(descriptor_cleanup)))
 
 #define VERIFY(cond)                                                           \
@@ -121,26 +135,24 @@ sandbox_verify(const char *const *paths,
 	debug("sandbox verify: blocked kill()");
 #endif
 
-	// NOLINTBEGIN(bugprone-assignment-in-if-condition)
-
 	/* sanity-check sandbox: explicit path allowlist */
 	for (size_t i = 0; i < paths_allowed; ++i) {
 		auto_descriptor fd = -1;
-		VERIFY((fd = open(paths[i], 0)) >= 0);
+		VERIFY(open_file(&fd, paths[i]) >= 0);
 		debug("sandbox verify: allowed %s", paths[i]);
 	}
 
 	/* sanity-check sandbox: implicit path blocklist */
 	for (size_t i = paths_allowed; i < paths_total; ++i) {
 		auto_descriptor fd = -1;
-		VERIFY((fd = open(paths[i], 0)) < 0);
+		VERIFY(open_file(&fd, paths[i]) < 0);
 		VERIFY(errno == EACCES || errno == ENOENT || errno == EPERM);
 		debug("sandbox verify: blocked %s", paths[i]);
 	}
 
 	{
 		auto_descriptor fd = -1;
-		VERIFY((fd = open(NEVER_ALLOWED_CANARY, 0)) < 0);
+		VERIFY(open_file(&fd, NEVER_ALLOWED_CANARY) < 0);
 		VERIFY(errno == EACCES || errno == ENOENT || errno == EPERM);
 		debug("sandbox verify: blocked %s", NEVER_ALLOWED_CANARY);
 	}
@@ -148,16 +160,15 @@ sandbox_verify(const char *const *paths,
 	/* sanity-check sandbox: network connect() */
 
 	auto_descriptor sfd = -1;
-
 	if (connect_allowed) {
-		VERIFY((sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) >= 0);
+		VERIFY(open_socket(&sfd) >= 0);
 	}
 #if !defined(__APPLE__)
 	else {
 		/*
 		 * On most platforms, sandboxing blocks socket() entirely.
 		 */
-		VERIFY((sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0);
+		VERIFY(open_socket(&sfd) < 0);
 		debug("sandbox verify: blocked connect()");
 		return RESULT_OK;
 	}
@@ -180,8 +191,6 @@ sandbox_verify(const char *const *paths,
 		VERIFY(connect(sfd, (struct sockaddr *)&sa, sizeof(sa)) != 0);
 	}
 #endif
-
-	// NOLINTEND(bugprone-assignment-in-if-condition)
 
 	debug("sandbox verify: %s connect()",
 	      connect_allowed ? "allowed" : "blocked");
