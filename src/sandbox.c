@@ -134,7 +134,25 @@ sandbox_verify(const char *const *paths,
 
 	/* sanity-check sandbox: network connect() */
 
+#pragma GCC diagnostic push
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic ignored "-Wanalyzer-fd-leak"
+#endif
+	/*
+	 * gcc-15's analyzer-fd-leak check does not seem to understand how
+	 * __attribute__((cleanup)) closes this test socket on certain error
+	 * paths, like when VERIFY(sfd < 0) fails and triggers an early return.
+	 *
+	 * The analyzer in particular does not seem to see that (sfd >= 0) in
+	 * the body of sandbox_verify() guarantees that (*file_or_socket >= 0)
+	 * in descriptor_cleanup().
+	 *
+	 * If `gcc -fanalyzer` handles this scenario differently in the future,
+	 * we can then compiler pragmas surrounding this variable.
+	 */
 	auto_descriptor sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+#pragma GCC diagnostic pop
+
 	if (connect_allowed) {
 		VERIFY(sfd >= 0);
 	}
