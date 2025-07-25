@@ -134,18 +134,16 @@ sandbox_verify(const char *const *paths,
 
 	/* sanity-check sandbox: network connect() */
 
-	auto_descriptor sfd = -1;
+	auto_descriptor sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (connect_allowed) {
-		EVAL_VERIFY(sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP),
-		            sfd >= 0);
+		VERIFY(sfd >= 0);
 	}
 #if !defined(__APPLE__)
 	else {
 		/*
 		 * On most platforms, sandboxing blocks socket() entirely.
 		 */
-		EVAL_VERIFY(sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP),
-		            sfd < 0);
+		VERIFY(sfd < 0);
 		debug("sandbox verify: blocked connect()");
 		return RESULT_OK;
 	}
