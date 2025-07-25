@@ -125,18 +125,22 @@ sandbox_verify(const char *const *paths,
 
 	/* sanity-check sandbox: network connect() */
 
-	int sfd = -1;
+	const int sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (connect_allowed) {
-		ASSIGN_THEN_VERIFY(sfd,
-		                   socket(AF_INET, SOCK_STREAM, IPPROTO_TCP),
-		                   sfd >= 0);
+		VERIFY(sfd >= 0);
 	}
 #if !defined(__APPLE__)
 	else {
 		/*
 		 * On most platforms, sandboxing blocks socket() entirely.
 		 */
-		VERIFY(socket(AF_INET, SOCK_STREAM, IPPROTO_TCP) < 0);
+		/*
+		 * Close socket descriptor early to avoid -Wanalyzer-fd-leak
+		 * compiler warning from gcc, caused by (sfd >= 0) scenario.
+		 */
+		info_m_if(sfd > 0 && close(sfd) < 0,
+			  "Ignoring error close()-ing test socket early");
+		VERIFY(sfd < 0);
 		debug("sandbox verify: blocked connect()");
 		return RESULT_OK;
 	}
