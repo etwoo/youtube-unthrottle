@@ -62,6 +62,24 @@ sandbox_cleanup(struct sandbox_context *context)
 	free(context);
 }
 
+#pragma GCC diagnostic push
+#if defined(__GNUC__) && !defined(__clang__)
+/*
+ * gcc-15's -Wanalyzer-fd-leak check does not seem to understand how
+ * __attribute__((cleanup)) closes the test socket in sandbox_verify()
+ * on certain error paths, like when VERIFY(sfd < 0) fails and triggers
+ * an early return.
+ *
+ * The analyzer in particular does not seem to see that (sfd >= 0) in
+ * the body of sandbox_verify() guarantees that (*file_or_socket >= 0)
+ * in descriptor_cleanup().
+ *
+ * If `gcc -fanalyzer` handles this scenario differently in the future,
+ * we can remove the #pragma directives surrounding this variable.
+ */
+#pragma GCC diagnostic ignored "-Wanalyzer-fd-leak"
+#endif
+
 static void
 descriptor_cleanup(const int *file_or_socket)
 {
@@ -134,22 +152,6 @@ sandbox_verify(const char *const *paths,
 
 	/* sanity-check sandbox: network connect() */
 
-#pragma GCC diagnostic push
-#if defined(__GNUC__) && !defined(__clang__)
-#pragma GCC diagnostic ignored "-Wanalyzer-fd-leak"
-#endif
-	/*
-	 * gcc-15's analyzer-fd-leak check does not seem to understand how
-	 * __attribute__((cleanup)) closes this test socket on certain error
-	 * paths, like when VERIFY(sfd < 0) fails and triggers an early return.
-	 *
-	 * The analyzer in particular does not seem to see that (sfd >= 0) in
-	 * the body of sandbox_verify() guarantees that (*file_or_socket >= 0)
-	 * in descriptor_cleanup().
-	 *
-	 * If `gcc -fanalyzer` handles this scenario differently in the future,
-	 * we can remove the #pragma directives surrounding this variable.
-	 */
 	auto_descriptor sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
 	if (connect_allowed) {
@@ -187,13 +189,14 @@ sandbox_verify(const char *const *paths,
 	debug("sandbox verify: %s connect()",
 	      connect_allowed ? "allowed" : "blocked");
 	return RESULT_OK;
-#pragma GCC diagnostic pop
 }
 
 #undef auto_descriptor
 #undef VERIFY_WITH_MSG
 #undef VERIFY
 #undef EVAL_VERIFY
+
+#pragma GCC diagnostic pop /* restore -Wanalyzer-fd-leak */
 
 static const char *const ALLOWED_PATHS[] = {
 	/* for temporary files */
