@@ -49,7 +49,6 @@ protoc
 resolv
 sandboxing
 seccomp
-sfd
 stdout
 stderr
 strace
