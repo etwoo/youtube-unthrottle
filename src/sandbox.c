@@ -63,36 +63,30 @@ sandbox_cleanup(struct sandbox_context *context)
 }
 
 static void
-sandbox_verify_fd_cleanup(const int *fd)
+descriptor_cleanup(const int *file_or_socket)
 {
-	info_m_if(*fd >= 0 && close(*fd) < 0,
-	          "Ignoring error close()-ing sandbox_verify() descriptor");
+	info_m_if(*file_or_socket >= 0 && close(*file_or_socket) < 0,
+	          "Ignoring error close()-ing test socket descriptor");
 }
 
-static void
-noop(void)
-{
-}
+#define auto_descriptor int __attribute__((cleanup(descriptor_cleanup)))
 
-#define auto_sandbox_fd int __attribute__((cleanup(sandbox_verify_fd_cleanup)))
-
-#define VERIFY_WITH(cond, msg, cleanup_on_failure)                             \
+#define VERIFY_WITH_MSG(cond, msg)                                             \
 	do {                                                                   \
 		if (cond) {                                                    \
 			debug("sandbox check succeeded: " msg);                \
 		} else {                                                       \
 			info("sandbox check failed: " msg);                    \
-			cleanup_on_failure;                                    \
 			return make_result(ERR_SANDBOX_VERIFY, msg);           \
 		}                                                              \
 	} while (0)
 
-#define VERIFY(cond) VERIFY_WITH(cond, #cond, noop())
+#define VERIFY(cond) VERIFY_WITH_MSG(cond, #cond)
 
 #define EVAL_VERIFY(expr, cond)                                                \
 	do {                                                                   \
 		expr;                                                          \
-		VERIFY_WITH(cond, "setup: " #expr "; check: " #cond, noop());  \
+		VERIFY_WITH_MSG(cond, "setup: " #expr "; check: " #cond);      \
 	} while (0)
 
 static const char NEVER_ALLOWED_CANARY[] = "/etc/passwd";
@@ -118,21 +112,21 @@ sandbox_verify(const char *const *paths,
 
 	/* sanity-check sandbox: explicit path allowlist */
 	for (size_t i = 0; i < paths_allowed; ++i) {
-		auto_sandbox_fd fd = -1;
+		auto_descriptor fd = -1;
 		EVAL_VERIFY(fd = open(paths[i], 0), fd >= 0);
 		debug("sandbox verify: allowed %s", paths[i]);
 	}
 
 	/* sanity-check sandbox: implicit path blocklist */
 	for (size_t i = paths_allowed; i < paths_total; ++i) {
-		auto_sandbox_fd fd = -1;
+		auto_descriptor fd = -1;
 		EVAL_VERIFY(fd = open(paths[i], 0), fd < 0);
 		VERIFY(errno == EACCES || errno == ENOENT || errno == EPERM);
 		debug("sandbox verify: blocked %s", paths[i]);
 	}
 
 	{
-		auto_sandbox_fd fd = -1;
+		auto_descriptor fd = -1;
 		EVAL_VERIFY(fd = open(NEVER_ALLOWED_CANARY, 0), fd < 0);
 		VERIFY(errno == EACCES || errno == ENOENT || errno == EPERM);
 		debug("sandbox verify: blocked %s", NEVER_ALLOWED_CANARY);
@@ -140,16 +134,16 @@ sandbox_verify(const char *const *paths,
 
 	/* sanity-check sandbox: network connect() */
 
-	int sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	auto_descriptor sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (connect_allowed) {
-		VERIFY_WITH(sfd >= 0, "socket() >= 0", noop());
+		VERIFY(sfd >= 0);
 	}
 #if !defined(__APPLE__)
 	else {
 		/*
 		 * On most platforms, sandboxing blocks socket() entirely.
 		 */
-		VERIFY_WITH(sfd < 0, "socket() < 0", close(sfd));
+		VERIFY(sfd < 0);
 		debug("sandbox verify: blocked connect()");
 		return RESULT_OK;
 	}
@@ -161,19 +155,15 @@ sandbox_verify(const char *const *paths,
 	sa.sin_port = htons(443);
 	inet_pton(AF_INET, "23.192.228.68", &sa.sin_addr); /* example.com */
 
-	const bool connected =
-		connect(sfd, (struct sockaddr *)&sa, sizeof(sa)) == 0;
-	close(sfd);
-
 	if (connect_allowed) {
-		VERIFY(connected);
+		VERIFY(connect(sfd, (struct sockaddr *)&sa, sizeof(sa)) == 0);
 	}
 #if defined(__APPLE__)
 	else {
 		/*
 		 * On macOS, sandboxing allows socket(), then blocks connect().
 		 */
-		VERIFY(!connected);
+		VERIFY(connect(sfd, (struct sockaddr *)&sa, sizeof(sa)) != 0);
 	}
 #endif
 
@@ -182,8 +172,8 @@ sandbox_verify(const char *const *paths,
 	return RESULT_OK;
 }
 
-#undef auto_sandbox_fd
-#undef VERIFY_WITH
+#undef auto_descriptor
+#undef VERIFY_WITH_MSG
 #undef VERIFY
 #undef EVAL_VERIFY
 
