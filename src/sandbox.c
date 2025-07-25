@@ -11,7 +11,6 @@
 #include "sys/debug.h"
 
 #include <arpa/inet.h>
-#include <assert.h>
 #if defined(__OpenBSD__)
 #include <err.h> /* for err() */
 #endif
@@ -63,20 +62,33 @@ sandbox_cleanup(struct sandbox_context *context)
 	free(context);
 }
 
+#define TO_STRING(x) #x
+#define INT_TO_STRING(x) TO_STRING(x)
+#define TO_MSG(cond) "(" #cond ") at " __FILE_NAME__ ":" INT_TO_STRING(__LINE__)
+#define VERIFY(cond)                                                           \
+	do {                                                                   \
+		if (!(cond)) {                                                 \
+			return make_result(ERR_SANDBOX_VERIFY, TO_MSG(cond));  \
+		} else {                                                       \
+			debug("sandbox check pass: %s", #cond);                \
+		}                                                              \
+	} while (0)
+#define ASSIGN_THEN_VERIFY(var, expr, cond)                                    \
+	do {                                                                   \
+		var = expr;                                                    \
+		debug("sandbox check prep: %s = %s", #var, #expr);             \
+		VERIFY(cond);                                                  \
+	} while (0)
+
 static const char NEVER_ALLOWED_CANARY[] = "/etc/passwd";
 
-static void
+static WARN_UNUSED result_t
 sandbox_verify(const char *const *paths,
                size_t paths_allowed,
                size_t paths_total,
                bool connect_allowed)
 {
-	int rc = -1;
-
 #if defined(__linux__)
-	pid_t target = getpid();
-	assert(target > 0);
-
 	/*
 	 * Use kill() as a dead man's switch for the sandbox.
 	 *
@@ -84,49 +96,47 @@ sandbox_verify(const char *const *paths,
 	 * proceed, or kill() incorrectly runs, stopping this process before
 	 * any unexpected actions can occur.
 	 */
-	rc = kill(target, SIGKILL);
-	assert(rc < 0);
-	assert(errno == EACCES);
+	VERIFY(kill(getpid(), SIGKILL) < 0);
+	VERIFY(errno == EACCES);
 	debug("sandbox verify: blocked kill()");
 #endif
 
-	size_t i = 0;
+	int fd = -1;
 
 	/* sanity-check sandbox: explicit path allowlist */
-	for (i = 0; i < paths_allowed; ++i) {
-		int allowed = open(paths[i], 0);
-		assert(allowed >= 0);
-		close(allowed);
+	for (size_t i = 0; i < paths_allowed; ++i) {
+		ASSIGN_THEN_VERIFY(fd, open(paths[i], 0), fd >= 0);
+		info_m_if(close(fd) < 0, "Ignoring error close()-ing test fd");
 		debug("sandbox verify: allowed %s", paths[i]);
 	}
 
 	/* sanity-check sandbox: implicit path blocklist */
-	for (i = paths_allowed; i < paths_total; ++i) {
-		int fd = open(paths[i], 0);
-		assert(fd < 0);
-		assert(errno == EACCES || errno == ENOENT || errno == EPERM);
+	for (size_t i = paths_allowed; i < paths_total; ++i) {
+		ASSIGN_THEN_VERIFY(fd, open(paths[i], 0), fd < 0);
+		VERIFY(errno == EACCES || errno == ENOENT || errno == EPERM);
 		debug("sandbox verify: blocked %s", paths[i]);
 	}
 
 	{
-		int fd = open(NEVER_ALLOWED_CANARY, 0);
-		assert(fd < 0);
-		assert(errno == EACCES || errno == ENOENT || errno == EPERM);
+		ASSIGN_THEN_VERIFY(fd, open(NEVER_ALLOWED_CANARY, 0), fd < 0);
+		VERIFY(errno == EACCES || errno == ENOENT || errno == EPERM);
 		debug("sandbox verify: blocked %s", NEVER_ALLOWED_CANARY);
 	}
 
 	/* sanity-check sandbox: network connect() */
 
-	int sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	int sfd = -1;
 	if (connect_allowed) {
-		assert(sfd >= 0);
+		ASSIGN_THEN_VERIFY(sfd,
+		                   socket(AF_INET, SOCK_STREAM, IPPROTO_TCP),
+		                   sfd >= 0);
 	}
 #if !defined(__APPLE__)
 	else {
 		/*
 		 * On most platforms, sandboxing blocks socket() entirely.
 		 */
-		assert(sfd < 0);
+		VERIFY(socket(AF_INET, SOCK_STREAM, IPPROTO_TCP) < 0);
 		debug("sandbox verify: blocked connect()");
 		return;
 	}
@@ -138,24 +148,31 @@ sandbox_verify(const char *const *paths,
 	sa.sin_port = htons(443);
 	inet_pton(AF_INET, "23.192.228.68", &sa.sin_addr); /* example.com */
 
-	rc = connect(sfd, (struct sockaddr *)&sa, sizeof(sa));
 	if (connect_allowed) {
-		assert(rc == 0);
+		VERIFY(connect(sfd, (struct sockaddr *)&sa, sizeof(sa)) == 0);
 	}
 #if defined(__APPLE__)
 	else {
 		/*
 		 * On macOS, sandboxing allows socket(), then blocks connect().
 		 */
-		assert(rc != 0);
+		VERIFY(connect(sfd, (struct sockaddr *)&sa, sizeof(sa)) != 0);
 	}
 #endif
 
-	rc = close(sfd);
-	assert(rc == 0);
+	info_m_if(connect_allowed && close(sfd) < 0,
+	          "Ignoring error close()-ing test socket");
 	debug("sandbox verify: %s connect()",
 	      connect_allowed ? "allowed" : "blocked");
+
+	return RESULT_OK;
 }
+
+#undef TO_STRING
+#undef INT_TO_STRING
+#undef TO_MSG
+#undef VERIFY
+#undef ASSIGN_THEN_VERIFY
 
 static const char *const ALLOWED_PATHS[] = {
 	/* for temporary files */
@@ -207,7 +224,7 @@ sandbox_with(
 	check(seatbelt_init(&context->seatbelt));
 	check(seatbelt_revoke(&context->seatbelt, ~flags));
 #endif
-	sandbox_verify(ALLOWED_PATHS, sz, sz, true);
+	check(sandbox_verify(ALLOWED_PATHS, sz, sz, true));
 	return RESULT_OK;
 }
 
@@ -270,7 +287,8 @@ sandbox_only_io(struct sandbox_context *context MAYBE_UNUSED)
 #if defined(__OpenBSD__)
 	/* skip -- sandbox_verify() would abort() due to pledge() restriction */
 #else
-	sandbox_verify(ALLOWED_PATHS, 0, ARRAY_SIZE(ALLOWED_PATHS), false);
+	const size_t sz = ARRAY_SIZE(ALLOWED_PATHS);
+	check(sandbox_verify(ALLOWED_PATHS, 0, sz, false));
 #endif
 
 	debug("%s() succeeded", __func__);

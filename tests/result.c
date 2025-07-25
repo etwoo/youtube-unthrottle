@@ -142,6 +142,7 @@ print_to_str_each_enum_value(void)
 	          "Cannot resolve");
 	ASSERT_IN(make_ns(ERR_SANDBOX_SECCOMP_RULE_ADD), "Error adding");
 	ASSERT_IN(make_n(ERR_SANDBOX_SECCOMP_LOAD), "Error in seccomp_load");
+	ASSERT_IN(make_s(ERR_SANDBOX_VERIFY), "Failed sandbox verification");
 	ASSERT_IN(make_n(ERR_TMPFILE), "Error in tmpfile");
 	ASSERT_IN(make_n(ERR_TMPFILE_FILENO), "Error fileno");
 	ASSERT_IN(make_n(ERR_TMPFILE_DUP), "Error dup");
