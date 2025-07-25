@@ -67,10 +67,10 @@ sandbox_cleanup(struct sandbox_context *context)
 #define TO_MSG(cond) "(" #cond ") at " __FILE_NAME__ ":" INT_TO_STRING(__LINE__)
 #define VERIFY(cond)                                                           \
 	do {                                                                   \
-		if (!(cond)) {                                                 \
-			return make_result(ERR_SANDBOX_VERIFY, TO_MSG(cond));  \
-		} else {                                                       \
+		if (cond) {                                                    \
 			debug("sandbox check pass: %s", #cond);                \
+		} else {                                                       \
+			return make_result(ERR_SANDBOX_VERIFY, TO_MSG(cond));  \
 		}                                                              \
 	} while (0)
 #define ASSIGN_THEN_VERIFY(var, expr, cond)                                    \
