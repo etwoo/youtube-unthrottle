@@ -75,7 +75,7 @@ sandbox_cleanup(struct sandbox_context *context)
 	} while (0)
 #define ASSIGN_THEN_VERIFY(var, expr, cond)                                    \
 	do {                                                                   \
-		var = expr;                                                    \
+		(var) = (expr);                                                \
 		debug("sandbox check prep: %s = %s", #var, #expr);             \
 		VERIFY(cond);                                                  \
 	} while (0)
