@@ -3,7 +3,7 @@
 #include "greatest.h"
 
 TEST
-sandbox_ok_does_not_crash(void)
+sandbox_ok(void)
 {
 	sandbox_handle_t context = sandbox_init();
 	ASSERT_NEQ(NULL, context);
@@ -16,5 +16,5 @@ sandbox_ok_does_not_crash(void)
 
 SUITE(sandbox_smoke_test)
 {
-	RUN_TEST(sandbox_ok_does_not_crash);
+	RUN_TEST(sandbox_ok);
 }
