@@ -63,9 +63,9 @@ sandbox_cleanup(struct sandbox_context *context)
 }
 
 static void
-socket_cleanup(const int *sfd)
+descriptor_cleanup(const int *file_or_socket)
 {
-	info_m_if(*sfd >= 0 && close(*sfd) < 0,
+	info_m_if(*file_or_socket >= 0 && close(*file_or_socket) < 0,
 	          "Ignoring error close()-ing test socket descriptor");
 }
 
@@ -108,7 +108,7 @@ sandbox_verify(const char *const *paths,
 	debug("sandbox verify: blocked kill()");
 #endif
 
-	int fd = -1;
+	int fd __attribute__((cleanup(descriptor_cleanup))) = -1;
 
 	/* sanity-check sandbox: explicit path allowlist */
 	for (size_t i = 0; i < paths_allowed; ++i) {
@@ -132,7 +132,7 @@ sandbox_verify(const char *const *paths,
 
 	/* sanity-check sandbox: network connect() */
 
-	int sfd __attribute__((cleanup(socket_cleanup))) = -1;
+	int sfd __attribute__((cleanup(descriptor_cleanup))) = -1;
 	if (connect_allowed) {
 		EVAL_VERIFY(sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP),
 		            sfd >= 0);
