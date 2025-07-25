@@ -70,24 +70,30 @@ sandbox_verify_fd_cleanup(const int *fd)
 	          "Ignoring error close()-ing sandbox_verify() descriptor");
 }
 
+static void
+noop(void)
+{
+}
+
 #define auto_sandbox_fd int __attribute__((cleanup(sandbox_verify_fd_cleanup)))
 
-#define VERIFY_WITH_MSG(cond, msg)                                             \
+#define VERIFY_WITH(cond, msg, cleanup_on_failure)                             \
 	do {                                                                   \
 		if (cond) {                                                    \
 			debug("sandbox check succeeded: " msg);                \
 		} else {                                                       \
 			info("sandbox check failed: " msg);                    \
+			cleanup_on_failure;                                    \
 			return make_result(ERR_SANDBOX_VERIFY, msg);           \
 		}                                                              \
 	} while (0)
 
-#define VERIFY(cond) VERIFY_WITH_MSG(cond, #cond)
+#define VERIFY(cond) VERIFY_WITH(cond, #cond, noop())
 
 #define EVAL_VERIFY(expr, cond)                                                \
 	do {                                                                   \
 		expr;                                                          \
-		VERIFY_WITH_MSG(cond, "setup: " #expr "; check: " #cond);      \
+		VERIFY_WITH(cond, "setup: " #expr "; check: " #cond, noop());  \
 	} while (0)
 
 static const char NEVER_ALLOWED_CANARY[] = "/etc/passwd";
@@ -135,19 +141,20 @@ sandbox_verify(const char *const *paths,
 
 	/* sanity-check sandbox: network connect() */
 
-	auto_sandbox_fd sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	int sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 #if defined(__APPLE__)
 	/*
 	 * On macOS, socket() succeeds even when connect_allowed == false.
 	 */
 	VERIFY(sfd >= 0);
 #else
-	VERIFY((connect_allowed && sfd >= 0) ||
-	       /*
-	        * On most platforms, sandboxing blocks socket() entirely.
-	        */
-	       (!connect_allowed && sfd < 0));
-	if (!connect_allowed) {
+	if (connect_allowed) {
+		VERIFY_WITH(sfd >= 0, "socket() >= 0", noop());
+	} else {
+		/*
+		 * On most platforms, sandboxing blocks socket() entirely.
+		 */
+		VERIFY_WITH(sfd < 0, "socket() < 0", close(sfd));
 		debug("sandbox verify: blocked connect()");
 		return RESULT_OK;
 	}
@@ -161,12 +168,17 @@ sandbox_verify(const char *const *paths,
 
 	const bool connected =
 		connect(sfd, (struct sockaddr *)&sa, sizeof(sa)) == 0;
+	close(sfd);
+
 #if defined(__APPLE__)
-	VERIFY((connect_allowed && connected) ||
+	if (connect_allowed) {
+		VERIFY(connected);
+	} else {
 	       /*
 	        * On macOS, sandboxing allows socket(), then blocks connect().
 	        */
-	       (!connect_allowed && !connected));
+		VERIFY(!connected);
+	}
 #else
 	assert(connect_allowed);
 	VERIFY(connected);
@@ -178,7 +190,7 @@ sandbox_verify(const char *const *paths,
 }
 
 #undef auto_sandbox_fd
-#undef VERIFY_WITH_MSG
+#undef VERIFY_WITH
 #undef VERIFY
 #undef EVAL_VERIFY
 
