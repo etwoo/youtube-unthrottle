@@ -160,7 +160,7 @@ sandbox_verify(const char *const *paths,
 	}
 #endif
 
-	info_m_if(connect_allowed && close(sfd) < 0,
+	info_m_if(connect_allowed && sfd > 0 && close(sfd) < 0,
 	          "Ignoring error close()-ing test socket");
 	debug("sandbox verify: %s connect()",
 	      connect_allowed ? "allowed" : "blocked");
