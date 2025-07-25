@@ -90,22 +90,14 @@ descriptor_cleanup(const int *file_or_socket)
 
 #define auto_descriptor int __attribute__((cleanup(descriptor_cleanup)))
 
-#define VERIFY_WITH_MSG(cond, msg)                                             \
+#define VERIFY(cond)                                                           \
 	do {                                                                   \
 		if (cond) {                                                    \
-			debug("sandbox check succeeded: " msg);                \
+			debug("sandbox check succeeded: " #cond);              \
 		} else {                                                       \
-			info("sandbox check failed: " msg);                    \
-			return make_result(ERR_SANDBOX_VERIFY, msg);           \
+			info("sandbox check failed: " #cond);                  \
+			return make_result(ERR_SANDBOX_VERIFY, #cond);         \
 		}                                                              \
-	} while (0)
-
-#define VERIFY(cond) VERIFY_WITH_MSG(cond, #cond)
-
-#define EVAL_VERIFY(expr, cond)                                                \
-	do {                                                                   \
-		expr;                                                          \
-		VERIFY_WITH_MSG(cond, "setup: " #expr "; check: " #cond);      \
 	} while (0)
 
 static const char NEVER_ALLOWED_CANARY[] = "/etc/passwd";
@@ -131,22 +123,22 @@ sandbox_verify(const char *const *paths,
 
 	/* sanity-check sandbox: explicit path allowlist */
 	for (size_t i = 0; i < paths_allowed; ++i) {
-		auto_descriptor fd = -1;
-		EVAL_VERIFY(fd = open(paths[i], 0), fd >= 0);
+		auto_descriptor fd = open(paths[i], 0);
+		VERIFY(fd >= 0);
 		debug("sandbox verify: allowed %s", paths[i]);
 	}
 
 	/* sanity-check sandbox: implicit path blocklist */
 	for (size_t i = paths_allowed; i < paths_total; ++i) {
-		auto_descriptor fd = -1;
-		EVAL_VERIFY(fd = open(paths[i], 0), fd < 0);
+		auto_descriptor fd = open(paths[i], 0);
+		VERIFY(fd < 0);
 		VERIFY(errno == EACCES || errno == ENOENT || errno == EPERM);
 		debug("sandbox verify: blocked %s", paths[i]);
 	}
 
 	{
-		auto_descriptor fd = -1;
-		EVAL_VERIFY(fd = open(NEVER_ALLOWED_CANARY, 0), fd < 0);
+		auto_descriptor fd = open(NEVER_ALLOWED_CANARY, 0);
+		VERIFY(fd < 0);
 		VERIFY(errno == EACCES || errno == ENOENT || errno == EPERM);
 		debug("sandbox verify: blocked %s", NEVER_ALLOWED_CANARY);
 	}
@@ -193,9 +185,7 @@ sandbox_verify(const char *const *paths,
 }
 
 #undef auto_descriptor
-#undef VERIFY_WITH_MSG
 #undef VERIFY
-#undef EVAL_VERIFY
 
 #pragma GCC diagnostic pop /* restore -Wanalyzer-fd-leak */
 
