@@ -66,10 +66,10 @@ static void
 sandbox_verify_fd_cleanup(const int *fd)
 {
 	info_m_if(*fd >= 0 && close(*fd) < 0,
-	          "Ignoring error close()-ing test fd");
+	          "Ignoring error close()-ing sandbox_verify() fd");
 }
 
-#define auto_fd int __attribute__((cleanup(sandbox_verify_fd_cleanup)))
+#define auto_sandbox_fd int __attribute__((cleanup(sandbox_verify_fd_cleanup)))
 
 #define VERIFY_WITH_MSG(cond, msg)                                             \
 	do {                                                                   \
@@ -112,21 +112,21 @@ sandbox_verify(const char *const *paths,
 
 	/* sanity-check sandbox: explicit path allowlist */
 	for (size_t i = 0; i < paths_allowed; ++i) {
-		auto_fd fd = -1;
+		auto_sandbox_fd fd = -1;
 		EVAL_VERIFY(fd = open(paths[i], 0), fd >= 0);
 		debug("sandbox verify: allowed %s", paths[i]);
 	}
 
 	/* sanity-check sandbox: implicit path blocklist */
 	for (size_t i = paths_allowed; i < paths_total; ++i) {
-		auto_fd fd = -1;
+		auto_sandbox_fd fd = -1;
 		EVAL_VERIFY(fd = open(paths[i], 0), fd < 0);
 		VERIFY(errno == EACCES || errno == ENOENT || errno == EPERM);
 		debug("sandbox verify: blocked %s", paths[i]);
 	}
 
 	{
-		auto_fd fd = -1;
+		auto_sandbox_fd fd = -1;
 		EVAL_VERIFY(fd = open(NEVER_ALLOWED_CANARY, 0), fd < 0);
 		VERIFY(errno == EACCES || errno == ENOENT || errno == EPERM);
 		debug("sandbox verify: blocked %s", NEVER_ALLOWED_CANARY);
@@ -183,7 +183,7 @@ sandbox_verify(const char *const *paths,
 	return RESULT_OK;
 }
 
-#undef auto_fd
+#undef auto_sandbox_fd
 #undef VERIFY_WITH_MSG
 #undef VERIFY
 #undef EVAL_VERIFY
