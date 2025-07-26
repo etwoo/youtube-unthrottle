@@ -5,10 +5,9 @@
 #include <arpa/inet.h>
 #include <assert.h>
 #include <fcntl.h>
-//#include <netdb.h> // TODO: remove if all plats build?
+#include <netdb.h>
 #include <signal.h>
-//#include <stdio.h> // TODO: remove if all plats build?
-//#include <sys/socket.h> // TODO: remove if all plats build?
+#include <sys/socket.h>
 #include <unistd.h>
 
 #pragma GCC diagnostic push
