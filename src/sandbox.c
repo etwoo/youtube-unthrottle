@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <sysexits.h> /* for EX_OSERR */
+#include <unistd.h>
 
 struct sandbox_context {
 #if defined(__APPLE__)
