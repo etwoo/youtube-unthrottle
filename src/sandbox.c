@@ -190,9 +190,9 @@ sandbox_verify(const char *const *paths,
 	}
 #endif
 	verify(connect(sfd, (struct sockaddr *)&sa, sizeof(sa)) == 0);
+	debug("%s(): allowed socket() and connect()", __func__);
 
 	assert(connect_allowed); /* assert no logic error in #ifdef's above */
-	debug("%s(): allowed socket() and connect()", __func__);
 	return RESULT_OK;
 }
 
