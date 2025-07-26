@@ -11,6 +11,7 @@
 #include "sys/debug.h"
 
 #include <arpa/inet.h>
+#include <assert.h>
 #if defined(__OpenBSD__)
 #include <err.h> /* for err() */
 #endif
@@ -107,7 +108,7 @@ open_socket(int *sfd)
 #define verify(cond)                                                           \
 	do {                                                                   \
 		if (cond) {                                                    \
-			debug("sandbox check succeeded: " #cond);              \
+			debug("sandbox check passed: " #cond);                 \
 		} else {                                                       \
 			info("sandbox check failed: " #cond);                  \
 			return make_result(ERR_SANDBOX_VERIFY, #cond);         \
@@ -160,19 +161,17 @@ sandbox_verify(const char *const *paths,
 	/* sanity-check sandbox: network connect() */
 
 	auto_descriptor sfd = -1;
-	if (connect_allowed) {
-		verify(open_socket(&sfd) >= 0);
-	}
-#if !defined(__APPLE__)
-	else {
+#if defined(__OpenBSD__) || defined(__linux__)
+	if (!connect_allowed) {
 		/*
 		 * On most platforms, sandboxing blocks socket() entirely.
 		 */
 		verify(open_socket(&sfd) < 0);
-		debug("sandbox verify: blocked connect()");
+		debug("sandbox verify: blocked socket()");
 		return RESULT_OK;
 	}
 #endif
+	verify(open_socket(&sfd) >= 0);
 
 	struct sockaddr_in sa;
 	memset(&sa, 0, sizeof(sa));
@@ -180,20 +179,20 @@ sandbox_verify(const char *const *paths,
 	sa.sin_port = htons(443);
 	inet_pton(AF_INET, "23.192.228.68", &sa.sin_addr); /* example.com */
 
-	if (connect_allowed) {
-		verify(connect(sfd, (struct sockaddr *)&sa, sizeof(sa)) == 0);
-	}
 #if defined(__APPLE__)
-	else {
+	if (!connect_allowed) {
 		/*
 		 * On macOS, sandboxing allows socket(), then blocks connect().
 		 */
 		verify(connect(sfd, (struct sockaddr *)&sa, sizeof(sa)) != 0);
+		debug("sandbox verify: blocked connect()");
+		return RESULT_OK;
 	}
 #endif
+	verify(connect(sfd, (struct sockaddr *)&sa, sizeof(sa)) == 0);
 
-	debug("sandbox verify: %s connect()",
-	      connect_allowed ? "allowed" : "blocked");
+	assert(connect_allowed); /* assert no logic error in #ifdef's above */
+	debug("sandbox verify: allowed socket() and connect()");
 	return RESULT_OK;
 }
 
