@@ -133,14 +133,14 @@ sandbox_verify(const char *const *paths,
 	 */
 	verify(kill(getpid(), SIGKILL) < 0);
 	verify(errno == EACCES);
-	debug("sandbox verify: blocked kill()");
+	debug("%s(): blocked kill()", __func__);
 #endif
 
 	/* sanity-check sandbox: explicit path allowlist */
 	for (size_t i = 0; i < paths_allowed; ++i) {
 		auto_descriptor fd = -1;
 		verify(open_file(&fd, paths[i]) >= 0);
-		debug("sandbox verify: allowed %s", paths[i]);
+		debug("%s(): allowed %s", __func__, paths[i]);
 	}
 
 	/* sanity-check sandbox: implicit path blocklist */
@@ -148,14 +148,14 @@ sandbox_verify(const char *const *paths,
 		auto_descriptor fd = -1;
 		verify(open_file(&fd, paths[i]) < 0);
 		verify(errno == EACCES || errno == ENOENT || errno == EPERM);
-		debug("sandbox verify: blocked %s", paths[i]);
+		debug("%s(): blocked %s", __func__, paths[i]);
 	}
 
 	{
 		auto_descriptor fd = -1;
 		verify(open_file(&fd, NEVER_ALLOWED_CANARY) < 0);
 		verify(errno == EACCES || errno == ENOENT || errno == EPERM);
-		debug("sandbox verify: blocked %s", NEVER_ALLOWED_CANARY);
+		debug("%s(): blocked %s", __func__, NEVER_ALLOWED_CANARY);
 	}
 
 	/* sanity-check sandbox: network connect() */
@@ -167,7 +167,7 @@ sandbox_verify(const char *const *paths,
 		 * On most platforms, sandboxing blocks socket() entirely.
 		 */
 		verify(open_socket(&sfd) < 0);
-		debug("sandbox verify: blocked socket()");
+		debug("%s(): blocked socket()", __func__);
 		return RESULT_OK;
 	}
 #endif
@@ -185,14 +185,14 @@ sandbox_verify(const char *const *paths,
 		 * On macOS, sandboxing allows socket(), then blocks connect().
 		 */
 		verify(connect(sfd, (struct sockaddr *)&sa, sizeof(sa)) != 0);
-		debug("sandbox verify: blocked connect()");
+		debug("%s(): blocked connect()", __func__);
 		return RESULT_OK;
 	}
 #endif
 	verify(connect(sfd, (struct sockaddr *)&sa, sizeof(sa)) == 0);
 
 	assert(connect_allowed); /* assert no logic error in #ifdef's above */
-	debug("sandbox verify: allowed socket() and connect()");
+	debug("%s(): allowed socket() and connect()", __func__);
 	return RESULT_OK;
 }
 
