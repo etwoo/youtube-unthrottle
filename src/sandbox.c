@@ -161,7 +161,7 @@ sandbox_verify(const char *const *paths,
 	/* sanity-check sandbox: network connect() */
 
 	auto_descriptor sfd = -1;
-#if defined(__OpenBSD__) || defined(__linux__)
+#if !defined(__APPLE__)
 	if (!connect_allowed) {
 		/*
 		 * On most platforms, sandboxing blocks socket() entirely.
