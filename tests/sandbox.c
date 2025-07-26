@@ -3,18 +3,23 @@
 #include "greatest.h"
 
 TEST
-sandbox_ok_does_not_crash(void)
+sandbox_ok(void)
 {
 	sandbox_handle_t context = sandbox_init();
 	ASSERT_NEQ(NULL, context);
-	ASSERT_EQ(OK, sandbox_only_io_inet_tmpfile(context).err);
-	ASSERT_EQ(OK, sandbox_only_io_inet_rpath(context).err);
-	ASSERT_EQ(OK, sandbox_only_io(context).err);
+
+	auto_result err = sandbox_only_io_inet_tmpfile(context);
+	ASSERT_EQ(OK, err.err);
+	err = sandbox_only_io_inet_rpath(context);
+	ASSERT_EQ(OK, err.err);
+	err = sandbox_only_io(context);
+	ASSERT_EQ(OK, err.err);
+
 	sandbox_cleanup(context);
 	PASS();
 }
 
 SUITE(sandbox_smoke_test)
 {
-	RUN_TEST(sandbox_ok_does_not_crash);
+	RUN_TEST(sandbox_ok);
 }
