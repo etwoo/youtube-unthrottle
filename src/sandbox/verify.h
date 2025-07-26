@@ -9,6 +9,6 @@
 result_t sandbox_verify(const char *const *paths,
                         size_t paths_allowed,
                         size_t paths_total,
-                        bool connect_allowed) WARN_UNUSED;
+                        bool network_allowed) WARN_UNUSED;
 
 #endif

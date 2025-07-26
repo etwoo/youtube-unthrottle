@@ -69,7 +69,7 @@ result_t
 sandbox_verify(const char *const *paths,
                size_t paths_allowed,
                size_t paths_total,
-               bool connect_allowed)
+               bool network_allowed)
 {
 #if defined(__linux__)
 	/*
@@ -110,7 +110,7 @@ sandbox_verify(const char *const *paths,
 
 	auto_descriptor sfd = -1;
 #if !defined(__APPLE__)
-	if (!connect_allowed) {
+	if (!network_allowed) {
 		/*
 		 * On most platforms, sandboxing blocks socket() entirely.
 		 */
@@ -128,7 +128,7 @@ sandbox_verify(const char *const *paths,
 	inet_pton(AF_INET, "23.192.228.68", &sa.sin_addr); /* example.com */
 
 #if defined(__APPLE__)
-	if (!connect_allowed) {
+	if (!network_allowed) {
 		/*
 		 * On macOS, sandboxing allows socket(), then blocks connect().
 		 */
@@ -140,7 +140,7 @@ sandbox_verify(const char *const *paths,
 	verify(connect(sfd, (struct sockaddr *)&sa, sizeof(sa)) == 0);
 	debug("%s(): allowed socket() and connect()", __func__);
 
-	assert(connect_allowed && "Mistakes in OS-specific #if macros above?");
+	assert(network_allowed && "Mistakes in OS-specific #if macros above?");
 	return RESULT_OK;
 }
 
