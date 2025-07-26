@@ -192,7 +192,7 @@ sandbox_verify(const char *const *paths,
 	verify(connect(sfd, (struct sockaddr *)&sa, sizeof(sa)) == 0);
 	debug("%s(): allowed socket() and connect()", __func__);
 
-	assert(connect_allowed); /* assert no logic error in #ifdef's above */
+	assert(connect_allowed && "Mistakes in OS-specific #if macros above?");
 	return RESULT_OK;
 }
 
