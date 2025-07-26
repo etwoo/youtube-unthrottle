@@ -13,8 +13,8 @@
 #if defined(__OpenBSD__)
 #include <err.h> /* for err() */
 #endif
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <sysexits.h> /* for EX_OSERR */
 #include <unistd.h>
 
