@@ -6,7 +6,7 @@
 #include <assert.h>
 #include <fcntl.h>
 //#include <netdb.h> // TODO: remove if all plats build?
-//#include <signal.h> // TODO: remove if all plats build?
+#include <signal.h>
 //#include <stdio.h> // TODO: remove if all plats build?
 //#include <sys/socket.h> // TODO: remove if all plats build?
 #include <unistd.h>
