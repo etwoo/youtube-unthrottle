@@ -1,6 +1,7 @@
 #include "test_network.h"
 
 #include "sandbox/verify.h" /* for SANDBOX_VERIFY_STATIC_IP_ADDRESS */
+#include "test_macros.h"
 
 #include <arpa/inet.h>
 #include <errno.h>
@@ -11,7 +12,7 @@ enum greatest_test_res
 check_network(bool allowed)
 {
 	int sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	ASSERT_LTE(0, sfd);
+	ASSERT_VALID_DESCRIPTOR(sfd);
 
 	struct sockaddr_in sa;
 	memset(&sa, 0, sizeof(sa));

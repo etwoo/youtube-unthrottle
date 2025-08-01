@@ -2,6 +2,7 @@
 
 #include "greatest.h"
 #include "sys/tmpfile.h"
+#include "test_macros.h"
 #include "test_network.h"
 
 #include <fcntl.h>  /* for open() */
@@ -19,53 +20,29 @@ check_seatbelt_filesystem(check_seatbelt_filesystem_level level)
 {
 	int fd = open(__FILE__, O_RDONLY);
 	if (level <= ALLOW_ALL) {
-		ASSERT_LTE(0, fd);
-		int rc = close(fd);
-		ASSERT_EQ(0, rc);
+		ASSERT_VALID_DESCRIPTOR(fd);
+		ASSERT_EQ(0, close(fd));
 	} else {
-		if (fd >= 0) {
-			/*
-			 * Make sure not to leak a file descriptor, even if
-			 * open() unexpectedly succeeds.
-			 */
-			close(fd);
-		}
-		ASSERT_GT(0, fd);
+		ASSERT_INVALID_DESCRIPTOR(fd);
 	}
 
 	int tmp = -1;
 	auto_result err = tmpfd(&tmp);
 	if (level <= ALLOW_TMPFILE_CREATE) {
 		ASSERT_EQ(OK, err.err);
-		ASSERT_LTE(0, tmp);
-		int rc = close(tmp);
-		ASSERT_EQ(0, rc);
+		ASSERT_VALID_DESCRIPTOR(tmp);
+		ASSERT_EQ(0, close(tmp));
 	} else {
-		if (tmp >= 0) {
-			/*
-			 * Make sure not to leak a file descriptor, even if
-			 * tmpfd() unexpectedly succeeds.
-			 */
-			close(tmp);
-		}
 		ASSERT_EQ(ERR_TMPFILE, err.err);
-		ASSERT_GT(0, tmp);
+		ASSERT_INVALID_DESCRIPTOR(tmp);
 	}
 
 	fd = open(P_tmpdir, 0);
 	if (level <= ALLOW_TMPFILE_READ) {
-		ASSERT_LTE(0, fd);
-		int rc = close(fd);
-		ASSERT_EQ(0, rc);
+		ASSERT_VALID_DESCRIPTOR(fd);
+		ASSERT_EQ(0, close(fd));
 	} else {
-		if (fd >= 0) {
-			/*
-			 * Make sure not to leak a file descriptor, even if
-			 * open() unexpectedly succeeds.
-			 */
-			close(fd);
-		}
-		ASSERT_GT(0, fd);
+		ASSERT_INVALID_DESCRIPTOR(fd);
 	}
 
 	PASS();

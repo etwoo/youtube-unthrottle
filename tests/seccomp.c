@@ -2,6 +2,7 @@
 
 #include "greatest.h"
 #include "sys/tmpfile.h"
+#include "test_macros.h"
 
 #include <arpa/inet.h>
 #include <errno.h>
@@ -39,18 +40,10 @@ check_socket(bool allowed)
 {
 	int sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (allowed) {
-		ASSERT_LTE(0, sfd);
-		int rc = close(sfd);
-		ASSERT_EQ(0, rc);
+		ASSERT_VALID_DESCRIPTOR(sfd);
+		ASSERT_EQ(0, close(sfd));
 	} else {
-		if (sfd >= 0) {
-			/*
-			 * Make sure not to leak a file descriptor, even if
-			 * socket() unexpectedly succeeds.
-			 */
-			close(sfd);
-		}
-		ASSERT_GT(0, sfd);
+		ASSERT_INVALID_DESCRIPTOR(sfd);
 		ASSERT_EQ(EACCES, errno);
 	}
 	PASS();
@@ -61,11 +54,10 @@ check_open_rdonly(bool allowed)
 {
 	int fd = open(__FILE__, O_RDONLY);
 	if (allowed) {
-		ASSERT_LTE(0, fd);
-		int rc = close(fd);
-		ASSERT_EQ(0, rc);
+		ASSERT_VALID_DESCRIPTOR(fd);
+		ASSERT_EQ(0, close(fd));
 	} else {
-		ASSERT_GT(0, fd);
+		ASSERT_INVALID_DESCRIPTOR(fd);
 		ASSERT_EQ(EACCES, errno);
 	}
 	PASS();
@@ -78,12 +70,11 @@ check_open_tmpfile(bool allowed)
 	auto_result err = tmpfd(&tmp);
 	if (allowed) {
 		ASSERT_EQ(OK, err.err);
-		ASSERT_LTE(0, tmp);
-		int rc = close(tmp);
-		ASSERT_EQ(0, rc);
+		ASSERT_VALID_DESCRIPTOR(tmp);
+		ASSERT_EQ(0, close(tmp));
 	} else {
 		ASSERT_EQ(ERR_TMPFILE, err.err);
-		ASSERT_GT(0, tmp);
+		ASSERT_INVALID_DESCRIPTOR(tmp);
 		ASSERT_EQ(EACCES, errno);
 	}
 	PASS();
