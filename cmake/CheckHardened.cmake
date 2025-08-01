@@ -14,8 +14,9 @@ macro(check_hardened lib)
 	cmake_push_check_state()
 	set(CMAKE_REQUIRED_QUIET ON)
 	set(CMAKE_REQUIRED_FLAGS
-		-Werror # treat all warnings as errors
-		-O2     # _FORTIFY_SOURCE requires optimization
+		"-O2 -Werror"
+		#     ^^^^^^ treat all warnings as errors
+		# ^^ _FORTIFY_SOURCE requires optimization
 	)
 	check_c_compiler_flag(-fhardened CFLAG_HARDENED)
 	cmake_pop_check_state()
