@@ -27,7 +27,7 @@ youtube_handle_t youtube_stream_init(const char *proof_of_origin,
                                      const char *visitor_data,
                                      const struct youtube_stream_ops *ops)
 	__attribute__((warn_unused_result));
-void youtube_stream_cleanup(youtube_handle_t p);
+void youtube_stream_free(youtube_handle_t p);
 
 result_t youtube_stream_prepare_tmpfiles(youtube_handle_t p)
 	__attribute__((warn_unused_result));
@@ -44,5 +44,14 @@ result_t youtube_stream_visitor(youtube_handle_t p,
                                 void (*visit)(const char *, size_t, void *),
                                 void *userdata)
 	__attribute__((warn_unused_result));
+
+/*
+ * Convenience helper for use with __attribute__((cleanup)) like:
+ *
+ * youtube_handle_t h __attribute__((youtube_cleanup)) = youtube_stream_init();
+ *
+ * This calls `youtube_stream_free(h)` when <h> goes out of scope.
+ */
+void youtube_cleanup(youtube_handle_t *pp);
 
 #endif

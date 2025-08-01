@@ -120,7 +120,8 @@ check_url(const char *url, size_t sz, void *userdata)
 TEST
 stream_with(const char *expected_url)
 {
-	youtube_handle_t stream = youtube_stream_init(TEST_P, TEST_V, &TEST_OP);
+	youtube_handle_t stream __attribute__((cleanup(youtube_cleanup))) =
+		youtube_stream_init(TEST_P, TEST_V, &TEST_OP);
 	ASSERT(stream);
 
 	auto_result err = youtube_stream_prepare_tmpfiles(stream);
@@ -143,8 +144,6 @@ stream_with(const char *expected_url)
 
 	ASSERT_EQ(OK, err.err);
 	ASSERT(cus.got_correct_urls);
-
-	youtube_stream_cleanup(stream);
 	PASS();
 }
 
@@ -159,7 +158,8 @@ SUITE(stream_n_param_positions)
 TEST
 err_with(const char *target_url, unsigned expected_result_type)
 {
-	youtube_handle_t stream = youtube_stream_init(TEST_P, TEST_V, &TEST_OP);
+	youtube_handle_t stream __attribute__((cleanup(youtube_cleanup))) =
+		youtube_stream_init(TEST_P, TEST_V, &TEST_OP);
 	ASSERT(stream);
 
 	auto_result err = youtube_stream_prepare_tmpfiles(stream);
@@ -168,8 +168,6 @@ err_with(const char *target_url, unsigned expected_result_type)
 	err = youtube_stream_open(stream, target_url, TEST_OFD);
 	ASSERT_EQ(expected_result_type, err.err);
 	ASSERT(youtube_stream_done(stream));
-
-	youtube_stream_cleanup(stream);
 	PASS();
 }
 

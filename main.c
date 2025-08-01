@@ -73,7 +73,8 @@ result_to_status(result_t r)
 static __attribute__((warn_unused_result)) result_t
 try_sandbox(void)
 {
-	sandbox_handle_t sandbox = sandbox_init();
+	sandbox_handle_t sandbox __attribute__((cleanup(sandbox_cleanup))) =
+		sandbox_init();
 	check_if(sandbox == NULL, ERR_SANDBOX_ALLOC);
 	check(sandbox_only_io_inet_tmpfile(sandbox));
 	check(sandbox_only_io_inet_rpath(sandbox));
@@ -341,7 +342,9 @@ main(int argc, char *argv[])
 			get_output_fd(20000, output, 2);
 
 			youtube_handle_t stream = NULL;
-			sandbox_handle_t sandbox = NULL;
+			sandbox_handle_t sandbox
+				__attribute__((cleanup(sandbox_cleanup))) =
+					NULL;
 			rc = result_to_status(unthrottle(argv[optind],
 			                                 proof_of_origin,
 			                                 visitor_data,
@@ -358,9 +361,8 @@ main(int argc, char *argv[])
 				rc = EX_OSERR;
 			}
 
-			youtube_stream_cleanup(stream);
+			youtube_stream_free(stream);
 			youtube_global_cleanup();
-			sandbox_cleanup(sandbox);
 			close_output_fd(output[0]);
 			close_output_fd(output[1]);
 		}
