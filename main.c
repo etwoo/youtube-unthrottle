@@ -160,6 +160,11 @@ close_output_fd(int fd)
 	}
 }
 
+#pragma GCC diagnostic push
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic ignored "-Wanalyzer-fd-leak"
+#endif
+
 static void
 get_output_fd(in_port_t port, int *out, size_t out_sz)
 {
@@ -223,6 +228,8 @@ cleanup:
 		close_output_fd(sfd); /* done accepting connections */
 	}
 }
+
+#pragma GCC diagnostic pop /* restore -Wanalyzer-fd-leak */
 
 static __attribute__((warn_unused_result)) result_t
 unthrottle(const char *target,

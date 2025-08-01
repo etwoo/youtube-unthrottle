@@ -68,7 +68,8 @@ endif ()
 generate_test_driver()
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Darwin" AND CMAKE_C_COMPILER_ID STREQUAL "GNU")
-	set_source_files_properties(test_driver.c PROPERTIES COMPILE_FLAGS
-		-Wno-analyzer-null-argument # suppress warning in generated code
+	# suppress warnings in generated code
+	set_source_files_properties(test_driver.c PROPERTIES COMPILE_OPTIONS
+		"-Wno-analyzer-null-argument;-Wno-analyzer-use-of-uninitialized-value"
 	)
 endif ()
