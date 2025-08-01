@@ -11,4 +11,6 @@ result_t sandbox_verify(const char *const *paths,
                         size_t paths_total,
                         bool network_allowed) WARN_UNUSED;
 
+extern const char SANDBOX_VERIFY_STATIC_IP_ADDRESS[];
+
 #endif

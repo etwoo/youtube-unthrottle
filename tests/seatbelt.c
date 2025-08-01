@@ -2,13 +2,10 @@
 
 #include "greatest.h"
 #include "sys/tmpfile.h"
+#include "test_network.h"
 
-#include <arpa/inet.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <stdbool.h>
-#include <sys/socket.h>
-#include <unistd.h>
+#include <fcntl.h>  /* for open() */
+#include <unistd.h> /* for close() */
 
 typedef enum {
 	ALLOW_ALL,
@@ -17,7 +14,7 @@ typedef enum {
 	ALLOW_NONE,
 } check_seatbelt_filesystem_level;
 
-static enum greatest_test_res
+static WARN_UNUSED enum greatest_test_res
 check_seatbelt_filesystem(check_seatbelt_filesystem_level level)
 {
 	int fd = open(__FILE__, O_RDONLY);
@@ -74,37 +71,11 @@ check_seatbelt_filesystem(check_seatbelt_filesystem_level level)
 	PASS();
 }
 
-static enum greatest_test_res
-check_seatbelt_network(bool allowed)
-{
-	int sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	ASSERT_LTE(0, sfd);
-
-	struct sockaddr_in sa;
-	memset(&sa, 0, sizeof(sa));
-	sa.sin_family = AF_INET;
-	sa.sin_port = htons(443);
-	inet_pton(AF_INET, "23.192.228.68", &sa.sin_addr); /* example.com */
-
-	const int connected = connect(sfd, (struct sockaddr *)&sa, sizeof(sa));
-	const int connected_errno = errno;
-	const int closed = close(sfd);
-	if (allowed) {
-		ASSERT_EQ(0, connected);
-	} else {
-		ASSERT_EQ(-1, connected);
-		ASSERT_EQ(EPERM, connected_errno);
-	}
-	ASSERT_EQ(0, closed);
-
-	PASS();
-}
-
 TEST
 seatbelt_none(void)
 {
 	CHECK_CALL(check_seatbelt_filesystem(ALLOW_ALL));
-	CHECK_CALL(check_seatbelt_network(true));
+	CHECK_CALL(check_network(true));
 	PASS();
 }
 
@@ -115,7 +86,7 @@ seatbelt_filesystem_allows_tmpfile_create(struct seatbelt_context *c)
 	ASSERT_EQ(OK, err.err);
 
 	CHECK_CALL(check_seatbelt_filesystem(ALLOW_TMPFILE_CREATE));
-	CHECK_CALL(check_seatbelt_network(true));
+	CHECK_CALL(check_network(true));
 	PASS();
 }
 
@@ -126,7 +97,7 @@ seatbelt_filesystem_allows_tmpfile_read(struct seatbelt_context *c)
 	ASSERT_EQ(OK, err.err);
 
 	CHECK_CALL(check_seatbelt_filesystem(ALLOW_TMPFILE_READ));
-	CHECK_CALL(check_seatbelt_network(true));
+	CHECK_CALL(check_network(true));
 	PASS();
 }
 
@@ -137,7 +108,7 @@ seatbelt_filesystem_blocks_tmpfile(struct seatbelt_context *c)
 	ASSERT_EQ(OK, err.err);
 
 	CHECK_CALL(check_seatbelt_filesystem(ALLOW_NONE));
-	CHECK_CALL(check_seatbelt_network(true));
+	CHECK_CALL(check_network(true));
 	PASS();
 }
 
@@ -148,7 +119,7 @@ seatbelt_filesystem_blocks_tmpfile_blocks_network(struct seatbelt_context *c)
 	ASSERT_EQ(OK, err.err);
 
 	CHECK_CALL(check_seatbelt_filesystem(ALLOW_NONE));
-	CHECK_CALL(check_seatbelt_network(false));
+	CHECK_CALL(check_network(false));
 	PASS();
 }
 

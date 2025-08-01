@@ -10,6 +10,8 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+const char SANDBOX_VERIFY_STATIC_IP_ADDRESS[] = "1.1.1.1"; /* Cloudflare DNS */
+
 #pragma GCC diagnostic push
 #if defined(__GNUC__) && !defined(__clang__)
 /*
@@ -114,6 +116,7 @@ sandbox_verify(const char *const *paths,
 		 * On most platforms, sandboxing blocks socket() entirely.
 		 */
 		verify(open_socket(&sfd) < 0);
+		verify(errno == EACCES);
 		debug("%s(): blocked socket()", __func__);
 		return RESULT_OK;
 	}
@@ -124,7 +127,7 @@ sandbox_verify(const char *const *paths,
 	memset(&sa, 0, sizeof(sa));
 	sa.sin_family = AF_INET;
 	sa.sin_port = htons(443);
-	inet_pton(AF_INET, "23.192.228.68", &sa.sin_addr); /* example.com */
+	inet_pton(AF_INET, SANDBOX_VERIFY_STATIC_IP_ADDRESS, &sa.sin_addr);
 
 #if defined(__APPLE__)
 	if (!network_allowed) {
@@ -132,6 +135,7 @@ sandbox_verify(const char *const *paths,
 		 * On macOS, sandboxing allows socket(), then blocks connect().
 		 */
 		verify(connect(sfd, (struct sockaddr *)&sa, sizeof(sa)) != 0);
+		verify(errno == EPERM);
 		debug("%s(): blocked connect()", __func__);
 		return RESULT_OK;
 	}

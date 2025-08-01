@@ -40,6 +40,7 @@ macro(generate_test_driver)
 	add_executable(test-driver
 		${generated_sources}
 		test_suites.c
+		test_network.c
 		coverage.c
 	)
 	target_include_directories(test-driver PRIVATE
