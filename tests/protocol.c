@@ -353,7 +353,7 @@ protocol_parse_response_media_header_and_blob(void)
 	int fd = -1;
 	auto_result err = tmpfd(&fd);
 	ASSERT_EQ(OK, err.err);
-	ASSERT_LTE(0, fd);
+	ASSERT_VALID_DESCRIPTOR(fd);
 	/* clang-format off */
 	/*
 	 * To generate binary protobuf blobs below:
@@ -452,9 +452,7 @@ protocol_parse_response_media_header_and_blob(void)
 	}
 	ASSERT_STRN_EQ("BARBAR", written, sizeof(written));
 
-	const int rc = close(fd);
-	ASSERT_EQ(0, rc);
-
+	ASSERT_EQ(0, close(fd));
 	PASS();
 }
 
