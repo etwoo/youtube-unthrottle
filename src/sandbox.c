@@ -40,7 +40,7 @@ struct sandbox_context {
 #endif
 };
 
-sandbox_handle_t
+struct sandbox_context *
 sandbox_init(void)
 {
 	struct sandbox_context *p = malloc(sizeof(*p));
@@ -51,9 +51,15 @@ sandbox_init(void)
 }
 
 void
-sandbox_cleanup(struct sandbox_context *context)
+sandbox_free(struct sandbox_context *context)
 {
 	free(context);
+}
+
+void
+sandbox_cleanup(struct sandbox_context **pp)
+{
+	sandbox_free(*pp);
 }
 
 static const char *const ALLOWED_PATHS[] = {

@@ -5,7 +5,8 @@
 TEST
 sandbox_ok(void)
 {
-	sandbox_handle_t context = sandbox_init();
+	sandbox_handle_t context __attribute__((cleanup(sandbox_cleanup))) =
+		sandbox_init();
 	ASSERT_NEQ(NULL, context);
 
 	auto_result err = sandbox_only_io_inet_tmpfile(context);
@@ -15,7 +16,6 @@ sandbox_ok(void)
 	err = sandbox_only_io(context);
 	ASSERT_EQ(OK, err.err);
 
-	sandbox_cleanup(context);
 	PASS();
 }
 
