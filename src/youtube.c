@@ -89,7 +89,7 @@ youtube_stream_init(const char *proof_of_origin,
 }
 
 void
-youtube_stream_cleanup(struct youtube_stream *p)
+youtube_stream_free(struct youtube_stream *p)
 {
 	if (p) {
 		protocol_cleanup(p->stream);
@@ -102,6 +102,12 @@ youtube_stream_cleanup(struct youtube_stream *p)
 		downloaded_cleanup(&p->ump);
 	}
 	free(p);
+}
+
+void
+youtube_cleanup(struct youtube_stream **pp)
+{
+	youtube_stream_free(*pp);
 }
 
 result_t

@@ -361,7 +361,7 @@ main(int argc, char *argv[])
 				rc = EX_OSERR;
 			}
 
-			youtube_stream_cleanup(stream);
+			youtube_stream_free(stream);
 			youtube_global_cleanup();
 			close_output_fd(output[0]);
 			close_output_fd(output[1]);
