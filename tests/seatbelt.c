@@ -26,6 +26,13 @@ check_seatbelt_filesystem(check_seatbelt_filesystem_level level)
 		int rc = close(fd);
 		ASSERT_EQ(0, rc);
 	} else {
+		if (fd >= 0) {
+			/*
+			 * Make sure not to leak a file descriptor, even if
+			 * open() unexpectedly succeeds.
+			 */
+			close(fd);
+		}
 		ASSERT_GT(0, fd);
 	}
 
@@ -37,6 +44,13 @@ check_seatbelt_filesystem(check_seatbelt_filesystem_level level)
 		int rc = close(tmp);
 		ASSERT_EQ(0, rc);
 	} else {
+		if (tmp >= 0) {
+			/*
+			 * Make sure not to leak a file descriptor, even if
+			 * tmpfd() unexpectedly succeeds.
+			 */
+			close(tmp);
+		}
 		ASSERT_EQ(ERR_TMPFILE, err.err);
 		ASSERT_GT(0, tmp);
 	}
@@ -47,6 +61,13 @@ check_seatbelt_filesystem(check_seatbelt_filesystem_level level)
 		int rc = close(fd);
 		ASSERT_EQ(0, rc);
 	} else {
+		if (fd >= 0) {
+			/*
+			 * Make sure not to leak a file descriptor, even if
+			 * open() unexpectedly succeeds.
+			 */
+			close(fd);
+		}
 		ASSERT_GT(0, fd);
 	}
 

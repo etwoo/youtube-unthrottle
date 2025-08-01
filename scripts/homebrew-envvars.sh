@@ -9,6 +9,15 @@ echo "CFLAGS=-I$BREW_PREFIX/include"
 echo "LDFLAGS=-L$BREW_PREFIX/lib"
 echo "LD_LIBRARY_PATH=$BREW_PREFIX/lib"
 
+# Handle CC_HINT specifying an exact match, instead of a prefix.
+if echo "$CC_HINT" | grep -qEe '-[1-9]+$' ; then
+	exact_match="$BREW_PREFIX/bin/$CC_HINT"
+	if [ -f "$exact_match" ] ; then
+		echo "CC=$exact_match"
+		exit 0
+	fi
+fi
+
 # For reference on this idiom for checking if a glob matched, see:
 #   https://unix.stackexchange.com/a/298302
 shopt -s nullglob
