@@ -47,11 +47,8 @@ target_include_directories(youtube-protocol PRIVATE
 target_include_directories(youtube-protocol SYSTEM PUBLIC
 	${PROTOBUF_INCLUDE_DIRS}
 )
-target_link_directories(youtube-protocol PUBLIC
-	${PROTOBUF_LIBRARY_DIRS}
-)
 target_link_libraries(youtube-protocol PRIVATE
-	${PROTOBUF_LIBRARIES}
+	${PROTOBUF_LINK_LIBRARIES}
 )
 if (NOT CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
 	target_link_libraries(youtube-protocol PRIVATE
