@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.25)
 project(youtube-unthrottle)
 
+list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
+include(AdjustGlobalIncludesAndLibraries)
+adjust_global_includes_and_libraries()
+
 add_executable(youtube-unthrottle)
 target_sources(youtube-unthrottle PUBLIC main.c)
 target_link_libraries(youtube-unthrottle PRIVATE my_cflags sanitizers youtube)
@@ -8,12 +12,10 @@ target_link_libraries(youtube-unthrottle PRIVATE my_cflags sanitizers youtube)
 add_library(youtube)
 target_include_directories(youtube PUBLIC include)
 
-list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
-include(get_cpm)
-
 add_subdirectory(src)
 
 if (BUILD_TESTING)
+	include(get_cpm)
 	# Note: this use of CPMAddPackage() defines ${greatest_SOURCE_DIR}
 	CPMAddPackage(
 		NAME greatest
@@ -149,19 +151,3 @@ if (CMAKE_C_COMPILER_ID STREQUAL "Clang")
 	)
 endif (CMAKE_C_COMPILER_ID STREQUAL "Clang")
 
-#
-# Workaround PATH, include, and library issues on various platforms.
-#
-
-if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-	# Link against libraries installed via macOS Homebrew.
-	if (IS_DIRECTORY /opt/homebrew)
-		message(STATUS "Including libraries installed via Homebrew")
-		include_directories(SYSTEM /opt/homebrew/include)
-		link_directories(/opt/homebrew/lib)
-	endif (IS_DIRECTORY /opt/homebrew)
-elseif (CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
-	message(STATUS "Including libraries installed via OpenBSD ports")
-	include_directories(SYSTEM /usr/local/include)
-	link_directories(/usr/local/lib)
-endif ()
