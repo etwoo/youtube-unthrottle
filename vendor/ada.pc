@@ -1,0 +1,17 @@
+#
+# This is a vendored copy of OpenBSD's pkg-config file for ada version 3.2.6,
+# backported to ada 3.2.1. We should only require this workaround until the
+# next release of OpenBSD (likely 7.8), when pkg-config support for ada should
+# land in the binary snapshot of ports.
+#
+
+prefix=/usr/local
+includedir=${prefix}/include
+libdir=${prefix}/lib
+
+Name: ada
+Description: Fast spec-compliant URL parser
+URL: 
+Version: 3.2.1
+Cflags: -I${includedir} 
+Libs: -L${libdir} -lada
