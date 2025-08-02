@@ -25,11 +25,7 @@ add_custom_command(
 )
 set_source_files_properties(${PROTO_C} PROPERTIES SKIP_LINTING ON)
 
-add_library(youtube-protocol)
-target_link_libraries(youtube-protocol PRIVATE my_cflags youtube-protobuf)
-target_link_libraries(youtube PRIVATE youtube-protocol)
-
-target_sources(youtube-protocol PRIVATE
+target_sources(youtube PRIVATE
 	${PROTO_C}
 	debug.c
 	state.c
@@ -37,13 +33,12 @@ target_sources(youtube-protocol PRIVATE
 	varint.c
 )
 
-target_include_directories(youtube-protocol PRIVATE
-	${PROJECT_SOURCE_DIR}/include
-	${PROJECT_SOURCE_DIR}/src
-)
-target_include_directories(youtube-protocol SYSTEM PRIVATE
+target_include_directories(youtube SYSTEM PRIVATE
 	${googlevideo_BINARY_DIR}
 )
+
+target_link_libraries(youtube PRIVATE youtube-protobuf)
+
 if (NOT CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
 	target_link_libraries(youtube-protocol PRIVATE
 		resolv # for b64_pton()
