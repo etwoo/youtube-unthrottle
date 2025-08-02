@@ -11,12 +11,6 @@ pkg_check_modules(PCRE2 REQUIRED libpcre2-8)
 target_include_directories(youtube-unthrottle SYSTEM PRIVATE
 	${PCRE2_INCLUDE_DIRS}
 )
-target_link_directories(youtube-unthrottle PRIVATE
-	${PCRE2_LIBRARY_DIRS}
-)
-target_link_libraries(youtube-unthrottle PRIVATE
-	${PCRE2_LIBRARIES}
-)
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 include(get_cpm)
