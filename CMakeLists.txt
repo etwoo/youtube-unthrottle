@@ -8,14 +8,6 @@ target_link_libraries(youtube-unthrottle PRIVATE my_cflags sanitizers youtube)
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 include(get_cpm)
 
-# Note: this use of CPMAddPackage() defines ${googlevideo_BINARY_DIR}
-CPMAddPackage(
-	NAME googlevideo
-	GITHUB_REPOSITORY LuanRT/googlevideo
-	GIT_TAG e185cbcd88a13e2c45a5668ffa6c860bf302efee # 4.0.1
-	DOWNLOAD_ONLY YES
-)
-
 find_package(PkgConfig)
 add_subdirectory(src)
 
@@ -65,7 +57,6 @@ add_custom_target(fmt COMMAND find
 #
 
 pkg_check_modules(PCRE2 REQUIRED libpcre2-8)
-pkg_check_modules(PROTOBUF REQUIRED libprotobuf-c)
 
 # Allow main.c to use pcre2.h APIs.
 target_include_directories(youtube-unthrottle SYSTEM PRIVATE
@@ -74,45 +65,8 @@ target_include_directories(youtube-unthrottle SYSTEM PRIVATE
 
 # Allow both implementation and tests to use protobuf-c APIs.
 add_library(youtube-protobuf)
-target_include_directories(youtube-protobuf PUBLIC
-	${PROTOBUF_INCLUDE_DIRS}
-	${googlevideo_BINARY_DIR}
-)
-target_link_libraries(youtube-protobuf PRIVATE
-	${PROTOBUF_LINK_LIBRARIES}
-)
-
-set(PROTO_PREFIX "${googlevideo_SOURCE_DIR}/protos")
-file(GLOB PROTOS RELATIVE "${PROTO_PREFIX}"
-	"${PROTO_PREFIX}/misc/*.proto"
-	"${PROTO_PREFIX}/video_streaming/*.proto"
-)
-list(FILTER PROTOS EXCLUDE REGEX "onesie_.*\.proto")
-
-set(PROTO_FULLPATH ${PROTOS})
-list(TRANSFORM PROTO_FULLPATH PREPEND "${PROTO_PREFIX}/")
-
-set(PROTO_C ${PROTOS})
-list(TRANSFORM PROTO_C REPLACE ".proto" ".pb-c.c")
-list(TRANSFORM PROTO_C PREPEND "${googlevideo_BINARY_DIR}/")
-
-add_custom_command(
-	OUTPUT
-		${PROTO_C}
-	COMMAND
-		protoc
-		--proto_path=${PROTO_PREFIX}
-		--c_out=${googlevideo_BINARY_DIR}
-		${PROTO_FULLPATH}
-	DEPENDS
-		${PROTO_FULLPATH}
-)
-set_source_files_properties(${PROTO_C} PROPERTIES SKIP_LINTING ON)
-
-target_sources(youtube-protobuf PRIVATE
-	${PROTO_C}
-)
-
+include(GenerateGoogleVideoProtoC)
+generate_googlevideo_protoc(youtube-protobuf)
 target_link_libraries(youtube PRIVATE youtube-protobuf)
 
 #
