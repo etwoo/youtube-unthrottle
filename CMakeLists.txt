@@ -16,6 +16,7 @@ CPMAddPackage(
 	DOWNLOAD_ONLY YES
 )
 
+find_package(PkgConfig)
 add_subdirectory(src)
 
 if (BUILD_TESTING)
@@ -142,19 +143,3 @@ if (CMAKE_C_COMPILER_ID STREQUAL "Clang")
 		-Qunused-arguments
 	)
 endif (CMAKE_C_COMPILER_ID STREQUAL "Clang")
-
-#
-# Workaround PATH, include, and library issues on OpenBSD.
-#
-# It seems unlikely that all cmake-based projects fail to find headers and
-# libraries installed through pkg_add, but until I figure out what I've done
-# wrong to cause this, use this kludge.
-#
-
-if (CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
-	message(STATUS "Making sure to use /usr/local/{include,lib} on OpenBSD")
-	target_include_directories(youtube PUBLIC /usr/local/include)
-	target_include_directories(youtube-protocol PUBLIC /usr/local/include)
-	target_link_directories(youtube PUBLIC /usr/local/lib)
-	target_link_directories(youtube-protocol PUBLIC /usr/local/lib)
-endif (CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
