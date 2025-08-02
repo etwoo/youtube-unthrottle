@@ -47,6 +47,9 @@ target_include_directories(youtube-protocol PRIVATE
 target_include_directories(youtube-protocol SYSTEM PRIVATE
 	${PROTOBUF_INCLUDE_DIRS}
 )
+target_link_directories(youtube-protocol PRIVATE
+	${PROTOBUF_LIBRARY_DIRS}
+)
 target_link_libraries(youtube-protocol PRIVATE
 	${PROTOBUF_LIBRARIES}
 )

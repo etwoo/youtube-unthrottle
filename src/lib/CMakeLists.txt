@@ -17,6 +17,13 @@ target_include_directories(youtube SYSTEM PRIVATE
 	${JANSSON_INCLUDE_DIRS}
 	${PCRE2_INCLUDE_DIRS}
 )
+target_link_directories(youtube PRIVATE
+	${ADA_LIBRARY_DIRS}
+	${CURL_LIBRARY_DIRS}
+	${DUKTAPE_LIBRARY_DIRS}
+	${JANSSON_LIBRARY_DIRS}
+	${PCRE2_LIBRARY_DIRS}
+)
 target_link_libraries(youtube PRIVATE
 	${ADA_LIBRARIES}
 	${CURL_LIBRARIES}
