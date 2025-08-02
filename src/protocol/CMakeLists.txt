@@ -27,7 +27,7 @@ set_source_files_properties(${PROTO_C} PROPERTIES SKIP_LINTING ON)
 
 add_library(youtube-protocol)
 target_link_libraries(youtube-protocol PRIVATE my_cflags)
-target_link_libraries(youtube PUBLIC youtube-protocol)
+target_link_libraries(youtube PRIVATE youtube-protocol)
 
 target_sources(youtube-protocol PRIVATE
 	${PROTO_C}
