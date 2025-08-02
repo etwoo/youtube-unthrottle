@@ -8,32 +8,18 @@ target_link_libraries(youtube-unthrottle PRIVATE my_cflags sanitizers youtube)
 add_library(youtube)
 target_include_directories(youtube PUBLIC include)
 
-find_package(PkgConfig)
-pkg_check_modules(ADA REQUIRED ada)
-pkg_check_modules(CURL REQUIRED libcurl)
-pkg_check_modules(DUKTAPE REQUIRED duktape)
-pkg_check_modules(JANSSON REQUIRED jansson)
-pkg_check_modules(PCRE2 REQUIRED libpcre2-8)
-
-target_include_directories(youtube SYSTEM PRIVATE
-	${ADA_INCLUDE_DIRS}
-	${CURL_INCLUDE_DIRS}
-	${DUKTAPE_INCLUDE_DIRS}
-	${JANSSON_INCLUDE_DIRS}
-	${PCRE2_INCLUDE_DIRS}
-)
-target_link_libraries(youtube PRIVATE
-	${ADA_LINK_LIBRARIES}
-	${CURL_LINK_LIBRARIES}
-	${DUKTAPE_LINK_LIBRARIES}
-	${JANSSON_LINK_LIBRARIES}
-	${PCRE2_LINK_LIBRARIES}
-)
-
-add_subdirectory(src)
-
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 include(get_cpm)
+
+include(TargetLinkPkgConfig)
+target_link_from_pkg_config(youtube ada)
+target_link_from_pkg_config(youtube libcurl)
+target_link_from_pkg_config(youtube duktape)
+target_link_from_pkg_config(youtube jansson)
+target_link_from_pkg_config(youtube libpcre2-8)
+
+find_package(PkgConfig)
+add_subdirectory(src)
 
 if (BUILD_TESTING)
 	# Note: this use of CPMAddPackage() defines ${greatest_SOURCE_DIR}
@@ -81,6 +67,7 @@ add_custom_target(fmt COMMAND find
 #
 
 # Allow main.c to use pcre2.h APIs.
+pkg_check_modules(PCRE2 REQUIRED libpcre2-8)
 target_include_directories(youtube-unthrottle SYSTEM PRIVATE
 	${PCRE2_INCLUDE_DIRS}
 )
