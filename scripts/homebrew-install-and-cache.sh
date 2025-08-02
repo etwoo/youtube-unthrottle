@@ -22,13 +22,11 @@ fi
 # Install packages via Homebrew, quieting reinstall warnings if necessary
 brew install --quiet "$CC_PKG" cmake ada-url curl duktape jansson pcre2 protobuf-c
 
-# Apply OS-specific tweaks
+# Apply Ubuntu-specific tweaks
 if [ "$(uname)" == Linux ] ; then
 	brew install --quiet libseccomp
 	sudo mv /bin/sh{,bak}
 	sudo ln -s /bin/{bash,sh}
-elif [ "$(uname)" == Darwin ] ; then
-	brew install --quiet pkgconf
 fi
 
 # On cache miss, compare Homebrew content before and after package install
