@@ -9,9 +9,6 @@ add_executable(youtube-unthrottle)
 target_sources(youtube-unthrottle PUBLIC main.c)
 target_link_libraries(youtube-unthrottle PRIVATE my_cflags sanitizers youtube)
 
-add_library(youtube)
-target_include_directories(youtube PUBLIC include)
-
 add_subdirectory(src)
 
 if (BUILD_TESTING)
