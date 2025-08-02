@@ -1,9 +1,10 @@
 include_guard(GLOBAL)
 
+include(get_cpm)
+include(TargetLinkPkgConfig)
+
 macro(generate_googlevideo_protoc target)
-	target_link_libraries(${target} PRIVATE
-		protobuf-c
-	)
+	target_link_from_pkg_config(${target} libprotobuf-c)
 
 	set(PROTO_PREFIX "${googlevideo_SOURCE_DIR}/protos")
 	file(GLOB PROTOS RELATIVE "${PROTO_PREFIX}"

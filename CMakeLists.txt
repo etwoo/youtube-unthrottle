@@ -29,6 +29,14 @@ target_include_directories(youtube-internals INTERFACE
 target_include_directories(youtube-internals SYSTEM INTERFACE
 	${googlevideo_BINARY_DIR}
 )
+# TODO: need ${PROTOBUF_INCLUDE_DIRS} as part of youtube-internals too?
+
+include(TargetLinkPkgConfig)
+target_link_from_pkg_config(youtube ada)
+target_link_from_pkg_config(youtube libcurl)
+target_link_from_pkg_config(youtube duktape)
+target_link_from_pkg_config(youtube jansson)
+target_link_from_pkg_config(youtube libpcre2-8)
 
 add_subdirectory(src)
 
@@ -65,6 +73,23 @@ add_custom_target(fmt COMMAND find
 	-exec ${FORMATTER} -Werror --dry-run {} +
 	VERBATIM USES_TERMINAL
 )
+
+#
+# Handle third-party library dependencies.
+#
+
+# Allow main.c to use pcre2.h APIs.
+pkg_check_modules(PCRE2 REQUIRED libpcre2-8)
+target_include_directories(youtube-unthrottle SYSTEM PRIVATE
+	${PCRE2_INCLUDE_DIRS}
+)
+
+# Define library that other targets can link ...
+add_library(youtube-protobuf)
+target_link_libraries(youtube PRIVATE youtube-protobuf)
+# ... to gain access to protobuf-c APIs and generated protobuf code.
+include(GenerateGoogleVideoProtoC)
+generate_googlevideo_protoc(youtube-protobuf)
 
 #
 # Figure out which options the compiler supports, and enable them.
