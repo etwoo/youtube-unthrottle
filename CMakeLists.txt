@@ -72,7 +72,7 @@ target_include_directories(youtube-unthrottle SYSTEM PRIVATE
 	${PCRE2_INCLUDE_DIRS}
 )
 
-# Allow src implementation and tests to use protobuf-c APIs.
+# Allow both implementation and tests to use protobuf-c APIs.
 add_library(youtube-protobuf INTERFACE)
 target_include_directories(youtube-protobuf SYSTEM INTERFACE
 	${PROTOBUF_INCLUDE_DIRS}
