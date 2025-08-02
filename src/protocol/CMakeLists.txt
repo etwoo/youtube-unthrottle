@@ -27,7 +27,7 @@ set_source_files_properties(${PROTO_C} PROPERTIES SKIP_LINTING ON)
 
 add_library(youtube-protocol)
 target_link_libraries(youtube-protocol PRIVATE my_cflags)
-target_link_libraries(youtube PRIVATE youtube-protocol)
+target_link_libraries(youtube PUBLIC youtube-protocol)
 
 target_sources(youtube-protocol PRIVATE
 	${PROTO_C}
@@ -44,10 +44,10 @@ target_include_directories(youtube-protocol PRIVATE
 	${PROJECT_SOURCE_DIR}/src
 	${googlevideo_BINARY_DIR}
 )
-target_include_directories(youtube-protocol SYSTEM PRIVATE
+target_include_directories(youtube-protocol SYSTEM PUBLIC
 	${PROTOBUF_INCLUDE_DIRS}
 )
-target_link_directories(youtube-protocol PRIVATE
+target_link_directories(youtube-protocol PUBLIC
 	${PROTOBUF_LIBRARY_DIRS}
 )
 target_link_libraries(youtube-protocol PRIVATE
