@@ -5,6 +5,19 @@ add_executable(youtube-unthrottle)
 target_sources(youtube-unthrottle PUBLIC main.c)
 target_link_libraries(youtube-unthrottle PRIVATE my_cflags sanitizers youtube)
 
+find_package(PkgConfig)
+pkg_check_modules(PCRE2 REQUIRED libpcre2-8)
+
+target_include_directories(youtube-unthrottle SYSTEM PRIVATE
+	${PCRE2_INCLUDE_DIRS}
+)
+target_link_directories(youtube-unthrottle PRIVATE
+	${PCRE2_LIBRARY_DIRS}
+)
+target_link_libraries(youtube PRIVATE
+	${PCRE2_LIBRARIES}
+)
+
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 include(get_cpm)
 
@@ -16,7 +29,6 @@ CPMAddPackage(
 	DOWNLOAD_ONLY YES
 )
 
-find_package(PkgConfig)
 add_subdirectory(src)
 
 if (BUILD_TESTING)
