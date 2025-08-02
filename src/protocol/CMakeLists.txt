@@ -37,14 +37,12 @@ target_sources(youtube-protocol PRIVATE
 	varint.c
 )
 
-pkg_check_modules(PROTOBUF REQUIRED libprotobuf-c)
-
 target_include_directories(youtube-protocol PRIVATE
 	${PROJECT_SOURCE_DIR}/include
 	${PROJECT_SOURCE_DIR}/src
-	${googlevideo_BINARY_DIR}
 )
-target_include_directories(youtube-protocol SYSTEM PUBLIC
+target_include_directories(youtube-protocol SYSTEM PRIVATE
+	${googlevideo_BINARY_DIR}
 	${PROTOBUF_INCLUDE_DIRS}
 )
 target_link_libraries(youtube-protocol PRIVATE

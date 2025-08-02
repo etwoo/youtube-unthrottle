@@ -7,6 +7,7 @@ target_link_libraries(youtube-unthrottle PRIVATE my_cflags sanitizers youtube)
 
 find_package(PkgConfig)
 pkg_check_modules(PCRE2 REQUIRED libpcre2-8)
+pkg_check_modules(PROTOBUF REQUIRED libprotobuf-c)
 
 target_include_directories(youtube-unthrottle SYSTEM PRIVATE
 	${PCRE2_INCLUDE_DIRS}
