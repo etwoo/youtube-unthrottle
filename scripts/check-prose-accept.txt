@@ -1,7 +1,7 @@
 # skip spellcheck for any words spelled in `snake_case`
 [a-zA-Z]+_([a-zA-Z]+_?)+
 # accept software-specific terminology
-(?i)ada
+ada
 api|API
 allowlist
 [aA][sS]an
@@ -13,7 +13,7 @@ const
 CURLcode
 CURLUcode
 deobfuscat(e|ion)
-(?i)duktape
+[dD]uktape
 elseif
 endif
 envvars
@@ -29,7 +29,7 @@ hexdump
 hostname
 itag
 jank
-(?i)jansson
+[jJ]ansson
 [lL]andlock
 [lL]ibc
 libcurl
@@ -44,11 +44,11 @@ multithreaded
 mutex
 plaintext
 postcondition
-(?i)protobuf[s]?
+protobuf[s]?
 protoc
 resolv
 sandboxing
-(?i)seccomp
+seccomp
 sfd
 stdout
 stderr
