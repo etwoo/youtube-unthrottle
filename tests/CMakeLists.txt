@@ -50,7 +50,12 @@ macro(generate_test_driver)
 	target_include_directories(test-driver SYSTEM PRIVATE
 		${greatest_SOURCE_DIR}      # for greatest.h
 	)
-	target_link_libraries(test-driver PRIVATE my_cflags sanitizers youtube)
+	target_link_libraries(test-driver PRIVATE
+		my_cflags
+		sanitizers
+		youtube
+		youtube-protobuf # depend on this target for its PUBLIC includes
+	)
 endmacro()
 
 register_test(js)
