@@ -14,7 +14,7 @@ target_include_directories(youtube-unthrottle SYSTEM PRIVATE
 target_link_directories(youtube-unthrottle PRIVATE
 	${PCRE2_LIBRARY_DIRS}
 )
-target_link_libraries(youtube PRIVATE
+target_link_libraries(youtube-unthrottle PRIVATE
 	${PCRE2_LIBRARIES}
 )
 
