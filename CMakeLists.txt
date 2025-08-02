@@ -11,14 +11,6 @@ target_include_directories(youtube PUBLIC include)
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 include(get_cpm)
 
-target_link_libraries(youtube PRIVATE
-	ada
-	curl
-	duktape
-	jansson
-	pcre2-8
-)
-
 add_subdirectory(src)
 
 if (BUILD_TESTING)
@@ -163,12 +155,13 @@ endif (CMAKE_C_COMPILER_ID STREQUAL "Clang")
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 	# Link against libraries installed via macOS Homebrew.
-	if (EXISTS /opt/homebrew)
+	if (IS_DIRECTORY /opt/homebrew)
+		message(STATUS "Including libraries installed via Homebrew")
 		include_directories(SYSTEM /opt/homebrew/include)
-		link_directories(SYSTEM /opt/homebrew/lib)
-	endif (EXISTS /opt/homebrew)
+		link_directories(/opt/homebrew/lib)
+	endif (IS_DIRECTORY /opt/homebrew)
 elseif (CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
-	# Link against libraries installed via OpenBSD ports.
+	message(STATUS "Including libraries installed via OpenBSD ports")
 	include_directories(SYSTEM /usr/local/include)
-	link_directories(SYSTEM /usr/local/lib)
+	link_directories(/usr/local/lib)
 endif ()
