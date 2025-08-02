@@ -24,11 +24,11 @@ macro(generate_test_driver)
 	add_custom_command(
 		OUTPUT test_suites.c
 		COMMAND
-			${CMAKE_SOURCE_DIR}/scripts/collect-test-suites.sh
+			${PROJECT_SOURCE_DIR}/scripts/collect-test-suites.sh
 			${CMAKE_CURRENT_BINARY_DIR}/test_suites.c
 			${TEST_SOURCES}
 		DEPENDS
-			${CMAKE_SOURCE_DIR}/scripts/collect-test-suites.sh
+			${PROJECT_SOURCE_DIR}/scripts/collect-test-suites.sh
 			${TEST_SOURCES}
 		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 	)

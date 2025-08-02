@@ -8,7 +8,7 @@ target_link_libraries(youtube-unthrottle PRIVATE my_cflags sanitizers youtube)
 add_library(youtube)
 target_include_directories(youtube PUBLIC include)
 
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
+list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 include(get_cpm)
 
 include(TargetLinkPkgConfig)
@@ -53,10 +53,10 @@ if (NOT FORMATTER)
 endif (NOT FORMATTER)
 
 add_custom_target(fmt COMMAND find
-	${CMAKE_SOURCE_DIR}/main.c
-	${CMAKE_SOURCE_DIR}/include
-	${CMAKE_SOURCE_DIR}/src
-	${CMAKE_SOURCE_DIR}/tests
+	${PROJECT_SOURCE_DIR}/main.c
+	${PROJECT_SOURCE_DIR}/include
+	${PROJECT_SOURCE_DIR}/src
+	${PROJECT_SOURCE_DIR}/tests
 	( -name *.h -or -name *.c )
 	-exec ${FORMATTER} -Werror --dry-run {} +
 	VERBATIM USES_TERMINAL
