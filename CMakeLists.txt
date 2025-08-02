@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.25)
 project(youtube-unthrottle)
 
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
+include(get_cpm)
+
 include(AdjustGlobalIncludesAndLibraries)
 adjust_global_includes_and_libraries()
 
@@ -11,17 +13,24 @@ target_link_libraries(youtube-unthrottle PRIVATE my_cflags sanitizers youtube)
 
 add_library(youtube)
 target_include_directories(youtube PUBLIC include)
-target_link_libraries(youtube PRIVATE youtube-private-headers)
 
 add_library(youtube-private-headers)
-target_include_directories(youtube-private-headers PUBLIC src)
+CPMAddPackage(
+	NAME googlevideo
+	GITHUB_REPOSITORY LuanRT/googlevideo
+	GIT_TAG e185cbcd88a13e2c45a5668ffa6c860bf302efee # 4.0.1
+	DOWNLOAD_ONLY YES
+)
+target_include_directories(youtube-private-headers PUBLIC
+	${googlevideo_BINARY_DIR}
+	src
+)
 include(GenerateGoogleVideoProtoC)
 generate_googlevideo_protoc(youtube-private-headers)
 
 add_subdirectory(src)
 
 if (BUILD_TESTING)
-	include(get_cpm)
 	# Note: this use of CPMAddPackage() defines ${greatest_SOURCE_DIR}
 	CPMAddPackage(
 		NAME greatest

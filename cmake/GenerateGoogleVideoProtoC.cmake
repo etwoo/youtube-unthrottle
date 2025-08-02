@@ -1,18 +1,6 @@
 include_guard(GLOBAL)
 
-include(get_cpm)
-
 macro(generate_googlevideo_protoc target)
-	CPMAddPackage(
-		NAME googlevideo
-		GITHUB_REPOSITORY LuanRT/googlevideo
-		GIT_TAG e185cbcd88a13e2c45a5668ffa6c860bf302efee # 4.0.1
-		DOWNLOAD_ONLY YES
-	)
-
-	target_include_directories(${target} SYSTEM PUBLIC
-		${googlevideo_BINARY_DIR}
-	)
 	target_link_libraries(${target} PRIVATE
 		protobuf-c
 	)

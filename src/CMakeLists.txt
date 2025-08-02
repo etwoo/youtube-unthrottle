@@ -1,4 +1,4 @@
-target_link_libraries(youtube PRIVATE my_cflags)
+target_link_libraries(youtube PRIVATE my_cflags youtube-private-headers)
 
 add_subdirectory(lib)
 add_subdirectory(protocol)
