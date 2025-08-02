@@ -49,7 +49,6 @@ macro(generate_test_driver)
 	)
 	target_include_directories(test-driver SYSTEM PRIVATE
 		${greatest_SOURCE_DIR}      # for greatest.h
-		${googlevideo_BINARY_DIR}   # for generated protobuf code
 	)
 	target_link_libraries(test-driver PRIVATE
 		my_cflags
