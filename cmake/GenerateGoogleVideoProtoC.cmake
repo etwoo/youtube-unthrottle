@@ -10,7 +10,7 @@ macro(generate_googlevideo_protoc target)
 		DOWNLOAD_ONLY YES
 	)
 
-	target_include_directories(${target} PUBLIC
+	target_include_directories(${target} SYSTEM PUBLIC
 		${googlevideo_BINARY_DIR}
 	)
 	target_link_libraries(${target} PRIVATE
