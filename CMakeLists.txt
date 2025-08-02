@@ -2,9 +2,11 @@ cmake_minimum_required(VERSION 3.25)
 project(youtube-unthrottle)
 
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
-include(get_cpm)
-
+include(AddExternalPackages)
 include(AdjustGlobalIncludesAndLibraries)
+include(GenerateGoogleVideoProtoC)
+
+add_external_packages()
 adjust_global_includes_and_libraries()
 
 add_executable(youtube-unthrottle)
@@ -15,29 +17,14 @@ add_library(youtube)
 target_include_directories(youtube PUBLIC include)
 
 add_library(youtube-internals)
-CPMAddPackage(
-	NAME googlevideo
-	GITHUB_REPOSITORY LuanRT/googlevideo
-	GIT_TAG e185cbcd88a13e2c45a5668ffa6c860bf302efee # 4.0.1
-	DOWNLOAD_ONLY YES
-)
+generate_googlevideo_protoc(youtube-internals)
 target_include_directories(youtube-internals PUBLIC
 	${googlevideo_BINARY_DIR}
 	src
 )
-include(GenerateGoogleVideoProtoC)
-generate_googlevideo_protoc(youtube-internals)
-
 add_subdirectory(src)
 
 if (BUILD_TESTING)
-	# Note: this use of CPMAddPackage() defines ${greatest_SOURCE_DIR}
-	CPMAddPackage(
-		NAME greatest
-		GITHUB_REPOSITORY silentbicycle/greatest
-		VERSION 1.5.0
-		DOWNLOAD_ONLY YES
-	)
 	include(CTest)
 	add_subdirectory(tests)
 endif (BUILD_TESTING)
