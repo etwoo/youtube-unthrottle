@@ -1,7 +1,6 @@
 include_guard(GLOBAL)
 
 include(get_cpm)
-find_package(PkgConfig)
 
 macro(generate_googlevideo_protoc target)
 	CPMAddPackage(
@@ -11,14 +10,11 @@ macro(generate_googlevideo_protoc target)
 		DOWNLOAD_ONLY YES
 	)
 
-	pkg_check_modules(PROTOBUF REQUIRED libprotobuf-c)
-
 	target_include_directories(${target} PUBLIC
 		${googlevideo_BINARY_DIR}
-		${PROTOBUF_INCLUDE_DIRS}
 	)
 	target_link_libraries(${target} PRIVATE
-		${PROTOBUF_LINK_LIBRARIES}
+		protobuf-c
 	)
 
 	set(PROTO_PREFIX "${googlevideo_SOURCE_DIR}/protos")

@@ -11,14 +11,14 @@ target_include_directories(youtube PUBLIC include)
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 include(get_cpm)
 
-include(TargetLinkPkgConfig)
-target_link_from_pkg_config(youtube ada)
-target_link_from_pkg_config(youtube libcurl)
-target_link_from_pkg_config(youtube duktape)
-target_link_from_pkg_config(youtube jansson)
-target_link_from_pkg_config(youtube libpcre2-8)
+target_link_libraries(youtube PRIVATE
+	ada
+	curl
+	duktape
+	jansson
+	pcre2-8
+)
 
-find_package(PkgConfig)
 add_subdirectory(src)
 
 if (BUILD_TESTING)
@@ -63,19 +63,13 @@ add_custom_target(fmt COMMAND find
 )
 
 #
-# Handle third-party library dependencies.
+# Define library that other targets can link in order to gain access to
+# protobuf-c APIs and generated protobuf code.
 #
 
-# Allow main.c to use pcre2.h APIs.
-pkg_check_modules(PCRE2 REQUIRED libpcre2-8)
-target_include_directories(youtube-unthrottle SYSTEM PRIVATE
-	${PCRE2_INCLUDE_DIRS}
-)
-
-# Define library that other targets can link ...
 add_library(youtube-protobuf)
 target_link_libraries(youtube PRIVATE youtube-protobuf)
-# ... to gain access to protobuf-c APIs and generated protobuf code.
+
 include(GenerateGoogleVideoProtoC)
 generate_googlevideo_protoc(youtube-protobuf)
 
@@ -162,3 +156,19 @@ if (CMAKE_C_COMPILER_ID STREQUAL "Clang")
 		-Qunused-arguments
 	)
 endif (CMAKE_C_COMPILER_ID STREQUAL "Clang")
+
+#
+# Workaround PATH, include, and library issues on various platforms.
+#
+
+if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+	# Link against libraries installed via macOS Homebrew.
+	if (EXISTS /opt/homebrew)
+		include_directories(SYSTEM /opt/homebrew/include)
+		link_directories(SYSTEM /opt/homebrew/lib)
+	endif (EXISTS /opt/homebrew)
+elseif (CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
+	# Link against libraries installed via OpenBSD ports.
+	include_directories(SYSTEM /usr/local/include)
+	link_directories(SYSTEM /usr/local/lib)
+endif ()
