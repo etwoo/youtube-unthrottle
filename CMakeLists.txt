@@ -5,9 +5,18 @@ list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 include(AdjustGlobalIncludesAndLibraries)
 adjust_global_includes_and_libraries()
 
+add_library(youtube)
+target_include_directories(youtube PUBLIC include)
+target_link_libraries(youtube PRIVATE youtube-private-headers)
+
 add_executable(youtube-unthrottle)
 target_sources(youtube-unthrottle PUBLIC main.c)
 target_link_libraries(youtube-unthrottle PRIVATE my_cflags sanitizers youtube)
+
+add_library(youtube-private-headers)
+target_include_directories(youtube-private-headers PUBLIC src)
+include(GenerateGoogleVideoProtoC)
+generate_googlevideo_protoc(youtube-private-headers)
 
 add_subdirectory(src)
 
@@ -52,17 +61,6 @@ add_custom_target(fmt COMMAND find
 	-exec ${FORMATTER} -Werror --dry-run {} +
 	VERBATIM USES_TERMINAL
 )
-
-#
-# Define library that other targets can link in order to gain access to
-# protobuf-c APIs and generated protobuf code.
-#
-
-add_library(youtube-protobuf)
-target_link_libraries(youtube PRIVATE youtube-protobuf)
-
-include(GenerateGoogleVideoProtoC)
-generate_googlevideo_protoc(youtube-protobuf)
 
 #
 # Figure out which options the compiler supports, and enable them.

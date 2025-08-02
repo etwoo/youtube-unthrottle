@@ -45,7 +45,6 @@ macro(generate_test_driver)
 	)
 	target_include_directories(test-driver PRIVATE
 		${CMAKE_CURRENT_SOURCE_DIR} # for coverage.h, test_macros.h, etc
-		${PROJECT_SOURCE_DIR}/src   # for debug.h, tmpfile.h, etc
 	)
 	target_include_directories(test-driver SYSTEM PRIVATE
 		${greatest_SOURCE_DIR}      # for greatest.h
@@ -54,7 +53,7 @@ macro(generate_test_driver)
 		my_cflags
 		sanitizers
 		youtube
-		youtube-protobuf # depend on this target for its PUBLIC includes
+		youtube-private-headers
 	)
 endmacro()
 
