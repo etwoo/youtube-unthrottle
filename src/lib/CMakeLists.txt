@@ -10,7 +10,7 @@ pkg_check_modules(DUKTAPE REQUIRED duktape)
 pkg_check_modules(JANSSON REQUIRED jansson)
 pkg_check_modules(PCRE2 REQUIRED libpcre2-8)
 
-target_include_directories(youtube PRIVATE
+target_include_directories(youtube SYSTEM PRIVATE
 	${ADA_INCLUDE_DIRS}
 	${CURL_INCLUDE_DIRS}
 	${DUKTAPE_INCLUDE_DIRS}
