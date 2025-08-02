@@ -3,36 +3,25 @@ project(youtube-unthrottle)
 
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 include(AddExternalPackages)
-include(AdjustGlobalIncludesAndLibraries)
 include(GenerateGoogleVideoProtoC)
 
 add_external_packages()
-adjust_global_includes_and_libraries()
 
 add_executable(youtube-unthrottle)
 target_sources(youtube-unthrottle PUBLIC main.c)
 target_link_libraries(youtube-unthrottle PRIVATE my_cflags sanitizers youtube)
 
 add_library(youtube)
-target_include_directories(youtube PUBLIC include)
-target_link_libraries(youtube PRIVATE my_cflags youtube-internals)
+target_include_directories(youtube PUBLIC include PRIVATE src)
+target_link_libraries(youtube PRIVATE my_cflags)
 generate_googlevideo_protoc(youtube)
-
-add_library(youtube-internals INTERFACE)
-# test-driver uses youtube-internals to exercise implementation APIs like
-# ./src/lib/{js,re}.h and ./src/sandbox/linux/{landlock,seccomp}.h
-target_include_directories(youtube-internals INTERFACE
-	src
-)
-# test-driver uses VideoStreaming__VideoPlaybackAbrRequest structure and
-# associated unpack() API for testing purposes
-target_include_directories(youtube-internals SYSTEM INTERFACE
-	${googlevideo_BINARY_DIR}
-)
-
 add_subdirectory(src)
 
 if (BUILD_TESTING)
+	# allow test code to call internal C APIs through an INTERFACE
+	add_library(youtube-internals INTERFACE)
+	target_include_directories(youtube-internals INTERFACE src)
+
 	include(CTest)
 	add_subdirectory(tests)
 endif (BUILD_TESTING)
