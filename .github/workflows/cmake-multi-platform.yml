@@ -103,7 +103,6 @@ jobs:
       with:
         prepare: pkg_add cmake git ada curl duktape jansson pcre2 protobuf-c
         run: >
-          cp ./vendor/ada.pc /usr/local/lib/pkgconfig/ada.pc
           cmake --preset default &&
           cmake --build --preset default &&
           ctest --preset default
