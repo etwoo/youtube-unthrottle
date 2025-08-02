@@ -6,7 +6,7 @@ target_sources(youtube PRIVATE
 )
 
 if (NOT CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
-	target_link_libraries(youtube-protocol PRIVATE
+	target_link_libraries(youtube PRIVATE
 		resolv # for b64_pton()
 	)
 endif (NOT CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
