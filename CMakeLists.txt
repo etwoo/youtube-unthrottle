@@ -1,24 +1,18 @@
 cmake_minimum_required(VERSION 3.25)
 project(youtube-unthrottle)
 
+list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
+include(AdjustGlobalIncludesAndLibraries)
+adjust_global_includes_and_libraries()
+
 add_executable(youtube-unthrottle)
 target_sources(youtube-unthrottle PUBLIC main.c)
 target_link_libraries(youtube-unthrottle PRIVATE my_cflags sanitizers youtube)
 
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
-include(get_cpm)
-
-# Note: this use of CPMAddPackage() defines ${googlevideo_BINARY_DIR}
-CPMAddPackage(
-	NAME googlevideo
-	GITHUB_REPOSITORY LuanRT/googlevideo
-	GIT_TAG e185cbcd88a13e2c45a5668ffa6c860bf302efee # 4.0.1
-	DOWNLOAD_ONLY YES
-)
-
 add_subdirectory(src)
 
 if (BUILD_TESTING)
+	include(get_cpm)
 	# Note: this use of CPMAddPackage() defines ${greatest_SOURCE_DIR}
 	CPMAddPackage(
 		NAME greatest
@@ -50,14 +44,25 @@ if (NOT FORMATTER)
 endif (NOT FORMATTER)
 
 add_custom_target(fmt COMMAND find
-	${CMAKE_SOURCE_DIR}/main.c
-	${CMAKE_SOURCE_DIR}/include
-	${CMAKE_SOURCE_DIR}/src
-	${CMAKE_SOURCE_DIR}/tests
+	${PROJECT_SOURCE_DIR}/main.c
+	${PROJECT_SOURCE_DIR}/include
+	${PROJECT_SOURCE_DIR}/src
+	${PROJECT_SOURCE_DIR}/tests
 	( -name *.h -or -name *.c )
 	-exec ${FORMATTER} -Werror --dry-run {} +
 	VERBATIM USES_TERMINAL
 )
+
+#
+# Define library that other targets can link in order to gain access to
+# protobuf-c APIs and generated protobuf code.
+#
+
+add_library(youtube-protobuf)
+target_link_libraries(youtube PRIVATE youtube-protobuf)
+
+include(GenerateGoogleVideoProtoC)
+generate_googlevideo_protoc(youtube-protobuf)
 
 #
 # Figure out which options the compiler supports, and enable them.
@@ -143,18 +148,3 @@ if (CMAKE_C_COMPILER_ID STREQUAL "Clang")
 	)
 endif (CMAKE_C_COMPILER_ID STREQUAL "Clang")
 
-#
-# Workaround PATH, include, and library issues on OpenBSD.
-#
-# It seems unlikely that all cmake-based projects fail to find headers and
-# libraries installed through pkg_add, but until I figure out what I've done
-# wrong to cause this, use this kludge.
-#
-
-if (CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
-	message(STATUS "Making sure to use /usr/local/{include,lib} on OpenBSD")
-	target_include_directories(youtube PUBLIC /usr/local/include)
-	target_include_directories(youtube-protocol PUBLIC /usr/local/include)
-	target_link_directories(youtube PUBLIC /usr/local/lib)
-	target_link_directories(youtube-protocol PUBLIC /usr/local/lib)
-endif (CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")

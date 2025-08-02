@@ -5,10 +5,6 @@ set -euxo pipefail
 BREW_PREFIX="$1"
 CC_HINT="$2"
 
-echo "CFLAGS=-I$BREW_PREFIX/include"
-echo "LDFLAGS=-L$BREW_PREFIX/lib"
-echo "LD_LIBRARY_PATH=$BREW_PREFIX/lib"
-
 # Handle CC_HINT specifying an exact match, instead of a prefix.
 if echo "$CC_HINT" | grep -qEe '-[1-9]+$' ; then
 	exact_match="$BREW_PREFIX/bin/$CC_HINT"
