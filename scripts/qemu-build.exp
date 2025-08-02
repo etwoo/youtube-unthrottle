@@ -151,7 +151,7 @@ proc install_test_dependencies_in_vm {} {
 		"pcre2"
 		"protobuf-c"
 		# Update glibc, in case nightly container image (host) has
-		# newer than fortnightly VM image (guest).
+		# newer glibc version than fortnightly VM image (guest).
 		"glibc"
 	} " "]
 }
