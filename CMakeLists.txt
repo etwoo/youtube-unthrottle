@@ -5,11 +5,35 @@ add_executable(youtube-unthrottle)
 target_sources(youtube-unthrottle PUBLIC main.c)
 target_link_libraries(youtube-unthrottle PRIVATE my_cflags sanitizers youtube)
 
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
-include(get_cpm)
+add_library(youtube)
+target_include_directories(youtube PUBLIC include)
 
 find_package(PkgConfig)
+pkg_check_modules(ADA REQUIRED ada)
+pkg_check_modules(CURL REQUIRED libcurl)
+pkg_check_modules(DUKTAPE REQUIRED duktape)
+pkg_check_modules(JANSSON REQUIRED jansson)
+pkg_check_modules(PCRE2 REQUIRED libpcre2-8)
+
+target_include_directories(youtube SYSTEM PRIVATE
+	${ADA_INCLUDE_DIRS}
+	${CURL_INCLUDE_DIRS}
+	${DUKTAPE_INCLUDE_DIRS}
+	${JANSSON_INCLUDE_DIRS}
+	${PCRE2_INCLUDE_DIRS}
+)
+target_link_libraries(youtube PRIVATE
+	${ADA_LINK_LIBRARIES}
+	${CURL_LINK_LIBRARIES}
+	${DUKTAPE_LINK_LIBRARIES}
+	${JANSSON_LINK_LIBRARIES}
+	${PCRE2_LINK_LIBRARIES}
+)
+
 add_subdirectory(src)
+
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
+include(get_cpm)
 
 if (BUILD_TESTING)
 	# Note: this use of CPMAddPackage() defines ${greatest_SOURCE_DIR}
@@ -56,18 +80,17 @@ add_custom_target(fmt COMMAND find
 # Handle third-party library dependencies.
 #
 
-pkg_check_modules(PCRE2 REQUIRED libpcre2-8)
-
 # Allow main.c to use pcre2.h APIs.
 target_include_directories(youtube-unthrottle SYSTEM PRIVATE
 	${PCRE2_INCLUDE_DIRS}
 )
 
-# Allow both implementation and tests to use protobuf-c APIs.
+# Define library that other targets can link ...
 add_library(youtube-protobuf)
+target_link_libraries(youtube PRIVATE youtube-protobuf)
+# ... to gain access to protobuf-c APIs and generated protobuf code.
 include(GenerateGoogleVideoProtoC)
 generate_googlevideo_protoc(youtube-protobuf)
-target_link_libraries(youtube PRIVATE youtube-protobuf)
 
 #
 # Figure out which options the compiler supports, and enable them.
