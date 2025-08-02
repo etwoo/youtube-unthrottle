@@ -5,14 +5,6 @@ add_executable(youtube-unthrottle)
 target_sources(youtube-unthrottle PUBLIC main.c)
 target_link_libraries(youtube-unthrottle PRIVATE my_cflags sanitizers youtube)
 
-find_package(PkgConfig)
-pkg_check_modules(PCRE2 REQUIRED libpcre2-8)
-pkg_check_modules(PROTOBUF REQUIRED libprotobuf-c)
-
-target_include_directories(youtube-unthrottle SYSTEM PRIVATE
-	${PCRE2_INCLUDE_DIRS}
-)
-
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 include(get_cpm)
 
@@ -24,6 +16,7 @@ CPMAddPackage(
 	DOWNLOAD_ONLY YES
 )
 
+find_package(PkgConfig)
 add_subdirectory(src)
 
 if (BUILD_TESTING)
@@ -65,6 +58,27 @@ add_custom_target(fmt COMMAND find
 	( -name *.h -or -name *.c )
 	-exec ${FORMATTER} -Werror --dry-run {} +
 	VERBATIM USES_TERMINAL
+)
+
+#
+# Handle third-party library dependencies.
+#
+
+pkg_check_modules(PCRE2 REQUIRED libpcre2-8)
+pkg_check_modules(PROTOBUF REQUIRED libprotobuf-c)
+
+# Allow main.c to use pcre2.h APIs.
+target_include_directories(youtube-unthrottle SYSTEM PRIVATE
+	${PCRE2_INCLUDE_DIRS}
+)
+
+# Allow src implementation and tests to use protobuf-c APIs.
+add_library(youtube-protobuf INTERFACE)
+target_include_directories(youtube-protobuf SYSTEM INTERFACE
+	${PROTOBUF_INCLUDE_DIRS}
+)
+target_link_libraries(youtube-protobuf INTERFACE
+	${PROTOBUF_LINK_LIBRARIES}
 )
 
 #
