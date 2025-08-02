@@ -14,19 +14,19 @@ target_link_libraries(youtube-unthrottle PRIVATE my_cflags sanitizers youtube)
 add_library(youtube)
 target_include_directories(youtube PUBLIC include)
 
-add_library(youtube-private-headers)
+add_library(youtube-internals)
 CPMAddPackage(
 	NAME googlevideo
 	GITHUB_REPOSITORY LuanRT/googlevideo
 	GIT_TAG e185cbcd88a13e2c45a5668ffa6c860bf302efee # 4.0.1
 	DOWNLOAD_ONLY YES
 )
-target_include_directories(youtube-private-headers PUBLIC
+target_include_directories(youtube-internals PUBLIC
 	${googlevideo_BINARY_DIR}
 	src
 )
 include(GenerateGoogleVideoProtoC)
-generate_googlevideo_protoc(youtube-private-headers)
+generate_googlevideo_protoc(youtube-internals)
 
 add_subdirectory(src)
 

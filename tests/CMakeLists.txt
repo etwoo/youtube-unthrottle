@@ -53,7 +53,7 @@ macro(generate_test_driver)
 		my_cflags
 		sanitizers
 		youtube
-		youtube-private-headers
+		youtube-internals
 	)
 endmacro()
 
