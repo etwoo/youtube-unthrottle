@@ -150,13 +150,13 @@ proc install_test_dependencies_in_vm {} {
 		"make"
 		"pcre2"
 		"protobuf-c"
+		# Update glibc, in case nightly container image (host) has
+		# newer than fortnightly VM image (guest).
+		"glibc"
 	} " "]
 }
 
 proc run_tests_in_vm {nproc} {
-	debug "Send failing test output to stdout/stderr"
-	run_in_vm "./build/tests/test-driver re -v"
-
 	set ctest "COVERAGE_PROFILE_DIR=coverage.profraw ctest --preset default"
 	run_in_vm "$ctest --parallel $nproc"
 
