@@ -5,13 +5,13 @@ list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 include(AdjustGlobalIncludesAndLibraries)
 adjust_global_includes_and_libraries()
 
-add_library(youtube)
-target_include_directories(youtube PUBLIC include)
-target_link_libraries(youtube PRIVATE youtube-private-headers)
-
 add_executable(youtube-unthrottle)
 target_sources(youtube-unthrottle PUBLIC main.c)
 target_link_libraries(youtube-unthrottle PRIVATE my_cflags sanitizers youtube)
+
+add_library(youtube)
+target_include_directories(youtube PUBLIC include)
+target_link_libraries(youtube PRIVATE youtube-private-headers)
 
 add_library(youtube-private-headers)
 target_include_directories(youtube-private-headers PUBLIC src)
