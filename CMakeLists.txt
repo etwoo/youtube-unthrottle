@@ -137,4 +137,3 @@ if (CMAKE_C_COMPILER_ID STREQUAL "Clang")
 		-Qunused-arguments
 	)
 endif (CMAKE_C_COMPILER_ID STREQUAL "Clang")
-
