@@ -24,14 +24,16 @@ add_library(youtube-internals INTERFACE)
 target_include_directories(youtube-internals INTERFACE
 	src
 )
-# test-driver uses VideoStreaming__VideoPlaybackAbrRequest structure and
+# test-driver uses VideoStreaming__VideoPlaybackAbrRequest datastructure and
 # associated unpack() API for testing purposes
 target_include_directories(youtube-internals SYSTEM INTERFACE
 	${googlevideo_BINARY_DIR}
 )
+# protoc invocation populates googlevideo_BINARY_DIR with headers containing
+# serialization/deserialization functions, based on *.proto files
+generate_googlevideo_protoc(youtube)
 
 add_subdirectory(src)
-generate_googlevideo_protoc(youtube)
 
 if (BUILD_TESTING)
 	include(CTest)
