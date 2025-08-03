@@ -11,6 +11,7 @@ adjust_global_includes_and_libraries()
 
 add_executable(youtube-unthrottle)
 target_sources(youtube-unthrottle PUBLIC main.c)
+target_link_libraries(youtube-unthrottle PRIVATE sanitizers)
 target_link_libraries(youtube-unthrottle PRIVATE youtube)
 
 add_library(youtube)
@@ -114,7 +115,6 @@ check_target_compile_options(my_cflags -Wstrict-prototypes)
 #
 
 add_library(sanitizers INTERFACE)
-target_link_libraries(youtube-unthrottle PRIVATE sanitizers)
 
 include(CheckSanitizer)
 check_sanitizer(sanitizers -fsanitize=address asan CFLAG_ASAN)
