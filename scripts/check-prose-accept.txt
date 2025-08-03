@@ -50,6 +50,7 @@ resolv
 sandboxing
 seccomp
 sfd
+src
 stdout
 stderr
 strace
