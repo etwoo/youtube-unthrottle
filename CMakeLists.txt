@@ -24,7 +24,7 @@ add_library(youtube-internals INTERFACE)
 target_include_directories(youtube-internals INTERFACE
 	src
 )
-# test-driver uses VideoStreaming__VideoPlaybackAbrRequest datastructure and
+# test-driver uses VideoStreaming__VideoPlaybackAbrRequest structure and
 # associated unpack() API for testing purposes
 target_include_directories(youtube-internals SYSTEM INTERFACE
 	${googlevideo_BINARY_DIR}
