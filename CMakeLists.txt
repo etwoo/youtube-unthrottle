@@ -15,15 +15,19 @@ target_link_libraries(youtube-unthrottle PRIVATE my_cflags sanitizers youtube)
 
 add_library(youtube)
 target_include_directories(youtube PUBLIC include)
+target_link_libraries(youtube PRIVATE my_cflags youtube-internals)
 
 add_library(youtube-internals) # implementation details, mainly useful for tests
 generate_googlevideo_protoc(youtube-internals)
 # test-driver uses VideoStreaming__VideoPlaybackAbrRequest structure and
 # associated unpack() API for testing purposes
-target_include_directories(youtube-internals SYSTEM PUBLIC ${googlevideo_BINARY_DIR})
+target_include_directories(youtube-internals SYSTEM PUBLIC
+	${googlevideo_BINARY_DIR}
+)
 # test-driver uses youtube-internals to exercise implementation APIs like
 # ./src/lib/{js,re}.h and ./src/sandbox/linux/{landlock,seccomp}.h
 target_include_directories(youtube-internals PUBLIC src)
+target_link_libraries(youtube-internals PRIVATE my_cflags)
 add_subdirectory(src)
 
 if (BUILD_TESTING)

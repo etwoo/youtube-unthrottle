@@ -1,5 +1,3 @@
-target_link_libraries(youtube PRIVATE my_cflags youtube-internals)
-
 add_subdirectory(lib)
 add_subdirectory(protocol)
 add_subdirectory(sandbox)
