@@ -31,13 +31,18 @@ macro(generate_googlevideo_protoc target)
 			${PROTO_FULLPATH}
 	)
 
-	set(DISABLE_CODE_COVERAGE
-		"-fno-profile-instr-generate -fno-coverage-mapping"
-	)
 	set_source_files_properties(${PROTO_C} PROPERTIES
 		SKIP_LINTING ON
-		COMPILE_FLAGS ${DISABLE_CODE_COVERAGE}
 	)
+
+	if (BUILD_COVERAGE)
+		set(DISABLE_CODE_COVERAGE
+			"-fno-profile-instr-generate -fno-coverage-mapping"
+		)
+		set_source_files_properties(${PROTO_C} PROPERTIES
+			COMPILE_FLAGS ${DISABLE_CODE_COVERAGE}
+		)
+	endif (BUILD_COVERAGE)
 
 	target_sources(${target} PRIVATE ${PROTO_C})
 endmacro()
