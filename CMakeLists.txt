@@ -11,23 +11,24 @@ adjust_global_includes_and_libraries()
 
 add_executable(youtube-unthrottle)
 target_sources(youtube-unthrottle PUBLIC main.c)
-target_link_libraries(youtube-unthrottle PRIVATE my_cflags sanitizers youtube)
+target_link_libraries(youtube-unthrottle PRIVATE youtube)
 
 add_library(youtube)
 target_include_directories(youtube PUBLIC include)
-target_link_libraries(youtube PRIVATE my_cflags youtube-internals)
+target_link_libraries(youtube PRIVATE youtube-internals)
 
 add_library(youtube-internals) # implementation details, mainly useful for tests
 generate_googlevideo_protoc(youtube-internals)
-# test-driver uses VideoStreaming__VideoPlaybackAbrRequest structure and
-# associated unpack() API for testing purposes
 target_include_directories(youtube-internals SYSTEM PUBLIC
+	# test-driver uses VideoStreaming__VideoPlaybackAbrRequest structure
+	# and associated unpack() API for testing purposes
 	${googlevideo_BINARY_DIR}
 )
-# test-driver uses youtube-internals to exercise implementation APIs like
-# ./src/lib/{js,re}.h and ./src/sandbox/linux/{landlock,seccomp}.h
-target_include_directories(youtube-internals PUBLIC src)
-target_link_libraries(youtube-internals PRIVATE my_cflags)
+target_include_directories(youtube-internals PUBLIC
+	# test-driver uses youtube-internals to exercise implementation APIs
+	# like ./src/lib/{js,re}.h and ./src/sandbox/linux/{landlock,seccomp}.h
+	src
+)
 add_subdirectory(src)
 
 if (BUILD_TESTING)
@@ -69,6 +70,10 @@ add_custom_target(fmt COMMAND find
 #
 
 add_library(my_cflags INTERFACE)
+target_link_libraries(youtube-unthrottle PRIVATE my_cflags)
+target_link_libraries(youtube PRIVATE my_cflags)
+target_link_libraries(youtube-internals PRIVATE my_cflags)
+
 target_compile_features(my_cflags INTERFACE c_std_11)
 
 target_compile_options(my_cflags INTERFACE
@@ -109,6 +114,7 @@ check_target_compile_options(my_cflags -Wstrict-prototypes)
 #
 
 add_library(sanitizers INTERFACE)
+target_link_libraries(youtube-unthrottle PRIVATE sanitizers)
 
 include(CheckSanitizer)
 check_sanitizer(sanitizers -fsanitize=address asan CFLAG_ASAN)
