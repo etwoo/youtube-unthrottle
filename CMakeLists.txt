@@ -18,19 +18,20 @@ add_library(youtube)
 target_include_directories(youtube PUBLIC include)
 target_link_libraries(youtube PRIVATE youtube-internals)
 
-add_library(youtube-internals) # implementation details, mainly useful for tests
-generate_googlevideo_protoc(youtube-internals)
-# test-driver uses VideoStreaming__VideoPlaybackAbrRequest structure and
-# associated unpack() API for testing purposes
-target_include_directories(youtube-internals SYSTEM PUBLIC
-	${googlevideo_BINARY_DIR}
-)
+add_library(youtube-internals INTERFACE)
 # test-driver uses youtube-internals to exercise implementation APIs like
 # ./src/lib/{js,re}.h and ./src/sandbox/linux/{landlock,seccomp}.h
-target_include_directories(youtube-internals PUBLIC
+target_include_directories(youtube-internals INTERFACE
 	src
 )
+# test-driver uses VideoStreaming__VideoPlaybackAbrRequest structure and
+# associated unpack() API for testing purposes
+target_include_directories(youtube-internals SYSTEM INTERFACE
+	${googlevideo_BINARY_DIR}
+)
+
 add_subdirectory(src)
+generate_googlevideo_protoc(youtube)
 
 if (BUILD_TESTING)
 	include(CTest)
@@ -73,7 +74,6 @@ add_custom_target(fmt COMMAND find
 add_library(my_cflags INTERFACE)
 target_link_libraries(youtube-unthrottle PRIVATE my_cflags)
 target_link_libraries(youtube PRIVATE my_cflags)
-target_link_libraries(youtube-internals PRIVATE my_cflags)
 
 target_compile_features(my_cflags INTERFACE c_std_11)
 
