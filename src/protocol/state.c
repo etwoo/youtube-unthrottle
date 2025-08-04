@@ -52,14 +52,6 @@ base64url_to_standard_base64(char *buf)
 static WARN_UNUSED result_t
 base64_decode(const struct string_view *in, struct ProtobufCBinaryData *out)
 {
-	/*
-	 * clang-tidy does not seem to understand __attribute__((cleanup))
-	 * on <scratch_buffer>. As a workaround, suppress false positives of
-	 * clang-analyzer-unix.Malloc with NOLINTBEGIN/NOLINTEND.
-	 */
-
-	// NOLINTBEGIN(clang-analyzer-unix.Malloc)
-
 	char *scratch_buffer __attribute__((cleanup(str_free))) =
 		strndup(in->data, in->sz);
 	check_if(scratch_buffer == NULL, ERR_PROTOCOL_STATE_ALLOC);
@@ -70,8 +62,6 @@ base64_decode(const struct string_view *in, struct ProtobufCBinaryData *out)
 		return make_result(ERR_PROTOCOL_STATE_BASE64_DECODE);
 	}
 	out->len = rc;
-
-	// NOLINTEND(clang-analyzer-unix.Malloc)
 
 	out->data = malloc(out->len);
 	check_if(out->data == NULL, ERR_PROTOCOL_STATE_ALLOC);

@@ -410,8 +410,7 @@ call_js_one(duk_context *ctx,
 	 */
 	duk_dup_top(ctx);
 
-	duk_context *guard // NOLINT(clang-analyzer-deadcode.DeadStores)
-		__attribute__((cleanup(pop))) = ctx;
+	duk_context *guard __attribute__((cleanup(pop))) = ctx;
 
 	/*
 	 * Push supplied argument onto the Duktape stack, and then call the

@@ -24,14 +24,11 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>    /* for strerror() */
+#include <string.h>
 #include <sys/param.h> /* for MAX() */
 #include <sys/socket.h>
 #include <sysexits.h>
 #include <unistd.h> /* for close() */
-
-#define PCRE2_CODE_UNIT_WIDTH 8
-#include <pcre2.h>
 
 const char *__asan_default_options(void) // NOLINT(bugprone-reserved-identifier)
 	__attribute__((used));
@@ -82,43 +79,10 @@ try_sandbox(void)
 	return RESULT_OK;
 }
 
-struct quality {
-	pcre2_code *re;
-	pcre2_match_data *md;
-};
-
-static __attribute__((warn_unused_result)) bool
-parse_quality_choices(const char *str, struct quality *q)
+static void
+str_free(char **strp)
 {
-	assert(q->re == NULL && q->md == NULL);
-
-	int rc = 0;
-	PCRE2_SIZE loc = 0;
-	PCRE2_SPTR pat = (PCRE2_SPTR)str;
-	PCRE2_UCHAR err[256];
-
-	const char *action = "compiling";
-	q->re = pcre2_compile(pat, PCRE2_ZERO_TERMINATED, 0, &rc, &loc, NULL);
-	if (q->re == NULL) {
-		goto err;
-	}
-
-	action = "allocating match data block";
-	q->md = pcre2_match_data_create_from_pattern(q->re, NULL);
-	if (q->md == NULL) {
-		goto err;
-	}
-
-	return true;
-
-err:
-	if (pcre2_get_error_message(rc, err, sizeof(err)) < 0) {
-		to_stderr("(no details) %s regex \"%s\"", action, str);
-		return false;
-	}
-
-	to_stderr("%s \"%s\" at offset %zu: %s", action, str, loc, err);
-	return false;
+	free(*strp);
 }
 
 static const result_t RESULT_QUALITY_BLOCK = {
@@ -128,28 +92,28 @@ static const result_t RESULT_QUALITY_BLOCK = {
 static __attribute__((warn_unused_result)) result_t
 choose_quality(const char *val, void *userdata)
 {
-	struct quality *q = (struct quality *)userdata;
-	size_t sz = strlen(val);
+	assert(userdata != NULL);
 
-	if (q->re == NULL || q->md == NULL) {
-		return RESULT_OK;
-	}
-
-	PCRE2_SPTR subject = (PCRE2_SPTR)val;
-	int rc = pcre2_match(q->re, subject, sz, 0, 0, q->md, NULL);
-	if (rc > 0) {
-		return RESULT_OK;
-	} else if (rc == PCRE2_ERROR_NOMATCH) {
+	char *deepcopy __attribute__((cleanup(str_free))) = strdup(userdata);
+	if (deepcopy == NULL) {
+		to_stderr("Cannot create working copy of quality string");
 		return RESULT_QUALITY_BLOCK;
 	}
 
-	PCRE2_UCHAR err[256];
-	if (pcre2_get_error_message(rc, err, sizeof(err)) < 0) {
-		to_stderr("(no details) matching \"%.*s\"", (int)sz, val);
-		return RESULT_QUALITY_BLOCK;
+	char *token = NULL;
+	char *cursor = deepcopy;
+	while ((token = strsep(&cursor, "|")) != NULL) {
+		if (strstr(val, token) != NULL) {
+			/*
+			 * clang-tidy seems to misinterpret strsep() as
+			 * allocating memory for <token>, rather than returning
+			 * a pointer into <deepcopy>. As a workaround, suppress
+			 * false positives of clang-analyzer-unix.Malloc.
+			 */
+			return RESULT_OK; // NOLINT(clang-analyzer-unix.Malloc)
+		}
 	}
 
-	to_stderr("matching \"%.*s\": %s", (int)sz, val, err);
 	return RESULT_QUALITY_BLOCK;
 }
 
@@ -236,7 +200,7 @@ static __attribute__((warn_unused_result)) result_t
 unthrottle(const char *target,
            const char *proof_of_origin,
            const char *visitor_data,
-           struct quality *q,
+           char *quality,
            int output[2],
            youtube_handle_t *stream,
            sandbox_handle_t *sandbox)
@@ -247,7 +211,7 @@ unthrottle(const char *target,
 	const struct youtube_stream_ops sops = {
 		.io_simulator = NULL,
 		.choose_quality = choose_quality,
-		.choose_quality_userdata = q,
+		.choose_quality_userdata = quality,
 	};
 	*stream = youtube_stream_init(proof_of_origin, visitor_data, &sops);
 	check_if(*stream == NULL, OK);
@@ -282,9 +246,9 @@ main(int argc, char *argv[])
 		ACTION_USAGE_HELP,
 		ACTION_USAGE_ERROR,
 	} action = 0;
-	const char *q_str = NULL;
 	const char *proof_of_origin = NULL;
 	const char *visitor_data = NULL;
+	char *quality = NULL;
 
 	int synonym = 0;
 	struct option lo[] = {
@@ -306,7 +270,7 @@ main(int argc, char *argv[])
 			action = MAX(action, ACTION_TRY_SANDBOX);
 			break;
 		case 'q':
-			q_str = optarg;
+			quality = optarg;
 			break;
 		case 'p':
 			proof_of_origin = optarg;
@@ -322,7 +286,6 @@ main(int argc, char *argv[])
 
 	int rc = EX_USAGE;  /* assume invalid arguments by default */
 	FILE *out = stderr; /* assume output to stderr by default */
-	struct quality q = {NULL, NULL};
 
 	switch (action) {
 	case ACTION_YOUTUBE_UNTHROTTLE:
@@ -332,8 +295,8 @@ main(int argc, char *argv[])
 			to_stderr("Missing --proof-of-origin value");
 		} else if (!visitor_data || *visitor_data == '\0') {
 			to_stderr("Missing --visitor-data value");
-		} else if (q_str && !parse_quality_choices(q_str, &q)) {
-			to_stderr("Invalid --quality value: %s", q_str);
+		} else if (!quality || *quality == '\0') {
+			to_stderr("Missing --quality value");
 		} else {
 			int output[2] = {
 				-1,
@@ -348,7 +311,7 @@ main(int argc, char *argv[])
 			rc = result_to_status(unthrottle(argv[optind],
 			                                 proof_of_origin,
 			                                 visitor_data,
-			                                 &q,
+			                                 quality,
 			                                 output,
 			                                 &stream,
 			                                 &sandbox));
@@ -382,7 +345,5 @@ main(int argc, char *argv[])
 		break;
 	}
 
-	pcre2_match_data_free(q.md); /* handles NULL gracefully */
-	pcre2_code_free(q.re);       /* handles NULL gracefully */
 	return rc;
 }

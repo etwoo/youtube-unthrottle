@@ -31,10 +31,11 @@ t "Missing --visitor-data" foo.test --proof-of-origin p
 t "Missing --visitor-data" foo.test --proof-of-origin p --visitor-data ""
 t "requires an argument" foo.test --proof-of-origin p --visitor-data
 
-t "Invalid --quality" foo.test --proof-of-origin p --visitor-data v --quality +
+t "Missing --quality" foo.test --proof-of-origin p --visitor-data v
+t "Missing --quality" foo.test --proof-of-origin p --visitor-data v --quality ""
 t "requires an argument" foo.test --proof-of-origin p --visitor-data v --quality
 
 t "un(recognized|known)" --foobar
-t "un(recognized|known)" foo.test --proof-of-origin p --visitor-data v --foobar
+t "un(recognized|known)" foo.test --proof-of-origin p --visitor-data v --quality 1080 --foobar
 t "un(recognized|known)" --help --foobar
-t "un(recognized|known)" --sandbox --foobar
+t "un(recognized|known)" --try-sandbox --foobar
