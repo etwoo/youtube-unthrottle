@@ -16,6 +16,7 @@ target_link_libraries(youtube-unthrottle PRIVATE my_cflags sanitizers youtube)
 add_library(youtube)
 target_include_directories(youtube PUBLIC include)
 target_link_libraries(youtube PRIVATE my_cflags youtube-internals)
+generate_googlevideo_protoc(youtube)
 
 add_library(youtube-internals INTERFACE)
 # test-driver uses youtube-internals to exercise implementation APIs like
@@ -28,9 +29,6 @@ target_include_directories(youtube-internals INTERFACE
 target_include_directories(youtube-internals SYSTEM INTERFACE
 	${googlevideo_BINARY_DIR}
 )
-# protoc invocation populates googlevideo_BINARY_DIR with headers containing
-# serialization/deserialization functions, based on *.proto files
-generate_googlevideo_protoc(youtube)
 
 add_subdirectory(src)
 
