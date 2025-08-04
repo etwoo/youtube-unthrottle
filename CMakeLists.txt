@@ -11,11 +11,13 @@ adjust_global_includes_and_libraries()
 
 add_executable(youtube-unthrottle)
 target_sources(youtube-unthrottle PUBLIC main.c)
+target_link_libraries(youtube-unthrottle PRIVATE my_cflags)
 target_link_libraries(youtube-unthrottle PRIVATE sanitizers)
 target_link_libraries(youtube-unthrottle PRIVATE youtube)
 
 add_library(youtube)
 target_include_directories(youtube PUBLIC include)
+target_link_libraries(youtube PRIVATE my_cflags)
 target_link_libraries(youtube PRIVATE youtube-internals)
 
 add_library(youtube-internals INTERFACE)
@@ -74,9 +76,6 @@ add_custom_target(fmt COMMAND find
 #
 
 add_library(my_cflags INTERFACE)
-target_link_libraries(youtube-unthrottle PRIVATE my_cflags)
-target_link_libraries(youtube PRIVATE my_cflags)
-
 target_compile_features(my_cflags INTERFACE c_std_11)
 
 target_compile_options(my_cflags INTERFACE
