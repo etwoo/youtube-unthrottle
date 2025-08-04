@@ -24,11 +24,11 @@ macro(generate_test_driver)
 	add_custom_command(
 		OUTPUT test_suites.c
 		COMMAND
-			${CMAKE_SOURCE_DIR}/scripts/collect-test-suites.sh
+			${PROJECT_SOURCE_DIR}/scripts/collect-test-suites.sh
 			${CMAKE_CURRENT_BINARY_DIR}/test_suites.c
 			${TEST_SOURCES}
 		DEPENDS
-			${CMAKE_SOURCE_DIR}/scripts/collect-test-suites.sh
+			${PROJECT_SOURCE_DIR}/scripts/collect-test-suites.sh
 			${TEST_SOURCES}
 		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 	)
@@ -45,11 +45,12 @@ macro(generate_test_driver)
 	)
 	target_include_directories(test-driver PRIVATE
 		${CMAKE_CURRENT_SOURCE_DIR} # for coverage.h, test_macros.h, etc
-		${PROJECT_SOURCE_DIR}/src   # for debug.h, tmpfile.h, etc
+	)
+	target_include_directories(test-driver SYSTEM PRIVATE
 		${greatest_SOURCE_DIR}      # for greatest.h
-		${googlevideo_BINARY_DIR}   # for generated protobuf code
 	)
 	target_link_libraries(test-driver PRIVATE my_cflags sanitizers youtube)
+	target_link_libraries(test-driver PRIVATE youtube-internals)
 endmacro()
 
 register_test(js)

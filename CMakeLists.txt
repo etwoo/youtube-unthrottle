@@ -1,31 +1,38 @@
 cmake_minimum_required(VERSION 3.25)
 project(youtube-unthrottle)
 
+list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
+include(AddExternalPackages)
+include(AdjustGlobalIncludesAndLibraries)
+include(GenerateGoogleVideoProtoC)
+
+add_external_packages()
+adjust_global_includes_and_libraries()
+
 add_executable(youtube-unthrottle)
 target_sources(youtube-unthrottle PUBLIC main.c)
 target_link_libraries(youtube-unthrottle PRIVATE my_cflags sanitizers youtube)
 
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
-include(get_cpm)
+add_library(youtube)
+target_include_directories(youtube PUBLIC include)
+target_link_libraries(youtube PRIVATE my_cflags youtube-internals)
+generate_googlevideo_protoc(youtube)
 
-# Note: this use of CPMAddPackage() defines ${googlevideo_BINARY_DIR}
-CPMAddPackage(
-	NAME googlevideo
-	GITHUB_REPOSITORY LuanRT/googlevideo
-	GIT_TAG e185cbcd88a13e2c45a5668ffa6c860bf302efee # 4.0.1
-	DOWNLOAD_ONLY YES
+add_library(youtube-internals INTERFACE)
+# test-driver uses youtube-internals to exercise implementation APIs like
+# ./src/lib/{js,re}.h and ./src/sandbox/linux/{landlock,seccomp}.h
+target_include_directories(youtube-internals INTERFACE
+	src
+)
+# test-driver uses VideoStreaming__VideoPlaybackAbrRequest structure and
+# associated unpack() API for testing purposes
+target_include_directories(youtube-internals SYSTEM INTERFACE
+	${googlevideo_BINARY_DIR}
 )
 
 add_subdirectory(src)
 
 if (BUILD_TESTING)
-	# Note: this use of CPMAddPackage() defines ${greatest_SOURCE_DIR}
-	CPMAddPackage(
-		NAME greatest
-		GITHUB_REPOSITORY silentbicycle/greatest
-		VERSION 1.5.0
-		DOWNLOAD_ONLY YES
-	)
 	include(CTest)
 	add_subdirectory(tests)
 endif (BUILD_TESTING)
@@ -50,10 +57,10 @@ if (NOT FORMATTER)
 endif (NOT FORMATTER)
 
 add_custom_target(fmt COMMAND find
-	${CMAKE_SOURCE_DIR}/main.c
-	${CMAKE_SOURCE_DIR}/include
-	${CMAKE_SOURCE_DIR}/src
-	${CMAKE_SOURCE_DIR}/tests
+	${PROJECT_SOURCE_DIR}/main.c
+	${PROJECT_SOURCE_DIR}/include
+	${PROJECT_SOURCE_DIR}/src
+	${PROJECT_SOURCE_DIR}/tests
 	( -name *.h -or -name *.c )
 	-exec ${FORMATTER} -Werror --dry-run {} +
 	VERBATIM USES_TERMINAL
@@ -74,12 +81,6 @@ target_compile_options(my_cflags INTERFACE
 )
 
 if (BUILD_COVERAGE)
-	CPMAddPackage(
-		NAME lcov-to-cobertura-xml
-		GITHUB_REPOSITORY eriwen/lcov-to-cobertura-xml
-		GIT_TAG 028da3798355d0260c6c6491b39347d84ca7a02d
-		DOWNLOAD_ONLY YES
-	)
 	include(CheckCodeCoverage)
 	check_code_coverage(my_cflags)
 endif (BUILD_COVERAGE)
@@ -142,19 +143,3 @@ if (CMAKE_C_COMPILER_ID STREQUAL "Clang")
 		-Qunused-arguments
 	)
 endif (CMAKE_C_COMPILER_ID STREQUAL "Clang")
-
-#
-# Workaround PATH, include, and library issues on OpenBSD.
-#
-# It seems unlikely that all cmake-based projects fail to find headers and
-# libraries installed through pkg_add, but until I figure out what I've done
-# wrong to cause this, use this kludge.
-#
-
-if (CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
-	message(STATUS "Making sure to use /usr/local/{include,lib} on OpenBSD")
-	target_include_directories(youtube PUBLIC /usr/local/include)
-	target_include_directories(youtube-protocol PUBLIC /usr/local/include)
-	target_link_directories(youtube PUBLIC /usr/local/lib)
-	target_link_directories(youtube-protocol PUBLIC /usr/local/lib)
-endif (CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")

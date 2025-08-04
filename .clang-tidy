@@ -24,5 +24,4 @@ CheckOptions:
 WarningsAsErrors: '*'
 # Check first-party (non-system, non-vendored) headers.
 HeaderFilterRegex: '.*'
-ExcludeHeaderFilterRegex: 'build/_deps/|.cache/cpm/'
 SystemHeaders: false

@@ -3,9 +3,9 @@ macro(add_fuzzer target)
 	target_sources(${target} PRIVATE ${target}.c)
 	target_include_directories(${target} PRIVATE
 		${PROJECT_SOURCE_DIR}/tests # for coverage.h, test_macros.h, etc
-		${PROJECT_SOURCE_DIR}/src   # for debug.h, tmpfile.h, etc
 	)
 	target_link_libraries(${target} PRIVATE my_cflags youtube)
+	target_link_libraries(${target} PRIVATE youtube-internals)
 	target_compile_options(${target} PRIVATE -g -O1 -fsanitize=fuzzer)
 	target_link_options(${target} PRIVATE -fsanitize=fuzzer)
 endmacro()
