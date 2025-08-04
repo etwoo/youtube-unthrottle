@@ -12,6 +12,11 @@ adjust_global_includes_and_libraries()
 add_executable(youtube-unthrottle)
 target_sources(youtube-unthrottle PUBLIC main.c)
 target_link_libraries(youtube-unthrottle PRIVATE my_cflags sanitizers youtube)
+# TODO: allow main.c to use pcre2.h APIs.
+# pkg_check_modules(PCRE2 REQUIRED libpcre2-8)
+# target_include_directories(youtube-unthrottle SYSTEM PRIVATE
+# 	${PCRE2_INCLUDE_DIRS}
+# )
 
 add_library(youtube)
 target_include_directories(youtube PUBLIC include)
@@ -73,23 +78,6 @@ add_custom_target(fmt COMMAND find
 	-exec ${FORMATTER} -Werror --dry-run {} +
 	VERBATIM USES_TERMINAL
 )
-
-#
-# Handle third-party library dependencies.
-#
-
-# Allow main.c to use pcre2.h APIs.
-pkg_check_modules(PCRE2 REQUIRED libpcre2-8)
-target_include_directories(youtube-unthrottle SYSTEM PRIVATE
-	${PCRE2_INCLUDE_DIRS}
-)
-
-# Define library that other targets can link ...
-add_library(youtube-protobuf)
-target_link_libraries(youtube PRIVATE youtube-protobuf)
-# ... to gain access to protobuf-c APIs and generated protobuf code.
-include(GenerateGoogleVideoProtoC)
-generate_googlevideo_protoc(youtube-protobuf)
 
 #
 # Figure out which options the compiler supports, and enable them.
