@@ -3,11 +3,9 @@ project(youtube-unthrottle)
 
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 include(AddExternalPackages)
-include(AdjustGlobalIncludesAndLibraries)
 include(GenerateGoogleVideoProtoC)
 
 add_external_packages()
-adjust_global_includes_and_libraries()
 
 add_executable(youtube-unthrottle)
 target_sources(youtube-unthrottle PUBLIC main.c)
