@@ -1,6 +1,5 @@
 include_guard(GLOBAL)
 
-include(get_cpm)
 include(TargetLinkPkgConfig)
 
 macro(generate_googlevideo_protoc target)
