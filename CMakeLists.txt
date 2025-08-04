@@ -51,17 +51,10 @@ endif (BUILD_TESTING)
 #
 
 find_program(FORMATTER clang-format)
-if (NOT FORMATTER)
-	# try harder on OpenBSD
-	find_program(FORMATTER clang-format-16 HINTS /usr/local/bin)
-endif (NOT FORMATTER)
 
-add_custom_target(fmt COMMAND find
-	${PROJECT_SOURCE_DIR}/main.c
-	${PROJECT_SOURCE_DIR}/include
-	${PROJECT_SOURCE_DIR}/src
-	${PROJECT_SOURCE_DIR}/tests
-	( -name *.h -or -name *.c )
+add_custom_target(fmt COMMAND
+	find ${PROJECT_SOURCE_DIR}
+	-name *.[ch] ! -path ${PROJECT_SOURCE_DIR}/build/*
 	-exec ${FORMATTER} -Werror --dry-run {} +
 	VERBATIM USES_TERMINAL
 )
