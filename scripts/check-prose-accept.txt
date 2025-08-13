@@ -44,7 +44,7 @@ multithreaded
 mutex
 plaintext
 postcondition
-protobuf[s]?
+[pP]rotobuf[s]?
 protoc
 resolv
 sandboxing
