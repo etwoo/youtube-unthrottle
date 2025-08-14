@@ -29,9 +29,9 @@ elif [ "$(uname)" == Linux ] ; then
 	# https://github.com/Homebrew/homebrew-core/pull/233020
 	curl -Lo ada.tgz https://github.com/ada-url/ada/archive/refs/tags/v3.2.7.tar.gz
 	tar zxf ada.tgz
-	cmake -S ada-3.2.7 -B ada-build -DBUILD_SHARED_LIBS=ON
+	cmake -S ada-3.2.7 -B ada-build --install-prefix "$(brew --prefix)" -DBUILD_SHARED_LIBS=ON
 	cmake --build ada-build
-	sudo cmake --install ada-build
+	cmake --install ada-build
 	rm -rf ada.tgz ada-3.2.7 ada-build
 	# Install Linux-specific packages
 	brew install --quiet libseccomp
