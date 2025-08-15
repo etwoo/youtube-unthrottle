@@ -37,7 +37,7 @@ root_empty(void)
 }
 
 TEST
-root_number_NaN(void)
+root_number_nan(void)
 {
 	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("NaN"));
 	PASS();
@@ -133,7 +133,7 @@ root_object_missing_opening_brace(void)
 SUITE(invalid_json)
 {
 	RUN_TEST(root_empty);
-	RUN_TEST(root_number_NaN);
+	RUN_TEST(root_number_nan);
 	RUN_TEST(root_string_missing_quotes);
 	RUN_TEST(root_string_missing_opening_quote);
 	RUN_TEST(root_string_missing_closing_quote);
@@ -219,7 +219,7 @@ root_object_empty(void)
 }
 
 TEST
-missing_streamingData_key(void)
+missing_streaming_data_key(void)
 {
 	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA,
 	          parse("{\"foo\": \"bar\"}"));
@@ -227,7 +227,7 @@ missing_streamingData_key(void)
 }
 
 TEST
-incorrect_streamingData_value_type(void)
+incorrect_streaming_data_value_type(void)
 {
 	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_ADAPTIVEFORMATS,
 	          parse("{\"streamingData\": 1}"));
@@ -235,7 +235,7 @@ incorrect_streamingData_value_type(void)
 }
 
 TEST
-missing_adaptiveFormats_key(void)
+missing_adaptive_formats_key(void)
 {
 	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_ADAPTIVEFORMATS,
 	          parse("{\"streamingData\": {\"foo\": \"bar\"}}"));
@@ -243,7 +243,7 @@ missing_adaptiveFormats_key(void)
 }
 
 TEST
-incorrect_adaptiveFormats_value_type(void)
+incorrect_adaptive_formats_value_type(void)
 {
 	ASSERT_EQ(ERR_JS_PARSE_JSON_ADAPTIVEFORMATS_TYPE,
 	          parse("{\"streamingData\": {\"adaptiveFormats\": 2}}"));
@@ -251,7 +251,7 @@ incorrect_adaptiveFormats_value_type(void)
 }
 
 TEST
-incorrect_adaptiveFormats_element_type(void)
+incorrect_adaptive_formats_element_type(void)
 {
 	ASSERT_EQ(ERR_JS_PARSE_JSON_ELEM_TYPE,
 	          parse("{\"streamingData\": {\"adaptiveFormats\": [3]}}"));
@@ -259,7 +259,7 @@ incorrect_adaptiveFormats_element_type(void)
 }
 
 TEST
-missing_mimeType_key(void)
+missing_mime_type_key(void)
 {
 	ASSERT_EQ(ERR_JS_PARSE_JSON_ELEM_MIMETYPE,
 	          parse("{\"streamingData\": {\"adaptiveFormats\": "
@@ -269,7 +269,7 @@ missing_mimeType_key(void)
 }
 
 TEST
-incorrect_mimeType_value_type(void)
+incorrect_mime_type_value_type(void)
 {
 	ASSERT_EQ(ERR_JS_PARSE_JSON_ELEM_MIMETYPE,
 	          parse("{\"streamingData\": {\"adaptiveFormats\": "
@@ -279,7 +279,7 @@ incorrect_mimeType_value_type(void)
 }
 
 TEST
-missing_qualityLabel_key(void)
+missing_quality_label_key(void)
 {
 	ASSERT_EQ(ERR_JS_PARSE_JSON_ELEM_QUALITY,
 	          parse("{\"streamingData\": {\"adaptiveFormats\": [{"
@@ -289,7 +289,7 @@ missing_qualityLabel_key(void)
 }
 
 TEST
-incorrect_qualityLabel_value_type(void)
+incorrect_quality_label_value_type(void)
 {
 	ASSERT_EQ(ERR_JS_PARSE_JSON_ELEM_QUALITY,
 	          parse("{\"streamingData\": {\"adaptiveFormats\": [{"
@@ -323,7 +323,7 @@ incorrect_itag_value_type(void)
 }
 
 TEST
-no_matching_adaptiveFormats_element_because_empty(void)
+no_matching_adaptive_formats_element_because_empty(void)
 {
 	ASSERT_EQ(ERR_JS_PARSE_JSON_NO_MATCH,
 	          parse("{\"streamingData\": {\"adaptiveFormats\": []}}"));
@@ -331,7 +331,7 @@ no_matching_adaptiveFormats_element_because_empty(void)
 }
 
 TEST
-no_matching_adaptiveFormats_element_because_mimetype(void)
+no_matching_adaptive_formats_element_because_mimetype(void)
 {
 	ASSERT_EQ(ERR_JS_PARSE_JSON_NO_MATCH,
 	          parse("{\"streamingData\": {\"adaptiveFormats\": [{"
@@ -406,19 +406,19 @@ incorrect_playback_config_value_type(void)
 SUITE(incorrect_shape)
 {
 	RUN_TEST(root_object_empty);
-	RUN_TEST(missing_streamingData_key);
-	RUN_TEST(incorrect_streamingData_value_type);
-	RUN_TEST(missing_adaptiveFormats_key);
-	RUN_TEST(incorrect_adaptiveFormats_value_type);
-	RUN_TEST(incorrect_adaptiveFormats_element_type);
-	RUN_TEST(missing_mimeType_key);
-	RUN_TEST(incorrect_mimeType_value_type);
-	RUN_TEST(missing_qualityLabel_key);
-	RUN_TEST(incorrect_qualityLabel_value_type);
+	RUN_TEST(missing_streaming_data_key);
+	RUN_TEST(incorrect_streaming_data_value_type);
+	RUN_TEST(missing_adaptive_formats_key);
+	RUN_TEST(incorrect_adaptive_formats_value_type);
+	RUN_TEST(incorrect_adaptive_formats_element_type);
+	RUN_TEST(missing_mime_type_key);
+	RUN_TEST(incorrect_mime_type_value_type);
+	RUN_TEST(missing_quality_label_key);
+	RUN_TEST(incorrect_quality_label_value_type);
 	RUN_TEST(missing_itag_key);
 	RUN_TEST(incorrect_itag_value_type);
-	RUN_TEST(no_matching_adaptiveFormats_element_because_empty);
-	RUN_TEST(no_matching_adaptiveFormats_element_because_mimetype);
+	RUN_TEST(no_matching_adaptive_formats_element_because_empty);
+	RUN_TEST(no_matching_adaptive_formats_element_because_mimetype);
 	RUN_TEST(missing_sabr_url_key);
 	RUN_TEST(incorrect_sabr_url_value_type);
 	RUN_TEST(missing_playback_config_key);
@@ -452,7 +452,7 @@ minimum_json_with_correct_shape(void)
 }
 
 TEST
-extra_adaptiveFormats_elements(void)
+extra_adaptive_formats_elements(void)
 {
 	const struct string_view json = MAKE_TEST_STRING(
 		"{\"streamingData\": {"
@@ -481,7 +481,7 @@ extra_adaptiveFormats_elements(void)
 }
 
 TEST
-skip_non_video_adaptiveFormats_elements(void)
+skip_non_video_adaptive_formats_elements(void)
 {
 	const struct string_view json = MAKE_TEST_STRING(
 		"{\"streamingData\": {"
@@ -520,7 +520,7 @@ choose_quality_skip_marked_entries(const char *val, void *userdata)
 }
 
 TEST
-choose_adaptiveFormats_elements(void)
+choose_adaptive_formats_elements(void)
 {
 	const struct string_view json = MAKE_TEST_STRING(
 		"{\"streamingData\": {"
@@ -555,9 +555,9 @@ choose_adaptiveFormats_elements(void)
 SUITE(correct_shape)
 {
 	RUN_TEST(minimum_json_with_correct_shape);
-	RUN_TEST(extra_adaptiveFormats_elements);
-	RUN_TEST(skip_non_video_adaptiveFormats_elements);
-	RUN_TEST(choose_adaptiveFormats_elements);
+	RUN_TEST(extra_adaptive_formats_elements);
+	RUN_TEST(skip_non_video_adaptive_formats_elements);
+	RUN_TEST(choose_adaptive_formats_elements);
 }
 
 TEST

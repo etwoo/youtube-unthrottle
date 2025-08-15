@@ -95,18 +95,18 @@ parse_json(const struct string_view *json,
 		return make_result(ERR_JS_PARSE_JSON_GET_STREAMINGDATA);
 	}
 
-	json_t *streamingData = json_object_get(obj, "streamingData");
-	if (streamingData == NULL) {
+	json_t *streaming_data = json_object_get(obj, "streamingData");
+	if (streaming_data == NULL) {
 		return make_result(ERR_JS_PARSE_JSON_GET_STREAMINGDATA);
-	} else if (!json_is_object(streamingData)) {
+	} else if (!json_is_object(streaming_data)) {
 		return make_result(ERR_JS_PARSE_JSON_GET_ADAPTIVEFORMATS);
 	}
 
-	json_t *adaptiveFormats =
-		json_object_get(streamingData, "adaptiveFormats");
-	if (adaptiveFormats == NULL) {
+	json_t *adaptive_formats =
+		json_object_get(streaming_data, "adaptiveFormats");
+	if (adaptive_formats == NULL) {
 		return make_result(ERR_JS_PARSE_JSON_GET_ADAPTIVEFORMATS);
-	} else if (!json_is_array(adaptiveFormats)) {
+	} else if (!json_is_array(adaptive_formats)) {
 		return make_result(ERR_JS_PARSE_JSON_ADAPTIVEFORMATS_TYPE);
 	}
 
@@ -114,7 +114,7 @@ parse_json(const struct string_view *json,
 
 	size_t i = 0;
 	json_t *cur = NULL;
-	json_array_foreach (adaptiveFormats, i, cur) {
+	json_array_foreach (adaptive_formats, i, cur) {
 		if (!json_is_object(cur)) {
 			return make_result(ERR_JS_PARSE_JSON_ELEM_TYPE);
 		}
@@ -162,16 +162,16 @@ parse_json(const struct string_view *json,
 		return make_result(ERR_JS_PARSE_JSON_NO_MATCH);
 	}
 
-	json_t *serverAbrStreamingUrl =
-		json_object_get(streamingData, "serverAbrStreamingUrl");
-	if (!json_is_string(serverAbrStreamingUrl)) {
+	json_t *sabr_url =
+		json_object_get(streaming_data, "serverAbrStreamingUrl");
+	if (!json_is_string(sabr_url)) {
 		return make_result(ERR_JS_SABR_URL_FIND);
 	}
-	values->sabr_url = strndup(json_string_value(serverAbrStreamingUrl),
-	                           json_string_length(serverAbrStreamingUrl));
+	values->sabr_url = strndup(json_string_value(sabr_url),
+	                           json_string_length(sabr_url));
 	debug("Parsed SABR URI: %s", values->sabr_url);
 
-	json_t *playbackConfig = /* chain json_get_object() calls for brevity */
+	json_t *playback_config = /* chain json_object_get() for brevity */
 		json_object_get(
 			json_object_get(
 				json_object_get(
@@ -179,11 +179,11 @@ parse_json(const struct string_view *json,
 					"mediaCommonConfig"),
 				"mediaUstreamerRequestConfig"),
 			"videoPlaybackUstreamerConfig");
-	if (!json_is_string(playbackConfig)) {
+	if (!json_is_string(playback_config)) {
 		return make_result(ERR_JS_PLAYBACK_CONFIG_FIND);
 	}
-	values->playback_config = strndup(json_string_value(playbackConfig),
-	                                  json_string_length(playbackConfig));
+	values->playback_config = strndup(json_string_value(playback_config),
+	                                  json_string_length(playback_config));
 	debug("Parsed playback config: %s", values->playback_config);
 
 	return RESULT_OK;

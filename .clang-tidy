@@ -19,6 +19,18 @@ Checks: >
 CheckOptions:
   - {key: bugprone-easily-swappable-parameters.MinimumLength, value: 3}
   - {key: readability-function-cognitive-complexity.IgnoreMacros, value: true}
+  - {key: readability-identifier-naming.EnumCase, value: lower_case}
+  - {key: readability-identifier-naming.EnumConstantCase, value: UPPER_CASE}
+  - {key: readability-identifier-naming.FunctionCase, value: lower_case}
+  - {key: readability-identifier-naming.FunctionIgnoredRegexp, value: "__asan_default_options|LLVMFuzzerTestOneInput"}
+  - {key: readability-identifier-naming.GlobalConstantCase, value: UPPER_CASE}
+  - {key: readability-identifier-naming.GlobalVariableCase, value: camelBack}
+  - {key: readability-identifier-naming.GlobalVariablePrefix, value: g}
+  - {key: readability-identifier-naming.ParameterCase, value: lower_case}
+  - {key: readability-identifier-naming.StructCase, value: lower_case}
+  - {key: readability-identifier-naming.TypedefCase, value: lower_case}
+  - {key: readability-identifier-naming.UnionCase, value: lower_case}
+  - {key: readability-identifier-naming.VariableCase, value: lower_case}
 
 # Turn all the warnings from the checks above into errors.
 WarningsAsErrors: '*'
