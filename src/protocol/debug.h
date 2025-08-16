@@ -5,14 +5,15 @@
 
 void debug_hexdump_buffer(const char *buf, size_t sz);
 
-typedef struct VideoStreaming__MediaHeader VideoStreaming__MediaHeader;
-void debug_protobuf_media_header(const VideoStreaming__MediaHeader *header);
-
+// NOLINTBEGIN(readability-identifier-naming)
+typedef struct VideoStreaming__MediaHeader MediaHeader;
 typedef struct VideoStreaming__FormatInitializationMetadata
 	FormatInitializationMetadata;
-void debug_protobuf_fmt_init(const FormatInitializationMetadata *fmt);
-
 typedef struct VideoStreaming__SabrContextUpdate SabrContextUpdate;
+// NOLINTEND(readability-identifier-naming)
+
+void debug_protobuf_media_header(const MediaHeader *header);
+void debug_protobuf_fmt_init(const FormatInitializationMetadata *fmt);
 void debug_protobuf_sabr_context_update(const SabrContextUpdate *u);
 
 #endif

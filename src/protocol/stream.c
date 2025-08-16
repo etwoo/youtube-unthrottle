@@ -27,16 +27,14 @@
 #include "video_streaming/next_request_policy.pb-c.h"
 #include "video_streaming/sabr_context_update.pb-c.h"
 #include "video_streaming/sabr_redirect.pb-c.h"
-#include "video_streaming/video_playback_abr_request.pb-c.h"
 
 result_t
 protocol_next_request(struct protocol_state *p, char **buf, size_t *sz)
 {
-	VideoStreaming__VideoPlaybackAbrRequest *r = protocol_get_request(p);
-	*sz = video_streaming__video_playback_abr_request__get_packed_size(r);
+	*sz = protocol_request_packed_size(p);
 	*buf = malloc(*sz * sizeof(**buf));
 	check_if(*buf == NULL, ERR_PROTOCOL_SABR_POST_BODY_ALLOC);
-	video_streaming__video_playback_abr_request__pack(r, (uint8_t *)*buf);
+	protocol_request_pack(p, (uint8_t *)*buf);
 	debug_hexdump_buffer(*buf, *sz);
 	return RESULT_OK;
 }

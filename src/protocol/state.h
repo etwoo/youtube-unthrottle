@@ -11,8 +11,8 @@ struct protocol_state;
 
 void protocol_update_state(struct protocol_state *p);
 
-typedef struct VideoStreaming__VideoPlaybackAbrRequest VideoPlaybackAbrRequest;
-VideoPlaybackAbrRequest *protocol_get_request(struct protocol_state *p);
+size_t protocol_request_packed_size(struct protocol_state *p) WARN_UNUSED;
+void protocol_request_pack(struct protocol_state *p, uint8_t *buf);
 
 int protocol_get_fd(const struct protocol_state *p,
                     unsigned char header_id) WARN_UNUSED;

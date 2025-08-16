@@ -230,10 +230,17 @@ protocol_done(struct protocol_state *p)
 	       p->buffered_ranges[1]->end_segment_index > p->ends_at[1];
 }
 
-struct VideoStreaming__VideoPlaybackAbrRequest *
-protocol_get_request(struct protocol_state *p)
+size_t
+protocol_request_packed_size(struct protocol_state *p)
 {
-	return &p->req;
+	VideoStreaming__VideoPlaybackAbrRequest *r = &p->req;
+	return video_streaming__video_playback_abr_request__get_packed_size(r);
+}
+
+void
+protocol_request_pack(struct protocol_state *p, uint8_t *buf)
+{
+	video_streaming__video_playback_abr_request__pack(&p->req, buf);
 }
 
 static WARN_UNUSED size_t
