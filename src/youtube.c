@@ -81,6 +81,7 @@ youtube_stream_init(const char *proof_of_origin,
 		p->proof_of_origin = proof_of_origin;
 		p->visitor_data = visitor_data;
 		p->context.simulator = ops->io_simulator;
+		p->context.simulator_state = ops->io_simulator_userdata;
 		url_context_init(&p->context);
 		p->pops.choose_quality = ops->choose_quality;
 		p->pops.userdata = ops->choose_quality_userdata;

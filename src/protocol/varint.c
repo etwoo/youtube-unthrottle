@@ -3,6 +3,7 @@
 #include "sys/array.h"
 #include "sys/debug.h"
 
+static const unsigned char CHAR_ALL_T = 0xFF; /* bit pattern: 11111111 */
 static const unsigned char CHAR_BIT_0 = 0x80; /* bit pattern: 10000000 */
 static const unsigned char CHAR_BIT_1 = 0x40; /* bit pattern: 01000000 */
 static const unsigned char CHAR_BIT_2 = 0x20; /* bit pattern: 00100000 */
@@ -17,13 +18,21 @@ typedef enum {
 	VARINT_BYTES_FIVE,
 } ump_varint_bytes;
 
+static const unsigned char UMP_BITS = 8; /* like CHAR_BITS, for UMP format */
+
+static WARN_UNUSED unsigned char
+as_uchar(char c)
+{
+	return c;
+}
+
 static void
 ump_read_vle(unsigned char first_byte,
              ump_varint_bytes *bytes_to_read,
              unsigned char *first_byte_mask)
 {
 	*bytes_to_read = VARINT_BYTES_ONE;
-	*first_byte_mask = 0xFF; /* bit pattern: 11111111 */
+	*first_byte_mask = CHAR_ALL_T;
 	if (0 == (first_byte & CHAR_BIT_0)) {
 		return;
 	}
@@ -62,7 +71,7 @@ ump_varint_read(const struct string_view *ump, size_t *pos, uint64_t *value)
 	}
 
 	ump_varint_bytes bytes_to_read = VARINT_BYTES_ONE;
-	unsigned char first_byte_mask = 0xFF;
+	unsigned char first_byte_mask = CHAR_ALL_T;
 	ump_read_vle(ump->data[*pos], &bytes_to_read, &first_byte_mask);
 
 	debug("Got first_byte=%hhu, bytes_to_read=%u, first_byte_mask=%02X",
@@ -77,28 +86,28 @@ ump_varint_read(const struct string_view *ump, size_t *pos, uint64_t *value)
 		                   (int)bytes_to_read);
 	}
 
-	uint64_t parsed[5] = {0};
+	uint64_t parsed[VARINT_BYTES_FIVE] = {0};
 	switch (bytes_to_read) {
 	case VARINT_BYTES_FIVE:
-		parsed[4] = ((uint32_t)ump->data[*pos + 4] << 24) +
-		            ((unsigned char)ump->data[*pos + 3] << 16) +
-		            ((unsigned char)ump->data[*pos + 2] << 8) +
-		            (unsigned char)ump->data[*pos + 1];
+		parsed[4] = ((uint32_t)ump->data[*pos + 4] << (UMP_BITS * 3U)) +
+		            (as_uchar(ump->data[*pos + 3]) << (UMP_BITS * 2U)) +
+		            (as_uchar(ump->data[*pos + 2]) << UMP_BITS) +
+		            as_uchar(ump->data[*pos + 1]);
 		break;
 	case VARINT_BYTES_FOUR:
-		parsed[3] = (unsigned char)ump->data[*pos + 3]
-		            << (16 + (8 - bytes_to_read));
+		parsed[3] = as_uchar(ump->data[*pos + 3])
+		            << (UMP_BITS * 3U - bytes_to_read);
 		__attribute__((fallthrough));
 	case VARINT_BYTES_THREE:
-		parsed[2] = (unsigned char)ump->data[*pos + 2]
-		            << (8 + (8 - bytes_to_read));
+		parsed[2] = as_uchar(ump->data[*pos + 2])
+		            << (UMP_BITS * 2U - bytes_to_read);
 		__attribute__((fallthrough));
 	case VARINT_BYTES_TWO:
-		parsed[1] = (unsigned char)ump->data[*pos + 1]
-		            << (8 - bytes_to_read);
+		parsed[1] = as_uchar(ump->data[*pos + 1])
+		            << (UMP_BITS - bytes_to_read);
 		__attribute__((fallthrough));
 	case VARINT_BYTES_ONE:
-		parsed[0] = ump->data[*pos] & first_byte_mask;
+		parsed[0] = as_uchar(ump->data[*pos]) & first_byte_mask;
 		break;
 	}
 	*pos += bytes_to_read;

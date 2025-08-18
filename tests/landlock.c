@@ -8,6 +8,8 @@
 #include <fcntl.h>  /* for open() */
 #include <unistd.h> /* for close() */
 
+static const int TEST_LANDLOCK_PORT = 443;
+
 typedef enum {
 	ALLOW_ALL,
 	ALLOW_TMPFILE,
@@ -53,7 +55,7 @@ landlock_filesystem_except_tmpfile(void)
 	const char *paths[] = {
 		P_tmpdir,
 	};
-	auto_result err = landlock_apply(paths, 1, 443);
+	auto_result err = landlock_apply(paths, 1, TEST_LANDLOCK_PORT);
 	ASSERT_EQ(OK, err.err);
 
 	CHECK_CALL(check_landlock_filesystem(ALLOW_TMPFILE));
@@ -64,7 +66,7 @@ landlock_filesystem_except_tmpfile(void)
 TEST
 landlock_filesystem_full(void)
 {
-	auto_result err = landlock_apply(NULL, 0, 443);
+	auto_result err = landlock_apply(NULL, 0, TEST_LANDLOCK_PORT);
 	ASSERT_EQ(OK, err.err);
 
 	CHECK_CALL(check_landlock_filesystem(ALLOW_NONE));

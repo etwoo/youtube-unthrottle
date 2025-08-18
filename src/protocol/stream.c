@@ -27,6 +27,7 @@
 #include "video_streaming/next_request_policy.pb-c.h"
 #include "video_streaming/sabr_context_update.pb-c.h"
 #include "video_streaming/sabr_redirect.pb-c.h"
+#include "video_streaming/ump_part_id.pb-c.h"
 
 result_t
 protocol_next_request(struct protocol_state *p, char **buf, size_t *sz)
@@ -35,7 +36,7 @@ protocol_next_request(struct protocol_state *p, char **buf, size_t *sz)
 	*buf = malloc(*sz * sizeof(**buf));
 	check_if(*buf == NULL, ERR_PROTOCOL_SABR_POST_BODY_ALLOC);
 	protocol_request_pack(p, (uint8_t *)*buf);
-	debug_hexdump_buffer(*buf, *sz);
+	dbg_hexdump_buffer(*buf, *sz);
 	return RESULT_OK;
 }
 
@@ -52,9 +53,8 @@ ump_parse_media_header(struct protocol_state *p,
 			      header->itag);
 			*skip_media_blobs_until_next = true;
 			return;
-		} else {
-			protocol_set_header_written(p, header->header_id);
 		}
+		protocol_set_header_written(p, header->header_id);
 	}
 
 	if (header->has_sequence_number) {
@@ -204,20 +204,20 @@ ump_parse_part(struct protocol_state *p,
 		__attribute__((cleanup(sabr_context_update_free))) = NULL;
 
 	switch (part_type) {
-	case 20: /* MEDIA_HEADER */
+	case VIDEO_STREAMING__UMPPART_ID__MEDIA_HEADER:
 		*skip_media_blobs_until_next = false;
 		header = video_streaming__media_header__unpack(
 			NULL,
 			ump.sz,
 			(const uint8_t *)ump.data);
 		check_if(header == NULL, ERR_PROTOCOL_UNPACK_MEDIA_HEADER);
-		debug_protobuf_media_header(header);
+		dbg_proto_media_header(header);
 		check_if(header->header_id > UCHAR_MAX,
 		         ERR_PROTOCOL_HEADER_ID_OVERFLOW,
 		         (int)header->header_id);
 		ump_parse_media_header(p, header, skip_media_blobs_until_next);
 		break;
-	case 21: /* MEDIA */ {
+	case VIDEO_STREAMING__UMPPART_ID__MEDIA: {
 		size_t cursor = 0;
 		uint64_t parsed_header_id = 0;
 		check(ump_varint_read(&ump, &cursor, &parsed_header_id));
@@ -243,7 +243,7 @@ ump_parse_part(struct protocol_state *p,
 		}
 		break;
 	};
-	case 35: /* NEXT_REQUEST_POLICY */
+	case VIDEO_STREAMING__UMPPART_ID__NEXT_REQUEST_POLICY:
 		*skip_media_blobs_until_next = false;
 		pol = video_streaming__next_request_policy__unpack(
 			NULL,
@@ -257,17 +257,17 @@ ump_parse_part(struct protocol_state *p,
 			*retry_after = MAX(pol->backoff_time_ms / 1000, 1);
 		}
 		break;
-	case 42: /* FORMAT_INITIALIZATION_METADATA */
+	case VIDEO_STREAMING__UMPPART_ID__FORMAT_INITIALIZATION_METADATA:
 		*skip_media_blobs_until_next = false;
 		fmt = video_streaming__format_initialization_metadata__unpack(
 			NULL,
 			ump.sz,
 			(const uint8_t *)ump.data);
 		check_if(fmt == NULL, ERR_PROTOCOL_UNPACK_FORMAT_INIT);
-		debug_protobuf_fmt_init(fmt);
+		dbg_proto_fmt_init(fmt);
 		check(ump_parse_fmt_init(p, fmt));
 		break;
-	case 43: /* SABR_REDIRECT */
+	case VIDEO_STREAMING__UMPPART_ID__SABR_REDIRECT:
 		*skip_media_blobs_until_next = false;
 		redir = video_streaming__sabr_redirect__unpack(
 			NULL,
@@ -279,14 +279,14 @@ ump_parse_part(struct protocol_state *p,
 		free(*target_url);
 		*target_url = strdup(redir->url);
 		break;
-	case 57: /* SABR_CONTEXT_UPDATE */
+	case VIDEO_STREAMING__UMPPART_ID__SABR_CONTEXT_UPDATE:
 		*skip_media_blobs_until_next = false;
 		update = video_streaming__sabr_context_update__unpack(
 			NULL,
 			ump.sz,
 			(const uint8_t *)ump.data);
 		check_if(update == NULL, ERR_PROTOCOL_UNPACK_SABR_UPDATE);
-		debug_protobuf_sabr_context_update(update);
+		dbg_proto_sabr_cxt_update(update);
 		check(ump_parse_sabr_context_update(p, update));
 		break;
 	default:

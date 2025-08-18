@@ -134,7 +134,7 @@ protocol_ump_varint_read_precondition(void)
 
 	const struct string_view some_view = MAKE_TEST_STRING("Hello, World!");
 	{
-		size_t pos = 15;
+		size_t pos = some_view.sz + 2;
 		auto_result err = ump_varint_read(&some_view, &pos, &value);
 		ASSERT_EQ(ERR_PROTOCOL_VARINT_READ_PRE, err.err);
 		ASSERT_EQ(pos, (size_t)err.num);
@@ -249,6 +249,7 @@ parse_and_get_next(const struct string_view *response,
 {
 	const struct string_view proof = MAKE_TEST_STRING("UE9U");
 	const struct string_view playback = MAKE_TEST_STRING("UExBWUJBQ0s=");
+	const long long int itag = 299;
 	int fd = pfd ? *pfd : STDOUT_FILENO;
 	int fds[2] = {
 		fd,
@@ -262,7 +263,7 @@ parse_and_get_next(const struct string_view *response,
 
 	struct protocol_state *p __attribute__((cleanup(protocol_cleanup_p))) =
 		NULL;
-	auto_result alloc = protocol_init(&proof, &playback, 299, fds, &p);
+	auto_result alloc = protocol_init(&proof, &playback, itag, fds, &p);
 	ASSERT_EQ(OK, alloc.err);
 
 	auto_result parse =
@@ -377,10 +378,10 @@ protocol_parse_response_media_header_and_blob(void)
 		"\x07" /***************************************/
 
 		"\x15" /* part_type = MEDIA */
-		"\x07" /* part_size = 7 */
+		"\x04" /* part_size = 4 */
 
 		"\x02" /* header_id = 2 */
-		"FOOFOO"
+		"FOO"
 
 		"\x14" /* part_type = MEDIA_HEADER */
 		"\x0A" /* part_size = 10 */
@@ -397,10 +398,10 @@ protocol_parse_response_media_header_and_blob(void)
 		"\x07" /***************************************/
 
 		"\x15" /* part_type = MEDIA */
-		"\x07" /* part_size = 7 */
+		"\x04" /* part_size = 4 */
 
 		"\x02" /* header_id = 2 */
-		"NONONO"
+		"NOO"
 
 		"\x14" /* part_type = MEDIA_HEADER */
 		"\x0A" /* part_size = 10 */
@@ -417,10 +418,10 @@ protocol_parse_response_media_header_and_blob(void)
 		"\x07" /***************************************/
 
 		"\x15" /* part_type = MEDIA */
-		"\x07" /* part_size = 7 */
+		"\x04" /* part_size = 4 */
 
 		"\x02" /* header_id = 2 */
-		"BARBAR");
+		"BAR");
 	CHECK_CALL(parse_and_get_next(&resp, NULL, &request, &url, NULL, &fd));
 
 	/*
@@ -437,7 +438,7 @@ protocol_parse_response_media_header_and_blob(void)
 	 * 2) NONONO media blob not written due to sequence number
 	 * 3) BARBAR media blob writes to provided fd
 	 */
-	char written[6];
+	char written[3];
 	{
 		const off_t target = -2 * (off_t)sizeof(written);
 		const off_t pos = lseek(fd, target, SEEK_END);
@@ -445,12 +446,12 @@ protocol_parse_response_media_header_and_blob(void)
 		const ssize_t got_bytes = read(fd, written, sizeof(written));
 		ASSERT_EQ(sizeof(written), got_bytes);
 	}
-	ASSERT_STRN_EQ("FOOFOO", written, sizeof(written));
+	ASSERT_STRN_EQ("FOO", written, sizeof(written));
 	{
 		const ssize_t got_bytes = read(fd, written, sizeof(written));
 		ASSERT_EQ(sizeof(written), got_bytes);
 	}
-	ASSERT_STRN_EQ("BARBAR", written, sizeof(written));
+	ASSERT_STRN_EQ("BAR", written, sizeof(written));
 
 	ASSERT_EQ(0, close(fd));
 	PASS();

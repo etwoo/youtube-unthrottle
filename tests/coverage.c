@@ -16,7 +16,7 @@ coverage_write_and_close(int fd MAYBE_UNUSED)
 #else
 
 #ifndef _GNU_SOURCE
-#define _GNU_SOURCE /* for O_PATH */ // NOLINT(bugprone-reserved-identifier)
+#define _GNU_SOURCE /* for O_PATH */
 #endif
 #include <fcntl.h>
 #undef _GNU_SOURCE /* revert for any other includes */
@@ -40,11 +40,9 @@ coverage_write_and_close(int fd MAYBE_UNUSED)
 		}                                                              \
 	} while (0)
 
-// NOLINTBEGIN(bugprone-reserved-identifier)
 int __llvm_profile_runtime(void);
 uint64_t __llvm_profile_get_size_for_buffer(void);
 int __llvm_profile_write_buffer(char *);
-// NOLINTEND(bugprone-reserved-identifier)
 
 int
 __llvm_profile_runtime(void)

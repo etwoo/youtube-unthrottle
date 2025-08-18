@@ -37,7 +37,7 @@ void protocol_increment_duration(struct protocol_state *p,
                                  unsigned char header_id,
                                  int64_t duration);
 
-void protocol_set_ends_at(struct protocol_state *p, int itag, int64_t value);
+void protocol_set_ends_at(struct protocol_state *p, int32_t itag, int64_t val);
 
 bool protocol_is_header_written(const struct protocol_state *p,
                                 unsigned char header_id) WARN_UNUSED;

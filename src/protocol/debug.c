@@ -8,6 +8,8 @@
 
 #include <inttypes.h>
 
+static const size_t DEBUG_HEXDUMP_BYTES_CHUNK = 16;
+
 static WARN_UNUSED unsigned char
 get_byte(const char *buffer, size_t sz, size_t pos)
 {
@@ -15,10 +17,10 @@ get_byte(const char *buffer, size_t sz, size_t pos)
 }
 
 void
-debug_hexdump_buffer(const char *buf, size_t sz)
+dbg_hexdump_buffer(const char *buf, size_t sz)
 {
 	debug("Sending protobuf blob of sz=%zu", sz);
-	for (size_t i = 0; i < sz; i += 16) {
+	for (size_t i = 0; i < sz; i += DEBUG_HEXDUMP_BYTES_CHUNK) {
 		debug("%02X %02X %02X %02X %02X %02X %02X %02X "
 		      "%02X %02X %02X %02X %02X %02X %02X %02X",
 		      get_byte(buf, sz, i),
@@ -41,7 +43,7 @@ debug_hexdump_buffer(const char *buf, size_t sz)
 }
 
 void
-debug_protobuf_media_header(const VideoStreaming__MediaHeader *header)
+dbg_proto_media_header(const VideoStreaming__MediaHeader *header)
 {
 	debug("Got header header_id=%" PRIu32 ", video=%s, itag=%" PRIi32
 	      ", xtags=%s, start_range=%" PRIi64 ", is_init_seg=%d"
@@ -71,7 +73,7 @@ debug_protobuf_media_header(const VideoStreaming__MediaHeader *header)
 }
 
 void
-debug_protobuf_fmt_init(const VideoStreaming__FormatInitializationMetadata *fmt)
+dbg_proto_fmt_init(const VideoStreaming__FormatInitializationMetadata *f)
 {
 	debug("Got format video=%s"
 	      ", itag=%d"
@@ -80,29 +82,25 @@ debug_protobuf_fmt_init(const VideoStreaming__FormatInitializationMetadata *fmt)
 	      ", init_end=%d"
 	      ", index_start=%d"
 	      ", index_end=%d",
-	      fmt->video_id ? fmt->video_id : "none",
-	      (fmt->format_id && fmt->format_id->has_itag)
-	              ? fmt->format_id->itag
-	              : -1,
-	      (fmt->has_duration_units ? fmt->duration_units : -1),
-	      (fmt->has_end_time_ms ? fmt->end_time_ms : -1),
-	      (fmt->has_end_segment_number ? fmt->end_segment_number : -1),
-	      (fmt->init_range && fmt->init_range->has_start
-	               ? fmt->init_range->start
+	      f->video_id ? f->video_id : "none",
+	      (f->format_id && f->format_id->has_itag) ? f->format_id->itag
+	                                               : -1,
+	      (f->has_duration_units ? f->duration_units : -1),
+	      (f->has_end_time_ms ? f->end_time_ms : -1),
+	      (f->has_end_segment_number ? f->end_segment_number : -1),
+	      (f->init_range && f->init_range->has_start ? f->init_range->start
+	                                                 : -1),
+	      (f->init_range && f->init_range->has_end ? f->init_range->end
+	                                               : -1),
+	      (f->index_range && f->index_range->has_start
+	               ? f->index_range->start
 	               : -1),
-	      (fmt->init_range && fmt->init_range->has_end
-	               ? fmt->init_range->end
-	               : -1),
-	      (fmt->index_range && fmt->index_range->has_start
-	               ? fmt->index_range->start
-	               : -1),
-	      (fmt->index_range && fmt->index_range->has_end
-	               ? fmt->index_range->end
-	               : -1));
+	      (f->index_range && f->index_range->has_end ? f->index_range->end
+	                                                 : -1));
 }
 
 void
-debug_protobuf_sabr_context_update(const VideoStreaming__SabrContextUpdate *u)
+dbg_proto_sabr_cxt_update(const VideoStreaming__SabrContextUpdate *u)
 {
 	debug("Got SABR context update type=%" PRIi32
 	      ", scope=%u, value_sz=%zu, write_policy=%u",

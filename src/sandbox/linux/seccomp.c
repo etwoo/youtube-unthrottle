@@ -1,7 +1,7 @@
 #include "sandbox/linux/seccomp.h"
 
 #ifndef _GNU_SOURCE
-#define _GNU_SOURCE /* for O_TMPFILE */ // NOLINT(bugprone-reserved-identifier)
+#define _GNU_SOURCE /* for O_TMPFILE */
 #endif
 #include <fcntl.h>
 #undef _GNU_SOURCE /* revert for any other includes */
@@ -275,8 +275,9 @@ seccomp_allow_fcntl(scmp_filter_ctx ctx, const char *sname, int snum)
 static WARN_UNUSED result_t
 seccomp_allow_mprotect(scmp_filter_ctx ctx, const char *sname, int snum)
 {
+	const int allowed_prot = PROT_READ | PROT_WRITE;
 	const struct scmp_arg_cmp op[] = {
-		SCMP_A2(SCMP_CMP_MASKED_EQ, ~(PROT_READ | PROT_WRITE), 0),
+		SCMP_A2(SCMP_CMP_MASKED_EQ, ~(uint64_t)allowed_prot, 0),
 	};
 	return seccomp_allow_cmp_union(ctx, sname, snum, op, ARRAY_SIZE(op));
 }
@@ -288,11 +289,12 @@ seccomp_allow_mmap(scmp_filter_ctx ctx, const char *sname, int snum)
 	 * Add syscall rules for <prot> and <flags> arguments to mmap()
 	 * simultaneously, producing an AND relationship (intersection).
 	 */
+	const int allowed_prot = PROT_READ | PROT_WRITE;
 	const int allowed_flags = MAP_PRIVATE | MAP_ANONYMOUS | MAP_DENYWRITE |
 	                          MAP_FIXED | MAP_NORESERVE | MAP_STACK;
 	const struct scmp_arg_cmp arr[] = {
-		SCMP_A2(SCMP_CMP_MASKED_EQ, ~(PROT_READ | PROT_WRITE), 0),
-		SCMP_A3(SCMP_CMP_MASKED_EQ, ~allowed_flags, 0),
+		SCMP_A2(SCMP_CMP_MASKED_EQ, ~(uint64_t)allowed_prot, 0),
+		SCMP_A3(SCMP_CMP_MASKED_EQ, ~(uint64_t)allowed_flags, 0),
 	};
 	int added = seccomp_rule_add_array(ctx, SCMP_ACT_ALLOW, snum, 2, arr);
 	return to_result(added, sname);
@@ -368,7 +370,7 @@ seccomp_allow_tmpfile(scmp_filter_ctx ctx,
 	const int allowed_flags =
 		O_CLOEXEC | O_PATH | O_TMPFILE | O_EXCL | O_RDWR;
 	const struct scmp_arg_cmp op[] = {
-		SCMP_A2(SCMP_CMP_MASKED_EQ, ~allowed_flags, 0),
+		SCMP_A2(SCMP_CMP_MASKED_EQ, ~(uint64_t)allowed_flags, 0),
 	};
 	return seccomp_allow_cmp_union(ctx, "openat", num, op, ARRAY_SIZE(op));
 }
@@ -386,7 +388,7 @@ seccomp_allow_rpath(scmp_filter_ctx ctx, const char *const *syscalls, size_t sz)
 	static_assert(!O_RDONLY, "O_RDONLY is unexpectedly non-zero");
 	const int allowed_flags = O_CLOEXEC | O_PATH | O_RDONLY;
 	const struct scmp_arg_cmp op[] = {
-		SCMP_A2(SCMP_CMP_MASKED_EQ, ~allowed_flags, 0),
+		SCMP_A2(SCMP_CMP_MASKED_EQ, ~(uint64_t)allowed_flags, 0),
 	};
 	return seccomp_allow_cmp_union(ctx, "openat", num, op, ARRAY_SIZE(op));
 }
