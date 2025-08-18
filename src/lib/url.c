@@ -150,7 +150,8 @@ url_download(const char *url_str,
 		check_if_num(res, ERR_URL_DOWNLOAD_SET_OPT_HTTP_HEADER);
 	}
 
-	res = sim ? curl_simulate(sim(url_str), fd) : curl_easy_perform(curl);
+	res = sim ? curl_simulate(sim(url_str, context->simulator_state), fd)
+	          : curl_easy_perform(curl);
 	check_if_num(res, ERR_URL_DOWNLOAD_PERFORM);
 
 	long status = -1;

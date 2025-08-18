@@ -91,14 +91,16 @@ parse_json(const struct string_view *json,
 	json_auto_t *obj = json_loadb(json->data, json->sz, 0, &json_error);
 	if (obj == NULL) {
 		return make_result(ERR_JS_PARSE_JSON_DECODE, json_error.text);
-	} else if (!json_is_object(obj)) {
+	}
+	if (!json_is_object(obj)) {
 		return make_result(ERR_JS_PARSE_JSON_GET_STREAMINGDATA);
 	}
 
 	json_t *streaming_data = json_object_get(obj, "streamingData");
 	if (streaming_data == NULL) {
 		return make_result(ERR_JS_PARSE_JSON_GET_STREAMINGDATA);
-	} else if (!json_is_object(streaming_data)) {
+	}
+	if (!json_is_object(streaming_data)) {
 		return make_result(ERR_JS_PARSE_JSON_GET_ADAPTIVEFORMATS);
 	}
 
@@ -106,7 +108,8 @@ parse_json(const struct string_view *json,
 		json_object_get(streaming_data, "adaptiveFormats");
 	if (adaptive_formats == NULL) {
 		return make_result(ERR_JS_PARSE_JSON_GET_ADAPTIVEFORMATS);
-	} else if (!json_is_array(adaptive_formats)) {
+	}
+	if (!json_is_array(adaptive_formats)) {
 		return make_result(ERR_JS_PARSE_JSON_ADAPTIVEFORMATS_TYPE);
 	}
 
@@ -282,7 +285,7 @@ find_js_timestamp(const struct string_view *js, long long int *value)
 	 */
 	errno = 0;
 
-	long long int res = strtoll(ts.data, NULL, 10);
+	long long int res = strtoll(ts.data, NULL, 0);
 	if (errno != 0) {
 		return make_result(ERR_JS_TIMESTAMP_PARSE_LL,
 		                   errno,
@@ -433,6 +436,16 @@ call_js_one(duk_context *ctx,
 	return RESULT_OK;
 }
 
+static WARN_UNUSED result_t
+eval_js_magic_one(duk_context *ctx, const struct string_view *magic)
+{
+	duk_context *guard __attribute__((cleanup(pop))) = ctx;
+	if (duk_peval_lstring(ctx, magic->data, magic->sz) != 0) {
+		return make_result(ERR_JS_CALL_EVAL_MAGIC, peek(ctx));
+	}
+	return RESULT_OK;
+}
+
 result_t
 call_js_foreach(const struct deobfuscator *d,
                 char **args,
@@ -444,15 +457,8 @@ call_js_foreach(const struct deobfuscator *d,
 	check_if(ctx == NULL, ERR_JS_CALL_ALLOC);
 
 	for (size_t i = 0; i < ARRAY_SIZE(d->magic); ++i) {
-		const struct string_view *m = d->magic + i;
 		debug("eval()-ing magic %zu", i + 1);
-
-		duk_context *guard // NOLINT(clang-analyzer-deadcode.DeadStores)
-			__attribute__((cleanup(pop))) = ctx;
-
-		if (duk_peval_lstring(ctx, m->data, m->sz) != 0) {
-			return make_result(ERR_JS_CALL_EVAL_MAGIC, peek(ctx));
-		}
+		check(eval_js_magic_one(ctx, d->magic + i));
 	}
 	debug("eval()-ed %zu magic variables", ARRAY_SIZE(d->magic));
 

@@ -3,26 +3,23 @@ Checks: >
   clang-analyzer-*,
   -clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling,
   cppcoreguidelines-*,
-  -cppcoreguidelines-avoid-magic-numbers,
   hicpp-*,
-  -hicpp-signed-bitwise,
   misc-*,
   -misc-include-cleaner,
   modernize-*,
   performance-*,
   portability-*,
   readability-*,
-  -readability-else-after-return,
   -readability-identifier-length,
-  -readability-magic-numbers,
 
 CheckOptions:
   - {key: bugprone-easily-swappable-parameters.MinimumLength, value: 3}
+  - {key: bugprone-reserved-identifier.AllowedIdentifiers, value: "__asan_default_options|__llvm_profile_|_GNU_SOURCE|__SANE_USERSPACE_TYPES__"}
   - {key: readability-function-cognitive-complexity.IgnoreMacros, value: true}
   - {key: readability-identifier-naming.EnumCase, value: lower_case}
   - {key: readability-identifier-naming.EnumConstantCase, value: UPPER_CASE}
   - {key: readability-identifier-naming.FunctionCase, value: lower_case}
-  - {key: readability-identifier-naming.FunctionIgnoredRegexp, value: "__asan_default_options|LLVMFuzzerTestOneInput"}
+  - {key: readability-identifier-naming.FunctionIgnoredRegexp, value: "__asan_default_options|__llvm_profile_|LLVMFuzzerTestOneInput"}
   - {key: readability-identifier-naming.GlobalConstantCase, value: UPPER_CASE}
   - {key: readability-identifier-naming.GlobalVariableCase, value: camelBack}
   - {key: readability-identifier-naming.GlobalVariablePrefix, value: g}

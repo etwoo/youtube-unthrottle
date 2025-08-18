@@ -51,16 +51,12 @@ static const char MOCK_JS_RESPONSE[] =
 #define T(base, testname_suffix, json_fragment, ...)                           \
 	do {                                                                   \
 		greatest_set_test_suffix(#testname_suffix);                    \
-		MOCK_JSON_RESPONSE = MAKE_JSON_LITERAL(json_fragment);         \
-		RUN_TESTp(base, __VA_ARGS__);                                  \
-		MOCK_JSON_RESPONSE = NULL;                                     \
+		const char *mock_json_body = MAKE_JSON_LITERAL(json_fragment); \
+		RUN_TESTp(base, mock_json_body, __VA_ARGS__);                  \
 	} while (0)
 
-// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-static const char *MOCK_JSON_RESPONSE = NULL;
-
 static WARN_UNUSED const char *
-url_simulate(const char *path)
+url_simulate(const char *path, const void *userdata)
 {
 	debug("Simulating request with url=%s", path);
 	const char *to_write = NULL;
@@ -72,8 +68,8 @@ url_simulate(const char *path)
 	} else if (strstr(path, "/base.js")) {
 		to_write = MOCK_JS_RESPONSE;
 	} else if (strstr(path, "/youtubei/v1/player")) {
-		assert(MOCK_JSON_RESPONSE && "Test bug? Missing JSON mock!");
-		to_write = MOCK_JSON_RESPONSE;
+		assert(userdata && "Test bug? NULL userdata as JSON mock!");
+		to_write = userdata;
 	} else if (strstr(path, "/sabr")) {
 		to_write = "\1\1\1"; /* return an empty-ish UMP response */
 	}
@@ -86,11 +82,6 @@ static const char TEST_U[] = "https://a.test/watch?v=FOOBAR";
 static const char TEST_U_NOID[] = "https://a.test/watch?v=";
 static const char TEST_P[] = "UE9UCg=="; /* base64-encoded "POT" */
 static const char TEST_V[] = "VkQK";     /* base64-encoded "VD" */
-static const struct youtube_stream_ops TEST_OP = {
-	.io_simulator = url_simulate,
-	.choose_quality = NULL,
-	.choose_quality_userdata = NULL,
-};
 static const int TEST_OFD[2] = {
 	STDERR_FILENO,
 	STDERR_FILENO,
@@ -118,10 +109,16 @@ check_url(const char *url, size_t sz, void *userdata)
 }
 
 TEST
-stream_with(const char *expected_url)
+stream_with(const char *mock_json_body, const char *expected_url)
 {
+	const struct youtube_stream_ops ops = {
+		.io_simulator = url_simulate,
+		.io_simulator_userdata = mock_json_body,
+		.choose_quality = NULL,
+		.choose_quality_userdata = NULL,
+	};
 	youtube_handle_t stream __attribute__((cleanup(youtube_cleanup))) =
-		youtube_stream_init(TEST_P, TEST_V, &TEST_OP);
+		youtube_stream_init(TEST_P, TEST_V, &ops);
 	ASSERT(stream);
 
 	auto_result err = youtube_stream_prepare_tmpfiles(stream);
@@ -156,10 +153,18 @@ SUITE(stream_n_param_positions)
 }
 
 TEST
-err_with(const char *target_url, unsigned expected_result_type)
+err_with(const char *mock_json_body,
+         const char *target_url,
+         unsigned expected_result_type)
 {
+	const struct youtube_stream_ops ops = {
+		.io_simulator = url_simulate,
+		.io_simulator_userdata = mock_json_body,
+		.choose_quality = NULL,
+		.choose_quality_userdata = NULL,
+	};
 	youtube_handle_t stream __attribute__((cleanup(youtube_cleanup))) =
-		youtube_stream_init(TEST_P, TEST_V, &TEST_OP);
+		youtube_stream_init(TEST_P, TEST_V, &ops);
 	ASSERT(stream);
 
 	auto_result err = youtube_stream_prepare_tmpfiles(stream);

@@ -13,7 +13,8 @@
 #include <stdlib.h>
 #include <sys/param.h> /* for MIN() */
 
-#define ITAG_AUDIO 251
+static const int32_t DEFAULT_AUDIO_ITAG = 251;
+static const int32_t DEFAULT_VIDEO_RESOLUTION = 1080;
 
 static void
 str_free(char **strp)
@@ -100,9 +101,9 @@ protocol_init_members(struct protocol_state *p, long long int itag_video)
 {
 	video_streaming__client_abr_state__init(&p->abr_state);
 	p->abr_state.has_last_manual_selected_resolution = true;
-	p->abr_state.last_manual_selected_resolution = 1080;
+	p->abr_state.last_manual_selected_resolution = DEFAULT_VIDEO_RESOLUTION;
 	p->abr_state.has_sticky_resolution = true;
-	p->abr_state.sticky_resolution = 1080;
+	p->abr_state.sticky_resolution = DEFAULT_VIDEO_RESOLUTION;
 
 	video_streaming__streamer_context__client_info__init(&p->info);
 	p->info.has_client_name = true;
@@ -119,7 +120,7 @@ protocol_init_members(struct protocol_state *p, long long int itag_video)
 
 	misc__format_id__init(&p->preferred_audio_format);
 	p->preferred_audio_format.has_itag = true;
-	p->preferred_audio_format.itag = ITAG_AUDIO;
+	p->preferred_audio_format.itag = DEFAULT_AUDIO_ITAG;
 
 	misc__format_id__init(&p->preferred_video_format);
 	p->preferred_video_format.has_itag = true;
@@ -246,7 +247,7 @@ protocol_request_pack(struct protocol_state *p, uint8_t *buf)
 static WARN_UNUSED size_t
 get_index_of(const struct protocol_state *p, unsigned char header_id)
 {
-	return p->header_map[header_id].itag == ITAG_AUDIO ? 0 : 1;
+	return p->header_map[header_id].itag == DEFAULT_AUDIO_ITAG ? 0 : 1;
 }
 
 int
@@ -316,10 +317,10 @@ protocol_increment_duration(struct protocol_state *p,
 }
 
 void
-protocol_set_ends_at(struct protocol_state *p, int itag, int64_t value)
+protocol_set_ends_at(struct protocol_state *p, int32_t itag, int64_t val)
 {
-	p->ends_at[itag == ITAG_AUDIO ? 0 : 1] = value;
-	debug("Updated ends_at=%" PRIi64 " for itag=%d", value, itag);
+	p->ends_at[itag == DEFAULT_AUDIO_ITAG ? 0 : 1] = val;
+	debug("Updated ends_at=%" PRIi64 " for itag=%d", val, itag);
 }
 
 bool
@@ -386,5 +387,3 @@ protocol_claim_sabr_context(struct protocol_state *p,
 
 	debug("Updated SABR context of size=%zu", sz);
 }
-
-#undef ITAG_AUDIO

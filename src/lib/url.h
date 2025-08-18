@@ -8,10 +8,11 @@
 result_t url_global_init(void) WARN_UNUSED;
 void url_global_cleanup(void);
 
-typedef const char *(*url_simulator)(const char *);
+typedef const char *(*url_simulator)(const char *, const void *);
 struct url_request_context {
 	void *state;
 	url_simulator simulator;
+	const void *simulator_state;
 };
 
 void url_context_init(struct url_request_context *context);

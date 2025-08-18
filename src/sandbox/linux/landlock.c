@@ -1,7 +1,7 @@
 #ifndef _GNU_SOURCE
-#define _GNU_SOURCE // NOLINT(bugprone-reserved-identifier)
+#define _GNU_SOURCE
 #endif
-#define __SANE_USERSPACE_TYPES__ // NOLINT(bugprone-reserved-identifier)
+#define __SANE_USERSPACE_TYPES__
 
 /*
  * Some helpful Landlock references:
@@ -23,11 +23,7 @@ landlock_create_ruleset(const struct landlock_ruleset_attr *const attr,
                         const size_t size,
                         const __u32 flags)
 {
-	return syscall( // NOLINT(*-narrowing-conversions)
-		__NR_landlock_create_ruleset,
-		attr,
-		size,
-		flags);
+	return (int)syscall(__NR_landlock_create_ruleset, attr, size, flags);
 }
 #endif
 
@@ -38,12 +34,11 @@ landlock_add_rule(const int ruleset_fd,
                   const void *const rule_attr,
                   const __u32 flags)
 {
-	return syscall( // NOLINT(*-narrowing-conversions)
-		__NR_landlock_add_rule,
-		ruleset_fd,
-		rule_type,
-		rule_attr,
-		flags);
+	return (int)syscall(__NR_landlock_add_rule,
+	                    ruleset_fd,
+	                    rule_type,
+	                    rule_attr,
+	                    flags);
 }
 #endif
 
@@ -51,10 +46,7 @@ landlock_add_rule(const int ruleset_fd,
 static inline int
 landlock_restrict_self(const int ruleset_fd, const __u32 flags)
 {
-	return syscall( // NOLINT(*-narrowing-conversions)
-		__NR_landlock_restrict_self,
-		ruleset_fd,
-		flags);
+	return (int)syscall(__NR_landlock_restrict_self, ruleset_fd, flags);
 }
 #endif
 

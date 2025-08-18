@@ -51,9 +51,8 @@ static const char CANNOT_ISSUE[] = "Error issuing";
 static const char CANNOT_CONSUME[] = "Error consuming";
 static const char CANNOT_RELEASE[] = "Error releasing";
 
-// NOLINTBEGIN(hicpp-function-size,readability-function-size)
 TEST
-print_to_str_each_enum_value(void)
+print_to_str_each_enum_value(void) // NOLINT(*-function-size)
 {
 	ASSERT_IN(make(OK), "Success");
 	ASSERT_IN(make(ERR_JS_PARSE_JSON_ALLOC_HEAP), CANNOT_ALLOC);
@@ -172,7 +171,6 @@ print_to_str_each_enum_value(void)
 	ASSERT_IN(make(ERR_YOUTUBE_EARLY_END_STREAM), "Media stream ended");
 	PASS();
 }
-// NOLINTEND(hicpp-function-size,readability-function-size)
 
 SUITE(print_to_str)
 {

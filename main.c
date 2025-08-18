@@ -29,8 +29,7 @@
 #include <sysexits.h>
 #include <unistd.h> /* for close() */
 
-const char *__asan_default_options(void) // NOLINT(bugprone-reserved-identifier)
-	__attribute__((used));
+const char *__asan_default_options(void) __attribute__((used));
 const char *
 __asan_default_options(void)
 {
@@ -46,7 +45,7 @@ __asan_default_options(void)
 static __attribute__((format(printf, 1, 2))) void
 to_stderr(const char *pattern, ...)
 {
-	va_list ap; // NOLINT(cppcoreguidelines-init-variables)
+	va_list ap = {0};
 	va_start(ap, pattern);
 	fprintf(stderr, "ERROR: ");
 	vfprintf(stderr, pattern, ap);
@@ -124,6 +123,8 @@ close_output_fd(int fd)
 	}
 }
 
+static const in_port_t DEFAULT_PORT_LISTEN = 20000;
+
 #pragma GCC diagnostic push
 #if defined(__GNUC__) && !defined(__clang__)
 #pragma GCC diagnostic ignored "-Wanalyzer-fd-leak"
@@ -169,7 +170,7 @@ get_output_fd(in_port_t port, int *out, size_t out_sz)
 		goto cleanup;
 	}
 
-	rc = listen(sfd, /* backlog */ 10);
+	rc = listen(sfd, /* backlog */ 2);
 	if (rc < 0) {
 		to_stderr("Can't listen on port %d: %s", port, strerror(errno));
 		goto cleanup;
@@ -301,7 +302,7 @@ main(int argc, char *argv[])
 				-1,
 				-1,
 			};
-			get_output_fd(20000, output, 2);
+			get_output_fd(DEFAULT_PORT_LISTEN, output, 2);
 
 			youtube_handle_t stream = NULL;
 			sandbox_handle_t sandbox

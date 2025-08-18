@@ -901,8 +901,10 @@ call_with_duktape_pcall_incorrect_result_type(void)
 	PASS();
 }
 
+#define RESULT_BUFFER_SIZE 24
+
 struct result_copy {
-	char str[24];
+	char str[RESULT_BUFFER_SIZE];
 };
 
 static void
@@ -916,12 +918,14 @@ copy_result(const char *val, size_t pos MAYBE_UNUSED, void *userdata)
 {
 	struct result_copy *result = (struct result_copy *)userdata;
 	const size_t sz = strlen(val);
-	assert(sizeof(result->str) >= sz);
+	assert(RESULT_BUFFER_SIZE >= sz);
 	memcpy(result->str, val, sz);
 	result->str[sz] = '\0';
 	debug("Copied result: %s", result->str);
 	return RESULT_OK;
 }
+
+#undef RESULT_BUFFER_SIZE
 
 TEST
 call_with_duktape_minimum_valid_function(void)

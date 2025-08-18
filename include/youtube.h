@@ -11,7 +11,8 @@ void youtube_global_cleanup(void);
 typedef struct youtube_stream *youtube_handle_t;
 
 struct youtube_stream_ops {
-	const char *(*io_simulator)(const char *);
+	const char *(*io_simulator)(const char *, const void *);
+	const void *io_simulator_userdata;
 	result_t (*choose_quality)(const char *, void *);
 	void *choose_quality_userdata;
 };

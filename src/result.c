@@ -20,7 +20,7 @@ my_asprintf(const char *pattern, ...)
 {
 	char *p = NULL;
 
-	va_list ap; // NOLINT(cppcoreguidelines-init-variables)
+	va_list ap = {0};
 	va_start(ap, pattern);
 	int result = vasprintf(&p, pattern, ap);
 	va_end(ap);
@@ -145,11 +145,13 @@ regex_error(result_t r, PCRE2_UCHAR *buffer, size_t capacity)
 	return (const char *)buffer;
 }
 
+static const unsigned REGEX_ERROR_BUFFER_SIZE = 256;
+
 char *
 result_to_str(result_t r)
 {
 	char *s = NULL;
-	PCRE2_UCHAR err[256];
+	PCRE2_UCHAR err[REGEX_ERROR_BUFFER_SIZE];
 
 	switch (r.err) {
 	case OK:
