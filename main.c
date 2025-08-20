@@ -139,7 +139,7 @@ get_output_fd(in_port_t port, int *out, size_t out_sz)
 		goto cleanup;
 	}
 
-	int rc = -1;
+	int rc = 0;
 	const int on = 1;
 
 	rc = setsockopt(sfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
