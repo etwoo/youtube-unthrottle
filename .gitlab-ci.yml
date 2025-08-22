@@ -134,7 +134,7 @@ analyze:clang-tidy:
 # Run the Infer static analyzer: https://fbinfer.com
 #
 analyze:fb-infer:
-  image: $CI_REGISTRY/ewoo/youtube-unthrottle/fbinfer-fc237fb
+  image: $CI_REGISTRY/ewoo/youtube-unthrottle:fbinfer-fc237fb
   <<: *build_dependencies
   stage: build
   script:
