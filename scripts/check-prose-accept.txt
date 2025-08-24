@@ -27,6 +27,7 @@ glibc
 googlevideo
 hexdump
 hostname
+[iI]nfer
 itag
 jank
 [jJ]ansson
