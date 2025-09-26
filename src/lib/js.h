@@ -33,7 +33,7 @@ result_t find_js_timestamp(const struct string_view *js,
 
 struct deobfuscator {
 	struct string_view magic[2];
-	struct string_view code;
+	struct string_view funcname;
 };
 
 result_t find_js_deobfuscator_magic_global(const struct string_view *js,

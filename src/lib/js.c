@@ -45,37 +45,6 @@ str_free(char **strp)
 	free(*strp);
 }
 
-/*
- * Copy <in> to <out>, while excluding newlines.
- */
-static void
-pretty_print_code(struct string_view in /* note: pass by value */, char **out)
-{
-#ifdef WITH_DEBUG_LOG
-	char *buffer = malloc((in.sz + 1) * sizeof(*buffer));
-	*out = buffer;
-	while (buffer) {
-		const char *src_end = memchr(in.data, '\n', in.sz);
-		if (src_end == NULL) {
-			memcpy(buffer, in.data, in.sz);
-			buffer[in.sz] = '\0';
-			break;
-		}
-
-		size_t n = src_end - in.data;
-		memcpy(buffer, in.data, n);
-
-		buffer += n;
-		n++; /* skip newline char in <in.data> */
-		in.data += n;
-		in.sz -= n;
-	}
-#else
-	(void)in;
-	*out = strdup("PRETTY_PRINT_NOT_IMPLEMENTED");
-#endif
-}
-
 static const char MTVIDEO[] = "video/";
 
 result_t
@@ -302,28 +271,24 @@ result_t
 find_js_deobfuscator_magic_global(const struct string_view *js,
                                   struct deobfuscator *d)
 {
-	check(re_capture("(var [^\\s=]+=[-0-9]{6,});", js, d->magic));
-	if (d->magic[0].data == NULL) {
-		return make_result(ERR_JS_DEOB_FIND_MAGIC_ONE);
-	}
+	d->magic[0].data =
+		"var g = {}; document = this; navigator = this; window = this; "
+		/* Set fake values for variables accessed by base.js content */
+		"document.location = {'hostname': 'foobar'}; "
+		"XMLHttpRequest = {'prototype': {'fetch': 'fuzzbuzz'}}; "
+		/* Workaround Duktape's lack of 3-arg Reflect.construct() */
+		"var patch = Reflect.construct; "
+		"Reflect.construct = function(a,b,c) { return patch(a,b) }; ";
+	d->magic[0].sz = strlen(d->magic[0].data);
 
-	debug("Parsed magic 1: %.*s", (int)d->magic[0].sz, d->magic[0].data);
-
-	check(re_capture("(?s)use strict[^;];"
-	                 "(.*?),\\n?"   /* Lazily capture all JavaScript code */
-	                 "(?:"          /* ... until we hit a long enough run */
-	                 "[^\\s]{2,3}," /* of consecutive var declarations.   */
-	                 "){7}",        /* Current threshold: 7 variables     */
+	check(re_capture("(?s)var _yt_player={};.function...{.*'use strict';"
+	                 "(.*)"
+	                 "}.._yt_player.;",
 	                 js,
 	                 d->magic + 1));
 	if (d->magic[1].data == NULL) {
-		return make_result(ERR_JS_DEOB_FIND_MAGIC_TWO);
+		return make_result(ERR_JS_DEOB_FIND_MAGIC_ONE);
 	}
-
-	char *pretty_print __attribute__((cleanup(str_free))) = NULL;
-	pretty_print_code(d->magic[1], &pretty_print);
-	debug("Parsed magic 2: %s", pretty_print);
-
 	return RESULT_OK;
 }
 
@@ -332,7 +297,7 @@ find_js_deobfuscator_magic_global(const struct string_view *js,
  *
  * find_js_deobfuscator() does the following:
  *
- * 1) find <foo> in base.js like: &&(b=foo[0](b)
+ * 1) find <foo> in base.js like: b=foo[0](b)
  * 2) find <bar> in base.js like: var foo=[bar]
  * 3) find <...> in base.js like: bar=function(a){...}
  *
@@ -347,13 +312,13 @@ find_js_deobfuscator(const struct string_view *js, struct deobfuscator *d)
 	int rc = 0;
 
 	struct string_view n1 = {0};
-	check(re_capture("&&\\([[:alpha:]]=([^\\]]+)\\[0\\]\\([[:alpha:]]\\)",
+	check(re_capture("[[:alpha:]]=([^\\]]+)\\[0\\]\\([[:alpha:]]\\)",
 	                 js,
 	                 &n1));
 	if (n1.data == NULL) {
 		return make_result(ERR_JS_DEOB_FIND_FUNC_ONE);
 	}
-	debug("Got function name 1: %.*s", (int)n1.sz, n1.data);
+	debug("Got function reference: %.*s", (int)n1.sz, n1.data);
 
 	char *p2 __attribute__((cleanup(str_free))) = NULL;
 	rc = asprintf(&p2,
@@ -362,33 +327,11 @@ find_js_deobfuscator(const struct string_view *js, struct deobfuscator *d)
 	              n1.data);
 	check_if(rc < 0, ERR_JS_DEOBFUSCATOR_ALLOC);
 
-	struct string_view n2 = {0};
-	check(re_capture(p2, js, &n2));
-	if (n2.data == NULL) {
+	check(re_capture(p2, js, &d->funcname));
+	if (d->funcname.data == NULL) {
 		return make_result(ERR_JS_DEOB_FIND_FUNC_TWO, n1.data, n1.sz);
 	}
-	debug("Got function name 2: %.*s", (int)n2.sz, n2.data);
-
-	char *p3 __attribute__((cleanup(str_free))) = NULL;
-	rc = asprintf(&p3,
-	              "(?s)\\n\\Q%.*s\\E=("
-	              "function\\([[:alpha:]]\\){"
-	              ".*?" /* lazy (not greedy) quantifier: `*?` */
-	              "};"
-	              ")"
-	              "\\n[^\\s=]+=", /* stop before next global var decl */
-	              (int)n2.sz,
-	              n2.data);
-	check_if(rc < 0, ERR_JS_DEOBFUSCATOR_ALLOC);
-
-	check(re_capture(p3, js, &d->code));
-	if (d->code.data == NULL) {
-		return make_result(ERR_JS_DEOB_FIND_FUNC_BODY, n2.data, n2.sz);
-	}
-
-	char *pprint __attribute__((cleanup(str_free))) = NULL;
-	pretty_print_code(d->code, &pprint);
-	debug("Got function body of %.*s=%s", (int)n2.sz, n2.data, pprint);
+	debug("Got function name: %.*s", (int)d->funcname.sz, d->funcname.data);
 
 	return RESULT_OK;
 }
@@ -401,9 +344,8 @@ call_js_one(duk_context *ctx,
             void *userdata)
 {
 	/*
-	 * Duplicate the compiled JavaScript function at the top of the Duktape
-	 * stack, to prepare for the upcoming duk_pcall() that consumes one
-	 * copy of the compiled function; from the Duktape API docs:
+	 * Duplicate the function reference at the top of the Duktape stack to
+	 * prepare for upcoming mutation. From the API docs for duk_pcall():
 	 *
 	 *   The function and its arguments [get] replaced by a single return
 	 *   value or a single error value.
@@ -417,8 +359,8 @@ call_js_one(duk_context *ctx,
 
 	/*
 	 * Push supplied argument onto the Duktape stack, and then call the
-	 * compiled, ready-to-use JavaScript function on the Duktape stack (set
-	 * by a preceding duk_pcompile() in call_js_foreach()).
+	 * JavaScript function on the Duktape stack (set by a preceding
+	 * invocation of duk_get_global_lstring() in call_js_foreach()).
 	 */
 	duk_push_lstring(ctx, js_arg, strlen(js_arg));
 	if (duk_pcall(ctx, 1) != DUK_EXEC_SUCCESS) {
@@ -462,12 +404,9 @@ call_js_foreach(const struct deobfuscator *d,
 	}
 	debug("eval()-ed %zu magic variables", ARRAY_SIZE(d->magic));
 
-	duk_push_lstring(ctx, d->code.data, d->code.sz);
-	assert(duk_get_type(ctx, -1) == DUK_TYPE_STRING);
-
-	duk_push_string(ctx, __func__);
-	if (duk_pcompile(ctx, DUK_COMPILE_FUNCTION) != 0) {
-		return make_result(ERR_JS_CALL_COMPILE, peek(ctx));
+	const struct string_view *to_call = &d->funcname;
+	if (duk_get_global_lstring(ctx, to_call->data, to_call->sz) == 0) {
+		return make_result(ERR_JS_CALL_LOOKUP, peek(ctx));
 	}
 
 	for (size_t i = 0; args[i]; ++i) {
