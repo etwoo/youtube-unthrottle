@@ -12,9 +12,15 @@ Checks: >
   readability-*,
   -readability-identifier-length,
 
+#
+# XXX: when possible, remove custom *-function-size.StatementThreshold values,
+# set IgnoreMacros instead: https://github.com/llvm/llvm-project/issues/112835
+#
 CheckOptions:
   - {key: bugprone-easily-swappable-parameters.MinimumLength, value: 3}
   - {key: bugprone-reserved-identifier.AllowedIdentifiers, value: "__asan_default_options|__llvm_profile_|_GNU_SOURCE|__SANE_USERSPACE_TYPES__"}
+  - {key: hicpp-function-size.StatementThreshold, value: 1500}
+  - {key: readability-function-size.StatementThreshold, value: 1500}
   - {key: readability-function-cognitive-complexity.IgnoreMacros, value: true}
   - {key: readability-identifier-naming.EnumCase, value: lower_case}
   - {key: readability-identifier-naming.EnumConstantCase, value: UPPER_CASE}
