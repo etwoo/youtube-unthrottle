@@ -25,7 +25,7 @@ LLVMFuzzerTestOneInput(const char *data, size_t sz)
 				MAKE_TEST_STRING("var m1=123"),
 				MAKE_TEST_STRING("var m2='mmm'"),
 			},
-		.code =
+		.funcname =
 			{
 				.data = data,
 				.sz = sz,
