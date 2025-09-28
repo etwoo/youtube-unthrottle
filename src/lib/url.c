@@ -126,7 +126,7 @@ url_download(const char *url_str,
 
 		res = curl_easy_setopt(curl,
 		                       CURLOPT_POSTFIELDSIZE_LARGE,
-		                       post_body->sz);
+		                       (curl_off_t)post_body->sz);
 		check_if_num(res, ERR_URL_DOWNLOAD_SET_OPT_POST_BODY_SIZE);
 	}
 

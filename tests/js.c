@@ -662,20 +662,6 @@ find_js_deobfuscator_magic_global_negative_first(void)
 	auto_result err = find_js_deobfuscator_magic_global(&js, &d);
 
 	ASSERT_EQ(ERR_JS_DEOB_FIND_MAGIC_ONE, err.err);
-	ASSERT_EQ(NULL, d.magic[0].data);
-	ASSERT_EQ(0, d.magic[0].sz);
-	PASS();
-}
-
-TEST
-find_js_deobfuscator_magic_global_negative_second(void)
-{
-	struct deobfuscator d = {0};
-
-	const struct string_view js = MAKE_TEST_STRING("var m1=7777777;");
-	auto_result err = find_js_deobfuscator_magic_global(&js, &d);
-
-	ASSERT_EQ(ERR_JS_DEOB_FIND_MAGIC_TWO, err.err);
 	ASSERT_EQ(NULL, d.magic[1].data);
 	ASSERT_EQ(0, d.magic[1].sz);
 	PASS();
@@ -686,13 +672,14 @@ find_js_deobfuscator_magic_global_positive(void)
 {
 	struct deobfuscator d = {0};
 
-	const struct string_view js = MAKE_TEST_STRING(
-		"'use strict';var m2='MAGIC',aa,bb,cc,dd,ee,ff,gg,hh;"
-		"var m1=7777777;");
+	const struct string_view js =
+		MAKE_TEST_STRING("var _yt_player={};(function(g){'use strict';"
+	                         "var m2='MAGIC'"
+	                         "})(_yt_player);");
 	auto_result err = find_js_deobfuscator_magic_global(&js, &d);
 
 	ASSERT_EQ(OK, err.err);
-	ASSERT_STRN_EQ("var m1=7777777", d.magic[0].data, d.magic[0].sz);
+	ASSERT_STRN_EQ("var g = {}", d.magic[0].data, 10);
 	ASSERT_STRN_EQ("var m2='MAGIC'", d.magic[1].data, d.magic[1].sz);
 	PASS();
 }
@@ -702,13 +689,14 @@ find_js_deobfuscator_magic_global_positive_with_newlines(void)
 {
 	struct deobfuscator d = {0};
 
-	const struct string_view js = MAKE_TEST_STRING(
-		"'use strict';var m2=['MA',\n'GIC'],aa,bb,cc,dd,ee,ff,gg,hh;"
-		"var m1=7777777;");
+	const struct string_view js =
+		MAKE_TEST_STRING("var _yt_player={};(function(g){'use strict';"
+	                         "var m2=['MA',\n'GIC']"
+	                         "})(_yt_player);");
 	auto_result err = find_js_deobfuscator_magic_global(&js, &d);
 
 	ASSERT_EQ(OK, err.err);
-	ASSERT_STRN_EQ("var m1=7777777", d.magic[0].data, d.magic[0].sz);
+	ASSERT_STRN_EQ("var g = {}", d.magic[0].data, 10);
 	ASSERT_STRN_EQ("var m2=['MA',\n'GIC']", d.magic[1].data, d.magic[1].sz);
 	PASS();
 }
@@ -723,8 +711,8 @@ find_js_deobfuscator_negative_first_match_fail(void)
 	auto_result err = find_js_deobfuscator(&js, &d);
 
 	ASSERT_EQ(ERR_JS_DEOB_FIND_FUNC_ONE, err.err);
-	ASSERT_EQ(NULL, d.code.data);
-	ASSERT_EQ(0, d.code.sz);
+	ASSERT_EQ(NULL, d.funcname.data);
+	ASSERT_EQ(0, d.funcname.sz);
 	PASS();
 }
 
@@ -733,27 +721,12 @@ find_js_deobfuscator_negative_second_match_fail(void)
 {
 	struct deobfuscator d = {0};
 
-	const struct string_view js = MAKE_TEST_STRING("&&(c=ODa[0](c),");
+	const struct string_view js = MAKE_TEST_STRING("c=ODa[0](c),");
 	auto_result err = find_js_deobfuscator(&js, &d);
 
 	ASSERT_EQ(ERR_JS_DEOB_FIND_FUNC_TWO, err.err);
-	ASSERT_EQ(NULL, d.code.data);
-	ASSERT_EQ(0, d.code.sz);
-	PASS();
-}
-
-TEST
-find_js_deobfuscator_negative_third_match_fail(void)
-{
-	struct deobfuscator d = {0};
-
-	const struct string_view js =
-		MAKE_TEST_STRING("&&(c=ODa[0](c),\nvar ODa=[Pma];");
-	auto_result err = find_js_deobfuscator(&js, &d);
-
-	ASSERT_EQ(ERR_JS_DEOB_FIND_FUNC_BODY, err.err);
-	ASSERT_EQ(NULL, d.code.data);
-	ASSERT_EQ(0, d.code.sz);
+	ASSERT_EQ(NULL, d.funcname.data);
+	ASSERT_EQ(0, d.funcname.sz);
 	PASS();
 }
 
@@ -762,15 +735,13 @@ find_js_deobfuscator_positive_simple(void)
 {
 	struct deobfuscator d = {0};
 
-	const struct string_view js = MAKE_TEST_STRING(
-		"&&(c=ODa[0](c),\nvar ODa=[Pma];\nPma=function(a)"
-		"{return 'ABCDEF'};\nnext_global=0");
+	const struct string_view js =
+		MAKE_TEST_STRING("c=ODa[0](c);var ODa=[Pma];");
 	auto_result err = find_js_deobfuscator(&js, &d);
 	ASSERT_EQ(OK, err.err);
 
-	const char expected[] = "function(a){return 'ABCDEF'};";
-	ASSERT_EQ(strlen(expected), d.code.sz);
-	ASSERT_STRN_EQ(expected, d.code.data, d.code.sz);
+	ASSERT_EQ(3, d.funcname.sz);
+	ASSERT_STRN_EQ("Pma", d.funcname.data, d.funcname.sz);
 	PASS();
 }
 
@@ -779,15 +750,13 @@ find_js_deobfuscator_positive_with_escaping_and_newlines(void)
 {
 	struct deobfuscator d = {0};
 
-	const struct string_view js = MAKE_TEST_STRING(
-		"&&(c=$aa[0](c),\nvar $aa=[$bb];\n$bb=function(a)"
-		"{\nreturn\n'GHI'+'JKL'\n};\nnext_global=0");
+	const struct string_view js =
+		MAKE_TEST_STRING("c=$aa[0](c);\nvar $aa=[$bb];");
 	auto_result err = find_js_deobfuscator(&js, &d);
 	ASSERT_EQ(OK, err.err);
 
-	const char expected[] = "function(a){\nreturn\n'GHI'+'JKL'\n};";
-	ASSERT_EQ(strlen(expected), d.code.sz);
-	ASSERT_STRN_EQ(expected, d.code.data, d.code.sz);
+	ASSERT_EQ(3, d.funcname.sz);
+	ASSERT_STRN_EQ("$bb", d.funcname.data, d.funcname.sz);
 	PASS();
 }
 
@@ -800,17 +769,13 @@ SUITE(find_with_pcre)
 	RUN_TEST(find_js_timestamp_positive_strtoll_max);
 	RUN_TEST(find_js_timestamp_positive_simple);
 	RUN_TEST(find_js_deobfuscator_magic_global_negative_first);
-	RUN_TEST(find_js_deobfuscator_magic_global_negative_second);
 	RUN_TEST(find_js_deobfuscator_magic_global_positive);
 	RUN_TEST(find_js_deobfuscator_magic_global_positive_with_newlines);
 	RUN_TEST(find_js_deobfuscator_negative_first_match_fail);
 	RUN_TEST(find_js_deobfuscator_negative_second_match_fail);
-	RUN_TEST(find_js_deobfuscator_negative_third_match_fail);
 	RUN_TEST(find_js_deobfuscator_positive_simple);
 	RUN_TEST(find_js_deobfuscator_positive_with_escaping_and_newlines);
 }
-
-#define MAGIC_VARS MAKE_TEST_STRING("var M1=56"), MAKE_TEST_STRING("var M2=78")
 
 static WARN_UNUSED result_t
 got_result_noop(const char *val MAYBE_UNUSED,
@@ -833,10 +798,10 @@ call_with_duktape_peval_fail(void)
 
 	const struct deobfuscator d = {
 		{
-			MAKE_TEST_STRING("var MY_MAGIC=123456"),
+			MAKE_TEST_STRING("var M1=function(){return 123}"),
 			MAKE_TEST_STRING("var BAD_MAGIC=\"dangling"),
 		},
-		MAKE_TEST_STRING("\"Not a valid function definition\""),
+		MAKE_TEST_STRING("M1"),
 	};
 
 	auto_result err = call_js_foreach(&d, args, &CALL_NOOP, NULL);
@@ -845,7 +810,7 @@ call_with_duktape_peval_fail(void)
 }
 
 TEST
-call_with_duktape_pcompile_fail(void)
+call_with_duktape_function_lookup_fail(void)
 {
 	char *args[2];
 	args[0] = "Hello, World!";
@@ -853,13 +818,14 @@ call_with_duktape_pcompile_fail(void)
 
 	const struct deobfuscator d = {
 		{
-			MAGIC_VARS,
+			MAKE_TEST_STRING("var M1=function(){return 123}"),
+			MAKE_TEST_STRING("var M2=function(){return 456}"),
 		},
-		MAKE_TEST_STRING("\"Not a valid function definition\""),
+		MAKE_TEST_STRING("function_does_not_exist"),
 	};
 
 	auto_result err = call_js_foreach(&d, args, &CALL_NOOP, NULL);
-	ASSERT_EQ(ERR_JS_CALL_COMPILE, err.err);
+	ASSERT_EQ(ERR_JS_CALL_LOOKUP, err.err);
 	PASS();
 }
 
@@ -872,9 +838,10 @@ call_with_duktape_pcall_fail(void)
 
 	const struct deobfuscator d = {
 		{
-			MAGIC_VARS,
+			MAKE_TEST_STRING("var M1=function(){return nodef}"),
+			MAKE_TEST_STRING("var M2=function(){return 456}"),
 		},
-		MAKE_TEST_STRING("function(a){return not_defined;};"),
+		MAKE_TEST_STRING("M1"),
 	};
 
 	auto_result err = call_js_foreach(&d, args, &CALL_NOOP, NULL);
@@ -891,9 +858,10 @@ call_with_duktape_pcall_incorrect_result_type(void)
 
 	const struct deobfuscator d = {
 		{
-			MAGIC_VARS,
+			MAKE_TEST_STRING("var M1=function(){return true}"),
+			MAKE_TEST_STRING("var M2=function(){return 456}"),
 		},
-		MAKE_TEST_STRING("function(a){return true;};"),
+		MAKE_TEST_STRING("M1"),
 	};
 
 	auto_result err = call_js_foreach(&d, args, &CALL_NOOP, NULL);
@@ -943,9 +911,11 @@ call_with_duktape_minimum_valid_function(void)
 
 	const struct deobfuscator d = {
 		{
-			MAGIC_VARS,
+			MAKE_TEST_STRING("var M1='56'"),
+			MAKE_TEST_STRING("var M2=function(a){"
+	                                 "return a.split(',')[0]+M1+'78'}"),
 		},
-		MAKE_TEST_STRING("function(a){return a.split(',')[0]+M1+M2;};"),
+		MAKE_TEST_STRING("M2"),
 	};
 
 	auto_result err = call_js_foreach(&d, args, &cops, &result);
@@ -954,12 +924,10 @@ call_with_duktape_minimum_valid_function(void)
 	PASS();
 }
 
-#undef MAGIC_VARS
-
 SUITE(call_with_duktape)
 {
 	RUN_TEST(call_with_duktape_peval_fail);
-	RUN_TEST(call_with_duktape_pcompile_fail);
+	RUN_TEST(call_with_duktape_function_lookup_fail);
 	RUN_TEST(call_with_duktape_pcall_fail);
 	RUN_TEST(call_with_duktape_pcall_incorrect_result_type);
 	RUN_TEST(call_with_duktape_minimum_valid_function);
