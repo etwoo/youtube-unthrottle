@@ -133,11 +133,16 @@ analyze:clang-tidy:
 #
 # Run the Infer static analyzer: https://fbinfer.com
 #
+# Use a build of Infer at commit fc237fb with the following patches applied:
+#
+# - https://github.com/facebook/infer/pull/1938
+# - https://github.com/facebook/infer/pull/1939
+#
 analyze:fb-infer:
+  image: $CI_REGISTRY/$CI_PROJECT_PATH:fbinfer-fc237fb
   <<: *build_dependencies
   stage: build
   script:
     - cmake --preset clang -DCMAKE_EXPORT_COMPILE_COMMANDS=1
     - cmake --build --preset default
-    - curl -sSL https://github.com/facebook/infer/releases/download/v1.2.0/infer-linux-x86_64-v1.2.0.tar.xz | tar -C ./build/ -xJ
-    - ./build/infer-linux-x86_64-v1.2.0/bin/infer run
+    - infer run

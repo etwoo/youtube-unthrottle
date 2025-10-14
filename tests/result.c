@@ -8,7 +8,7 @@
 	do {                                                                   \
 		auto_result_str owner = haystack;                              \
 		debug("Checking for \"%s\" in \"%s\"", needle, owner);         \
-		ASSERT_NEQ(NULL, strstr(owner, needle));                       \
+		ASSERT_NEQ(NULL, strstr(owner == NULL ? "" : owner, needle));  \
 	} while (0)
 
 static WARN_UNUSED char *

@@ -63,7 +63,7 @@ landlock_restrict_self(const int ruleset_fd, const __u32 flags)
 static WARN_UNUSED result_t
 ruleset_add_one(int fd, const char *path, struct landlock_path_beneath_attr *pb)
 {
-	int rc = -1;
+	int rc = 0;
 
 	pb->parent_fd = open(path, O_PATH);
 	const bool opened = (pb->parent_fd >= 0);
@@ -109,7 +109,7 @@ ruleset_add_rule_port(int fd, int port)
 result_t
 landlock_apply(const char *const *paths, int sz, int port)
 {
-	int rc = -1;
+	int rc = 0;
 
 	struct landlock_ruleset_attr ra = {
 		.handled_access_fs = LANDLOCK_ACCESS_FS_READ_FILE,

@@ -10,7 +10,7 @@ cat << EOF > "$OUTPUT_FILE"
 #include "coverage.h"
 #include "greatest.h"
 #include "sys/debug.h"
-GREATEST_MAIN_DEFS(); // NOLINT(cppcoreguidelines-avoid-non-const-global-variables,readability-isolate-declaration)
+GREATEST_MAIN_DEFS(); // NOLINT(cppcoreguidelines-avoid-non-const-global-variables,readability-isolate-declaration) @infer-ignore DEAD_STORE
 EOF
 
 for filename ; do # iterate over remaining positional parameters
