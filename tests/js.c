@@ -777,6 +777,11 @@ SUITE(find_with_pcre)
 	RUN_TEST(find_js_deobfuscator_positive_with_escaping_and_newlines);
 }
 
+static const char *const TEST_ARGS[] = {
+	"Hello, World!",
+	NULL,
+};
+
 static WARN_UNUSED result_t
 got_result_noop(const char *val MAYBE_UNUSED,
                 size_t pos MAYBE_UNUSED,
@@ -792,10 +797,6 @@ static const struct call_ops CALL_NOOP = {
 TEST
 call_with_duktape_peval_fail(void)
 {
-	char *args[2];
-	args[0] = "Hello, World!";
-	args[1] = NULL;
-
 	const struct deobfuscator d = {
 		{
 			MAKE_TEST_STRING("var M1=function(){return 123}"),
@@ -804,7 +805,7 @@ call_with_duktape_peval_fail(void)
 		MAKE_TEST_STRING("M1"),
 	};
 
-	auto_result err = call_js_foreach(&d, args, &CALL_NOOP, NULL);
+	auto_result err = call_js_foreach(&d, TEST_ARGS, &CALL_NOOP, NULL);
 	ASSERT_EQ(ERR_JS_CALL_EVAL_MAGIC, err.err);
 	PASS();
 }
@@ -812,10 +813,6 @@ call_with_duktape_peval_fail(void)
 TEST
 call_with_duktape_function_lookup_fail(void)
 {
-	char *args[2];
-	args[0] = "Hello, World!";
-	args[1] = NULL;
-
 	const struct deobfuscator d = {
 		{
 			MAKE_TEST_STRING("var M1=function(){return 123}"),
@@ -824,7 +821,7 @@ call_with_duktape_function_lookup_fail(void)
 		MAKE_TEST_STRING("function_does_not_exist"),
 	};
 
-	auto_result err = call_js_foreach(&d, args, &CALL_NOOP, NULL);
+	auto_result err = call_js_foreach(&d, TEST_ARGS, &CALL_NOOP, NULL);
 	ASSERT_EQ(ERR_JS_CALL_LOOKUP, err.err);
 	PASS();
 }
@@ -832,10 +829,6 @@ call_with_duktape_function_lookup_fail(void)
 TEST
 call_with_duktape_pcall_fail(void)
 {
-	char *args[2];
-	args[0] = "Hello, World!";
-	args[1] = NULL;
-
 	const struct deobfuscator d = {
 		{
 			MAKE_TEST_STRING("var M1=function(){return nodef}"),
@@ -844,7 +837,7 @@ call_with_duktape_pcall_fail(void)
 		MAKE_TEST_STRING("M1"),
 	};
 
-	auto_result err = call_js_foreach(&d, args, &CALL_NOOP, NULL);
+	auto_result err = call_js_foreach(&d, TEST_ARGS, &CALL_NOOP, NULL);
 	ASSERT_EQ(ERR_JS_CALL_INVOKE, err.err);
 	PASS();
 }
@@ -852,10 +845,6 @@ call_with_duktape_pcall_fail(void)
 TEST
 call_with_duktape_pcall_incorrect_result_type(void)
 {
-	char *args[2];
-	args[0] = "Hello, World!";
-	args[1] = NULL;
-
 	const struct deobfuscator d = {
 		{
 			MAKE_TEST_STRING("var M1=function(){return true}"),
@@ -864,7 +853,7 @@ call_with_duktape_pcall_incorrect_result_type(void)
 		MAKE_TEST_STRING("M1"),
 	};
 
-	auto_result err = call_js_foreach(&d, args, &CALL_NOOP, NULL);
+	auto_result err = call_js_foreach(&d, TEST_ARGS, &CALL_NOOP, NULL);
 	ASSERT_EQ(ERR_JS_CALL_GET_RESULT, err.err);
 	PASS();
 }
@@ -905,10 +894,6 @@ call_with_duktape_minimum_valid_function(void)
 	struct result_copy result;
 	result_copy_init(&result);
 
-	char *args[2];
-	args[0] = "Hello, World!";
-	args[1] = NULL;
-
 	const struct deobfuscator d = {
 		{
 			MAKE_TEST_STRING("var M1='56'"),
@@ -918,7 +903,7 @@ call_with_duktape_minimum_valid_function(void)
 		MAKE_TEST_STRING("M2"),
 	};
 
-	auto_result err = call_js_foreach(&d, args, &cops, &result);
+	auto_result err = call_js_foreach(&d, TEST_ARGS, &cops, &result);
 	ASSERT_EQ(OK, err.err);
 	ASSERT_STR_EQ("Hello5678", result.str);
 	PASS();

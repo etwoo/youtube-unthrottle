@@ -390,7 +390,7 @@ eval_js_magic_one(duk_context *ctx, const struct string_view *magic)
 
 result_t
 call_js_foreach(const struct deobfuscator *d,
-                char **args,
+                const char *const *args,
                 const struct call_ops *ops,
                 void *userdata)
 {

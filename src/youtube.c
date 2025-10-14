@@ -330,6 +330,11 @@ youtube_stream_open(struct youtube_stream *p,
 	};
 	check(youtube_stream_copy_n_param(p, &ciphertexts[0]));
 
+	const char *ciphertexts_const[ARRAY_SIZE(ciphertexts)];
+	for (size_t i = 0; i < ARRAY_SIZE(ciphertexts_const); i++) {
+		ciphertexts_const[i] = ciphertexts[i];
+	}
+
 	struct deobfuscator deobfuscator = {0};
 	check(find_js_deobfuscator_magic_global(&p->js.data, &deobfuscator));
 	check(find_js_deobfuscator(&p->js.data, &deobfuscator));
@@ -337,7 +342,7 @@ youtube_stream_open(struct youtube_stream *p,
 	struct call_ops cops = {
 		.got_result = youtube_stream_update_n_param,
 	};
-	check(call_js_foreach(&deobfuscator, ciphertexts, &cops, p));
+	check(call_js_foreach(&deobfuscator, ciphertexts_const, &cops, p));
 
 	return RESULT_OK;
 }
