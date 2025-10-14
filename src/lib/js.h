@@ -46,7 +46,7 @@ struct call_ops {
 };
 
 result_t call_js_foreach(const struct deobfuscator *d,
-                         char **args,
+                         const char *const *args,
                          const struct call_ops *ops,
                          void *userdata) WARN_UNUSED;
 
