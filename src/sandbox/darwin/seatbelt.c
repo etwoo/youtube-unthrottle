@@ -5,6 +5,7 @@
 #include "sys/debug.h"
 
 #include <assert.h>
+#include <inttypes.h>
 #include <limits.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -114,7 +115,7 @@ seatbelt_init(struct seatbelt_context *context)
 		if (context->extensions[i] < 0) {
 			return make_result(SEATBELT_EXTENSIONS[i].err_consume);
 		}
-		debug("consumed token %s; got handle %lld",
+		debug("consumed token %s; got handle %" PRIi64,
 		      tokens[i],
 		      context->extensions[i]);
 	}
@@ -142,7 +143,7 @@ seatbelt_revoke(struct seatbelt_context *context, unsigned flags)
 		}
 
 		context->extensions[i] = SEATBELT_EXTENSION_HANDLE_RELEASED;
-		debug("released handle %lld for %s", to_release, e->name);
+		debug("released handle %" PRIi64 "for %s", to_release, e->name);
 	}
 
 	return RESULT_OK;
