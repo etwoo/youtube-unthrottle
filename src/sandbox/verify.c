@@ -31,6 +31,21 @@ const char SANDBOX_VERIFY_STATIC_IP_ADDRESS[] = "1.1.1.1"; /* Cloudflare DNS */
 #pragma GCC diagnostic ignored "-Wanalyzer-fd-leak"
 #endif
 
+/*
+ * Infer's Pulse memory analysis engine does not seem to understand how
+ * __attribute__((cleanup)) closes the test socket in sandbox_verify(),
+ * even in the simple case(s) where the function returns RESULT_OK.
+ *
+ * The latest upstream Infer (e.g. commit fc237fb, HEAD of main on August 20,
+ * 2025) still exhibits this behavior when built from source.
+ *
+ * References:
+ *
+ *   https://fbinfer.com/docs/next/checker-pulse
+ *   https://fbinfer.com/docs/next/all-issue-types#resource_leak
+ */
+// @infer-ignore-every PULSE_RESOURCE_LEAK
+
 static void
 descriptor_cleanup(const int *file_or_socket)
 {

@@ -337,7 +337,7 @@ find_js_deobfuscator(const struct string_view *js, struct deobfuscator *d)
 }
 
 static WARN_UNUSED result_t
-call_js_one(duk_context *ctx,
+call_js_one(duk_context *ctx_arg,
             const char *js_arg,
             size_t js_pos,
             const struct call_ops *ops,
@@ -353,9 +353,9 @@ call_js_one(duk_context *ctx,
 	 * Duplicating the top of stack (TOS) thus prepares us for successive
 	 * invocations of this function.
 	 */
-	duk_dup_top(ctx);
+	duk_dup_top(ctx_arg);
 
-	duk_context *guard __attribute__((cleanup(pop))) = ctx;
+	duk_context *ctx __attribute__((cleanup(pop))) = ctx_arg;
 
 	/*
 	 * Push supplied argument onto the Duktape stack, and then call the
@@ -379,9 +379,9 @@ call_js_one(duk_context *ctx,
 }
 
 static WARN_UNUSED result_t
-eval_js_magic_one(duk_context *ctx, const struct string_view *magic)
+eval_js_magic_one(duk_context *ctx_arg, const struct string_view *magic)
 {
-	duk_context *guard __attribute__((cleanup(pop))) = ctx;
+	duk_context *ctx __attribute__((cleanup(pop))) = ctx_arg;
 	if (duk_peval_lstring(ctx, magic->data, magic->sz) != 0) {
 		return make_result(ERR_JS_CALL_EVAL_MAGIC, peek(ctx));
 	}
