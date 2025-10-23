@@ -59,6 +59,10 @@ jobs:
         -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
         -DCMAKE_EXPORT_COMPILE_COMMANDS=1 &&
         cmake --build --preset default --parallel
+    - name: Prevent homebrew CC and PATH from affecting cpp-linter-action
+      run: |
+        echo CC="$(which gcc)" >> "$GITHUB_ENV"
+        grep ^PATH /etc/environment | cut -d= -f2 >> "$GITHUB_PATH"
     - name: Run clang-format and clang-tidy, including clang-analyzer checks
       id: lint
       uses: cpp-linter/cpp-linter-action@v2
