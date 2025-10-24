@@ -3,4 +3,5 @@ target_sources(youtube PRIVATE
 	seccomp.c
 )
 
+include(TargetLinkPkgConfig)
 target_link_from_pkg_config(youtube libseccomp)
