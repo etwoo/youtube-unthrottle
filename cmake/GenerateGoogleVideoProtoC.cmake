@@ -1,10 +1,14 @@
 include_guard(GLOBAL)
 
+include(TargetLinkPkgConfig)
 find_package(Protobuf REQUIRED)
 
 macro(generate_googlevideo_protoc target)
-	target_link_libraries(${target} PRIVATE
-		protobuf-c
+	target_link_from_pkg_config(${target} libprotobuf-c)
+	# Any targets in this project that take a dependency on libprotobuf-c
+	# will also want to use the protobuf code generated below.
+	target_include_directories(PkgConfig::libprotobuf-c SYSTEM INTERFACE
+		${googlevideo_BINARY_DIR}
 	)
 
 	set(PROTO_PREFIX "${googlevideo_SOURCE_DIR}/protos")

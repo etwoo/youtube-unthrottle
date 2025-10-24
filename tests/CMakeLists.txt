@@ -50,7 +50,12 @@ macro(generate_test_driver)
 		${greatest_SOURCE_DIR}      # for greatest.h
 	)
 	target_link_libraries(test-driver PRIVATE my_cflags sanitizers youtube)
+	# tests exercise internal C APIs like re_capture(), parse_json(), etc
 	target_link_libraries(test-driver PRIVATE youtube-internals)
+	# tests use pcre2.h constants to verify ./src/lib/re.h
+	target_link_libraries(test-driver PRIVATE PkgConfig::libpcre2-8)
+	# tests use protobuf-c.h transitively to compile ./src/protocol/...
+	target_link_libraries(test-driver PRIVATE PkgConfig::libprotobuf-c)
 endmacro()
 
 register_test(js)

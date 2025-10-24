@@ -4,10 +4,9 @@ target_sources(youtube PRIVATE
 	url.c
 )
 
-target_link_libraries(youtube PRIVATE
-	ada
-	curl
-	duktape
-	jansson
-	pcre2-8
-)
+include(TargetLinkPkgConfig)
+target_link_from_pkg_config(youtube ada)
+target_link_from_pkg_config(youtube libcurl)
+target_link_from_pkg_config(youtube duktape)
+target_link_from_pkg_config(youtube jansson)
+target_link_from_pkg_config(youtube libpcre2-8)
