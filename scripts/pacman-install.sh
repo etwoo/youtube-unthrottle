@@ -30,7 +30,7 @@ pacman --noconfirm -U *.pkg.tar.*
 cd -
 
 # Workaround lack of quickjs package for Arch Linux
-yay --noconfirm -S quickjs
+runuser -u nobody -- yay --noconfirm -S quickjs
 
 # Workaround lack of quickjs pkgconfig metadata
 QUICKJS_PC=/usr/lib/pkgconfig/quickjs.pc
