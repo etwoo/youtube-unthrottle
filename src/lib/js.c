@@ -39,18 +39,19 @@ destroy_context(JSContext **ctx)
 
 struct quickjs_context_value {
 	JSContext *context;
-	JSValue *val;
+	JSValue val;
 };
 
 static void
-destroy_value(quickjs_context_value **qval)
+destroy_value(struct quickjs_context_value *qval)
 {
-	if ((**qval).val != NULL) {
-		JS_FreeValue((**qval).context, (**qval).val);
+	if (!JS_IsException(qval->val)) {
+		JS_FreeValue(qval->context, qval->val);
 	}
 }
 
-#define auto_value quickjs_context_value __attribute__((cleanup(destroy_value)))
+#define auto_value                                                             \
+	struct quickjs_context_value __attribute__((cleanup(destroy_value)))
 
 struct quickjs_context_str {
 	JSContext *context;
@@ -58,14 +59,15 @@ struct quickjs_context_str {
 };
 
 static void
-destroy_js_str(quickjs_context_str **qstr)
+destroy_js_str(struct quickjs_context_str *qstr)
 {
-	if ((**qstr).str != NULL) {
-		JS_FreeCString((**qstr).context, (**qstr).str);
+	if (qstr->str != NULL) {
+		JS_FreeCString(qstr->context, qstr->str);
 	}
 }
 
-#define auto_str quickjs_context_str __attribute__((cleanup(destroy_js_str)))
+#define auto_str                                                               \
+	struct quickjs_context_str __attribute__((cleanup(destroy_js_str)))
 
 static void
 str_free(char **strp)
@@ -382,13 +384,13 @@ call_js_one(JSContext *ctx,
 		return make_result(ERR_JS_CALL_INVOKE, str.str);
 	}
 
-	const char *result = {ctx, JS_ToCString(ctx, value.val)};
-	if (result == NULL) {
+	auto_str result = {ctx, JS_ToCString(ctx, value.val)};
+	if (result.str == NULL) {
 		return make_result(ERR_JS_CALL_GET_RESULT);
 	}
 
-	debug("Got JavaScript function result: %s", result);
-	check(ops->got_result(result, js_pos, userdata));
+	debug("Got JavaScript function result: %s", result.str);
+	check(ops->got_result(result.str, js_pos, userdata));
 
 	return RESULT_OK;
 }
@@ -432,9 +434,10 @@ call_js_foreach(const struct deobfuscator *d,
 		strndup(d->funcname.data, d->funcname.sz);
 	check_if(funcname == NULL, ERR_JS_CALL_ALLOC);
 
+	auto_value global = {ctx, JS_GetGlobalObject(ctx)};
 	auto_value to_call = {
 		ctx,
-		JS_GetPropertyStr(ctx, global_obj, funcname),
+		JS_GetPropertyStr(ctx, global.val, funcname),
 	};
 	if (JS_IsException(to_call.val)) {
 		auto_value ex = {ctx, JS_GetException(ctx)};
