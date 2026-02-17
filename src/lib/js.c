@@ -386,7 +386,7 @@ call_js_one(JSContext *ctx,
 	}
 
 	auto_str result = {ctx, JS_ToCString(ctx, value.val)};
-	if (result.str == NULL) {
+	if (result.str == NULL || !JS_IsString(value.val)) {
 		return make_result(ERR_JS_CALL_GET_RESULT);
 	}
 
