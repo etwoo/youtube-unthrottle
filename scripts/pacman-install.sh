@@ -21,17 +21,13 @@ pacman	--noconfirm --needed -Sy \
 	# Note: update glibc in case nightly CI container image (host OS)
 	# uses newer glibc version than fortnightly VM image (guest OS)
 
-# Install AUR helper
-git clone --depth 1 https://aur.archlinux.org/yay-bin.git
-cd yay-bin
+# Workaround lack of quickjs package for Arch Linux
+git clone --depth 1 https://aur.archlinux.org/quickjs.git
+cd quickjs
 chmod 777 .
 runuser -u nobody -- makepkg -s
 pacman --noconfirm -U -- *.pkg.tar.*
 cd -
-
-# Workaround lack of quickjs package for Arch Linux
-runuser -u nobody -- yay --noconfirm -B quickjs
-pacman --noconfirm -U -- *.pkg.tar.*
 
 # Workaround lack of quickjs pkgconfig metadata
 QUICKJS_PC=/usr/lib/pkgconfig/quickjs.pc
