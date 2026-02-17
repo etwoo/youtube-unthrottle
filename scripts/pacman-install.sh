@@ -3,10 +3,7 @@
 set -euxo pipefail
 
 # Install project dependencies via Arch Linux package manager
-pacman	--noprogressbar          \
-	--noconfirm              \
-	--needed                 \
-	-Sy                      \
+pacman	--noconfirm --needed -Sy \
 	--assume-installed guile \
 	--assume-installed perl  \
 	base-devel               \
@@ -33,7 +30,7 @@ pacman --noconfirm -U *.pkg.tar.*
 cd -
 
 # Workaround lack of quickjs package for Arch Linux
-yay -S quickjs
+yay --noconfirm -S quickjs
 
 # Workaround lack of quickjs pkgconfig metadata
 QUICKJS_PC=/usr/lib/pkgconfig/quickjs.pc
