@@ -306,9 +306,10 @@ find_js_deobfuscator_magic_global(const struct string_view *js,
 		/* Set fake values for variables accessed by base.js content */
 		"document.location = {'hostname': 'foobar'}; "
 		"XMLHttpRequest = {'prototype': {'fetch': 'fuzzbuzz'}}; "
-		/* Workaround Duktape's lack of 3-arg Reflect.construct() */
-		"var patch = Reflect.construct; "
-		"Reflect.construct = function(a,b,c) { return patch(a,b) }; ";
+		/* Workaround QuickJS's lack of Intl namespace */
+		"Intl = {'NumberFormat': {'supportedLocalesOf': "
+		"function(x) { return ['en']; }"
+		"}}; ";
 	d->magic[0].sz = strlen(d->magic[0].data);
 
 	check(re_capture("(?s)var _yt_player={};.function...{.*'use strict';"
