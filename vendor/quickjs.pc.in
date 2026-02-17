@@ -1,0 +1,9 @@
+prefix=QUICKJS_PREFIX
+includedir=${prefix}/include
+libdir=${prefix}/lib
+
+Name: QuickJS
+Description: A small and embeddable Javascript engine
+Version: QUICKJS_VERSION
+Cflags: -I${includedir}/quickjs
+Libs: -L${libdir}/quickjs -lquickjs

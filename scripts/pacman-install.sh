@@ -32,3 +32,12 @@ cd -
 
 # Workaround lack of quickjs package for Arch Linux
 yay -S quickjs
+
+# Workaround lack of quickjs pkgconfig metadata
+QUICKJS_PC=/usr/lib/pkgconfig/quickjs.pc
+QUICKJS_PREFIX=/usr
+QUICKJS_VERSION="$(pacman -Qi quickjs | grep ^Version | cut -d: -f2-)"
+m4 ./vendor/quickjs.pc.in                     \
+	-D QUICKJS_PREFIX="$QUICKJS_PREFIX"   \
+	-D QUICKJS_VERSION="$QUICKJS_VERSION" \
+	> "$QUICKJS_PC"

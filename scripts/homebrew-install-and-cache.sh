@@ -22,6 +22,15 @@ fi
 # Install packages via Homebrew, quieting reinstall warnings if necessary
 brew install --quiet "$CC_PKG" cmake pkgconf curl jansson pcre2 protobuf-c quickjs
 
+# Workaround lack of quickjs pkgconfig metadata
+QUICKJS_PC="$(brew --prefix)/lib/pkgconfig/quickjs.pc"
+QUICKJS_PREFIX="$(realpath $(brew --prefix quickjs))"
+QUICKJS_VERSION="$(brew list --versions quickjs | cut -f2 -d' ')"
+m4 ./vendor/quickjs.pc.in                     \
+	-D QUICKJS_PREFIX="$QUICKJS_PREFIX"   \
+	-D QUICKJS_VERSION="$QUICKJS_VERSION" \
+	> "$QUICKJS_PC"
+
 if [ "$(uname)" == Darwin ] ; then
 	brew install --quiet ada-url
 elif [ "$(uname)" == Linux ] ; then
