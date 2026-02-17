@@ -27,7 +27,7 @@ pacman	--noprogressbar          \
 # Install AUR helper
 git clone --depth 1 https://aur.archlinux.org/yay-bin.git
 cd yay-bin
-runuser -u nobody makepkg -s
+runuser -u nobody -- makepkg -s
 pacman -U *.pkg.tar.*
 cd -
 
