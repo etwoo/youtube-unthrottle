@@ -22,12 +22,13 @@ pacman	--noconfirm --needed -Sy \
 # uses newer glibc version than fortnightly VM image (guest OS)
 
 # Workaround lack of quickjs package for Arch Linux
+pushd /tmp
 git clone --depth 1 https://aur.archlinux.org/quickjs.git
 cd quickjs
 chmod 777 .
 runuser -u nobody -- makepkg -s
 pacman --noconfirm -U -- *.pkg.tar.*
-cd -
+popd
 
 # Workaround lack of quickjs pkgconfig metadata
 QJS_IN=./vendor/quickjs.pc.in
