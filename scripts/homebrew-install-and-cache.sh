@@ -27,8 +27,8 @@ QUICKJS_PC="$(brew --prefix)/lib/pkgconfig/quickjs.pc"
 QUICKJS_PREFIX="$(brew --prefix quickjs | xargs realpath)"
 QUICKJS_VERSION="$(brew list --versions quickjs | cut -d' ' -f2)"
 m4 ./vendor/quickjs.pc.in                     \
-	-D QUICKJS_PREFIX="$QUICKJS_PREFIX"   \
-	-D QUICKJS_VERSION="$QUICKJS_VERSION" \
+	-DQUICKJS_PREFIX="$QUICKJS_PREFIX"   \
+	-DQUICKJS_VERSION="$QUICKJS_VERSION" \
 	> "$QUICKJS_PC"
 
 if [ "$(uname)" == Darwin ] ; then

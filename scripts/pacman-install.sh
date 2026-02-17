@@ -38,5 +38,4 @@ m4 ./vendor/quickjs.pc.in                     \
 	-D QUICKJS_VERSION="$QUICKJS_VERSION" \
 	> "$QUICKJS_PC"
 
-echo 'Checking generated pkgconfig metadata'
 cat "$QUICKJS_PC"
