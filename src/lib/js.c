@@ -386,7 +386,7 @@ call_js_one(JSContext *ctx,
 	}
 
 	auto_str result = {ctx, JS_ToCString(ctx, value.val)};
-	if (result.str == NULL || !JS_IsString(value.val)) {
+	if (!JS_IsString(value.val) || result.str == NULL) {
 		return make_result(ERR_JS_CALL_GET_RESULT);
 	}
 
@@ -447,10 +447,8 @@ call_js_foreach(const struct deobfuscator *d,
 	};
 	free(funcname);
 
-	if (JS_IsException(to_call.val)) {
-		auto_value ex = {ctx, JS_GetException(ctx)};
-		auto_str str = {ctx, JS_ToCString(ctx, ex.val)};
-		return make_result(ERR_JS_CALL_LOOKUP, str.str);
+	if (!JS_IsFunction(ctx, to_call.val)) {
+		return make_result(ERR_JS_CALL_LOOKUP, "did not find function");
 	}
 
 	for (size_t i = 0; args[i]; ++i) {
