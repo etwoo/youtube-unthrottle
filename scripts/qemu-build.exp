@@ -144,12 +144,12 @@ proc install_test_dependencies_in_vm {} {
 		"ada"
 		"cmake"
 		"curl"
-		"duktape"
 		"jansson"
 		"libseccomp"
 		"make"
 		"pcre2"
 		"protobuf-c"
+		"quickjs"
 		"glibc"
 	} " "]
 	# Note: we update glibc in case the nightly container image (host) uses

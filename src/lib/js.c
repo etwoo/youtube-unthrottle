@@ -8,11 +8,11 @@
 #include <stdbool.h>
 
 /*
- * Some helpful Duktape references:
+ * Some helpful QuickJS references:
  *
- *   https://duktape.org/api
+ *   https://bellard.org/quickjs/quickjs.html
  */
-#include <duktape.h>
+#include <quickjs.h>
 
 /*
  * Some helpful Jansson references:
@@ -21,23 +21,51 @@
  */
 #include <jansson.h>
 
-static WARN_UNUSED const char *
-peek(duk_context *ctx)
+static void
+destroy_runtime(JSRuntime **rt)
 {
-	return duk_safe_to_string(ctx, -1);
+	if (*rt != NULL) {
+		JS_FreeRuntime(*rt);
+	}
 }
 
 static void
-pop(duk_context **ctx)
+destroy_context(JSContext **ctx)
 {
-	duk_pop(*ctx);
+	if (*ctx != NULL) {
+		JS_FreeContext(*ctx);
+	}
 }
 
+struct quickjs_context_value {
+	JSContext *context;
+	JSValue *val;
+};
+
 static void
-destroy_heap(duk_context **ctx)
+destroy_value(quickjs_context_value **qval)
 {
-	duk_destroy_heap(*ctx); /* handles NULL gracefully */
+	if ((**qval).val != NULL) {
+		JS_FreeValue((**qval).context, (**qval).val);
+	}
 }
+
+#define auto_value quickjs_context_value __attribute__((cleanup(destroy_value)))
+
+struct quickjs_context_str {
+	JSContext *context;
+	const char *str;
+};
+
+static void
+destroy_js_str(quickjs_context_str **qstr)
+{
+	if ((**qstr).str != NULL) {
+		JS_FreeCString((**qstr).context, (**qstr).str);
+	}
+}
+
+#define auto_str quickjs_context_str __attribute__((cleanup(destroy_js_str)))
 
 static void
 str_free(char **strp)
@@ -321,10 +349,7 @@ find_js_deobfuscator(const struct string_view *js, struct deobfuscator *d)
 	debug("Got function reference: %.*s", (int)n1.sz, n1.data);
 
 	char *p2 __attribute__((cleanup(str_free))) = NULL;
-	rc = asprintf(&p2,
-	              "var \\Q%.*s\\E=\\[([^\\]]+)\\]",
-	              (int)n1.sz,
-	              n1.data);
+	rc = asprintf(&p2, "\\Q%.*s\\E=\\[([^\\]]+)\\]", (int)n1.sz, n1.data);
 	check_if(rc < 0, ERR_JS_DEOBFUSCATOR_ALLOC);
 
 	check(re_capture(p2, js, &d->funcname));
@@ -337,37 +362,27 @@ find_js_deobfuscator(const struct string_view *js, struct deobfuscator *d)
 }
 
 static WARN_UNUSED result_t
-call_js_one(duk_context *ctx_arg,
+call_js_one(JSContext *ctx,
+            JSValue to_call,
             const char *js_arg,
             size_t js_pos,
             const struct call_ops *ops,
             void *userdata)
 {
-	/*
-	 * Duplicate the function reference at the top of the Duktape stack to
-	 * prepare for upcoming mutation. From the API docs for duk_pcall():
-	 *
-	 *   The function and its arguments [get] replaced by a single return
-	 *   value or a single error value.
-	 *
-	 * Duplicating the top of stack (TOS) thus prepares us for successive
-	 * invocations of this function.
-	 */
-	duk_dup_top(ctx_arg);
+	auto_value global = {ctx, JS_GetGlobalObject(ctx)};
+	auto_value arg = {ctx, JS_NewString(ctx, js_arg)};
+	auto_value value = {
+		ctx,
+		JS_Call(ctx, to_call, global.val, 1, &arg.val),
+	};
 
-	duk_context *ctx __attribute__((cleanup(pop))) = ctx_arg;
-
-	/*
-	 * Push supplied argument onto the Duktape stack, and then call the
-	 * JavaScript function on the Duktape stack (set by a preceding
-	 * invocation of duk_get_global_lstring() in call_js_foreach()).
-	 */
-	duk_push_lstring(ctx, js_arg, strlen(js_arg));
-	if (duk_pcall(ctx, 1) != DUK_EXEC_SUCCESS) {
-		return make_result(ERR_JS_CALL_INVOKE, peek(ctx));
+	if (JS_IsException(value.val)) {
+		auto_value ex = {ctx, JS_GetException(ctx)};
+		auto_str str = {ctx, JS_ToCString(ctx, ex.val)};
+		return make_result(ERR_JS_CALL_INVOKE, str.str);
 	}
 
-	const char *result = duk_get_string(ctx, -1);
+	const char *result = {ctx, JS_ToCString(ctx, value.val)};
 	if (result == NULL) {
 		return make_result(ERR_JS_CALL_GET_RESULT);
 	}
@@ -379,11 +394,16 @@ call_js_one(duk_context *ctx_arg,
 }
 
 static WARN_UNUSED result_t
-eval_js_magic_one(duk_context *ctx_arg, const struct string_view *magic)
+eval_js_magic_one(JSContext *ctx, const struct string_view *magic)
 {
-	duk_context *ctx __attribute__((cleanup(pop))) = ctx_arg;
-	if (duk_peval_lstring(ctx, magic->data, magic->sz) != 0) {
-		return make_result(ERR_JS_CALL_EVAL_MAGIC, peek(ctx));
+	auto_value value = {
+		ctx,
+		JS_Eval(ctx, magic->data, magic->sz, "m", JS_EVAL_TYPE_GLOBAL),
+	};
+	if (JS_IsException(value.val)) {
+		auto_value ex = {ctx, JS_GetException(ctx)};
+		auto_str str = {ctx, JS_ToCString(ctx, ex.val)};
+		return make_result(ERR_JS_CALL_EVAL_MAGIC, str.str);
 	}
 	return RESULT_OK;
 }
@@ -394,8 +414,12 @@ call_js_foreach(const struct deobfuscator *d,
                 const struct call_ops *ops,
                 void *userdata)
 {
-	duk_context *ctx __attribute__((cleanup(destroy_heap))) =
-		duk_create_heap_default(); /* may return NULL! */
+	JSRuntime *rt __attribute__((cleanup(destroy_runtime))) =
+		JS_NewRuntime();
+	check_if(rt == NULL, ERR_JS_CALL_ALLOC);
+
+	JSContext *ctx __attribute__((cleanup(destroy_context))) =
+		JS_NewContext(rt);
 	check_if(ctx == NULL, ERR_JS_CALL_ALLOC);
 
 	for (size_t i = 0; i < ARRAY_SIZE(d->magic); ++i) {
@@ -404,14 +428,26 @@ call_js_foreach(const struct deobfuscator *d,
 	}
 	debug("eval()-ed %zu magic variables", ARRAY_SIZE(d->magic));
 
-	const struct string_view *to_call = &d->funcname;
-	if (duk_get_global_lstring(ctx, to_call->data, to_call->sz) == 0) {
-		return make_result(ERR_JS_CALL_LOOKUP, peek(ctx));
+	char *funcname __attribute__((cleanup(str_free))) =
+		strndup(d->funcname.data, d->funcname.sz);
+	check_if(funcname == NULL, ERR_JS_CALL_ALLOC);
+
+	auto_value to_call = {
+		ctx,
+		JS_GetPropertyStr(ctx, global_obj, funcname),
+	};
+	if (JS_IsException(to_call.val)) {
+		auto_value ex = {ctx, JS_GetException(ctx)};
+		auto_str str = {ctx, JS_ToCString(ctx, ex.val)};
+		return make_result(ERR_JS_CALL_LOOKUP, str.str);
 	}
 
 	for (size_t i = 0; args[i]; ++i) {
-		check(call_js_one(ctx, args[i], i, ops, userdata));
+		check(call_js_one(ctx, to_call.val, args[i], i, ops, userdata));
 	}
 
 	return RESULT_OK;
 }
+
+#undef auto_value
+#undef auto_str

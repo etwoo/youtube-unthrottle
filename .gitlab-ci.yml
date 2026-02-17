@@ -2,7 +2,7 @@ image: archlinux/archlinux:base-devel
 
 variables:
   PACKAGE_CMD: "pacman --noconfirm --needed -Sy"
-  PACKAGE_DEFAULT: "ada cmake clang curl duktape git jansson libseccomp pcre2 protobuf-c"
+  PACKAGE_DEFAULT: "ada cmake clang curl git jansson libseccomp pcre2 protobuf-c quickjs"
   PACKAGE_PER_JOB: ""
   TESTS_FAIL_LACK_OF_LANDLOCK_API_IN_CI_RUNNERS: "^(cli-try-sandbox|landlock|sandbox|seccomp)$"
 

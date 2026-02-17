@@ -20,7 +20,7 @@ if [ "$(uname)" == Darwin ] ; then
 fi
 
 # Install packages via Homebrew, quieting reinstall warnings if necessary
-brew install --quiet "$CC_PKG" cmake pkgconf curl duktape jansson pcre2 protobuf-c
+brew install --quiet "$CC_PKG" cmake pkgconf curl jansson pcre2 protobuf-c quickjs
 
 if [ "$(uname)" == Darwin ] ; then
 	brew install --quiet ada-url
