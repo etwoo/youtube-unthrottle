@@ -398,10 +398,16 @@ call_js_one(JSContext *ctx,
 static WARN_UNUSED result_t
 eval_js_magic_one(JSContext *ctx, const struct string_view *magic)
 {
+	char *deepcopy = strndup(magic->data, magic->sz);
+	check_if(deepcopy == NULL, ERR_JS_CALL_ALLOC);
+	assert(deepcopy[magic->sz] == '\0');
+
 	auto_value value = {
 		ctx,
-		JS_Eval(ctx, magic->data, magic->sz, "m", JS_EVAL_TYPE_GLOBAL),
+		JS_Eval(ctx, deepcopy, magic->sz, "m", JS_EVAL_TYPE_GLOBAL),
 	};
+	free(deepcopy);
+
 	if (JS_IsException(value.val)) {
 		auto_value ex = {ctx, JS_GetException(ctx)};
 		auto_str str = {ctx, JS_ToCString(ctx, ex.val)};
@@ -430,8 +436,7 @@ call_js_foreach(const struct deobfuscator *d,
 	}
 	debug("eval()-ed %zu magic variables", ARRAY_SIZE(d->magic));
 
-	char *funcname __attribute__((cleanup(str_free))) =
-		strndup(d->funcname.data, d->funcname.sz);
+	char *funcname = strndup(d->funcname.data, d->funcname.sz);
 	check_if(funcname == NULL, ERR_JS_CALL_ALLOC);
 
 	auto_value global = {ctx, JS_GetGlobalObject(ctx)};
@@ -439,6 +444,8 @@ call_js_foreach(const struct deobfuscator *d,
 		ctx,
 		JS_GetPropertyStr(ctx, global.val, funcname),
 	};
+	free(funcname);
+
 	if (JS_IsException(to_call.val)) {
 		auto_value ex = {ctx, JS_GetException(ctx)};
 		auto_str str = {ctx, JS_ToCString(ctx, ex.val)};
