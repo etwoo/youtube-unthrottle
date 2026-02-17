@@ -33,9 +33,9 @@ cd -
 QUICKJS_PC=/usr/lib/pkgconfig/quickjs.pc
 QUICKJS_PREFIX=/usr
 QUICKJS_VERSION="$(pacman -Qi quickjs | grep ^Ver | tr -s ' ' | cut -d' ' -f3)"
-m4 ./vendor/quickjs.pc.in                     \
-	-D QUICKJS_PREFIX="$QUICKJS_PREFIX"   \
-	-D QUICKJS_VERSION="$QUICKJS_VERSION" \
+m4 ./vendor/quickjs.pc.in                    \
+	-DQUICKJS_PREFIX="$QUICKJS_PREFIX"   \
+	-DQUICKJS_VERSION="$QUICKJS_VERSION" \
 	> "$QUICKJS_PC"
 
 cat "$QUICKJS_PC"

@@ -26,7 +26,7 @@ brew install --quiet "$CC_PKG" cmake pkgconf curl jansson pcre2 protobuf-c quick
 QUICKJS_PC="$(brew --prefix)/lib/pkgconfig/quickjs.pc"
 QUICKJS_PREFIX="$(brew --prefix quickjs | xargs realpath)"
 QUICKJS_VERSION="$(brew list --versions quickjs | cut -d' ' -f2)"
-m4 ./vendor/quickjs.pc.in                     \
+m4 ./vendor/quickjs.pc.in                    \
 	-DQUICKJS_PREFIX="$QUICKJS_PREFIX"   \
 	-DQUICKJS_VERSION="$QUICKJS_VERSION" \
 	> "$QUICKJS_PC"
