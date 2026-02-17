@@ -23,13 +23,12 @@ fi
 brew install --quiet "$CC_PKG" cmake pkgconf curl jansson pcre2 protobuf-c quickjs
 
 # Workaround lack of quickjs pkgconfig metadata
-QUICKJS_PC="$(brew --prefix)/lib/pkgconfig/quickjs.pc"
-QUICKJS_PREFIX="$(brew --prefix quickjs | xargs realpath)"
-QUICKJS_VERSION="$(brew list --versions quickjs | cut -d' ' -f2)"
-m4 ./vendor/quickjs.pc.in                     \
-	-D QUICKJS_PREFIX="$QUICKJS_PREFIX"   \
-	-D QUICKJS_VERSION="$QUICKJS_VERSION" \
-	> "$QUICKJS_PC"
+QJS_IN=./vendor/quickjs.pc.in
+QJS_PC="$(brew --prefix)/lib/pkgconfig/quickjs.pc"
+QJS_PREFIX="$(brew --prefix quickjs | xargs realpath)"
+QJS_VERSION="$(brew list --versions quickjs | cut -d' ' -f2)"
+m4 -D QUICKJS_PREFIX="$QJS_PREFIX" -D QUICKJS_VERSION="$QJS_VERSION" "$QJS_IN" \
+	> "$QJS_PKGCONFIG"
 
 if [ "$(uname)" == Darwin ] ; then
 	brew install --quiet ada-url

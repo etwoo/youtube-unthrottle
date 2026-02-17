@@ -18,8 +18,8 @@ pacman	--noconfirm --needed -Sy \
 	pcre2                    \
 	protobuf-c               \
 	glibc
-	# Note: update glibc in case nightly CI container image (host OS)
-	# uses newer glibc version than fortnightly VM image (guest OS)
+# Note: update glibc in case nightly CI container image (host OS)
+# uses newer glibc version than fortnightly VM image (guest OS)
 
 # Workaround lack of quickjs package for Arch Linux
 git clone --depth 1 https://aur.archlinux.org/quickjs.git
@@ -30,10 +30,9 @@ pacman --noconfirm -U -- *.pkg.tar.*
 cd -
 
 # Workaround lack of quickjs pkgconfig metadata
-QUICKJS_PC=/usr/lib/pkgconfig/quickjs.pc
-QUICKJS_PREFIX=/usr
-QUICKJS_VERSION="$(pacman -Qi quickjs | grep ^Ver | tr -s ' ' | cut -d' ' -f3)"
-m4 ./vendor/quickjs.pc.in                     \
-	-D QUICKJS_PREFIX="$QUICKJS_PREFIX"   \
-	-D QUICKJS_VERSION="$QUICKJS_VERSION" \
-	> "$QUICKJS_PC"
+QJS_IN=./vendor/quickjs.pc.in
+QJS_PKGCONFIG=/usr/lib/pkgconfig/quickjs.pc
+QJS_PREFIX=/usr
+QJS_VERSION="$(pacman -Qi quickjs | grep ^Ver | tr -s ' ' | cut -d' ' -f3)"
+m4 -D QUICKJS_PREFIX="$QJS_PREFIX" -D QUICKJS_VERSION="$QJS_VERSION" "$QJS_IN" \
+	> "$QJS_PKGCONFIG"
