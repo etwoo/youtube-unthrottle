@@ -32,7 +32,7 @@ cd -
 # Workaround lack of quickjs pkgconfig metadata
 QUICKJS_PC=/usr/lib/pkgconfig/quickjs.pc
 QUICKJS_PREFIX=/usr
-QUICKJS_VERSION="$(pacman -Qi quickjs | grep ^Version | cut -d: -f2-)"
+QUICKJS_VERSION="$(pacman -Qi quickjs | grep ^Version | cut -w -f3-)"
 m4 ./vendor/quickjs.pc.in                     \
 	-D QUICKJS_PREFIX="$QUICKJS_PREFIX"   \
 	-D QUICKJS_VERSION="$QUICKJS_VERSION" \
