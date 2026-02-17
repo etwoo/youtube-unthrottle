@@ -29,7 +29,7 @@ git clone --depth 1 https://aur.archlinux.org/yay-bin.git
 cd yay-bin
 chmod 777 .
 runuser -u nobody -- makepkg -s
-pacman -U *.pkg.tar.*
+pacman --noconfirm -U *.pkg.tar.*
 cd -
 
 # Workaround lack of quickjs package for Arch Linux
