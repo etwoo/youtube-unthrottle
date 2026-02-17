@@ -24,7 +24,7 @@ brew install --quiet "$CC_PKG" cmake pkgconf curl jansson pcre2 protobuf-c quick
 
 # Workaround lack of quickjs pkgconfig metadata
 QJS_IN=./vendor/quickjs.pc.in
-QJS_PC="$(brew --prefix)/lib/pkgconfig/quickjs.pc"
+QJS_PKGCONFIG="$(brew --prefix)/lib/pkgconfig/quickjs.pc"
 QJS_PREFIX="$(brew --prefix quickjs | xargs realpath)"
 QJS_VERSION="$(brew list --versions quickjs | cut -d' ' -f2)"
 m4 -D QUICKJS_PREFIX="$QJS_PREFIX" -D QUICKJS_VERSION="$QJS_VERSION" "$QJS_IN" \
