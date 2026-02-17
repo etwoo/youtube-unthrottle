@@ -30,12 +30,10 @@ pacman --noconfirm -U -- *.pkg.tar.*
 cd -
 
 # Workaround lack of quickjs pkgconfig metadata
-QJS_PC=/usr/lib/pkgconfig/quickjs.pc
-QJS_PREFIX=/usr
-QJS_VERSION="$(pacman -Qi quickjs | grep ^Ver | tr -s ' ' | cut -d' ' -f3)"
-m4 ./vendor/quickjs.pc.in                \
-	-DQUICKJS_PREFIX="$QJS_PREFIX"   \
-	-DQUICKJS_VERSION="$QJS_VERSION" \
-	> "$QJS_PC"
-
-cat "$QJS_PC"
+QUICKJS_PC=/usr/lib/pkgconfig/quickjs.pc
+QUICKJS_PREFIX=/usr
+QUICKJS_VERSION="$(pacman -Qi quickjs | grep ^Ver | tr -s ' ' | cut -d' ' -f3)"
+m4 ./vendor/quickjs.pc.in                     \
+	-D QUICKJS_PREFIX="$QUICKJS_PREFIX"   \
+	-D QUICKJS_VERSION="$QUICKJS_VERSION" \
+	> "$QUICKJS_PC"
