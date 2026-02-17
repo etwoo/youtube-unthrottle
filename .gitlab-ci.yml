@@ -2,13 +2,11 @@ image: archlinux/archlinux:base-devel
 
 variables:
   PACKAGE_CMD: "pacman --noconfirm --needed -Sy"
-  PACKAGE_DEFAULT: "ada cmake clang curl git jansson libseccomp pcre2 protobuf-c quickjs"
-  PACKAGE_PER_JOB: ""
   TESTS_FAIL_LACK_OF_LANDLOCK_API_IN_CI_RUNNERS: "^(cli-try-sandbox|landlock|sandbox|seccomp)$"
 
 .build_dependencies: &build_dependencies
   before_script:
-    - ${PACKAGE_CMD} ${PACKAGE_DEFAULT} ${PACKAGE_PER_JOB}
+    - ./scripts/pacman-install.sh
 
 build:gcc:
   <<: *build_dependencies
@@ -47,14 +45,13 @@ build:clang-coverage:
   # Use medium machine type (instead of default small) to improve VM performance
   tags:
     - saas-linux-medium-amd64
-  variables:
-    PACKAGE_PER_JOB: "expect jq llvm python qemu-img qemu-system-x86 virtiofsd"
   #
   # For CI_PERSONAL_ACCESS_TOKEN, see: Settings > CI/CD > Variables
   #
   # Increment the BUMP envvar to force a VM image cache miss
   #
   script:
+    - ${PACKAGE_CMD} expect jq llvm python qemu-img qemu-system-x86 virtiofsd
     - cmake --preset coverage
     - cmake --build --preset default
     - export CI_PERSONAL_ACCESS_TOKEN=${CI_PERSONAL_ACCESS_TOKEN}

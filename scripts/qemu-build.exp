@@ -136,26 +136,6 @@ proc log_into_vm {} {
 	run_in_vm "sudo su -"
 }
 
-proc install_test_dependencies_in_vm {} {
-	run_in_vm [join {
-		"pacman --noprogressbar --noconfirm --needed -Sy"
-		"--assume-installed guile"
-		"--assume-installed perl"
-		"ada"
-		"cmake"
-		"curl"
-		"jansson"
-		"libseccomp"
-		"make"
-		"pcre2"
-		"protobuf-c"
-		"quickjs"
-		"glibc"
-	} " "]
-	# Note: we update glibc in case the nightly container image (host) uses
-	# a newer glibc version than the fortnightly VM image (guest).
-}
-
 proc run_tests_in_vm {nproc} {
 	set ctest "COVERAGE_PROFILE_DIR=coverage.profraw ctest --preset default"
 	run_in_vm "$ctest --parallel $nproc"
@@ -261,7 +241,7 @@ if {$slowpath} {
 # run_in_vm "systemd-analyze blame --no-pager"
 
 debug "Install test dependencies"
-install_test_dependencies_in_vm
+run_in_vm "./scripts/pacman-install.sh"
 
 debug "Mount source code from host OS into guest VM"
 run_in_vm "mkdir -p $src_dir"
