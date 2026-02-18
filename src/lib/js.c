@@ -322,14 +322,14 @@ struct quickjs_value {
 };
 
 static void
-destroy_value(struct quickjs_value *qval)
+value_cleanup(struct quickjs_value *qval)
 {
 	if (!JS_IsException(qval->val)) {
 		JS_FreeValue(qval->context, qval->val);
 	}
 }
 
-#define auto_value struct quickjs_value __attribute__((cleanup(destroy_value)))
+#define auto_value struct quickjs_value __attribute__((cleanup(value_cleanup)))
 
 struct quickjs_str {
 	JSContext *context;
@@ -337,14 +337,14 @@ struct quickjs_str {
 };
 
 static void
-destroy_js_str(struct quickjs_str *qstr)
+js_str_cleanup(struct quickjs_str *qstr)
 {
 	if (qstr->str != NULL) {
 		JS_FreeCString(qstr->context, qstr->str);
 	}
 }
 
-#define auto_js_str struct quickjs_str __attribute__((cleanup(destroy_js_str)))
+#define auto_js_str struct quickjs_str __attribute__((cleanup(js_str_cleanup)))
 
 static WARN_UNUSED result_t
 call_js_one(JSContext *ctx,
@@ -400,7 +400,7 @@ eval_js_magic_one(JSContext *ctx, const struct string_view *magic)
 }
 
 static void
-destroy_runtime(JSRuntime **rt)
+runtime_cleanup(JSRuntime **rt)
 {
 	if (*rt != NULL) {
 		JS_FreeRuntime(*rt);
@@ -408,7 +408,7 @@ destroy_runtime(JSRuntime **rt)
 }
 
 static void
-destroy_context(JSContext **ctx)
+context_cleanup(JSContext **ctx)
 {
 	if (*ctx != NULL) {
 		JS_FreeContext(*ctx);
@@ -421,11 +421,11 @@ call_js_foreach(const struct deobfuscator *d,
                 const struct call_ops *ops,
                 void *userdata)
 {
-	JSRuntime *rt __attribute__((cleanup(destroy_runtime))) =
+	JSRuntime *rt __attribute__((cleanup(runtime_cleanup))) =
 		JS_NewRuntime();
 	check_if(rt == NULL, ERR_JS_CALL_ALLOC);
 
-	JSContext *ctx __attribute__((cleanup(destroy_context))) =
+	JSContext *ctx __attribute__((cleanup(context_cleanup))) =
 		JS_NewContext(rt);
 	check_if(ctx == NULL, ERR_JS_CALL_ALLOC);
 
