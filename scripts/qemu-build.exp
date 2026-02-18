@@ -240,13 +240,13 @@ if {$slowpath} {
 # run_in_vm "systemd-analyze critical-chain"
 # run_in_vm "systemd-analyze blame --no-pager"
 
-debug "Install test dependencies"
-run_in_vm "./scripts/pacman-install.sh"
-
 debug "Mount source code from host OS into guest VM"
 run_in_vm "mkdir -p $src_dir"
 run_in_vm "mount -t 9p -o trans=virtio youtube-unthrottle $src_dir"
 run_in_vm "cd $src_dir"
+
+debug "Install test dependencies"
+run_in_vm "./scripts/pacman-install.sh"
 
 debug "Run tests"
 set exit_code [run_tests_in_vm $nproc]
