@@ -38,9 +38,8 @@ pacman -U --noconfirm -- *.pkg.tar.*
 popd
 
 # Workaround lack of quickjs pkgconfig metadata
-QJS_IN=./vendor/quickjs.pc.in
-QJS_PKGCONFIG=/usr/lib/pkgconfig/quickjs.pc
-QJS_PREFIX=/usr
-QJS_VERSION="$(pacman -Qi quickjs | grep ^Ver | tr -s ' ' | cut -d' ' -f3)"
-m4 -D QUICKJS_PREFIX="$QJS_PREFIX" -D QUICKJS_VERSION="$QJS_VERSION" "$QJS_IN" \
-	> "$QJS_PKGCONFIG"
+QIN=./vendor/quickjs.pc.in
+QPC=/usr/lib/pkgconfig/quickjs.pc
+QPREFIX=/usr
+QVERSION="$(pacman -Qi quickjs | grep ^Ver | tr -s ' ' | cut -d' ' -f3)"
+m4 -D QUICKJS_PREFIX="$QPREFIX" -D QUICKJS_VERSION="$QVERSION" "$QIN" > "$QPC"
