@@ -33,7 +33,8 @@ sed -i 's@^LTOFLAGS="-flto=auto"@LTOFLAGS="-fno-lto"@' /etc/makepkg.conf
 pushd /tmp
 runuser -u nobody -- git clone --depth 1 https://aur.archlinux.org/quickjs.git
 cd quickjs
-runuser -u nobody -- makepkg -s
+sed -i "18i sed -i 's@\(PROGS=.*\)run-test.*@\1@g;s@PROGS+=.*examples.*@@g' package.new/*/Makefile" PKGBUILD
+MAKEFLAGS="-j$(nproc)" runuser -u nobody -- makepkg -s
 pacman -U --noconfirm -- *.pkg.tar.*
 popd
 
