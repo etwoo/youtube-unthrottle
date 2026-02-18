@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
-
 set -euxo pipefail
 
 # Install project dependencies via Arch Linux package manager
-pacman	--noconfirm --needed -Sy \
+pacman	-Sy --needed --noconfirm --noprogressbar \
 	--assume-installed guile \
 	--assume-installed perl  \
 	base-devel               \
@@ -30,7 +29,7 @@ pushd /tmp
 runuser -u nobody -- git clone --depth 1 https://aur.archlinux.org/quickjs.git
 cd quickjs
 runuser -u nobody -- makepkg -s
-pacman --noconfirm -U -- *.pkg.tar.*
+pacman -U --noconfirm -- *.pkg.tar.*
 popd
 
 # Workaround lack of quickjs pkgconfig metadata

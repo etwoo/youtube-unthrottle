@@ -1,7 +1,7 @@
 image: archlinux/archlinux:base-devel
 
 variables:
-  PACKAGE_CMD: "pacman --noconfirm --needed -Sy"
+  PACKAGE_CMD: "pacman -Sy --needed --noconfirm --noprogressbar"
   TESTS_FAIL_LACK_OF_LANDLOCK_API_IN_CI_RUNNERS: "^(cli-try-sandbox|landlock|sandbox|seccomp)$"
 
 build:gcc:
