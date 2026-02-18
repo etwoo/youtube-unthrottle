@@ -113,9 +113,9 @@ lint:tcl:
     - ${PACKAGE_CMD} git python-pip
     - pip install --break-system-packages --root-user-action ignore tclint
   script:
-    - find . -name '*.exp' -print0 | xargs -0 tclfmt --in-place --indent=tab --
-    - git diff --exit-code
-    - find . -name '*.exp' -print0 | xargs -0 tclint --
+    - git ls-files -z '*.exp' | xargs -0 tclfmt --in-place --indent=tab --
+    - git diff --exit-code '*.exp'
+    - git ls-files -z '*.exp' -print0 | xargs -0 tclint --
 
 #
 # Run the Clang Static Analyzer via clang-tidy: https://clang-analyzer.llvm.org
