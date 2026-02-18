@@ -2,7 +2,7 @@ image: archlinux/archlinux:base-devel
 
 variables:
   PACKAGE_CMD: "pacman -Sy --needed --noconfirm --noprogressbar"
-  TESTS_FAIL_LACK_OF_LANDLOCK_API_IN_CI_RUNNERS: ""
+  TESTS_FAIL_LACK_OF_LANDLOCK_API_IN_CI_RUNNERS: "no_match"
 
 build:gcc:
   stage: build
