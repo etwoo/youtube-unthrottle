@@ -140,6 +140,7 @@ analyze:fb-infer:
   <<: *build_dependencies
   stage: build
   script:
+    - ${PACKAGE_CMD} archlinux-keyring
     - cmake --preset clang -DCMAKE_EXPORT_COMPILE_COMMANDS=1
     - cmake --build --preset default
     - infer run
