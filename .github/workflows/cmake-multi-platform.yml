@@ -106,7 +106,7 @@ jobs:
       uses: vmactions/openbsd-vm@v1
       with:
         prepare: >
-          ./scripts/openbsd-install.sh
+          ./scripts/setup/openbsd.sh
         run: >
           cmake --preset default &&
           cmake --build --preset default &&

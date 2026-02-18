@@ -255,7 +255,7 @@ run_in_vm "mount -t 9p -o trans=virtio youtube-unthrottle $src_dir"
 run_in_vm "cd $src_dir"
 
 debug "Install test dependencies"
-run_in_vm "./scripts/pacman-install.sh --skip-quickjs"
+run_in_vm "./scripts/setup/pacman.sh --skip-quickjs"
 
 debug "Run tests"
 set exit_code [run_tests_in_vm $nproc]

@@ -19,19 +19,10 @@ if [ "$(uname)" == Darwin ] ; then
 	sudo rm /usr/local/bin/{idle3,pip3,pydoc3,python3}*
 fi
 
-# Install packages via Homebrew, quieting reinstall warnings if necessary
-brew install --quiet "$CC_PKG" cmake pkgconf ada-url curl jansson pcre2 protobuf-c quickjs
-
-# Workaround lack of quickjs pkgconfig metadata
-QIN=./vendor/quickjs.pc.in
-QPC="$(brew --prefix)/lib/pkgconfig/quickjs.pc"
-QPREFIX="$(brew --prefix quickjs | xargs realpath)"
-QVERSION="$(brew list --versions quickjs | cut -d' ' -f2)"
-m4 -D QUICKJS_PREFIX="$QPREFIX" -D QUICKJS_VERSION="$QVERSION" "$QIN" > "$QPC"
+brew install --quiet "$CC_PKG"
+$(dirname $0)/setup/homebrew.sh
 
 if [ "$(uname)" == Linux ] ; then
-	# Install Linux-specific packages
-	brew install --quiet libseccomp
 	# Ubuntu: change default shell from dash to bash
 	sudo mv /bin/sh{,bak}
 	sudo ln -s /bin/{bash,sh}

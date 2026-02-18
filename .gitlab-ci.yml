@@ -7,7 +7,7 @@ variables:
 build:gcc:
   stage: build
   before_script:
-    - ./scripts/pacman-install.sh
+    - ./scripts/setup/pacman.sh
   script:
     - cmake --preset default -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
     - cmake --build --preset default
@@ -20,7 +20,7 @@ build:gcc:
 build:clang:
   stage: build
   before_script:
-    - ./scripts/pacman-install.sh
+    - ./scripts/setup/pacman.sh
   script:
     - cmake --preset clang -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
     - cmake --build --preset default
@@ -33,7 +33,7 @@ build:clang:
 build:clang-format:
   stage: build
   before_script:
-    - ./scripts/pacman-install.sh
+    - ./scripts/setup/pacman.sh
   script:
     - cmake --preset default
     - cmake --build --preset default --target fmt
@@ -45,7 +45,7 @@ build:clang-coverage:
     - saas-linux-medium-amd64
   before_script:
     - ${PACKAGE_CMD} expect jq llvm python qemu-img qemu-system-x86 virtiofsd
-    - ./scripts/pacman-install.sh
+    - ./scripts/setup/pacman.sh
   #
   # For CI_PERSONAL_ACCESS_TOKEN, see: Settings > CI/CD > Variables
   #
@@ -123,7 +123,7 @@ lint:tcl:
 analyze:clang-tidy:
   stage: build
   before_script:
-    - ./scripts/pacman-install.sh
+    - ./scripts/setup/pacman.sh
   script:
     - cmake --preset clang -DCMAKE_C_CLANG_TIDY=clang-tidy
     - cmake --build --preset default
@@ -147,7 +147,7 @@ analyze:fb-infer:
     # Workaround gcc-libs (metapackage) conflict with libgcc, libstdc++
     - ${PACKAGE_CMD} gcc
     # Proceed to normal devenv setup
-    - ./scripts/pacman-install.sh
+    - ./scripts/setup/pacman.sh
   script:
     - cmake --preset clang -DCMAKE_EXPORT_COMPILE_COMMANDS=1
     - cmake --build --preset default
