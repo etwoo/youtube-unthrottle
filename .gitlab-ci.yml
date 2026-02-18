@@ -140,6 +140,8 @@ analyze:fb-infer:
   image: $CI_REGISTRY/$CI_PROJECT_PATH:fbinfer-fc237fb
   stage: build
   before_script:
+    - pacman-key --init
+    - pacman-key --populate
     - ${PACKAGE_CMD} archlinux-keyring
     - ./scripts/pacman-install.sh
   script:
