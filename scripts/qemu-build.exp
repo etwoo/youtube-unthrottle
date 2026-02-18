@@ -230,6 +230,11 @@ set qemu_id $spawn_id
 debug "Wait for boot process to reach login prompt, and then log into VM"
 log_into_vm
 
+# https://github.com/systemd/systemd/issues/39114
+# https://github.com/systemd/systemd/issues/39133
+debug "Avoid escape sequence spam in terminal"
+run_in_vm "export TERM=dumb"
+
 if {$slowpath} {
 	debug "Wait for cloud-init to complete"
 	run_in_vm "cloud-init status --long --wait"
