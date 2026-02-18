@@ -3,7 +3,7 @@
 set timeout -1
 set prompt "]# "
 set vm_dir "vm-images"
-set vm_conf "./scripts/user-data"
+set vm_conf "./scripts/gitlab/user-data"
 set src_dir $env(PWD)
 set access_token $env(CI_PERSONAL_ACCESS_TOKEN)
 set curl_cmd "curl --no-progress-meter --fail"

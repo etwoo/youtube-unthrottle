@@ -20,7 +20,7 @@ if [ "$(uname)" == Darwin ] ; then
 fi
 
 brew install --quiet "$CC_PKG"
-$(dirname $0)/setup/homebrew.sh
+$(dirname $0)/../setup/homebrew.sh
 
 if [ "$(uname)" == Linux ] ; then
 	# Ubuntu: change default shell from dash to bash

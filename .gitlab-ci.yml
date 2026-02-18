@@ -57,12 +57,12 @@ build:clang-coverage:
     - export CI_PERSONAL_ACCESS_TOKEN=${CI_PERSONAL_ACCESS_TOKEN}
     - export CI_PROJECT_ID=${CI_PROJECT_ID}
     - export BUMP=11
-    - export IMG=$((echo $BUMP && cat ./scripts/user-data) | sha256sum | cut -f1 -d' ')
-    - export URI=$(./scripts/find-vm-artifact.sh "vm-images/$IMG.zst") && echo "Fetching $URI"
-    - ./scripts/qemu-build.exp $IMG $URI
+    - export IMG=$((echo $BUMP && cat ./scripts/gitlab/user-data) | sha256sum | cut -f1 -d' ')
+    - export URI=$(./scripts/gitlab/find-vm-artifact.sh "vm-images/$IMG.zst") && echo "Fetching $URI"
+    - ./scripts/gitlab/qemu-build.exp $IMG $URI
     - ./scripts/coverage.sh -E main.c coverage.profraw ./build/coverage.xml
   after_script:
-    - ./scripts/cleanup-vm-archive.sh vm-images
+    - ./scripts/gitlab/cleanup-vm-archive.sh vm-images
   coverage: '/^TOTAL.*\s+([\d\.]+\%)$/'
   artifacts:
     when: always
@@ -113,9 +113,9 @@ lint:tcl:
     - ${PACKAGE_CMD} git python-pip
     - pip install --break-system-packages --root-user-action ignore tclint
   script:
-    - tclfmt --in-place --indent=tab ./scripts/*.exp
-    - git diff --exit-code ./scripts/*.exp
-    - tclint ./scripts/*.exp
+    - find . -name '*.exp' -print0 | xargs -0 tclfmt --in-place --indent=tab --
+    - git diff --exit-code
+    - find . -name '*.exp' -print0 | xargs -0 tclint --
 
 #
 # Run the Clang Static Analyzer via clang-tidy: https://clang-analyzer.llvm.org
