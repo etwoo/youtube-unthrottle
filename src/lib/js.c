@@ -37,37 +37,35 @@ destroy_context(JSContext **ctx)
 	}
 }
 
-struct quickjs_context_value {
+struct quickjs_value {
 	JSContext *context;
 	JSValue val;
 };
 
 static void
-destroy_value(struct quickjs_context_value *qval)
+destroy_value(struct quickjs_value *qval)
 {
 	if (!JS_IsException(qval->val)) {
 		JS_FreeValue(qval->context, qval->val);
 	}
 }
 
-#define auto_value                                                             \
-	struct quickjs_context_value __attribute__((cleanup(destroy_value)))
+#define auto_value struct quickjs_value __attribute__((cleanup(destroy_value)))
 
-struct quickjs_context_str {
+struct quickjs_str {
 	JSContext *context;
 	const char *str;
 };
 
 static void
-destroy_js_str(struct quickjs_context_str *qstr)
+destroy_js_str(struct quickjs_str *qstr)
 {
 	if (qstr->str != NULL) {
 		JS_FreeCString(qstr->context, qstr->str);
 	}
 }
 
-#define auto_str                                                               \
-	struct quickjs_context_str __attribute__((cleanup(destroy_js_str)))
+#define auto_js_str struct quickjs_str __attribute__((cleanup(destroy_js_str)))
 
 static void
 str_free(char **strp)
@@ -381,11 +379,11 @@ call_js_one(JSContext *ctx,
 
 	if (JS_IsException(value.val)) {
 		auto_value ex = {ctx, JS_GetException(ctx)};
-		auto_str str = {ctx, JS_ToCString(ctx, ex.val)};
+		auto_js_str str = {ctx, JS_ToCString(ctx, ex.val)};
 		return make_result(ERR_JS_CALL_INVOKE, str.str);
 	}
 
-	auto_str result = {ctx, JS_ToCString(ctx, value.val)};
+	auto_js_str result = {ctx, JS_ToCString(ctx, value.val)};
 	if (!JS_IsString(value.val) || result.str == NULL) {
 		return make_result(ERR_JS_CALL_GET_RESULT);
 	}
@@ -411,7 +409,7 @@ eval_js_magic_one(JSContext *ctx, const struct string_view *magic)
 
 	if (JS_IsException(value.val)) {
 		auto_value ex = {ctx, JS_GetException(ctx)};
-		auto_str str = {ctx, JS_ToCString(ctx, ex.val)};
+		auto_js_str str = {ctx, JS_ToCString(ctx, ex.val)};
 		return make_result(ERR_JS_CALL_EVAL_MAGIC, str.str);
 	}
 	return RESULT_OK;
@@ -459,4 +457,4 @@ call_js_foreach(const struct deobfuscator *d,
 }
 
 #undef auto_value
-#undef auto_str
+#undef auto_js_str
