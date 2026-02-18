@@ -4,13 +4,10 @@ variables:
   PACKAGE_CMD: "pacman --noconfirm --needed -Sy"
   TESTS_FAIL_LACK_OF_LANDLOCK_API_IN_CI_RUNNERS: "^(cli-try-sandbox|landlock|sandbox|seccomp)$"
 
-.build_dependencies: &build_dependencies
+build:gcc:
+  stage: build
   before_script:
     - ./scripts/pacman-install.sh
-
-build:gcc:
-  <<: *build_dependencies
-  stage: build
   script:
     - cmake --preset default -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
     - cmake --build --preset default
@@ -21,8 +18,9 @@ build:gcc:
       junit: ./build/junit.xml
 
 build:clang:
-  <<: *build_dependencies
   stage: build
+  before_script:
+    - ./scripts/pacman-install.sh
   script:
     - cmake --preset clang -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
     - cmake --build --preset default
@@ -33,25 +31,27 @@ build:clang:
       junit: ./build/junit.xml
 
 build:clang-format:
-  <<: *build_dependencies
   stage: build
+  before_script:
+    - ./scripts/pacman-install.sh
   script:
     - cmake --preset default
     - cmake --build --preset default --target fmt
 
 build:clang-coverage:
-  <<: *build_dependencies
   stage: build
   # Use medium machine type (instead of default small) to improve VM performance
   tags:
     - saas-linux-medium-amd64
+  before_script:
+    - ${PACKAGE_CMD} expect jq llvm python qemu-img qemu-system-x86 virtiofsd
+    - ./scripts/pacman-install.sh
   #
   # For CI_PERSONAL_ACCESS_TOKEN, see: Settings > CI/CD > Variables
   #
   # Increment the BUMP envvar to force a VM image cache miss
   #
   script:
-    - ${PACKAGE_CMD} expect jq llvm python qemu-img qemu-system-x86 virtiofsd
     - cmake --preset coverage
     - cmake --build --preset default
     - export CI_PERSONAL_ACCESS_TOKEN=${CI_PERSONAL_ACCESS_TOKEN}
@@ -121,8 +121,9 @@ lint:tcl:
 # Run the Clang Static Analyzer via clang-tidy: https://clang-analyzer.llvm.org
 #
 analyze:clang-tidy:
-  <<: *build_dependencies
   stage: build
+  before_script:
+    - ./scripts/pacman-install.sh
   script:
     - cmake --preset clang -DCMAKE_C_CLANG_TIDY=clang-tidy
     - cmake --build --preset default
@@ -137,10 +138,11 @@ analyze:clang-tidy:
 #
 analyze:fb-infer:
   image: $CI_REGISTRY/$CI_PROJECT_PATH:fbinfer-fc237fb
-  <<: *build_dependencies
   stage: build
-  script:
+  before_script:
     - ${PACKAGE_CMD} archlinux-keyring
+    - ./scripts/pacman-install.sh
+  script:
     - cmake --preset clang -DCMAKE_EXPORT_COMPILE_COMMANDS=1
     - cmake --build --preset default
     - infer run
