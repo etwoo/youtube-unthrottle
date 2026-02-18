@@ -21,11 +21,14 @@ pacman	--noconfirm --needed -Sy \
 # Note: update glibc in case nightly CI container image (host OS)
 # uses newer glibc version than fortnightly VM image (guest OS)
 
+# Disable LTO before building libquickjs.a, to allow programs that link
+# statically against libquickjs.a the freedom to use a different compiler.
+sed -i 's@^LTOFLAGS="-flto=auto"@LTOFLAGS="-fno-lto"@' /etc/makepkg.conf
+
 # Workaround lack of quickjs package for Arch Linux
 pushd /tmp
-git clone --depth 1 https://aur.archlinux.org/quickjs.git
+runuser -u nobody -- git clone --depth 1 https://aur.archlinux.org/quickjs.git
 cd quickjs
-chmod 777 .
 runuser -u nobody -- makepkg -s
 pacman --noconfirm -U -- *.pkg.tar.*
 popd
