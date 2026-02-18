@@ -20,7 +20,7 @@ pacman	-Sy --needed --noconfirm --noprogressbar \
 # Note: update glibc in case nightly CI container image (host OS)
 # uses newer glibc version than fortnightly VM image (guest OS)
 
-if [ "$#" -ge 1 && "$1" == '--skip-quickjs' ]; then
+if [ "$#" -ge 1 ] && [ "$1" == '--skip-quickjs' ]; then
 	echo "Skipping QuickJS install ..."
 	exit 0
 fi
