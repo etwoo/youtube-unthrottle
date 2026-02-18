@@ -1,6 +1,7 @@
 prefix=QUICKJS_PREFIX
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
 includedir=${prefix}/include
-libdir=${prefix}/lib
 
 Name: QuickJS
 Description: A small and embeddable Javascript engine

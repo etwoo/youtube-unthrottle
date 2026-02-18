@@ -105,7 +105,8 @@ jobs:
     - name: Configure, build, and test
       uses: vmactions/openbsd-vm@v1
       with:
-        prepare: pkg_add cmake git ada curl jansson pcre2 protobuf-c quickjs
+        prepare: >
+          ./scripts/openbsd-install.sh
         run: >
           cmake --preset default &&
           cmake --build --preset default &&
