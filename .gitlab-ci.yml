@@ -140,9 +140,13 @@ analyze:fb-infer:
   image: $CI_REGISTRY/$CI_PROJECT_PATH:fbinfer-fc237fb
   stage: build
   before_script:
+    # Workaround stale keyring in fbinfer container image
     - pacman-key --init
     - pacman-key --populate
     - ${PACKAGE_CMD} archlinux-keyring
+    # Workaround gcc-libs (metapackage) conflict with libgcc, libstdc++
+    - ${PACKAGE_CMD} gcc
+    # Proceed to normal devenv setup
     - ./scripts/pacman-install.sh
   script:
     - cmake --preset clang -DCMAKE_EXPORT_COMPILE_COMMANDS=1
