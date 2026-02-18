@@ -795,7 +795,7 @@ static const struct call_ops CALL_NOOP = {
 };
 
 TEST
-call_with_quickjs_peval_fail(void)
+js_eval_fail(void)
 {
 	const struct deobfuscator d = {
 		{
@@ -811,7 +811,7 @@ call_with_quickjs_peval_fail(void)
 }
 
 TEST
-call_with_quickjs_function_lookup_fail(void)
+js_function_lookup_fail(void)
 {
 	const struct deobfuscator d = {
 		{
@@ -827,7 +827,7 @@ call_with_quickjs_function_lookup_fail(void)
 }
 
 TEST
-call_with_quickjs_pcall_fail(void)
+js_call_fail(void)
 {
 	const struct deobfuscator d = {
 		{
@@ -843,7 +843,7 @@ call_with_quickjs_pcall_fail(void)
 }
 
 TEST
-call_with_quickjs_pcall_incorrect_result_type(void)
+js_call_incorrect_result_type(void)
 {
 	const struct deobfuscator d = {
 		{
@@ -885,7 +885,7 @@ copy_result(const char *val, size_t pos MAYBE_UNUSED, void *userdata)
 #undef RESULT_BUFFER_SIZE
 
 TEST
-call_with_quickjs_minimum_valid_function(void)
+js_minimum_valid_function(void)
 {
 	struct call_ops cops = {
 		.got_result = copy_result,
@@ -909,11 +909,11 @@ call_with_quickjs_minimum_valid_function(void)
 	PASS();
 }
 
-SUITE(call_with_quickjs)
+SUITE(js_engine)
 {
-	RUN_TEST(call_with_quickjs_peval_fail);
-	RUN_TEST(call_with_quickjs_function_lookup_fail);
-	RUN_TEST(call_with_quickjs_pcall_fail);
-	RUN_TEST(call_with_quickjs_pcall_incorrect_result_type);
-	RUN_TEST(call_with_quickjs_minimum_valid_function);
+	RUN_TEST(js_eval_fail);
+	RUN_TEST(js_function_lookup_fail);
+	RUN_TEST(js_call_fail);
+	RUN_TEST(js_call_incorrect_result_type);
+	RUN_TEST(js_minimum_valid_function);
 }
