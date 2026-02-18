@@ -22,52 +22,6 @@
 #include <jansson.h>
 
 static void
-destroy_runtime(JSRuntime **rt)
-{
-	if (*rt != NULL) {
-		JS_FreeRuntime(*rt);
-	}
-}
-
-static void
-destroy_context(JSContext **ctx)
-{
-	if (*ctx != NULL) {
-		JS_FreeContext(*ctx);
-	}
-}
-
-struct quickjs_value {
-	JSContext *context;
-	JSValue val;
-};
-
-static void
-destroy_value(struct quickjs_value *qval)
-{
-	if (!JS_IsException(qval->val)) {
-		JS_FreeValue(qval->context, qval->val);
-	}
-}
-
-#define auto_value struct quickjs_value __attribute__((cleanup(destroy_value)))
-
-struct quickjs_str {
-	JSContext *context;
-	const char *str;
-};
-
-static void
-destroy_js_str(struct quickjs_str *qstr)
-{
-	if (qstr->str != NULL) {
-		JS_FreeCString(qstr->context, qstr->str);
-	}
-}
-
-#define auto_js_str struct quickjs_str __attribute__((cleanup(destroy_js_str)))
-
-static void
 str_free(char **strp)
 {
 	free(*strp);
@@ -362,6 +316,36 @@ find_js_deobfuscator(const struct string_view *js, struct deobfuscator *d)
 	return RESULT_OK;
 }
 
+struct quickjs_value {
+	JSContext *context;
+	JSValue val;
+};
+
+static void
+destroy_value(struct quickjs_value *qval)
+{
+	if (!JS_IsException(qval->val)) {
+		JS_FreeValue(qval->context, qval->val);
+	}
+}
+
+#define auto_value struct quickjs_value __attribute__((cleanup(destroy_value)))
+
+struct quickjs_str {
+	JSContext *context;
+	const char *str;
+};
+
+static void
+destroy_js_str(struct quickjs_str *qstr)
+{
+	if (qstr->str != NULL) {
+		JS_FreeCString(qstr->context, qstr->str);
+	}
+}
+
+#define auto_js_str struct quickjs_str __attribute__((cleanup(destroy_js_str)))
+
 static WARN_UNUSED result_t
 call_js_one(JSContext *ctx,
             JSValue to_call,
@@ -413,6 +397,22 @@ eval_js_magic_one(JSContext *ctx, const struct string_view *magic)
 		return make_result(ERR_JS_CALL_EVAL_MAGIC, str.str);
 	}
 	return RESULT_OK;
+}
+
+static void
+destroy_runtime(JSRuntime **rt)
+{
+	if (*rt != NULL) {
+		JS_FreeRuntime(*rt);
+	}
+}
+
+static void
+destroy_context(JSContext **ctx)
+{
+	if (*ctx != NULL) {
+		JS_FreeContext(*ctx);
+	}
 }
 
 result_t
