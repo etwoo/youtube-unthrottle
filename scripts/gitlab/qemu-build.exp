@@ -118,6 +118,8 @@ proc get_exit_code_of_previous_command_from_vm {} {
 
 proc log_into_vm {} {
 	while 1 {
+		expect "GNU GRUB"
+		send "\r"
 		expect "to list options, empty to skip): "
 		send "\r"
 		expect "Please enter the new root password (empty to skip): "
