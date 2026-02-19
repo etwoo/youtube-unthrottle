@@ -1,6 +1,7 @@
 image: debian:unstable-slim
 
 variables:
+  PACKAGE_CMD: "apt install -qq -o=Dpkg::Use-Pty=0"
   DEBIAN_FRONTEND: noninteractive
   TESTS_FAIL_LACK_OF_LANDLOCK_API_IN_CI_RUNNERS: "^(cli-try-sandbox|landlock|sandbox|seccomp)$"
 
@@ -48,7 +49,7 @@ build:clang-coverage:
   script:
     - cmake --preset coverage
     - cmake --build --preset default
-    - apt install -qq curl expect llvm qemu-system-x86
+    - ${PACKAGE_CMD} curl expect llvm qemu-system-x86
     - ./scripts/gitlab/qemu-build.exp
     - ./scripts/coverage.sh -E main.c coverage.profraw ./build/coverage.xml
   coverage: '/^TOTAL.*\s+([\d\.]+\%)$/'
@@ -89,14 +90,16 @@ lint:prose:
 lint:shell:
   stage: build
   before_script:
-    - apt update -qq && apt install -qq git shellcheck
+    - apt update -qq
+    - ${PACKAGE_CMD} git shellcheck
   script:
     - git ls-files -z '**.sh' | xargs -0 shellcheck --shell=bash
 
 lint:tcl:
   stage: build
   before_script:
-    - apt update -qq && apt install -qq git python3-pip
+    - apt update -qq
+    - ${PACKAGE_CMD} git python3-pip
     - pip install --break-system-packages --root-user-action ignore tclint
   script:
     - git ls-files -z '*.exp' | xargs -0 tclfmt --in-place --indent=tab --
