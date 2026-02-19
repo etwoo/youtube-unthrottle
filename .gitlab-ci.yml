@@ -45,7 +45,6 @@ build:clang-coverage:
     - saas-linux-medium-amd64
   before_script:
     - apt update -qq && apt install -qqy curl expect jq llvm qemu-system-x86 qemu-utils zstd
-    - which llvm-profdata
     - ./scripts/setup/apt.sh
   #
   # For CI_PERSONAL_ACCESS_TOKEN, see: Settings > CI/CD > Variables
