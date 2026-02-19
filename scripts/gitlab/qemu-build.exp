@@ -210,7 +210,7 @@ set nproc [exec nproc]
 # https://virtio-fs.gitlab.io/howto-qemu.html
 #
 debug "Start virtio shared filesystem daemon"
-spawn virtiofsd --socket-path=$vm_socket -o source=$src_dir
+spawn /usr/libexec/virtiofsd --socket-path=$vm_socket -o source=$src_dir
 debug "Boot VM"
 spawn [join {
 	"qemu-system-x86_64"
