@@ -1,7 +1,8 @@
 image: debian:unstable-slim
 
 variables:
-  PACKAGE_CMD: "pacman -Sy --needed --noconfirm --noprogressbar"
+  PACKAGE_CMD: "DEBIAN_FRONTEND=noninteractive apt update -qq && apt install -qqy"
+  PACKAGE_CMD_ARCHLINUX: "pacman -Sy --needed --noconfirm --noprogressbar"
   TESTS_FAIL_LACK_OF_LANDLOCK_API_IN_CI_RUNNERS: "^(cli-try-sandbox|landlock|sandbox|seccomp)$"
 
 build:gcc:
@@ -45,7 +46,7 @@ build:clang-coverage:
   tags:
     - saas-linux-medium-amd64
   before_script:
-    - ${PACKAGE_CMD} expect jq llvm python qemu-img qemu-system-x86 virtiofsd
+    - ${PACKAGE_CMD_ARCHLINUX} expect jq llvm python qemu-img qemu-system-x86 virtiofsd
     - ./scripts/setup/pacman.sh
   #
   # For CI_PERSONAL_ACCESS_TOKEN, see: Settings > CI/CD > Variables
@@ -144,9 +145,9 @@ analyze:fb-infer:
     # Workaround stale keyring in fbinfer container image
     - pacman-key --init
     - pacman-key --populate
-    - ${PACKAGE_CMD} archlinux-keyring
+    - ${PACKAGE_CMD_ARCHLINUX} archlinux-keyring
     # Workaround gcc-libs (metapackage) conflict with libgcc, libstdc++
-    - ${PACKAGE_CMD} gcc
+    - ${PACKAGE_CMD_ARCHLINUX} gcc
     # Proceed to normal devenv setup
     - ./scripts/setup/pacman.sh
   script:
