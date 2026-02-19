@@ -22,14 +22,14 @@ packages=(
 )
 
 # Install project dependencies via OS package manager
-apt update -qq
-apt install -qqy "${packages[@]}" > /dev/null
+apt-get update -qq
+apt-get install -qqy "${packages[@]}" > /dev/null
 
 # Workaround lack of quickjs pkgconfig metadata
 QIN=./vendor/quickjs.pc.in
 QP=/usr
 QL="$QP/lib/x86_64-linux-gnu"
-QV="$(apt show libquickjs | grep ^Version | cut -d' ' -f2)"
+QV="$(apt-cache show libquickjs | grep ^Version | cut -d' ' -f2)"
 QOUT="$QL/pkgconfig/quickjs.pc"
 
 m4 -D QUICKJS_PREFIX="$QP" -D QUICKJS_LIBDIR="$QL" -D QUICKJS_VERSION="$QV" \

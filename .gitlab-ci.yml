@@ -1,7 +1,7 @@
 image: debian:unstable-slim
 
 variables:
-  PACKAGE_CMD: "apt install -qqy"
+  PACKAGE_CMD: "apt-get install -qqy"
   DEBIAN_FRONTEND: noninteractive
   TESTS_FAIL_LACK_OF_LANDLOCK_API_IN_CI_RUNNERS: "^(cli-try-sandbox|landlock|sandbox|seccomp)$"
 
@@ -90,7 +90,7 @@ lint:prose:
 lint:shell:
   stage: build
   before_script:
-    - apt update -qq
+    - apt-get update -qq
     - ${PACKAGE_CMD} git shellcheck > /dev/null
   script:
     - git ls-files -z '**.sh' | xargs -0 shellcheck --shell=bash
@@ -98,7 +98,7 @@ lint:shell:
 lint:tcl:
   stage: build
   before_script:
-    - apt update -qq
+    - apt-get update -qq
     - ${PACKAGE_CMD} git python3-pip > /dev/null
     - pip install --break-system-packages --root-user-action ignore tclint
   script:
