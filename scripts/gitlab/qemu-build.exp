@@ -207,14 +207,14 @@ debug "Get number of CPU cores available for VM"
 set nproc [exec nproc]
 
 debug "Boot VM"
-spawn qemu-system-x86_64                                            \
-	-machine q35                                                \
-	-smp $nproc                                                 \
-	-m 4G                                                       \
-	-nographic                                                  \
-	-net user                                                   \
-	-net nic                                                    \
-	-fsdev local,id=fsdev0,path=$src_dir,security_model=none    \
+spawn qemu-system-x86_64 \
+	-machine q35 \
+	-smp $nproc \
+	-m 4G \
+	-nographic \
+	-net user \
+	-net nic \
+	-fsdev local,id=fsdev0,path=$src_dir,security_model=none \
 	-device virtio-9p-pci,id=fs0,fsdev=fsdev0,mount_tag=$vm_tag \
 	[make_path $img]
 set qemu_id $spawn_id
