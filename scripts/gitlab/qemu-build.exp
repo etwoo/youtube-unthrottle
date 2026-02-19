@@ -147,34 +147,6 @@ proc run_tests_in_vm {nproc} {
 	return [get_exit_code_of_previous_command_from_vm]
 }
 
-proc optimize_next_vm_boot {} {
-	debug "Disable unnecessary systemd units for future VM boot"
-	run_in_vm [join {
-		"systemctl mask --no-reload"
-		"apparmor.service"
-		"dev-hugepages.mount"
-		"dev-mqueue.mount"
-		"e2scrub_reap.service"
-		"ldconfig.service"
-		"sys-fs-fuse-connections.mount"
-		"sys-kernel-config.mount"
-		"sys-kernel-debug.mount"
-		"sys-kernel-tracing.mount"
-		"systemd-fsck-root.service"
-		"systemd-growfs-root.service"
-		"systemd-journal-catalog-update.service"
-		"systemd-journal-flush.service"
-		"systemd-journald.service"
-		"systemd-logind.service"
-		"systemd-network-generator.service"
-		"systemd-random-seed.service"
-		"systemd-sysusers.service"
-		"systemd-timesyncd.service"
-		"systemd-udev-load-credentials.service"
-		"systemd-update-done.service"
-	} " "]
-}
-
 #
 # Main body of Expect/Tcl script
 #
@@ -245,9 +217,6 @@ debug "Run tests"
 set exit_code [run_tests_in_vm $nproc]
 
 if {$slowpath} {
-	debug "Before shutdown, tweak how VM will boot in the future"
-	optimize_next_vm_boot
-
 	debug "Shutdown VM, after interactive usage completes"
 	run_in_vm "systemctl poweroff --no-wall"
 	wait -i $qemu_id
