@@ -230,7 +230,7 @@ run_in_vm "unset PROMPT_COMMAND"
 
 # TODO: disable below, after optimizing startup
 debug "Get timing information about boot, in case of slow boot under CI"
-run_in_vm "systemd-analyze"
+# run_in_vm "systemd-analyze"
 run_in_vm "systemd-analyze critical-chain"
 run_in_vm "systemd-analyze blame --no-pager"
 
