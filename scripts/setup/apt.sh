@@ -17,6 +17,7 @@ packages=(
 	'libquickjs'
 	'make'
 	'm4'
+	'protobuf-c-compiler'
 )
 
 # Install project dependencies via OS package manager
