@@ -219,6 +219,15 @@ set qemu_id $spawn_id
 debug "Wait for boot process to reach login prompt, and then log into VM"
 log_into_vm
 
+#
+# https://bbs.archlinux.org/viewtopic.php?id=309547
+# https://github.com/systemd/systemd/issues/39114
+# https://github.com/systemd/systemd/issues/39133
+#
+debug "Avoid escape sequence spam in terminal"
+run_in_vm "unset PS0"
+run_in_vm "unset PROMPT_COMMAND"
+
 # TODO: disable below, after optimizing startup
 debug "Get timing information about boot, in case of slow boot under CI"
 run_in_vm "systemd-analyze"
