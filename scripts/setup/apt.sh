@@ -19,6 +19,7 @@ packages=(
 )
 
 # Install project dependencies via OS package manager
+export DEBIAN_FRONTEND=noninteractive
 apt update -qq && apt install -qqy "${packages[@]}"
 
 # Workaround lack of quickjs pkgconfig metadata
