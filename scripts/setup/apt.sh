@@ -3,18 +3,16 @@
 set -euxo pipefail
 
 packages=(
+	'build-essential'
 	'cmake'
-	'gcc'
 	'git'
 	'libada-url-dev'
-	'libc6-dev'
 	'libcurl4-openssl-dev'
 	'libjansson-dev'
 	'libpcre2-dev'
 	'libprotobuf-c-dev'
 	'libseccomp-dev'
 	'libquickjs'
-	'make'
 	'm4'
 	'protobuf-c-compiler'
 	'protobuf-compiler'

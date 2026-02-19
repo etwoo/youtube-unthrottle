@@ -10,7 +10,7 @@ build:gcc:
   before_script:
     - ./scripts/setup/apt.sh
   script:
-    - cmake --preset default -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
+    - CC=gcc cmake --preset default -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
     - cmake --build --preset default
     - ctest --preset default -E ${TESTS_FAIL_LACK_OF_LANDLOCK_API_IN_CI_RUNNERS}
   artifacts:
