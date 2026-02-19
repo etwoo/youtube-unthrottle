@@ -57,7 +57,7 @@ build:clang-coverage:
     - export CI_PERSONAL_ACCESS_TOKEN=${CI_PERSONAL_ACCESS_TOKEN}
     - export CI_PROJECT_ID=${CI_PROJECT_ID}
     - export BUMP=12
-    - export IMG=$((echo $BUMP && cat ./scripts/gitlab/user-data) | sha256sum | cut -f1 -d' ')
+    - export IMG=$(echo "$BUMP" | sha256sum | cut -f1 -d' ')
     - export URI=$(./scripts/gitlab/find-vm-artifact.sh "vm-images/$IMG.zst") && echo "Fetching $URI"
     - ./scripts/gitlab/qemu-build.exp $IMG $URI
     - ./scripts/coverage.sh -E main.c coverage.profraw ./build/coverage.xml
