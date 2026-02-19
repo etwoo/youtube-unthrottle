@@ -1,4 +1,4 @@
-image: debian:unstable
+image: debian:unstable-slim
 
 variables:
   PACKAGE_CMD_ARCHLINUX: "pacman -Sy --needed --noconfirm --noprogressbar"
