@@ -239,7 +239,7 @@ run_in_vm "unset PROMPT_COMMAND"
 
 debug "Mount source code from host OS into guest VM"
 run_in_vm "mkdir -p $src_dir"
-run_in_vm "mount -t 9p -o trans=virtio $vm_tag $src_dir -oversion=9p2000.L"
+run_in_vm "mount -t 9p -o trans=virtio $vm_tag $src_dir"
 run_in_vm "cd $src_dir"
 
 debug "Install test dependencies"
