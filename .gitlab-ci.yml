@@ -48,7 +48,7 @@ build:clang-coverage:
   script:
     - cmake --preset coverage
     - cmake --build --preset default
-    - apt install -qqy curl expect llvm qemu-system-x86
+    - apt install -qq curl expect llvm qemu-system-x86
     - ./scripts/gitlab/qemu-build.exp
     - ./scripts/coverage.sh -E main.c coverage.profraw ./build/coverage.xml
   coverage: '/^TOTAL.*\s+([\d\.]+\%)$/'
@@ -89,14 +89,14 @@ lint:prose:
 lint:shell:
   stage: build
   before_script:
-    - apt update -qq && apt install -qqy git shellcheck
+    - apt update -qq && apt install -qq git shellcheck
   script:
     - git ls-files -z '**.sh' | xargs -0 shellcheck --shell=bash
 
 lint:tcl:
   stage: build
   before_script:
-    - apt update -qq && apt install -qqy git python3-pip
+    - apt update -qq && apt install -qq git python3-pip
     - pip install --break-system-packages --root-user-action ignore tclint
   script:
     - git ls-files -z '*.exp' | xargs -0 tclfmt --in-place --indent=tab --
