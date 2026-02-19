@@ -6,6 +6,7 @@ packages=(
 	'build-essential'
 	'clang'
 	'clang-format'
+	'clang-tidy'
 	'cmake'
 	'git'
 	'libada-url-dev'
