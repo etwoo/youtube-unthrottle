@@ -5,6 +5,7 @@ set -euxo pipefail
 packages=(
 	'build-essential'
 	'clang'
+	'clang-format'
 	'cmake'
 	'git'
 	'libada-url-dev'
