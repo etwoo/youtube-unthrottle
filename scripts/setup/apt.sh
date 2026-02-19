@@ -19,7 +19,7 @@ packages=(
 )
 
 # Install project dependencies via OS package manager
-apt update -qq && apt install -y "${packages[*]}"
+apt update -qq && apt install -y "${packages[@]}"
 
 # Workaround lack of quickjs pkgconfig metadata
 QIN=./vendor/quickjs.pc.in
