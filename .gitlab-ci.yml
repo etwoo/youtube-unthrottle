@@ -1,7 +1,6 @@
 image: debian:unstable-slim
 
 variables:
-  PACKAGE_CMD: "apt update -qq && apt install -qqy"
   PACKAGE_CMD_ARCHLINUX: "pacman -Sy --needed --noconfirm --noprogressbar"
   TESTS_FAIL_LACK_OF_LANDLOCK_API_IN_CI_RUNNERS: "^(cli-try-sandbox|landlock|sandbox|seccomp)$"
 
@@ -105,14 +104,14 @@ lint:prose:
 lint:shell:
   stage: build
   before_script:
-    - ${PACKAGE_CMD} git shellcheck
+    - apt update -qq && apt install -qqy git shellcheck
   script:
     - git ls-files -z '**.sh' | xargs -0 shellcheck --shell=bash
 
 lint:tcl:
   stage: build
   before_script:
-    - ${PACKAGE_CMD} git python-pip
+    - apt update -qq && apt install -qqy git python-pip
     - pip install --break-system-packages --root-user-action ignore tclint
   script:
     - git ls-files -z '*.exp' | xargs -0 tclfmt --in-place --indent=tab --
