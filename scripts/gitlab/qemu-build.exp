@@ -119,15 +119,15 @@ proc log_into_vm {} {
 	while 1 {
 		expect "GNU GRUB"
 		send "\r"
-		expect "to list options, empty to skip): "
+		expect "to list options, empty to skip):"
 		send "\r"
-		expect "Please enter the new root password (empty to skip): "
+		expect "Please enter the new root password (empty to skip):"
 		send "root\r"
-		expect "Please enter the new root password again: "
+		expect "Please enter the new root password again:"
 		send "root\r"
-		expect "localhost login: "
+		expect "localhost login:"
 		send "root\r"
-		expect "Password: "
+		expect "Password:"
 		send "root\r"
 		expect {
 			$::prompt {
