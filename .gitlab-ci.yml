@@ -4,10 +4,13 @@ variables:
   DEBIAN_FRONTEND: noninteractive
   TESTS_FAIL_LACK_OF_LANDLOCK_API_IN_CI_RUNNERS: "^(cli-try-sandbox|landlock|sandbox|seccomp)$"
 
-build:gcc:
-  stage: build
+.build_dependencies: &build_dependencies
   before_script:
     - ./scripts/setup/apt.sh
+
+build:gcc:
+  <<: *build_dependencies
+  stage: build
   script:
     - cmake --preset default -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
     - cmake --build --preset default
@@ -18,9 +21,8 @@ build:gcc:
       junit: ./build/junit.xml
 
 build:clang:
+  <<: *build_dependencies
   stage: build
-  before_script:
-    - ./scripts/setup/apt.sh
   script:
     - cmake --preset clang -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
     - cmake --build --preset default
@@ -31,24 +33,22 @@ build:clang:
       junit: ./build/junit.xml
 
 build:clang-format:
+  <<: *build_dependencies
   stage: build
-  before_script:
-    - ./scripts/setup/apt.sh
   script:
     - cmake --preset default
     - cmake --build --preset default --target fmt
 
 build:clang-coverage:
+  <<: *build_dependencies
   stage: build
   # Use medium machine type (instead of default small) to improve VM performance
   tags:
     - saas-linux-medium-amd64
-  before_script:
-    - apt update -qq && apt install -qqy curl expect llvm qemu-system-x86
-    - ./scripts/setup/apt.sh
   script:
     - cmake --preset coverage
     - cmake --build --preset default
+    - apt install -qqy curl expect llvm qemu-system-x86
     - ./scripts/gitlab/qemu-build.exp
     - ./scripts/coverage.sh -E main.c coverage.profraw ./build/coverage.xml
   coverage: '/^TOTAL.*\s+([\d\.]+\%)$/'
@@ -107,9 +107,8 @@ lint:tcl:
 # Run the Clang Static Analyzer via clang-tidy: https://clang-analyzer.llvm.org
 #
 analyze:clang-tidy:
+  <<: *build_dependencies
   stage: build
-  before_script:
-    - ./scripts/setup/apt.sh
   script:
     - cmake --preset clang -DCMAKE_C_CLANG_TIDY=clang-tidy
     - cmake --build --preset default
