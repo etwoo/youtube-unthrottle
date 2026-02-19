@@ -34,3 +34,7 @@ QOUT="$QL/pkgconfig/quickjs.pc"
 
 m4 -D QUICKJS_PREFIX="$QP" -D QUICKJS_LIBDIR="$QL" -D QUICKJS_VERSION="$QV" \
 	"$QIN" > "$QOUT"
+
+# Change default shell from dash to bash
+sudo mv /bin/sh{,bak}
+sudo ln -s /bin/{bash,sh}
