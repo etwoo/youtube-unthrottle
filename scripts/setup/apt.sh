@@ -16,6 +16,7 @@ packages=(
 	'libseccomp-dev'
 	'libquickjs'
 	'make'
+	'm4'
 )
 
 # Install project dependencies via OS package manager
