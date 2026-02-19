@@ -40,9 +40,9 @@ build:clang-format:
 
 build:clang-coverage:
   stage: build
-  # Use large machine type (instead of default small) to improve VM performance
+  # Use medium machine type (instead of default small) to improve VM performance
   tags:
-    - saas-linux-large-amd64
+    - saas-linux-medium-amd64
   before_script:
     - apt update -qq && apt install -qqy curl expect llvm qemu-system-x86
     - ./scripts/setup/apt.sh
