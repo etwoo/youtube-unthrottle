@@ -40,7 +40,6 @@ build:clang-format:
 
 build:clang-coverage:
   stage: build
-  image: archlinux/archlinux:base-devel
   # Use medium machine type (instead of default small) to improve VM performance
   tags:
     - saas-linux-medium-amd64
