@@ -3,7 +3,6 @@
 set timeout -1
 set prompt "~# "
 set vm_dir "vm-images"
-set vm_socket "/tmp/vhostqemu"
 set vm_tag "youtube-unthrottle"
 set src_dir $env(PWD)
 set access_token $env(CI_PERSONAL_ACCESS_TOKEN)
@@ -208,24 +207,16 @@ if {$slowpath} {
 debug "Get number of CPU cores available for VM"
 set nproc [exec nproc]
 
-#
-# https://virtio-fs.gitlab.io/howto-qemu.html
-#
-debug "Start virtio shared filesystem daemon"
-spawn /usr/libexec/virtiofsd --socket-path=$vm_socket -o source=$src_dir
-set virtio_id $spawn_id
 debug "Boot VM"
-spawn qemu-system-x86_64                                                       \
-	-machine q35                                                           \
-	-smp $nproc                                                            \
-	-m 4G                                                                  \
-	-nographic                                                             \
-	-net user                                                              \
-	-net nic                                                               \
-	-chardev socket,id=char0,path=$vm_socket                               \
-	-device vhost-user-fs-pci,queue-size=1024,chardev=char0,tag=$vm_tag    \
-	-object memory-backend-file,id=mem,size=4G,mem-path=/dev/shm,share=on  \
-	-numa node,memdev=mem                                                  \
+spawn qemu-system-x86_64                                            \
+	-machine q35                                                \
+	-smp $nproc                                                 \
+	-m 4G                                                       \
+	-nographic                                                  \
+	-net user                                                   \
+	-net nic                                                    \
+	-fsdev local,id=fsdev0,path=$src_dir,security_model=none    \
+	-device virtio-9p-pci,id=fs0,fsdev=fsdev0,mount_tag=$vm_tag \
 	[make_path $img]
 set qemu_id $spawn_id
 
@@ -248,7 +239,7 @@ run_in_vm "unset PROMPT_COMMAND"
 
 debug "Mount source code from host OS into guest VM"
 run_in_vm "mkdir -p $src_dir"
-run_in_vm "mount -t virtiofs $vm_tag $src_dir"
+run_in_vm "mount -t 9p -o trans=virtio $vm_tag $src_dir -oversion=9p2000.L"
 run_in_vm "cd $src_dir"
 
 debug "Install test dependencies"
@@ -270,9 +261,6 @@ if {$slowpath} {
 	exp_close -i $qemu_id
 	wait -i $qemu_id
 }
-
-exp_close -i $virtio_id
-wait -i $virtio_id
 
 debug "If necessary, compress VM files, including initialization changes"
 maybe_compress $img
