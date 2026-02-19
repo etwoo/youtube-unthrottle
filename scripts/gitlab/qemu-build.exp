@@ -1,13 +1,13 @@
 #!/usr/bin/env expect
 
 set timeout -1
+set img "vm.qcow2"
 set prompt "# "
 set vm_dir "vm-images"
 set src_tag "youtube-unthrottle"
 set src_dir $env(PWD)
 set usr_tag "host-usr-dir"
 set usr_dir "/usr"
-set access_token $env(CI_PERSONAL_ACCESS_TOKEN)
 set curl_cmd "curl --no-progress-meter --fail"
 
 #
@@ -21,57 +21,6 @@ proc debug {msg} {
 
 proc make_path {target} {
 	return [file join $::vm_dir $target]
-}
-
-proc maybe_compress {target} {
-	set p [make_path $target]
-	if {[file exists $p.zst]} {
-		debug "Compressed asset already exists: $p.zst"
-	} else {
-		debug "Compress to create: $p.zst"
-		puts [exec -ignorestderr zstd -T0 -15 --compress $p]
-	}
-}
-
-proc maybe_decompress {target} {
-	set decompressed [make_path $target]
-	set compressed $decompressed.zst
-	if {[file exists $decompressed]} {
-		debug "Decompressed asset already exists: $decompressed"
-	} elseif {[file exists $compressed]} {
-		debug "Decompress $compressed to create $decompressed"
-		puts [exec -ignorestderr zstd -T0 --decompress $compressed]
-	} else {
-		debug "Cannot decompress because $compressed does not exist"
-	}
-}
-
-proc cleanup_decompress {target} {
-	set p [make_path $target]
-	debug "Cleaning up: $p"
-	file delete $p
-}
-
-proc get_vm_from_cache {img url access_header} {
-	set vm_download "[make_path $img].zst"
-
-	set vm_marker "$vm_download.please_delete"
-	debug "Create a VM cache marker file: $vm_marker"
-	close [open $vm_marker w]
-
-	append url "/" $vm_download
-	debug "Try to download cached VM image: $url"
-
-	set curl_args "--header $access_header --output $vm_download $url"
-	if {[catch {exec {*}$::curl_cmd {*}$curl_args} msg]} {
-		debug "HTTP error: $msg"
-		debug "VM cache miss: cleanup $vm_download $vm_marker"
-		file delete $vm_download
-		file delete $vm_marker
-	} else {
-		set vm_size [file size $vm_download]
-		debug "VM cache hit: got $vm_size bytes via HTTP"
-	}
 }
 
 proc get_vm_from_upstream_distro {target} {
@@ -156,23 +105,8 @@ proc run_tests_in_vm {nproc} {
 debug "Prepare VM directory $vm_dir; later steps assume it exists"
 file mkdir $vm_dir
 
-set img [lindex $argv 0]
-debug "Using VM image name: $img"
-
-if {$argc > 1} {
-	set vm_url [lindex $argv 1]
-	debug "Using VM image URL: $vm_url"
-	get_vm_from_cache $img $vm_url "PRIVATE-TOKEN:$access_token"
-}
-
-debug "If necessary, decompress VM files before attempting to boot"
-maybe_decompress $img
-
-set slowpath [expr {![file exists [make_path $img]]}]
-if {$slowpath} {
-	debug "Get VM image from upstream OS distribution"
-	get_vm_from_upstream_distro [make_path $img]
-}
+debug "Get VM image from upstream OS distribution"
+get_vm_from_upstream_distro [make_path $img]
 
 debug "Get number of CPU cores available for VM"
 set nproc [exec nproc]
@@ -209,9 +143,6 @@ run_in_vm "unset PROMPT_COMMAND"
 
 debug "Mount host OS /usr content over guest OS /usr directory"
 run_in_vm "mount -t 9p -o trans=virtio $usr_tag $usr_dir"
-# TODO: if above mount works, maybe no need to cache VM at all?
-# ... i.e. can just use nightly VM image as-is
-# ... which would allow us to skip cache hit/miss logic, artifact saving, etc
 
 debug "Mount source code from host OS into guest VM"
 run_in_vm "mkdir -p $src_dir"
@@ -221,22 +152,10 @@ run_in_vm "cd $src_dir"
 debug "Run tests"
 set exit_code [run_tests_in_vm $nproc]
 
-if {$slowpath} {
-	debug "Shutdown VM, after interactive usage completes"
-	run_in_vm "systemctl poweroff --no-wall"
-	wait -i $qemu_id
-} else {
-	debug "Skip shutdown by killing VM forcefully"
-	exec kill -9 [exp_pid -i $qemu_id]
-	exp_close -i $qemu_id
-	wait -i $qemu_id
-}
-
-debug "If necessary, compress VM files, including initialization changes"
-maybe_compress $img
-
-debug "Clean up decompressed files after VM shutdown"
-cleanup_decompress $img
+debug "Skip shutdown by killing VM forcefully"
+exec kill -9 [exp_pid -i $qemu_id]
+exp_close -i $qemu_id
+wait -i $qemu_id
 
 debug "Exiting with $exit_code ..."
 exit $exit_code
