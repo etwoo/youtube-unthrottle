@@ -111,7 +111,7 @@ lint:shell:
 lint:tcl:
   stage: build
   before_script:
-    - apt update -qq && apt install -qqy git python-pip
+    - apt update -qq && apt install -qqy git python3-pip
     - pip install --break-system-packages --root-user-action ignore tclint
   script:
     - git ls-files -z '*.exp' | xargs -0 tclfmt --in-place --indent=tab --
