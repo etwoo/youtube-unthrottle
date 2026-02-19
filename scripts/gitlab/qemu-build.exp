@@ -203,7 +203,6 @@ if {$slowpath} {
 	get_vm_from_upstream_distro [make_path $img]
 }
 
-
 debug "Get number of CPU cores available for VM"
 set nproc [exec nproc]
 
