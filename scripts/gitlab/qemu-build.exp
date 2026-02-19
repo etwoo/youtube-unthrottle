@@ -3,6 +3,8 @@
 set timeout -1
 set prompt "~# "
 set vm_dir "vm-images"
+set vm_socket "/tmp/vhostqemu"
+set vm_tag "youtube-unthrottle"
 set src_dir $env(PWD)
 set access_token $env(CI_PERSONAL_ACCESS_TOKEN)
 set curl_cmd "curl --no-progress-meter --fail"
@@ -200,20 +202,30 @@ if {$slowpath} {
 	get_vm_from_upstream_distro [make_path $img]
 }
 
+#
+# https://virtio-fs.gitlab.io/howto-qemu.html
+#
+debug "Start virtio-fs shared file system daemon"
+spawn virtiofsd --socket-path=$vm_socket -o source=$src_dir
+
 debug "Get number of CPU cores available for VM"
 set nproc [exec nproc]
 
 debug "Boot VM"
-spawn qemu-system-x86_64 \
-	-machine q35 \
-	-smp $nproc \
-	-m 2048 \
-	-nographic \
-	-net user \
-	-net nic \
-	-fsdev local,id=fsdev0,path=$src_dir,security_model=none \
-	-device virtio-9p-pci,id=fs0,fsdev=fsdev0,mount_tag=youtube-unthrottle \
+spawn [join {
+	"qemu-system-x86_64"
+	"-machine q35"
+	"-smp $nproc"
+	"-m 4G"
+	"-nographic"
+	"-net user"
+	"-net nic"
+	"-chardev socket,id=char0,path=$vm_socket"
+	"-device vhost-user-fs-pci,queue-size=1024,chardev=char0,tag=$vm_tag"
+	"-object memory-backend-file,id=mem,size=4G,mem-path=/dev/shm,share=on"
+	"-numa node,memdev=mem"
 	[make_path $img]
+} " "]
 set qemu_id $spawn_id
 
 debug "Wait for boot process to reach login prompt, and then log into VM"
@@ -235,7 +247,7 @@ run_in_vm "unset PROMPT_COMMAND"
 
 debug "Mount source code from host OS into guest VM"
 run_in_vm "mkdir -p $src_dir"
-run_in_vm "mount -t 9p -o trans=virtio youtube-unthrottle $src_dir"
+run_in_mv "mount -t virtiofs $vm_tag $src_dir"
 run_in_vm "cd $src_dir"
 
 debug "Install test dependencies"
