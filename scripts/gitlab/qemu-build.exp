@@ -3,8 +3,10 @@
 set timeout -1
 set prompt "# "
 set vm_dir "vm-images"
-set vm_tag "youtube-unthrottle"
+set src_tag "youtube-unthrottle"
 set src_dir $env(PWD)
+set usr_tag "host-usr-dir"
+set usr_dir "/usr"
 set access_token $env(CI_PERSONAL_ACCESS_TOKEN)
 set curl_cmd "curl --no-progress-meter --fail"
 
@@ -184,7 +186,9 @@ spawn qemu-system-x86_64 \
 	-net user \
 	-net nic \
 	-fsdev local,id=fsdev0,path=$src_dir,security_model=none \
-	-device virtio-9p-pci,id=fs0,fsdev=fsdev0,mount_tag=$vm_tag \
+	-device virtio-9p-pci,id=fs0,fsdev=fsdev0,mount_tag=$src_tag \
+	-fsdev local,id=fsdev1,path=$usr_dir,security_model=none \
+	-device virtio-9p-pci,id=fs1,fsdev=fsdev1,mount_tag=$usr_tag \
 	[make_path $img]
 set qemu_id $spawn_id
 
@@ -203,13 +207,16 @@ run_in_vm "unset PROMPT_COMMAND"
 # run_in_vm "systemd-analyze critical-chain --no-pager"
 # run_in_vm "systemd-analyze blame --no-pager"
 
+debug "Mount host OS /usr content over guest OS /usr directory"
+run_in_vm "mount -t 9p -o trans=virtio $usr_tag $usr_dir"
+# TODO: if above mount works, maybe no need to cache VM at all?
+# ... i.e. can just use nightly VM image as-is
+# ... which would allow us to skip cache hit/miss logic, artifact saving, etc
+
 debug "Mount source code from host OS into guest VM"
 run_in_vm "mkdir -p $src_dir"
-run_in_vm "mount -t 9p -o trans=virtio $vm_tag $src_dir"
+run_in_vm "mount -t 9p -o trans=virtio $src_tag $src_dir"
 run_in_vm "cd $src_dir"
-
-debug "Install test dependencies"
-run_in_vm "./scripts/setup/apt.sh"
 
 debug "Run tests"
 set exit_code [run_tests_in_vm $nproc]
