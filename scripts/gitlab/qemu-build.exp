@@ -1,7 +1,7 @@
 #!/usr/bin/env expect
 
 set timeout -1
-set prompt "~# "
+set prompt "# "
 set vm_dir "vm-images"
 set vm_tag "youtube-unthrottle"
 set src_dir $env(PWD)
