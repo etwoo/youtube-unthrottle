@@ -77,9 +77,9 @@ proc get_vm_from_upstream_distro {target} {
 		"debian-sid-nocloud-amd64-daily.qcow2"
 	} "/"]
 	debug "Download prebuilt Debian VM image: $upstream"
-	puts [exec {*}$::curl_cmd --output $target $upstream]
+	puts [exec {*}$::curl_cmd -L --output $target $upstream]
 	debug "Increase disk size within VM image"
-	puts [exec qemu-img resize -f qcow2 $target 40G]
+	puts [exec qemu-img resize $target 40G]
 }
 
 proc run_in_vm {cmd} {
