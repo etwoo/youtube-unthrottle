@@ -1,7 +1,7 @@
 image: debian:unstable-slim
 
 variables:
-  PACKAGE_CMD: "apt install -qq -o=Dpkg::Use-Pty=0"
+  PACKAGE_CMD: "apt install -qqy -o=Dpkg::Use-Pty=0"
   DEBIAN_FRONTEND: noninteractive
   TESTS_FAIL_LACK_OF_LANDLOCK_API_IN_CI_RUNNERS: "^(cli-try-sandbox|landlock|sandbox|seccomp)$"
 

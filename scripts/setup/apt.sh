@@ -22,7 +22,7 @@ packages=(
 )
 
 # Install project dependencies via OS package manager
-apt update -qq && apt install -qq -o='Dpkg::Use-Pty=0' "${packages[@]}"
+apt update -qq && apt install -qqy -o=Dpkg::Use-Pty=0 "${packages[@]}"
 
 # Workaround lack of quickjs pkgconfig metadata
 QIN=./vendor/quickjs.pc.in
