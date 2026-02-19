@@ -211,6 +211,7 @@ set nproc [exec nproc]
 #
 debug "Start virtio shared filesystem daemon"
 spawn /usr/libexec/virtiofsd --socket-path=$vm_socket -o source=$src_dir
+set virtio_id $spawn_id
 debug "Boot VM"
 spawn qemu-system-x86_64                                                       \
 	-machine q35                                                           \
@@ -267,6 +268,9 @@ if {$slowpath} {
 	exp_close -i $qemu_id
 	wait -i $qemu_id
 }
+
+exp_close -i $virtio_id
+wait -i $virtio_id
 
 debug "If necessary, compress VM files, including initialization changes"
 maybe_compress $img
