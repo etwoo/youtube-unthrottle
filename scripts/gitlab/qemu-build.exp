@@ -228,11 +228,10 @@ debug "Avoid escape sequence spam in terminal"
 run_in_vm "unset PS0"
 run_in_vm "unset PROMPT_COMMAND"
 
-# TODO: disable below, after optimizing startup
-debug "Get timing information about boot, in case of slow boot under CI"
+# debug "Get timing information about boot, in case of slow boot under CI"
 # run_in_vm "systemd-analyze"
-run_in_vm "systemd-analyze critical-chain"
-run_in_vm "systemd-analyze blame --no-pager"
+# run_in_vm "systemd-analyze critical-chain"
+# run_in_vm "systemd-analyze blame --no-pager"
 
 debug "Mount source code from host OS into guest VM"
 run_in_vm "mkdir -p $src_dir"
