@@ -212,20 +212,18 @@ set nproc [exec nproc]
 debug "Start virtio shared filesystem daemon"
 spawn /usr/libexec/virtiofsd --socket-path=$vm_socket -o source=$src_dir
 debug "Boot VM"
-spawn [join {
-	"qemu-system-x86_64"
-	"-machine q35"
-	"-smp $nproc"
-	"-m 4G"
-	"-nographic"
-	"-net user"
-	"-net nic"
-	"-chardev socket,id=char0,path=$vm_socket"
-	"-device vhost-user-fs-pci,queue-size=1024,chardev=char0,tag=$vm_tag"
-	"-object memory-backend-file,id=mem,size=4G,mem-path=/dev/shm,share=on"
-	"-numa node,memdev=mem"
+spawn qemu-system-x86_64                                                       \
+	-machine q35                                                           \
+	-smp $nproc                                                            \
+	-m 4G                                                                  \
+	-nographic                                                             \
+	-net user                                                              \
+	-net nic                                                               \
+	-chardev socket,id=char0,path=$vm_socket                               \
+	-device vhost-user-fs-pci,queue-size=1024,chardev=char0,tag=$vm_tag    \
+	-object memory-backend-file,id=mem,size=4G,mem-path=/dev/shm,share=on  \
+	-numa node,memdev=mem                                                  \
 	[make_path $img]
-} " "]
 set qemu_id $spawn_id
 
 debug "Wait for boot process to reach login prompt, and then log into VM"
