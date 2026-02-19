@@ -44,7 +44,8 @@ build:clang-coverage:
   tags:
     - saas-linux-medium-amd64
   before_script:
-    - apt update -qq && apt install -qqy curl expect jq qemu-system-x86 qemu-utils zstd
+    - apt update -qq && apt install -qqy curl expect jq llvm qemu-system-x86 qemu-utils zstd
+    - which llvm-profdata
     - ./scripts/setup/apt.sh
   #
   # For CI_PERSONAL_ACCESS_TOKEN, see: Settings > CI/CD > Variables
@@ -52,9 +53,6 @@ build:clang-coverage:
   # Increment the BUMP envvar to force a VM image cache miss
   #
   script:
-    - which llvm-profdata
-    - llvm-profdata --version
-    - echo | xargs llvm-profdata --version
     - cmake --preset coverage
     - cmake --build --preset default
     - export CI_PERSONAL_ACCESS_TOKEN=${CI_PERSONAL_ACCESS_TOKEN}
@@ -63,9 +61,6 @@ build:clang-coverage:
     - export IMG=$(echo "$BUMP" | sha256sum | cut -f1 -d' ')
     - export URI=$(./scripts/gitlab/find-vm-artifact.sh "vm-images/$IMG.zst") && echo "Fetching $URI"
     - ./scripts/gitlab/qemu-build.exp $IMG $URI
-    - which llvm-profdata
-    - llvm-profdata --version
-    - echo | xargs llvm-profdata --version
     - ./scripts/coverage.sh -E main.c coverage.profraw ./build/coverage.xml
   after_script:
     - ./scripts/gitlab/cleanup-vm-archive.sh vm-images
