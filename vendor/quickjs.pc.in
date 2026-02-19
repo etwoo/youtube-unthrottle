@@ -1,6 +1,6 @@
 prefix=QUICKJS_PREFIX
 exec_prefix=${prefix}
-libdir=${exec_prefix}/lib
+libdir=QUICKJS_LIBDIR
 includedir=${prefix}/include
 
 Name: QuickJS

@@ -41,7 +41,10 @@ popd
 
 # Workaround lack of quickjs pkgconfig metadata
 QIN=./vendor/quickjs.pc.in
-QPC=/usr/lib/pkgconfig/quickjs.pc
-QPREFIX=/usr
-QVERSION="$(pacman -Qi quickjs | grep ^Ver | tr -s ' ' | cut -d' ' -f3)"
-m4 -D QUICKJS_PREFIX="$QPREFIX" -D QUICKJS_VERSION="$QVERSION" "$QIN" > "$QPC"
+QP=/usr
+QL="$QP/lib"
+QV="$(pacman -Qi quickjs | grep ^Ver | tr -s ' ' | cut -d' ' -f3)"
+QOUT="$QL/pkgconfig/quickjs.pc"
+
+m4 -D QUICKJS_PREFIX="$QP" -D QUICKJS_LIBDIR="$QL" -D QUICKJS_VERSION="$QV" \
+	"$QIN" > "$QOUT"
