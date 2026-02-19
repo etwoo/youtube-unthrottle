@@ -1,9 +1,8 @@
 #!/usr/bin/env expect
 
 set timeout -1
-set prompt "]# "
+set prompt "~# "
 set vm_dir "vm-images"
-set vm_conf "./scripts/gitlab/user-data"
 set src_dir $env(PWD)
 set access_token $env(CI_PERSONAL_ACCESS_TOKEN)
 set curl_cmd "curl --no-progress-meter --fail"
@@ -74,10 +73,10 @@ proc get_vm_from_cache {img url access_header} {
 
 proc get_vm_from_upstream_distro {target} {
 	set upstream [join {
-		"https://geo.mirror.pkgbuild.com/images/latest"
-		"Arch-Linux-x86_64-cloudimg.qcow2"
+		"https://cdimage.debian.org/images/cloud/sid/daily/latest"
+		"debian-sid-nocloud-amd64-daily.qcow2"
 	} "/"]
-	debug "Download prebuilt Arch Linux VM image: $upstream"
+	debug "Download prebuilt Debian VM image: $upstream"
 	puts [exec {*}$::curl_cmd --output $target $upstream]
 	debug "Increase disk size within VM image"
 	puts [exec qemu-img resize $target 40G]
@@ -117,12 +116,18 @@ proc get_exit_code_of_previous_command_from_vm {} {
 
 proc log_into_vm {} {
 	while 1 {
-		expect "archlinux login: "
-		send "arch\r"
+		expect "to list options, empty to skip): "
+		send "\r"
+		expect "Please enter the new root password (empty to skip): "
+		send "root\r"
+		expect "Please enter the new root password again: "
+		send "root\r"
+		expect "localhost login: "
+		send "root\r"
 		expect "Password: "
-		send "arch\r"
+		send "root\r"
 		expect {
-			"]$ " {
+			$::prompt {
 				break
 			}
 			"Login incorrect" {
@@ -131,9 +136,6 @@ proc log_into_vm {} {
 			}
 		}
 	}
-
-	debug "Switch to root user"
-	run_in_vm "sudo su -"
 }
 
 proc run_tests_in_vm {nproc} {
@@ -144,9 +146,6 @@ proc run_tests_in_vm {nproc} {
 }
 
 proc optimize_next_vm_boot {} {
-	debug "Disable cloud-init for future VM boot"
-	run_in_vm "touch /etc/cloud/cloud-init.disabled"
-
 	debug "Disable unnecessary systemd units for future VM boot"
 	run_in_vm [join {
 		"systemctl mask --no-reload"
@@ -199,15 +198,6 @@ set slowpath [expr {![file exists [make_path $img]]}]
 if {$slowpath} {
 	debug "Get VM image from upstream OS distribution"
 	get_vm_from_upstream_distro [make_path $img]
-
-	debug "Prepare cloud-init files"
-	file copy $vm_conf ./
-	close [open ./meta-data w]
-	close [open ./vendor-data w]
-
-	debug "Start adhoc IMDS webserver"
-	spawn python3 -m http.server --directory .
-	set imds_server_id $spawn_id
 }
 
 debug "Get number of CPU cores available for VM"
@@ -223,31 +213,16 @@ spawn qemu-system-x86_64 \
 	-net nic \
 	-fsdev local,id=fsdev0,path=$src_dir,security_model=none \
 	-device virtio-9p-pci,id=fs0,fsdev=fsdev0,mount_tag=youtube-unthrottle \
-	-smbios "type=1,serial=ds=nocloud;s=http://10.0.2.2:8000/" \
 	[make_path $img]
 set qemu_id $spawn_id
 
 debug "Wait for boot process to reach login prompt, and then log into VM"
 log_into_vm
 
-#
-# https://bbs.archlinux.org/viewtopic.php?id=309547
-# https://github.com/systemd/systemd/issues/39114
-# https://github.com/systemd/systemd/issues/39133
-#
-debug "Avoid escape sequence spam in terminal"
-run_in_vm "unset PS0"
-run_in_vm "unset PROMPT_COMMAND"
-
-if {$slowpath} {
-	debug "Wait for cloud-init to complete"
-	run_in_vm "cloud-init status --long --wait"
-}
-
 # debug "Get timing information about boot, in case of slow boot under CI"
-# run_in_vm "systemd-analyze"
-# run_in_vm "systemd-analyze critical-chain"
-# run_in_vm "systemd-analyze blame --no-pager"
+run_in_vm "systemd-analyze"
+run_in_vm "systemd-analyze critical-chain"
+run_in_vm "systemd-analyze blame --no-pager"
 
 debug "Mount source code from host OS into guest VM"
 run_in_vm "mkdir -p $src_dir"
@@ -255,22 +230,18 @@ run_in_vm "mount -t 9p -o trans=virtio youtube-unthrottle $src_dir"
 run_in_vm "cd $src_dir"
 
 debug "Install test dependencies"
-run_in_vm "./scripts/setup/pacman.sh --skip-quickjs"
+run_in_vm "./scripts/setup/apt.sh"
 
 debug "Run tests"
 set exit_code [run_tests_in_vm $nproc]
 
 if {$slowpath} {
 	debug "Before shutdown, tweak how VM will boot in the future"
-	optimize_next_vm_boot
+	# optimize_next_vm_boot # TODO: restore or remove
 
 	debug "Shutdown VM, after interactive usage completes"
 	run_in_vm "systemctl poweroff --no-wall"
 	wait -i $qemu_id
-
-	debug "Stop adhoc IMDS webserver"
-	exp_close -i $imds_server_id
-	wait -i $imds_server_id
 } else {
 	debug "Skip shutdown by killing VM forcefully"
 	exec kill -9 [exp_pid -i $qemu_id]
@@ -278,7 +249,7 @@ if {$slowpath} {
 	wait -i $qemu_id
 }
 
-debug "If necessary, compress VM files, including cloud-init modifications"
+debug "If necessary, compress VM files, including initialization changes"
 maybe_compress $img
 
 debug "Clean up decompressed files after VM shutdown"

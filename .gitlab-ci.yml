@@ -1,7 +1,7 @@
 image: debian:unstable-slim
 
 variables:
-  PACKAGE_CMD_ARCHLINUX: "pacman -Sy --needed --noconfirm --noprogressbar"
+  DEBIAN_FRONTEND: noninteractive
   TESTS_FAIL_LACK_OF_LANDLOCK_API_IN_CI_RUNNERS: "^(cli-try-sandbox|landlock|sandbox|seccomp)$"
 
 build:gcc:
@@ -45,8 +45,8 @@ build:clang-coverage:
   tags:
     - saas-linux-medium-amd64
   before_script:
-    - ${PACKAGE_CMD_ARCHLINUX} expect jq llvm python qemu-img qemu-system-x86 virtiofsd
-    - ./scripts/setup/pacman.sh
+    - apt update -qq && apt install -qqy expect jq qemu-system-x86 qemu-utils virtiofsd
+    - ./scripts/setup/apt.sh
   #
   # For CI_PERSONAL_ACCESS_TOKEN, see: Settings > CI/CD > Variables
   #
@@ -57,7 +57,7 @@ build:clang-coverage:
     - cmake --build --preset default
     - export CI_PERSONAL_ACCESS_TOKEN=${CI_PERSONAL_ACCESS_TOKEN}
     - export CI_PROJECT_ID=${CI_PROJECT_ID}
-    - export BUMP=11
+    - export BUMP=12
     - export IMG=$((echo $BUMP && cat ./scripts/gitlab/user-data) | sha256sum | cut -f1 -d' ')
     - export URI=$(./scripts/gitlab/find-vm-artifact.sh "vm-images/$IMG.zst") && echo "Fetching $URI"
     - ./scripts/gitlab/qemu-build.exp $IMG $URI
@@ -128,28 +128,3 @@ analyze:clang-tidy:
   script:
     - cmake --preset clang -DCMAKE_C_CLANG_TIDY=clang-tidy
     - cmake --build --preset default
-
-#
-# Run the Infer static analyzer: https://fbinfer.com
-#
-# Use a build of Infer at commit fc237fb with the following patches applied:
-#
-# - https://github.com/facebook/infer/pull/1938
-# - https://github.com/facebook/infer/pull/1939
-#
-analyze:fb-infer:
-  stage: build
-  image: $CI_REGISTRY/$CI_PROJECT_PATH:fbinfer-fc237fb
-  before_script:
-    # Workaround stale keyring in fbinfer container image
-    - pacman-key --init
-    - pacman-key --populate
-    - ${PACKAGE_CMD_ARCHLINUX} archlinux-keyring
-    # Workaround gcc-libs (metapackage) conflict with libgcc, libstdc++
-    - ${PACKAGE_CMD_ARCHLINUX} gcc
-    # Proceed to normal devenv setup
-    - ./scripts/setup/pacman.sh
-  script:
-    - cmake --preset clang -DCMAKE_EXPORT_COMPILE_COMMANDS=1
-    - cmake --build --preset default
-    - infer run
