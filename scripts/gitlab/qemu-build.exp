@@ -225,7 +225,6 @@ log_into_vm
 # https://github.com/systemd/systemd/issues/39133
 #
 debug "Avoid escape sequence spam in terminal"
-run_in_vm "unset PS0"
 run_in_vm "unset PROMPT_COMMAND"
 
 debug "Get timing information about boot, in case of slow boot under CI"
