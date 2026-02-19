@@ -29,7 +29,7 @@ JQ_FILTER="map(select(.artifacts_file.size > $ARTIFACT_SIZE_MINIMUM)) | .[].id"
 CURL_OPTS=(--fail --silent -L -H "PRIVATE-TOKEN:$CI_PERSONAL_ACCESS_TOKEN")
 
 i=0
-while [ $((i++)) ] ; do
+while [ $((i++)) -lt 10 ] ; do # TODO: rm 10 limit once debugging complete
 	job_json=$(curl "${CURL_OPTS[@]}" "$JOBS_URI?page=$i&per_page=100")
 	if [ "$job_json" == "[]" ] ; then
 		# Reached the last page of jobs; stop looking and error out.
