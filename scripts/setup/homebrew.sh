@@ -10,7 +10,7 @@ QIN=./vendor/quickjs.pc.in
 QP="$(brew --prefix quickjs | xargs realpath)"
 QL="$QP/lib"
 QV="$(brew list --versions quickjs | cut -d' ' -f2)"
-QOUT="$QL/pkgconfig/quickjs.pc"
+QOUT="$(brew --prefix)/lib/pkgconfig/quickjs.pc"
 
 m4 -D QUICKJS_PREFIX="$QP" -D QUICKJS_LIBDIR="$QL" -D QUICKJS_VERSION="$QV" \
 	"$QIN" > "$QOUT"
