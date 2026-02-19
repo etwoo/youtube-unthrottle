@@ -18,6 +18,7 @@ packages=(
 	'make'
 	'm4'
 	'protobuf-c-compiler'
+	'protobuf-compiler'
 )
 
 # Install project dependencies via OS package manager
