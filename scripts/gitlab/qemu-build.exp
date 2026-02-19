@@ -202,15 +202,15 @@ if {$slowpath} {
 	get_vm_from_upstream_distro [make_path $img]
 }
 
-#
-# https://virtio-fs.gitlab.io/howto-qemu.html
-#
-debug "Start virtio-fs shared file system daemon"
-spawn virtiofsd --socket-path=$vm_socket -o source=$src_dir
 
 debug "Get number of CPU cores available for VM"
 set nproc [exec nproc]
 
+#
+# https://virtio-fs.gitlab.io/howto-qemu.html
+#
+debug "Start virtio shared filesystem daemon"
+spawn virtiofsd --socket-path=$vm_socket -o source=$src_dir
 debug "Boot VM"
 spawn [join {
 	"qemu-system-x86_64"
@@ -247,7 +247,7 @@ run_in_vm "unset PROMPT_COMMAND"
 
 debug "Mount source code from host OS into guest VM"
 run_in_vm "mkdir -p $src_dir"
-run_in_mv "mount -t virtiofs $vm_tag $src_dir"
+run_in_vm "mount -t virtiofs $vm_tag $src_dir"
 run_in_vm "cd $src_dir"
 
 debug "Install test dependencies"
