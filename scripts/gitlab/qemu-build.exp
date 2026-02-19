@@ -125,7 +125,7 @@ proc log_into_vm {} {
 		send "root\r"
 		expect "Please enter the new root password again: "
 		send "root\r"
-		expect "localhost login: "
+		expect "Reached target getty.target - Login Prompts"
 		send "root\r"
 		expect "Password: "
 		send "root\r"
