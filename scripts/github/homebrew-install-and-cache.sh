@@ -24,7 +24,7 @@ bash "$(dirname "$0")/../setup/homebrew.sh"
 
 if [ "$(uname)" == Linux ] ; then
 	# Ubuntu: change default shell from dash to bash
-	sudo mv /bin/sh{,bak}
+	sudo mv /bin/sh{,.bak}
 	sudo ln -s /bin/{bash,sh}
 fi
 
