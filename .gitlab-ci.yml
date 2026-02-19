@@ -1,4 +1,4 @@
-image: archlinux/archlinux:base-devel
+image: debian:unstable-slim
 
 variables:
   PACKAGE_CMD: "pacman -Sy --needed --noconfirm --noprogressbar"
@@ -6,7 +6,6 @@ variables:
 
 build:gcc:
   stage: build
-  image: debian:unstable-slim
   before_script:
     - ./scripts/setup/apt.sh
   script:
@@ -21,7 +20,7 @@ build:gcc:
 build:clang:
   stage: build
   before_script:
-    - ./scripts/setup/pacman.sh
+    - ./scripts/setup/apt.sh
   script:
     - cmake --preset clang -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
     - cmake --build --preset default
@@ -34,13 +33,14 @@ build:clang:
 build:clang-format:
   stage: build
   before_script:
-    - ./scripts/setup/pacman.sh
+    - ./scripts/setup/apt.sh
   script:
     - cmake --preset default
     - cmake --build --preset default --target fmt
 
 build:clang-coverage:
   stage: build
+  image: archlinux/archlinux:base-devel
   # Use medium machine type (instead of default small) to improve VM performance
   tags:
     - saas-linux-medium-amd64
@@ -124,7 +124,7 @@ lint:tcl:
 analyze:clang-tidy:
   stage: build
   before_script:
-    - ./scripts/setup/pacman.sh
+    - ./scripts/setup/apt.sh
   script:
     - cmake --preset clang -DCMAKE_C_CLANG_TIDY=clang-tidy
     - cmake --build --preset default
@@ -138,8 +138,8 @@ analyze:clang-tidy:
 # - https://github.com/facebook/infer/pull/1939
 #
 analyze:fb-infer:
-  image: $CI_REGISTRY/$CI_PROJECT_PATH:fbinfer-fc237fb
   stage: build
+  image: $CI_REGISTRY/$CI_PROJECT_PATH:fbinfer-fc237fb
   before_script:
     # Workaround stale keyring in fbinfer container image
     - pacman-key --init
