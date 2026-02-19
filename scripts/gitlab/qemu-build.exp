@@ -219,7 +219,8 @@ set qemu_id $spawn_id
 debug "Wait for boot process to reach login prompt, and then log into VM"
 log_into_vm
 
-# debug "Get timing information about boot, in case of slow boot under CI"
+# TODO: disable below, after optimizing startup
+debug "Get timing information about boot, in case of slow boot under CI"
 run_in_vm "systemd-analyze"
 run_in_vm "systemd-analyze critical-chain"
 run_in_vm "systemd-analyze blame --no-pager"
