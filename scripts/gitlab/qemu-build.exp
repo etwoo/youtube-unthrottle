@@ -92,7 +92,6 @@ proc log_into_vm {} {
 proc run_tests_in_vm {nproc} {
 	set ctest "COVERAGE_PROFILE_DIR=coverage.profraw ctest --preset default"
 	run_in_vm "$ctest --parallel $nproc"
-
 	return [get_exit_code_of_previous_command_from_vm]
 }
 
