@@ -1,7 +1,7 @@
 image: debian:unstable-slim
 
 variables:
-  PACKAGE_CMD: "DEBIAN_FRONTEND=noninteractive apt update -qq && apt install -qqy"
+  PACKAGE_CMD: "apt update -qq && apt install -qqy"
   PACKAGE_CMD_ARCHLINUX: "pacman -Sy --needed --noconfirm --noprogressbar"
   TESTS_FAIL_LACK_OF_LANDLOCK_API_IN_CI_RUNNERS: "^(cli-try-sandbox|landlock|sandbox|seccomp)$"
 
