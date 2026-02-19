@@ -39,4 +39,4 @@ llvm-cov report -show-region-summary=0 -show-branch-summary=0 \
 # https://docs.gitlab.com/ee/ci/testing/test_coverage_visualization/index.html
 #
 llvm-cov export -instr-profile="$PROFILE_DATA" "$BIN" -format=lcov > "$LCOV_FMT"
-python "$LCOV_TO_COBERTURA" "$LCOV_FMT" -o "$COBERTURA_OUTPUT"
+python3 "$LCOV_TO_COBERTURA" "$LCOV_FMT" -o "$COBERTURA_OUTPUT"
