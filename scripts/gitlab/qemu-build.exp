@@ -116,29 +116,28 @@ proc get_exit_code_of_previous_command_from_vm {} {
 }
 
 proc log_into_vm {} {
+	expect "GNU GRUB"
+	send "\r"
 	while 1 {
-		expect "GNU GRUB"
-		send "\r"
-		expect "to list options, empty to skip): "
-		send "\r"
-		expect "Please enter the new root password (empty to skip): "
-		send "root\r"
-		expect "Please enter the new root password again: "
-		send "root\r"
-		expect "Reached target getty.target - Login Prompts"
-		send "root\r"
-		expect "Password: "
-		send "root\r"
 		expect {
-			$::prompt {
-				break
+			"to list options, empty to skip): " {
+				send "\r"
 			}
-			"Login incorrect" {
-				debug "Wait for 1s and try to log into VM again"
-				after 1000
+			"new root password (empty to skip): " {
+				send "root\r"
+			}
+			"new root password again: " {
+				send "root\r"
+			}
+			"localhost login: " {
+				send "root\r"
+				expect "Password: "
+				send "root\r"
+				break
 			}
 		}
 	}
+	expect $::prompt
 }
 
 proc run_tests_in_vm {nproc} {
