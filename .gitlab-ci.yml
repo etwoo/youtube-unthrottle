@@ -6,8 +6,9 @@ variables:
 
 build:gcc:
   stage: build
+  image: debian:unstable-slim
   before_script:
-    - ./scripts/setup/pacman.sh
+    - ./scripts/setup/apt.sh
   script:
     - cmake --preset default -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
     - cmake --build --preset default
