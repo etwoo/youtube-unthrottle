@@ -151,29 +151,27 @@ proc optimize_next_vm_boot {} {
 	debug "Disable unnecessary systemd units for future VM boot"
 	run_in_vm [join {
 		"systemctl mask --no-reload"
+		"apparmor.service"
 		"dev-hugepages.mount"
 		"dev-mqueue.mount"
+		"e2scrub_reap.service"
 		"ldconfig.service"
-		"sshd.service"
+		"sys-fs-fuse-connections.mount"
 		"sys-kernel-config.mount"
 		"sys-kernel-debug.mount"
 		"sys-kernel-tracing.mount"
-		"systemd-boot-update.service"
-		"systemd-homed.service"
+		"systemd-fsck-root.service"
+		"systemd-growfs-root.service"
 		"systemd-journal-catalog-update.service"
 		"systemd-journal-flush.service"
 		"systemd-journald.service"
 		"systemd-logind.service"
-		"systemd-nsresourced.service"
+		"systemd-network-generator.service"
 		"systemd-random-seed.service"
 		"systemd-sysusers.service"
-		"systemd-time-wait-sync.service"
 		"systemd-timesyncd.service"
 		"systemd-udev-load-credentials.service"
 		"systemd-update-done.service"
-		"systemd-update-utmp.service"
-		"systemd-userdbd.service"
-		"systemd-vconsole-setup.service"
 	} " "]
 }
 
@@ -248,7 +246,7 @@ set exit_code [run_tests_in_vm $nproc]
 
 if {$slowpath} {
 	debug "Before shutdown, tweak how VM will boot in the future"
-	# optimize_next_vm_boot # TODO: restore or remove
+	optimize_next_vm_boot
 
 	debug "Shutdown VM, after interactive usage completes"
 	run_in_vm "systemctl poweroff --no-wall"
