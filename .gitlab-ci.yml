@@ -40,6 +40,13 @@ build:clang-format:
     - cmake --preset default
     - cmake --build --preset default --target fmt
 
+build:clang-tidy:
+  <<: *build_dependencies
+  stage: build
+  script:
+    - cmake --preset clang -DCMAKE_C_CLANG_TIDY=clang-tidy
+    - cmake --build --preset default
+
 build:clang-coverage:
   <<: *build_dependencies
   stage: build
@@ -105,13 +112,3 @@ lint:tcl:
     - git ls-files -z '*.exp' | xargs -0 tclfmt --in-place --indent=tab --
     - git diff --exit-code '*.exp'
     - git ls-files -z '*.exp' | xargs -0 tclint --
-
-#
-# Run the Clang Static Analyzer via clang-tidy: https://clang-analyzer.llvm.org
-#
-analyze:clang-tidy:
-  <<: *build_dependencies
-  stage: build
-  script:
-    - cmake --preset clang -DCMAKE_C_CLANG_TIDY=clang-tidy
-    - cmake --build --preset default
