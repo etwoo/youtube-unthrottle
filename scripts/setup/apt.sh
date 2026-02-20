@@ -21,11 +21,9 @@ packages=(
 	'protobuf-compiler'
 )
 
-apt-get update -qq
-# Install alternative apt frontend with support for parallel downloads
-apt-get install -qqy nala
 # Install project dependencies via OS package manager
-nala install -y "${packages[@]}"
+apt-get update -qq
+apt-get install -qqy "${packages[@]}" > /dev/null
 
 # Workaround lack of quickjs pkgconfig metadata
 QIN=./vendor/quickjs.pc.in
