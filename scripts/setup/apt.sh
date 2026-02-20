@@ -21,11 +21,9 @@ packages=(
 	'protobuf-compiler'
 )
 
-apt-get update -qq
-# Install LD_PRELOAD utility to disable fsync() and accelerate dpkg batches
-apt-get install -qqy eatmydata
 # Install project dependencies via OS package manager
-eatmydata apt-get install -qqy "${packages[@]}" > /dev/null
+apt-get update -qq
+apt-get install -qqy "${packages[@]}" > /dev/null
 
 # Workaround lack of quickjs pkgconfig metadata
 QIN=./vendor/quickjs.pc.in
