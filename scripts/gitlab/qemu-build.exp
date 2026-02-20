@@ -110,7 +110,6 @@ set nproc [exec nproc]
 
 debug "Boot VM"
 spawn qemu-system-x86_64 \
-	-enable-kvm \
 	-machine q35 \
 	-smp $nproc \
 	-m 4G \
