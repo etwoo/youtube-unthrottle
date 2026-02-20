@@ -24,7 +24,7 @@ packages=(
 # Install project dependencies via OS package manager
 apt-get update -qq
 apt-get install -qqy nala
-nala install "${packages[@]}"
+nala install -ys "${packages[@]}"
 
 # Workaround lack of quickjs pkgconfig metadata
 QIN=./vendor/quickjs.pc.in
