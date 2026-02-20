@@ -6,7 +6,6 @@ set src_tag "youtube-unthrottle"
 set src_dir $env(PWD)
 set usr_tag "host-usr-dir"
 set usr_dir "/usr"
-set curl_cmd "curl --no-progress-meter --fail"
 
 #
 # Helper functions
