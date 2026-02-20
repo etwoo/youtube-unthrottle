@@ -19,24 +19,12 @@ if [ "$(uname)" == Darwin ] ; then
 	sudo rm /usr/local/bin/{idle3,pip3,pydoc3,python3}*
 fi
 
-# Install packages via Homebrew, quieting reinstall warnings if necessary
-brew install --quiet "$CC_PKG" cmake pkgconf curl duktape jansson pcre2 protobuf-c
+brew install --quiet "$CC_PKG"
+bash "$(dirname "$0")/../setup/homebrew.sh"
 
-if [ "$(uname)" == Darwin ] ; then
-	brew install --quiet ada-url
-elif [ "$(uname)" == Linux ] ; then
-	# Workaround lack of ada-url bottle (Homebrew binary package) on Linux
-	# https://github.com/Homebrew/homebrew-core/pull/233020
-	curl -Lo ada.tgz https://github.com/ada-url/ada/archive/refs/tags/v3.3.0.tar.gz
-	tar zxf ada.tgz
-	cmake -S ada-3.3.0 -B ada-build --install-prefix "$(brew --prefix)" -DBUILD_SHARED_LIBS=ON
-	cmake --build ada-build
-	cmake --install ada-build
-	rm -rf ada.tgz ada-3.3.0 ada-build
-	# Install Linux-specific packages
-	brew install --quiet libseccomp
+if [ "$(uname)" == Linux ] ; then
 	# Ubuntu: change default shell from dash to bash
-	sudo mv /bin/sh{,bak}
+	sudo mv /bin/sh{,.bak}
 	sudo ln -s /bin/{bash,sh}
 fi
 

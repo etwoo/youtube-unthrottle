@@ -1,14 +1,13 @@
-image: archlinux/archlinux:base-devel
+image: debian:unstable-slim
 
 variables:
-  PACKAGE_CMD: "pacman --noconfirm --needed -Sy"
-  PACKAGE_DEFAULT: "ada cmake clang curl duktape git jansson libseccomp pcre2 protobuf-c"
-  PACKAGE_PER_JOB: ""
+  DEBIAN_INSTALL: "apt-get install -qqy"
+  DEBIAN_FRONTEND: noninteractive
   TESTS_FAIL_LACK_OF_LANDLOCK_API_IN_CI_RUNNERS: "^(cli-try-sandbox|landlock|sandbox|seccomp)$"
 
 .build_dependencies: &build_dependencies
   before_script:
-    - ${PACKAGE_CMD} ${PACKAGE_DEFAULT} ${PACKAGE_PER_JOB}
+    - ./scripts/setup/apt.sh
 
 build:gcc:
   <<: *build_dependencies
@@ -41,36 +40,29 @@ build:clang-format:
     - cmake --preset default
     - cmake --build --preset default --target fmt
 
+build:clang-tidy:
+  <<: *build_dependencies
+  stage: build
+  script:
+    - cmake --preset clang -DCMAKE_C_CLANG_TIDY=clang-tidy
+    - cmake --build --preset default
+
 build:clang-coverage:
   <<: *build_dependencies
   stage: build
   # Use medium machine type (instead of default small) to improve VM performance
   tags:
     - saas-linux-medium-amd64
-  variables:
-    PACKAGE_PER_JOB: "expect jq llvm python qemu-img qemu-system-x86 virtiofsd"
-  #
-  # For CI_PERSONAL_ACCESS_TOKEN, see: Settings > CI/CD > Variables
-  #
-  # Increment the BUMP envvar to force a VM image cache miss
-  #
   script:
     - cmake --preset coverage
     - cmake --build --preset default
-    - export CI_PERSONAL_ACCESS_TOKEN=${CI_PERSONAL_ACCESS_TOKEN}
-    - export CI_PROJECT_ID=${CI_PROJECT_ID}
-    - export BUMP=11
-    - export IMG=$((echo $BUMP && cat ./scripts/user-data) | sha256sum | cut -f1 -d' ')
-    - export URI=$(./scripts/find-vm-artifact.sh "vm-images/$IMG.zst") && echo "Fetching $URI"
-    - ./scripts/qemu-build.exp $IMG $URI
+    - eatmydata ${DEBIAN_INSTALL} aria2 expect llvm qemu-system-x86 > /dev/null
+    - aria2c -x 5 -o vm.qcow2 https://cdimage.debian.org/images/cloud/sid/daily/latest/debian-sid-nocloud-amd64-daily.qcow2
+    - ./scripts/gitlab/qemu-build.exp vm.qcow2
     - ./scripts/coverage.sh -E main.c coverage.profraw ./build/coverage.xml
-  after_script:
-    - ./scripts/cleanup-vm-archive.sh vm-images
   coverage: '/^TOTAL.*\s+([\d\.]+\%)$/'
   artifacts:
     when: always
-    paths:
-      - vm-images/*.zst
     reports:
       junit: ./build/junit.xml
       coverage_report:
@@ -106,43 +98,18 @@ lint:prose:
 lint:shell:
   stage: build
   before_script:
-    - ${PACKAGE_CMD} git shellcheck
+    - apt-get update -qq
+    - ${DEBIAN_INSTALL} git shellcheck > /dev/null
   script:
     - git ls-files -z '**.sh' | xargs -0 shellcheck --shell=bash
 
 lint:tcl:
   stage: build
   before_script:
-    - ${PACKAGE_CMD} git python-pip
-    - pip install --break-system-packages --root-user-action ignore tclint
+    - apt-get update -qq
+    - ${DEBIAN_INSTALL} git python3-pip > /dev/null
+    - pip install -q --break-system-packages --root-user-action ignore tclint
   script:
-    - tclfmt --in-place --indent=tab ./scripts/*.exp
-    - git diff --exit-code ./scripts/*.exp
-    - tclint ./scripts/*.exp
-
-#
-# Run the Clang Static Analyzer via clang-tidy: https://clang-analyzer.llvm.org
-#
-analyze:clang-tidy:
-  <<: *build_dependencies
-  stage: build
-  script:
-    - cmake --preset clang -DCMAKE_C_CLANG_TIDY=clang-tidy
-    - cmake --build --preset default
-
-#
-# Run the Infer static analyzer: https://fbinfer.com
-#
-# Use a build of Infer at commit fc237fb with the following patches applied:
-#
-# - https://github.com/facebook/infer/pull/1938
-# - https://github.com/facebook/infer/pull/1939
-#
-analyze:fb-infer:
-  image: $CI_REGISTRY/$CI_PROJECT_PATH:fbinfer-fc237fb
-  <<: *build_dependencies
-  stage: build
-  script:
-    - cmake --preset clang -DCMAKE_EXPORT_COMPILE_COMMANDS=1
-    - cmake --build --preset default
-    - infer run
+    - git ls-files -z '*.exp' | xargs -0 tclfmt --in-place --indent=tab --
+    - git diff --exit-code '*.exp'
+    - git ls-files -z '*.exp' | xargs -0 tclint --

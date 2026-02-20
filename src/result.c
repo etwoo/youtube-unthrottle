@@ -236,13 +236,13 @@ result_to_str(result_t r)
 		s = strdup("Cannot allocate JavaScript interpreter heap");
 		break;
 	case ERR_JS_CALL_EVAL_MAGIC:
-		s = my_asprintf("Error in duk_peval_lstring(): %s", r.msg);
+		s = my_asprintf("Error in JS_Eval(): %s", r.msg);
 		break;
 	case ERR_JS_CALL_LOOKUP:
-		s = my_asprintf("Error in duk_get_global_lstring(): %s", r.msg);
+		s = my_asprintf("Error in JS_GetPropertyStr(): %s", r.msg);
 		break;
 	case ERR_JS_CALL_INVOKE:
-		s = my_asprintf("Error in duk_pcall(): %s", r.msg);
+		s = my_asprintf("Error in JS_Call(): %s", r.msg);
 		break;
 	case ERR_JS_CALL_GET_RESULT:
 		s = strdup("Error fetching function result");
