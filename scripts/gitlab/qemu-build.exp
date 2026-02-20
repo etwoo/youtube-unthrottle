@@ -91,7 +91,7 @@ proc log_into_vm {} {
 
 proc run_tests_in_vm {nproc} {
 	set ctest "COVERAGE_PROFILE_DIR=coverage.profraw ctest --preset default"
-	run_in_vm "$ctest --parallel $nproc"
+	run_in_vm "$ctest --parallel $nproc -E cli-errors"
 	return [get_exit_code_of_previous_command_from_vm]
 }
 
@@ -146,7 +146,7 @@ run_in_vm "mkdir -p $src_dir"
 run_in_vm "mount -t 9p -o trans=virtio $src_tag $src_dir"
 run_in_vm "cd $src_dir"
 
-debug "Run tests"
+debug "Run tests, excluding ones that lengthen runtime without adding coverage"
 set exit_code [run_tests_in_vm $nproc]
 
 debug "Skip shutdown by killing VM forcefully"
