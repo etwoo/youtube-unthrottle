@@ -25,8 +25,8 @@ proc make_path {target} {
 
 proc get_vm_from_upstream_distro {target} {
 	set upstream [join {
-		"https://cdimage.debian.org/images/cloud/sid/daily/latest"
-		"debian-sid-nocloud-amd64-daily.qcow2"
+		"https://geo.mirror.pkgbuild.com/images/latest"
+		"Arch-Linux-x86_64-cloudimg.qcow2"
 	} "/"]
 	debug "Download prebuilt Debian VM image: $upstream"
 	puts [exec {*}$::curl_cmd -L --output $target $upstream]
