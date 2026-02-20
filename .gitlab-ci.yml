@@ -57,7 +57,8 @@ build:clang-coverage:
     - cmake --preset coverage
     - cmake --build --preset default
     - ${PACKAGE_CMD} curl expect llvm qemu-system-x86 > /dev/null
-    - ./scripts/gitlab/qemu-build.exp
+    - curl -sLo vm.qcow2 https://cdimage.debian.org/images/cloud/sid/daily/latest/debian-sid-nocloud-amd64-daily.qcow2
+    - ./scripts/gitlab/qemu-build.exp vm.qcow2
     - ./scripts/coverage.sh -E main.c coverage.profraw ./build/coverage.xml
   coverage: '/^TOTAL.*\s+([\d\.]+\%)$/'
   artifacts:

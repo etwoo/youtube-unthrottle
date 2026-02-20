@@ -1,9 +1,7 @@
 #!/usr/bin/env expect
 
 set timeout -1
-set img "vm.qcow2"
 set prompt "# "
-set vm_dir "vm-images"
 set src_tag "youtube-unthrottle"
 set src_dir $env(PWD)
 set usr_tag "host-usr-dir"
@@ -17,19 +15,6 @@ set curl_cmd "curl --no-progress-meter --fail"
 proc debug {msg} {
 	send_user "\n# \[[clock format [clock seconds]]\] $msg\n"
 	return
-}
-
-proc make_path {target} {
-	return [file join $::vm_dir $target]
-}
-
-proc get_vm_from_upstream_distro {target} {
-	set upstream [join {
-		"https://cdimage.debian.org/images/cloud/sid/daily/latest"
-		"debian-sid-nocloud-amd64-daily.qcow2"
-	} "/"]
-	debug "Download prebuilt Debian VM image: $upstream"
-	puts [exec {*}$::curl_cmd -L --output $target $upstream]
 }
 
 proc run_in_vm {cmd} {
@@ -99,11 +84,8 @@ proc run_tests_in_vm {nproc} {
 # Main body of Expect/Tcl script
 #
 
-debug "Prepare VM directory $vm_dir; later steps assume it exists"
-file mkdir $vm_dir
-
-debug "Get VM image from upstream OS distribution"
-get_vm_from_upstream_distro [make_path $img]
+set img [lindex $argv 0]
+debug "Using VM image: $img"
 
 debug "Get number of CPU cores available for VM"
 set nproc [exec nproc]
@@ -120,7 +102,7 @@ spawn qemu-system-x86_64 \
 	-device virtio-9p-pci,id=fs0,fsdev=fsdev0,mount_tag=$src_tag \
 	-fsdev local,id=fsdev1,path=$usr_dir,security_model=none \
 	-device virtio-9p-pci,id=fs1,fsdev=fsdev1,mount_tag=$usr_tag \
-	[make_path $img]
+	$img
 set qemu_id $spawn_id
 
 debug "Wait for boot process to reach login prompt, and then log into VM"
