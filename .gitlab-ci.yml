@@ -100,7 +100,7 @@ lint:tcl:
   before_script:
     - apt-get update -qq
     - ${PACKAGE_CMD} git python3-pip > /dev/null
-    - pip install --break-system-packages --root-user-action ignore tclint
+    - pip install -q --break-system-packages --root-user-action ignore tclint
   script:
     - git ls-files -z '*.exp' | xargs -0 tclfmt --in-place --indent=tab --
     - git diff --exit-code '*.exp'
