@@ -1,4 +1,0 @@
-#cloud-config
-password: arch
-chpasswd:
-  expire: False

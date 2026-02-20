@@ -5,7 +5,7 @@
  * Our main challenge: YouTube stream URLs contain obfuscated parameters, and
  * YouTube web payloads contain JavaScript fragments that deobfuscate these
  * parameters. To solve this puzzle then requires applying the latter to the
- * former with a JavaScript engine (in this case, Duktape).
+ * former with a JavaScript engine (in this case, QuickJS).
  *
  * A secondary challenge: media players like mpv do not (currently) support
  * YouTube's streaming SABR/UMP format. This program bridges the gap by acting

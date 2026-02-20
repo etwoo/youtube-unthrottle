@@ -13,7 +13,6 @@ const
 CURLcode
 CURLUcode
 deobfuscat(e|ion)
-[dD]uktape
 elseif
 endif
 envvars
@@ -28,6 +27,7 @@ googlevideo
 hexdump
 hostname
 [iI]nfer
+Intl
 itag
 jank
 [jJ]ansson
@@ -43,10 +43,12 @@ mpv
 multiprocess
 multithreaded
 mutex
+namespace
 plaintext
 postcondition
 [pP]rotobuf[s]?
 protoc
+quickjs|QuickJS
 resolv
 sandboxing
 seccomp

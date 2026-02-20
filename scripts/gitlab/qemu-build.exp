@@ -1,0 +1,139 @@
+#!/usr/bin/env expect
+
+set timeout -1
+set prompt "# "
+set src_tag "youtube-unthrottle"
+set src_dir $env(PWD)
+set usr_tag "host-usr-dir"
+set usr_dir "/usr"
+
+#
+# Helper functions
+#
+
+proc debug {msg} {
+	send_user "\n# \[[clock format [clock seconds]]\] $msg\n"
+	return
+}
+
+proc run_in_vm {cmd} {
+	send "$cmd\r"
+	expect {
+		$::prompt {}
+		eof
+	}
+	return $expect_out(buffer)
+}
+
+proc get_exit_code_of_previous_command_from_vm {} {
+	debug "Get exit code of previous command"
+
+	# Fail with EX_SOFTWARE by default
+	set exit_code 70
+
+	send "echo $?\r"
+	expect {
+		-re {(^|[\f\n\r])\d+($|[\f\n\r])} {
+			set exit_code [expr {int($expect_out(0,string))}]
+			debug "Got exit code of previous command: $exit_code"
+		}
+		$::prompt {
+			debug "No exit code found before next shell prompt"
+		}
+		eof {
+			debug "No exit code found before EOF"
+		}
+	}
+
+	return $exit_code
+}
+
+proc log_into_vm {} {
+	expect "GNU GRUB"
+	send "\r"
+	while 1 {
+		expect {
+			"to list options, empty to skip): " {
+				send "\r"
+			}
+			"new root password (empty to skip): " {
+				send "root\r"
+			}
+			"new root password again: " {
+				send "root\r"
+			}
+			"localhost login: " {
+				send "root\r"
+				expect "Password: "
+				send "root\r"
+				break
+			}
+		}
+	}
+	expect $::prompt
+}
+
+proc run_tests_in_vm {nproc} {
+	set ctest "COVERAGE_PROFILE_DIR=coverage.profraw ctest --preset default"
+	run_in_vm "$ctest --parallel $nproc -E cli-errors"
+	return [get_exit_code_of_previous_command_from_vm]
+}
+
+#
+# Main body of Expect/Tcl script
+#
+
+set img [lindex $argv 0]
+debug "Using VM image: $img"
+
+debug "Get number of CPU cores available for VM"
+set nproc [exec nproc]
+
+debug "Boot VM"
+spawn qemu-system-x86_64 \
+	-machine q35 \
+	-smp $nproc \
+	-m 4G \
+	-nographic \
+	-net user \
+	-net nic \
+	-fsdev local,id=fsdev0,path=$src_dir,security_model=none \
+	-device virtio-9p-pci,id=fs0,fsdev=fsdev0,mount_tag=$src_tag \
+	-fsdev local,id=fsdev1,path=$usr_dir,security_model=none \
+	-device virtio-9p-pci,id=fs1,fsdev=fsdev1,mount_tag=$usr_tag \
+	$img
+set qemu_id $spawn_id
+
+debug "Wait for boot process to reach login prompt, and then log into VM"
+log_into_vm
+
+# https://bbs.archlinux.org/viewtopic.php?id=309547
+# https://github.com/systemd/systemd/issues/39114
+# https://github.com/systemd/systemd/issues/39133
+debug "Avoid escape sequence spam in terminal"
+run_in_vm "unset PS0"
+run_in_vm "unset PROMPT_COMMAND"
+
+# debug "Get timing information about boot, in case of slow boot under CI"
+# run_in_vm "systemd-analyze --no-pager"
+# run_in_vm "systemd-analyze critical-chain --no-pager"
+# run_in_vm "systemd-analyze blame --no-pager"
+
+debug "Mount host OS /usr content over guest OS /usr directory"
+run_in_vm "mount -t 9p -o trans=virtio $usr_tag $usr_dir"
+
+debug "Mount source code from host OS into guest VM"
+run_in_vm "mkdir -p $src_dir"
+run_in_vm "mount -t 9p -o trans=virtio $src_tag $src_dir"
+run_in_vm "cd $src_dir"
+
+debug "Run tests, excluding ones that lengthen runtime without adding coverage"
+set exit_code [run_tests_in_vm $nproc]
+
+debug "Skip shutdown by killing VM forcefully"
+exec kill -9 [exp_pid -i $qemu_id]
+exp_close -i $qemu_id
+wait -i $qemu_id
+
+debug "Exiting with $exit_code ..."
+exit $exit_code

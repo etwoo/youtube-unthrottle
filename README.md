@@ -66,11 +66,11 @@ I've tested on Arch Linux, OpenBSD 7.6, and macOS 15.4.
 ada
 cmake
 curl
-duktape
 jansson
 libseccomp
 pcre2
 protobuf-c
+quickjs
 ```
 
 Optionally, for code coverage and fuzzing:
