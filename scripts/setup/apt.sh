@@ -21,6 +21,9 @@ packages=(
 	'protobuf-compiler'
 )
 
+# Accelerate batched package install by disabling dpkg fsync()
+echo force-unsafe-io >> /etc/dpkg/dpkg.cfg
+
 # Install project dependencies via OS package manager
 apt-get update -qq
 apt-get install -qqy "${packages[@]}" > /dev/null
