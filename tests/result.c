@@ -81,8 +81,7 @@ print_to_str_each_enum_value(void) // NOLINT(*-function-size)
 	ASSERT_IN(make_s(ERR_JS_DEOB_FIND_FUNC_TWO), CANNOT_FIND);
 	ASSERT_IN(make(ERR_JS_CALL_ALLOC), CANNOT_ALLOC);
 	ASSERT_IN(make_s(ERR_JS_CALL_EVAL_MAGIC), "Error in JS_Eval");
-	ASSERT_IN(make_s(ERR_JS_CALL_LOOKUP), "Error in JS_GetPropertyStr");
-	ASSERT_IN(make_s(ERR_JS_CALL_INVOKE), "Error in JS_Call");
+	ASSERT_IN(make_s(ERR_JS_CALL_INVOKE), "Error in JS_Invoke");
 	ASSERT_IN(make(ERR_JS_CALL_GET_RESULT), "Error fetching");
 	ASSERT_IN(make(ERR_PROTOCOL_STATE_ALLOC), CANNOT_ALLOC);
 	ASSERT_IN(make(ERR_PROTOCOL_STATE_BASE64_DECODE), "Error decoding");

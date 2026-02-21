@@ -822,7 +822,7 @@ js_function_lookup_fail(void)
 	};
 
 	auto_result err = call_js_foreach(&d, TEST_ARGS, &CALL_NOOP, NULL);
-	ASSERT_EQ(ERR_JS_CALL_LOOKUP, err.err);
+	ASSERT_EQ(ERR_JS_CALL_INVOKE, err.err);
 	PASS();
 }
 
