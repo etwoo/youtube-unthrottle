@@ -110,7 +110,11 @@ jobs:
         run: >
           cmake --preset default &&
           cmake --build --preset default &&
-          ctest --preset default
+          ctest --preset default &&
+          cp -r ./build/Testing /tmp &&
+          rm -rf ./build &&
+          mkdir ./build &&
+          cp -r /tmp/Testing ./build
     - uses: ./.github/actions/collect-ctest-logs
       if: failure()
       with:
