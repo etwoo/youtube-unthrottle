@@ -238,11 +238,8 @@ result_to_str(result_t r)
 	case ERR_JS_CALL_EVAL_MAGIC:
 		s = my_asprintf("Error in JS_Eval(): %s", r.msg);
 		break;
-	case ERR_JS_CALL_LOOKUP:
-		s = my_asprintf("Error in JS_GetPropertyStr(): %s", r.msg);
-		break;
 	case ERR_JS_CALL_INVOKE:
-		s = my_asprintf("Error in JS_Call(): %s", r.msg);
+		s = my_asprintf("Error in JS_Invoke(): %s", r.msg);
 		break;
 	case ERR_JS_CALL_GET_RESULT:
 		s = strdup("Error fetching function result");

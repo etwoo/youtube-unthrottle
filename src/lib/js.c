@@ -316,39 +316,66 @@ find_js_deobfuscator(const struct string_view *js, struct deobfuscator *d)
 	return RESULT_OK;
 }
 
-struct quickjs_value {
+static void
+qjs_runtime_cleanup(JSRuntime **rt)
+{
+	if (*rt != NULL) {
+		JS_FreeRuntime(*rt);
+	}
+}
+
+static void
+qjs_context_cleanup(JSContext **ctx)
+{
+	if (*ctx != NULL) {
+		JS_FreeContext(*ctx);
+	}
+}
+
+struct qjs_value {
 	JSContext *context;
 	JSValue val;
 };
 
 static void
-value_cleanup(struct quickjs_value *qval)
+qjs_value_cleanup(struct qjs_value *qval)
 {
-	if (!JS_IsException(qval->val)) {
-		JS_FreeValue(qval->context, qval->val);
-	}
+	JS_FreeValue(qval->context, qval->val);
 }
 
-#define auto_value struct quickjs_value __attribute__((cleanup(value_cleanup)))
+#define auto_value struct qjs_value __attribute__((cleanup(qjs_value_cleanup)))
 
-struct quickjs_str {
+struct qjs_atom {
+	JSContext *context;
+	JSAtom atom;
+};
+
+static void
+qjs_atom_cleanup(struct qjs_atom *qatom)
+{
+	JS_FreeAtom(qatom->context, qatom->atom);
+}
+
+#define auto_atom struct qjs_atom __attribute__((cleanup(qjs_atom_cleanup)))
+
+struct qjs_str {
 	JSContext *context;
 	const char *str;
 };
 
 static void
-js_str_cleanup(struct quickjs_str *qstr)
+qjs_str_cleanup(struct qjs_str *qstr)
 {
 	if (qstr->str != NULL) {
 		JS_FreeCString(qstr->context, qstr->str);
 	}
 }
 
-#define auto_js_str struct quickjs_str __attribute__((cleanup(js_str_cleanup)))
+#define auto_js_str struct qjs_str __attribute__((cleanup(qjs_str_cleanup)))
 
 static WARN_UNUSED result_t
 call_js_one(JSContext *ctx,
-            JSValue to_call,
+            JSAtom to_call,
             const char *js_arg,
             size_t js_pos,
             const struct call_ops *ops,
@@ -358,9 +385,8 @@ call_js_one(JSContext *ctx,
 	auto_value arg = {ctx, JS_NewString(ctx, js_arg)};
 	auto_value value = {
 		ctx,
-		JS_Call(ctx, to_call, global.val, 1, &arg.val),
+		JS_Invoke(ctx, global.val, to_call, 1, &arg.val),
 	};
-
 	if (JS_IsException(value.val)) {
 		auto_value ex = {ctx, JS_GetException(ctx)};
 		auto_js_str str = {ctx, JS_ToCString(ctx, ex.val)};
@@ -374,23 +400,16 @@ call_js_one(JSContext *ctx,
 
 	debug("Got JavaScript function result: %s", result.str);
 	check(ops->got_result(result.str, js_pos, userdata));
-
 	return RESULT_OK;
 }
 
 static WARN_UNUSED result_t
-eval_js_magic_one(JSContext *ctx, const struct string_view *magic)
+eval_js_magic_one(JSContext *ctx, const char *magic, size_t len)
 {
-	char *deepcopy = strndup(magic->data, magic->sz);
-	check_if(deepcopy == NULL, ERR_JS_CALL_ALLOC);
-	assert(deepcopy[magic->sz] == '\0');
-
 	auto_value value = {
 		ctx,
-		JS_Eval(ctx, deepcopy, magic->sz, "m", JS_EVAL_TYPE_GLOBAL),
+		JS_Eval(ctx, magic, len, "m", JS_EVAL_TYPE_GLOBAL),
 	};
-	free(deepcopy);
-
 	if (JS_IsException(value.val)) {
 		auto_value ex = {ctx, JS_GetException(ctx)};
 		auto_js_str str = {ctx, JS_ToCString(ctx, ex.val)};
@@ -399,62 +418,45 @@ eval_js_magic_one(JSContext *ctx, const struct string_view *magic)
 	return RESULT_OK;
 }
 
-static void
-runtime_cleanup(JSRuntime **rt)
-{
-	if (*rt != NULL) {
-		JS_FreeRuntime(*rt);
-	}
-}
-
-static void
-context_cleanup(JSContext **ctx)
-{
-	if (*ctx != NULL) {
-		JS_FreeContext(*ctx);
-	}
-}
-
 result_t
 call_js_foreach(const struct deobfuscator *d,
                 const char *const *args,
                 const struct call_ops *ops,
                 void *userdata)
 {
-	JSRuntime *rt __attribute__((cleanup(runtime_cleanup))) =
+	JSRuntime *rt __attribute__((cleanup(qjs_runtime_cleanup))) =
 		JS_NewRuntime();
 	check_if(rt == NULL, ERR_JS_CALL_ALLOC);
 
-	JSContext *ctx __attribute__((cleanup(context_cleanup))) =
+	JSContext *ctx __attribute__((cleanup(qjs_context_cleanup))) =
 		JS_NewContext(rt);
 	check_if(ctx == NULL, ERR_JS_CALL_ALLOC);
 
 	for (size_t i = 0; i < ARRAY_SIZE(d->magic); ++i) {
+		/*
+		 * QuickJS's JS_Eval() API requires NUL-terminated input, even
+		 * when given an explicit size parameter. Make a temporary,
+		 * NUL-terminated copy of each magic buffer accordingly.
+		 */
+		char *deepcopy __attribute__((cleanup(str_free))) =
+			strndup(d->magic[i].data, d->magic[i].sz);
+		check_if(deepcopy == NULL, ERR_JS_CALL_ALLOC);
 		debug("eval()-ing magic %zu", i + 1);
-		check(eval_js_magic_one(ctx, d->magic + i));
+		check(eval_js_magic_one(ctx, deepcopy, d->magic[i].sz));
 	}
 	debug("eval()-ed %zu magic variables", ARRAY_SIZE(d->magic));
 
-	char *funcname = strndup(d->funcname.data, d->funcname.sz);
-	check_if(funcname == NULL, ERR_JS_CALL_ALLOC);
-
-	auto_value global = {ctx, JS_GetGlobalObject(ctx)};
-	auto_value to_call = {
+	auto_atom fn = {
 		ctx,
-		JS_GetPropertyStr(ctx, global.val, funcname),
+		JS_NewAtomLen(ctx, d->funcname.data, d->funcname.sz),
 	};
-	free(funcname);
-
-	if (!JS_IsFunction(ctx, to_call.val)) {
-		return make_result(ERR_JS_CALL_LOOKUP, "did not find function");
-	}
-
 	for (size_t i = 0; args[i]; ++i) {
-		check(call_js_one(ctx, to_call.val, args[i], i, ops, userdata));
+		check(call_js_one(ctx, fn.atom, args[i], i, ops, userdata));
 	}
 
 	return RESULT_OK;
 }
 
 #undef auto_value
+#undef auto_atom
 #undef auto_js_str
