@@ -16,12 +16,6 @@
 #include <quickjs.h>
 
 static void
-str_free(char **strp)
-{
-	free(*strp);
-}
-
-static void
 qjs_runtime_cleanup(JSRuntime **rt)
 {
 	if (*rt != NULL) {
@@ -41,6 +35,21 @@ qjs_context_cleanup(JSContext **ctx)
 
 #define auto_context JSContext __attribute__((cleanup(qjs_context_cleanup)))
 
+struct qjs_str {
+	JSContext *context;
+	const char *str;
+};
+
+static void
+qjs_str_cleanup(struct qjs_str *qstr)
+{
+	if (qstr->str != NULL) {
+		JS_FreeCString(qstr->context, qstr->str);
+	}
+}
+
+#define auto_js_str struct qjs_str __attribute__((cleanup(qjs_str_cleanup)))
+
 struct qjs_value {
 	JSContext *context;
 	JSValue val;
@@ -59,21 +68,6 @@ is_exception(struct qjs_value qval)
 {
 	return JS_IsException(qval.val);
 }
-
-#define check_exception_message(qval, err_type)                                \
-	do {                                                                   \
-		if (is_exception(qval)) {                                      \
-			auto_value ex = {                                      \
-				(qval).context,                                \
-				JS_GetException((qval).context),               \
-			};                                                     \
-			auto_js_str str = {                                    \
-				(qval).context,                                \
-				JS_ToCString((qval).context, ex.val),          \
-			};                                                     \
-			return make_result(err_type, str.str);                 \
-		}                                                              \
-	} while (0)
 
 static WARN_UNUSED bool
 is_undefined(struct qjs_value qval)
@@ -122,6 +116,27 @@ get_free(struct qjs_value use_then_free, const char *name)
 	return result;
 }
 
+static WARN_UNUSED struct qjs_str
+to_cstring(struct qjs_value qval)
+{
+	return (struct qjs_str){
+		.context = qval.context,
+		.str = JS_ToCString(qval.context, qval.val),
+	};
+}
+
+#define check_exception_message(qval, err_type)                                \
+	do {                                                                   \
+		if (is_exception(qval)) {                                      \
+			auto_value ex = {                                      \
+				(qval).context,                                \
+				JS_GetException((qval).context),               \
+			};                                                     \
+			auto_js_str str = to_cstring(ex);                      \
+			return make_result(err_type, str.str);                 \
+		}                                                              \
+	} while (0)
+
 struct qjs_atom {
 	JSContext *context;
 	JSAtom atom;
@@ -135,22 +150,59 @@ qjs_atom_cleanup(struct qjs_atom *qatom)
 
 #define auto_atom struct qjs_atom __attribute__((cleanup(qjs_atom_cleanup)))
 
-struct qjs_str {
-	JSContext *context;
-	const char *str;
-};
-
-static void
-qjs_str_cleanup(struct qjs_str *qstr)
-{
-	if (qstr->str != NULL) {
-		JS_FreeCString(qstr->context, qstr->str);
-	}
-}
-
-#define auto_js_str struct qjs_str __attribute__((cleanup(qjs_str_cleanup)))
-
 static const char MTVIDEO[] = "video/";
+static const int32_t ITAG_SENTINEL = -1;
+
+static WARN_UNUSED result_t
+parse_json_candidate(JSContext *ctx,
+                     struct qjs_value candidate,
+                     const struct parse_ops *ops,
+                     long long int *out)
+{
+	if (!is_object(candidate)) {
+		return make_result(ERR_JS_PARSE_JSON_ELEM_TYPE);
+	}
+
+	auto_value mimetype_json = get(candidate, "mimeType");
+	if (!is_string(mimetype_json)) {
+		return make_result(ERR_JS_PARSE_JSON_ELEM_MIMETYPE);
+	}
+
+	auto_js_str mimetype = to_cstring(mimetype_json);
+	assert(mimetype.str != NULL);
+
+	if (0 != strncmp(mimetype.str, MTVIDEO, strlen(MTVIDEO))) {
+		debug("Skipping mimeType: %s", mimetype.str);
+		return RESULT_OK;
+	}
+
+	auto_value qlabel_json = get(candidate, "qualityLabel");
+	if (!is_string(qlabel_json)) {
+		return make_result(ERR_JS_PARSE_JSON_ELEM_QUALITY);
+	}
+
+	auto_js_str qlabel = to_cstring(qlabel_json);
+	assert(qlabel.str != NULL);
+
+	auto_result chosen =
+		ops->choose_quality
+			? ops->choose_quality(qlabel.str, ops->userdata)
+			: RESULT_OK;
+	if (chosen.err != OK) {
+		debug("Skipping qualityLabel: %s", qlabel.str);
+		return RESULT_OK;
+	}
+
+	auto_value itag = get(candidate, "itag");
+	int32_t tmp = ITAG_SENTINEL;
+	if (!is_number(itag) || JS_ToInt32(ctx, &tmp, itag.val) < 0) {
+		return make_result(ERR_JS_PARSE_JSON_ELEM_ITAG);
+	}
+	assert(tmp != ITAG_SENTINEL);
+
+	*out = tmp;
+	return RESULT_OK;
+}
 
 result_t
 parse_json(const struct string_view *json,
@@ -181,73 +233,29 @@ parse_json(const struct string_view *json,
 	}
 
 	auto_value adaptive_formats = get(streaming_data, "adaptiveFormats");
-	if (is_undefined(adaptive_formats)) {
+	if (!is_array(adaptive_formats)) {
 		return make_result(ERR_JS_PARSE_JSON_GET_ADAPTIVEFORMATS);
 	}
-	if (!is_array(adaptive_formats)) {
-		return make_result(ERR_JS_PARSE_JSON_ADAPTIVEFORMATS_TYPE);
-	}
 
-	values->itag = -1; /* set sentinel value */
+	values->itag = ITAG_SENTINEL;
 
-	for (size_t i = 0; true; ++i) {
+	for (size_t i = 0; values->itag == ITAG_SENTINEL; ++i) {
 		auto_value cur = {
 			ctx,
 			JS_GetPropertyUint32(ctx, adaptive_formats.val, i),
 		};
 		if (is_undefined(cur)) {
-			break; /* iterated past final array element */
+			/* iterated past final array element */
+			return make_result(ERR_JS_PARSE_JSON_NO_MATCH);
 		}
-		if (!is_object(cur)) {
-			return make_result(ERR_JS_PARSE_JSON_ELEM_TYPE);
-		}
-
-		auto_value mtype = get(cur, "mimeType");
-		if (!is_string(mtype)) {
-			return make_result(ERR_JS_PARSE_JSON_ELEM_MIMETYPE);
-		}
-
-		auto_js_str mt = {ctx, JS_ToCString(ctx, mtype.val)};
-		assert(mt.str != NULL);
-
-		if (0 != strncmp(mt.str, MTVIDEO, strlen(MTVIDEO))) {
-			continue;
-		}
-
-		auto_value qlabel = get(cur, "qualityLabel");
-		if (!is_string(qlabel)) {
-			return make_result(ERR_JS_PARSE_JSON_ELEM_QUALITY);
-		}
-
-		auto_js_str q = {ctx, JS_ToCString(ctx, qlabel.val)};
-		assert(q.str != NULL);
-
-		auto_result chosen =
-			ops->choose_quality
-				? ops->choose_quality(q.str, ops->userdata)
-				: RESULT_OK;
-		if (chosen.err != OK) {
-			debug("Skipping quality: %s", q.str);
-			continue;
-		}
-
-		auto_value itag = get(cur, "itag");
-		int32_t tmp = 0;
-		if (!is_number(itag) || JS_ToInt32(ctx, &tmp, itag.val) < 0) {
-			return make_result(ERR_JS_PARSE_JSON_ELEM_ITAG);
-		}
-		values->itag = tmp;
-
-		debug("Parsed itag=%lld", values->itag);
-		break;
+		check(parse_json_candidate(ctx, cur, ops, &values->itag));
 	}
-	if (values->itag < 0) {
-		return make_result(ERR_JS_PARSE_JSON_NO_MATCH);
-	}
+
+	debug("Parsed itag=%lld", values->itag);
 
 	auto_value sabr_url = get(streaming_data, "serverAbrStreamingUrl");
 	if (is_string(sabr_url)) {
-		auto_js_str str = {ctx, JS_ToCString(ctx, sabr_url.val)};
+		auto_js_str str = to_cstring(sabr_url);
 		values->sabr_url = strdup(str.str);
 	} else {
 		return make_result(ERR_JS_SABR_URL_FIND);
@@ -260,7 +268,7 @@ parse_json(const struct string_view *json,
 	                          "mediaUstreamerRequestConfig"),
 	                 "videoPlaybackUstreamerConfig");
 	if (is_string(playback_config)) {
-		auto_js_str str = {ctx, JS_ToCString(ctx, playback_config.val)};
+		auto_js_str str = to_cstring(playback_config);
 		values->playback_config = strdup(str.str);
 	} else {
 		return make_result(ERR_JS_PLAYBACK_CONFIG_FIND);
@@ -401,6 +409,12 @@ find_js_deobfuscator_magic_global(const struct string_view *js,
 	return RESULT_OK;
 }
 
+static void
+str_free(char **strp)
+{
+	free(*strp);
+}
+
 /*
  * Based on: youtube-dl, yt-dlp, rusty_ytdl
  *
@@ -443,6 +457,17 @@ find_js_deobfuscator(const struct string_view *js, struct deobfuscator *d)
 }
 
 static WARN_UNUSED result_t
+eval_js_magic_one(JSContext *ctx, const char *magic, size_t len)
+{
+	auto_value value = {
+		ctx,
+		JS_Eval(ctx, magic, len, "MAGIC", JS_EVAL_TYPE_GLOBAL),
+	};
+	check_exception_message(value, ERR_JS_CALL_EVAL_MAGIC);
+	return RESULT_OK;
+}
+
+static WARN_UNUSED result_t
 call_js_one(JSContext *ctx,
             JSAtom to_call,
             const char *js_arg,
@@ -461,24 +486,13 @@ call_js_one(JSContext *ctx,
 	};
 	check_exception_message(value, ERR_JS_CALL_INVOKE);
 
-	auto_js_str result = {ctx, JS_ToCString(ctx, value.val)};
+	auto_js_str result = to_cstring(value);
 	if (!is_string(value) || result.str == NULL) {
 		return make_result(ERR_JS_CALL_GET_RESULT);
 	}
 
 	debug("Got JavaScript function result: %s", result.str);
 	check(ops->got_result(result.str, js_pos, userdata));
-	return RESULT_OK;
-}
-
-static WARN_UNUSED result_t
-eval_js_magic_one(JSContext *ctx, const char *magic, size_t len)
-{
-	auto_value value = {
-		ctx,
-		JS_Eval(ctx, magic, len, "MAGIC", JS_EVAL_TYPE_GLOBAL),
-	};
-	check_exception_message(value, ERR_JS_CALL_EVAL_MAGIC);
 	return RESULT_OK;
 }
 
@@ -523,7 +537,7 @@ call_js_foreach(const struct deobfuscator *d,
 
 #undef auto_runtime
 #undef auto_context
+#undef auto_js_str
 #undef auto_value
 #undef check_exception_message
 #undef auto_atom
-#undef auto_js_str

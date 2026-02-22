@@ -246,7 +246,7 @@ missing_adaptive_formats_key(void)
 TEST
 incorrect_adaptive_formats_value_type(void)
 {
-	ASSERT_EQ(ERR_JS_PARSE_JSON_ADAPTIVEFORMATS_TYPE,
+	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_ADAPTIVEFORMATS,
 	          parse("{\"streamingData\": {\"adaptiveFormats\": 2}}"));
 	PASS();
 }

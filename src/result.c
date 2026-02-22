@@ -169,9 +169,6 @@ result_to_str(result_t r)
 	case ERR_JS_PARSE_JSON_GET_ADAPTIVEFORMATS:
 		s = strdup("Cannot get .adaptiveFormats");
 		break;
-	case ERR_JS_PARSE_JSON_ADAPTIVEFORMATS_TYPE:
-		s = strdup("Cannot iterate over .adaptiveFormats");
-		break;
 	case ERR_JS_PARSE_JSON_ELEM_TYPE:
 		s = strdup("adaptiveFormats element is not object-coercible");
 		break;
