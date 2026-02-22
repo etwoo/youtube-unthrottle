@@ -11,7 +11,6 @@ packages=(
 	'git'
 	'libada-url-dev'
 	'libcurl4-openssl-dev'
-	'libjansson-dev'
 	'libpcre2-dev'
 	'libprotobuf-c-dev'
 	'libseccomp-dev'

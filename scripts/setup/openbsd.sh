@@ -3,7 +3,7 @@
 set -euo pipefail
 
 # Install project dependencies via OS package manager
-pkg_add cmake git ada curl jansson pcre2 protobuf-c quickjs
+pkg_add cmake git ada curl pcre2 protobuf-c quickjs
 
 # Workaround lack of quickjs pkgconfig metadata
 QIN=./vendor/quickjs.pc.in

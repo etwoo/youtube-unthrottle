@@ -6,6 +6,7 @@
 
 #include <assert.h>
 #include <stdbool.h>
+#include <stdlib.h>
 
 /*
  * Some helpful QuickJS references:
@@ -14,18 +15,140 @@
  */
 #include <quickjs.h>
 
-/*
- * Some helpful Jansson references:
- *
- *   https://jansson.readthedocs.io/en/latest/apiref.html
- */
-#include <jansson.h>
-
 static void
 str_free(char **strp)
 {
 	free(*strp);
 }
+
+static void
+qjs_runtime_cleanup(JSRuntime **rt)
+{
+	if (*rt != NULL) {
+		JS_FreeRuntime(*rt);
+	}
+}
+
+#define auto_runtime JSRuntime __attribute__((cleanup(qjs_runtime_cleanup)))
+
+static void
+qjs_context_cleanup(JSContext **ctx)
+{
+	if (*ctx != NULL) {
+		JS_FreeContext(*ctx);
+	}
+}
+
+#define auto_context JSContext __attribute__((cleanup(qjs_context_cleanup)))
+
+struct qjs_value {
+	JSContext *context;
+	JSValue val;
+};
+
+static void
+qjs_value_cleanup(struct qjs_value *qval)
+{
+	JS_FreeValue(qval->context, qval->val);
+}
+
+#define auto_value struct qjs_value __attribute__((cleanup(qjs_value_cleanup)))
+
+static WARN_UNUSED bool
+is_exception(struct qjs_value qval)
+{
+	return JS_IsException(qval.val);
+}
+
+#define check_exception_message(qval, err_type)                                \
+	do {                                                                   \
+		if (is_exception(qval)) {                                      \
+			auto_value ex = {                                      \
+				(qval).context,                                \
+				JS_GetException((qval).context),               \
+			};                                                     \
+			auto_js_str str = {                                    \
+				(qval).context,                                \
+				JS_ToCString((qval).context, ex.val),          \
+			};                                                     \
+			return make_result(err_type, str.str);                 \
+		}                                                              \
+	} while (0)
+
+static WARN_UNUSED bool
+is_undefined(struct qjs_value qval)
+{
+	return JS_IsUndefined(qval.val);
+}
+
+static WARN_UNUSED bool
+is_object(struct qjs_value qval)
+{
+	return JS_IsObject(qval.val);
+}
+
+static WARN_UNUSED bool
+is_array(struct qjs_value qval)
+{
+	return JS_IsArray(qval.context, qval.val);
+}
+
+static WARN_UNUSED bool
+is_string(struct qjs_value qval)
+{
+	return JS_IsString(qval.val);
+}
+
+static WARN_UNUSED bool
+is_number(struct qjs_value qval)
+{
+	return JS_IsNumber(qval.val);
+}
+
+static WARN_UNUSED struct qjs_value
+get(struct qjs_value qval, const char *name)
+{
+	return (struct qjs_value){
+		.context = qval.context,
+		.val = JS_GetPropertyStr(qval.context, qval.val, name),
+	};
+}
+
+static WARN_UNUSED struct qjs_value
+get_free(struct qjs_value use_then_free, const char *name)
+{
+	struct qjs_value result = get(use_then_free, name);
+	JS_FreeValue(use_then_free.context, use_then_free.val);
+	return result;
+}
+
+struct qjs_atom {
+	JSContext *context;
+	JSAtom atom;
+};
+
+static void
+qjs_atom_cleanup(struct qjs_atom *qatom)
+{
+	JS_FreeAtom(qatom->context, qatom->atom);
+}
+
+#define auto_atom struct qjs_atom __attribute__((cleanup(qjs_atom_cleanup)))
+
+struct qjs_str {
+	JSContext *context;
+	const char *str;
+};
+
+static void
+qjs_str_cleanup(struct qjs_str *qstr)
+{
+	if (qstr->str != NULL) {
+		JS_FreeCString(qstr->context, qstr->str);
+	}
+}
+
+#define auto_js_str struct qjs_str __attribute__((cleanup(qjs_str_cleanup)))
 
 static const char MTVIDEO[] = "video/";
 
@@ -37,107 +160,111 @@ parse_json(const struct string_view *json,
 	// debug("Got JSON blob: %.*s", json->sz, json->data);
 	debug("Got JSON blob of size %zu", json->sz);
 
-	json_error_t json_error;
+	auto_runtime *rt = JS_NewRuntime();
+	check_if(rt == NULL, ERR_JS_CALL_ALLOC);
 
-	json_auto_t *obj = json_loadb(json->data, json->sz, 0, &json_error);
-	if (obj == NULL) {
-		return make_result(ERR_JS_PARSE_JSON_DECODE, json_error.text);
-	}
-	if (!json_is_object(obj)) {
+	auto_context *ctx = JS_NewContext(rt);
+	check_if(ctx == NULL, ERR_JS_CALL_ALLOC);
+
+	auto_value obj = {
+		ctx,
+		JS_ParseJSON(ctx, json->data, json->sz, "JSON"),
+	};
+	check_exception_message(obj, ERR_JS_PARSE_JSON_DECODE);
+	if (!is_object(obj)) {
 		return make_result(ERR_JS_PARSE_JSON_GET_STREAMINGDATA);
 	}
 
-	json_t *streaming_data = json_object_get(obj, "streamingData");
-	if (streaming_data == NULL) {
+	auto_value streaming_data = get(obj, "streamingData");
+	if (!is_object(streaming_data)) {
 		return make_result(ERR_JS_PARSE_JSON_GET_STREAMINGDATA);
 	}
-	if (!json_is_object(streaming_data)) {
-		return make_result(ERR_JS_PARSE_JSON_GET_ADAPTIVEFORMATS);
-	}
 
-	json_t *adaptive_formats =
-		json_object_get(streaming_data, "adaptiveFormats");
-	if (adaptive_formats == NULL) {
+	auto_value adaptive_formats = get(streaming_data, "adaptiveFormats");
+	if (is_undefined(adaptive_formats)) {
 		return make_result(ERR_JS_PARSE_JSON_GET_ADAPTIVEFORMATS);
 	}
-	if (!json_is_array(adaptive_formats)) {
+	if (!is_array(adaptive_formats)) {
 		return make_result(ERR_JS_PARSE_JSON_ADAPTIVEFORMATS_TYPE);
 	}
 
 	values->itag = -1; /* set sentinel value */
 
-	size_t i = 0;
-	json_t *cur = NULL;
-	json_array_foreach (adaptive_formats, i, cur) {
-		if (!json_is_object(cur)) {
+	for (size_t i = 0; true; ++i) {
+		auto_value cur = {
+			ctx,
+			JS_GetPropertyUint32(ctx, adaptive_formats.val, i),
+		};
+		if (is_undefined(cur)) {
+			break; /* iterated past final array element */
+		}
+		if (!is_object(cur)) {
 			return make_result(ERR_JS_PARSE_JSON_ELEM_TYPE);
 		}
 
-		json_t *json_mimetype = json_object_get(cur, "mimeType");
-		if (!json_is_string(json_mimetype)) {
+		auto_value mtype = get(cur, "mimeType");
+		if (!is_string(mtype)) {
 			return make_result(ERR_JS_PARSE_JSON_ELEM_MIMETYPE);
 		}
 
-		const char *mimetype = json_string_value(json_mimetype);
-		assert(mimetype != NULL);
+		auto_js_str mt = {ctx, JS_ToCString(ctx, mtype.val)};
+		assert(mt.str != NULL);
 
-		if (0 != strncmp(mimetype, MTVIDEO, strlen(MTVIDEO))) {
+		if (0 != strncmp(mt.str, MTVIDEO, strlen(MTVIDEO))) {
 			continue;
 		}
 
-		json_t *quality = json_object_get(cur, "qualityLabel");
-		if (!json_is_string(quality)) {
+		auto_value qlabel = get(cur, "qualityLabel");
+		if (!is_string(qlabel)) {
 			return make_result(ERR_JS_PARSE_JSON_ELEM_QUALITY);
 		}
 
-		const char *q = json_string_value(quality);
-		assert(q != NULL);
+		auto_js_str q = {ctx, JS_ToCString(ctx, qlabel.val)};
+		assert(q.str != NULL);
 
 		auto_result chosen =
 			ops->choose_quality
-				? ops->choose_quality(q, ops->userdata)
+				? ops->choose_quality(q.str, ops->userdata)
 				: RESULT_OK;
 		if (chosen.err != OK) {
-			debug("Skipping quality: %s", q);
+			debug("Skipping quality: %s", q.str);
 			continue;
 		}
 
-		json_t *json_itag = json_object_get(cur, "itag");
-		if (!json_is_integer(json_itag)) {
+		auto_value itag = get(cur, "itag");
+		int32_t tmp = 0;
+		if (!is_number(itag) || JS_ToInt32(ctx, &tmp, itag.val) < 0) {
 			return make_result(ERR_JS_PARSE_JSON_ELEM_ITAG);
 		}
+		values->itag = tmp;
 
-		values->itag = json_integer_value(json_itag);
 		debug("Parsed itag=%lld", values->itag);
 		break;
 	}
-
 	if (values->itag < 0) {
 		return make_result(ERR_JS_PARSE_JSON_NO_MATCH);
 	}
 
-	json_t *sabr_url =
-		json_object_get(streaming_data, "serverAbrStreamingUrl");
-	if (!json_is_string(sabr_url)) {
+	auto_value sabr_url = get(streaming_data, "serverAbrStreamingUrl");
+	if (is_string(sabr_url)) {
+		auto_js_str str = {ctx, JS_ToCString(ctx, sabr_url.val)};
+		values->sabr_url = strdup(str.str);
+	} else {
 		return make_result(ERR_JS_SABR_URL_FIND);
 	}
-	values->sabr_url = strndup(json_string_value(sabr_url),
-	                           json_string_length(sabr_url));
 	debug("Parsed SABR URI: %s", values->sabr_url);
 
-	json_t *playback_config = /* chain json_object_get() for brevity */
-		json_object_get(
-			json_object_get(
-				json_object_get(
-					json_object_get(obj, "playerConfig"),
-					"mediaCommonConfig"),
-				"mediaUstreamerRequestConfig"),
-			"videoPlaybackUstreamerConfig");
-	if (!json_is_string(playback_config)) {
+	auto_value playback_config =
+		get_free(get_free(get_free(get(obj, "playerConfig"),
+	                                   "mediaCommonConfig"),
+	                          "mediaUstreamerRequestConfig"),
+	                 "videoPlaybackUstreamerConfig");
+	if (is_string(playback_config)) {
+		auto_js_str str = {ctx, JS_ToCString(ctx, playback_config.val)};
+		values->playback_config = strdup(str.str);
+	} else {
 		return make_result(ERR_JS_PLAYBACK_CONFIG_FIND);
 	}
-	values->playback_config = strndup(json_string_value(playback_config),
-	                                  json_string_length(playback_config));
 	debug("Parsed playback config: %s", values->playback_config);
 
 	return RESULT_OK;
@@ -151,6 +278,34 @@ parse_values_cleanup(struct parse_values *p)
 		free(p->playback_config);
 	}
 }
+
+/* clang-format off */
+static const char INNERTUBE_POST_FMT[] =
+	"{"
+		"\"context\":{"
+			"\"client\":{"
+				"\"clientName\":\"WEB\","
+				"\"clientVersion\":\"2.20240726.00.00\","
+				"\"hl\":\"en\","
+				"\"timeZone\":\"UTC\","
+				"\"utcOffsetMinutes\":0"
+			"}"
+		"},"
+		"\"videoId\":\"%.*s\","
+		"\"serviceIntegrityDimensions\":{"
+			"\"poToken\":\"%s\""
+		"},"
+		"\"playbackContext\":{"
+			"\"contentPlaybackContext\":{"
+				"\"html5Preference\":\"HTML5_PREF_WANTS\","
+				"\"signatureTimestamp\":%lld,"
+				"\"isInlinePlaybackNoAd\":true"
+			"}"
+		"},"
+		"\"contentCheckOk\":true,"
+		"\"racyCheckOk\":true"
+	"}";
+/* clang-format on */
 
 result_t
 make_innertube_json(const char *target_url,
@@ -168,42 +323,13 @@ make_innertube_json(const char *target_url,
 	}
 	debug("Parsed ID: %.*s", (int)id.sz, id.data);
 
-	json_auto_t *obj = NULL;
-	obj = json_pack("{s{s{ss,ss,ss,ss,si}},ss%,s{ss},s{s{ss,si,sb}},sb,sb}",
-	                "context",
-	                "client",
-	                "clientName",
-	                "WEB",
-	                "clientVersion",
-	                "2.20240726.00.00",
-	                "hl",
-	                "en",
-	                "timeZone",
-	                "UTC",
-	                "utcOffsetMinutes",
-	                0,
-	                "videoId",
-	                id.data,
-	                id.sz,
-	                "serviceIntegrityDimensions",
-	                "poToken",
-	                proof_of_origin,
-	                "playbackContext",
-	                "contentPlaybackContext",
-	                "html5Preference",
-	                "HTML5_PREF_WANTS",
-	                "signatureTimestamp",
-	                timestamp,
-	                "isInlinePlaybackNoAd",
-	                1,
-	                "contentCheckOk",
-	                1,
-	                "racyCheckOk",
-	                1);
-	check_if(obj == NULL, ERR_JS_MAKE_INNERTUBE_JSON_ALLOC);
-
-	*body = json_dumps(obj, JSON_COMPACT);
-	check_if(*body == NULL, ERR_JS_MAKE_INNERTUBE_JSON_ALLOC);
+	const int rc = asprintf(body,
+	                        INNERTUBE_POST_FMT,
+	                        (int)id.sz,
+	                        id.data,
+	                        proof_of_origin,
+	                        timestamp);
+	check_if(rc < 0, ERR_JS_MAKE_INNERTUBE_JSON_ALLOC);
 
 	debug("Formatted InnerTube POST body: %s", *body);
 	return RESULT_OK;
@@ -316,63 +442,6 @@ find_js_deobfuscator(const struct string_view *js, struct deobfuscator *d)
 	return RESULT_OK;
 }
 
-static void
-qjs_runtime_cleanup(JSRuntime **rt)
-{
-	if (*rt != NULL) {
-		JS_FreeRuntime(*rt);
-	}
-}
-
-static void
-qjs_context_cleanup(JSContext **ctx)
-{
-	if (*ctx != NULL) {
-		JS_FreeContext(*ctx);
-	}
-}
-
-struct qjs_value {
-	JSContext *context;
-	JSValue val;
-};
-
-static void
-qjs_value_cleanup(struct qjs_value *qval)
-{
-	JS_FreeValue(qval->context, qval->val);
-}
-
-#define auto_value struct qjs_value __attribute__((cleanup(qjs_value_cleanup)))
-
-struct qjs_atom {
-	JSContext *context;
-	JSAtom atom;
-};
-
-static void
-qjs_atom_cleanup(struct qjs_atom *qatom)
-{
-	JS_FreeAtom(qatom->context, qatom->atom);
-}
-
-#define auto_atom struct qjs_atom __attribute__((cleanup(qjs_atom_cleanup)))
-
-struct qjs_str {
-	JSContext *context;
-	const char *str;
-};
-
-static void
-qjs_str_cleanup(struct qjs_str *qstr)
-{
-	if (qstr->str != NULL) {
-		JS_FreeCString(qstr->context, qstr->str);
-	}
-}
-
-#define auto_js_str struct qjs_str __attribute__((cleanup(qjs_str_cleanup)))
-
 static WARN_UNUSED result_t
 call_js_one(JSContext *ctx,
             JSAtom to_call,
@@ -382,19 +451,18 @@ call_js_one(JSContext *ctx,
             void *userdata)
 {
 	auto_value global = {ctx, JS_GetGlobalObject(ctx)};
+
 	auto_value arg = {ctx, JS_NewString(ctx, js_arg)};
+	check_if(is_exception(arg), ERR_JS_CALL_ALLOC);
+
 	auto_value value = {
 		ctx,
 		JS_Invoke(ctx, global.val, to_call, 1, &arg.val),
 	};
-	if (JS_IsException(value.val)) {
-		auto_value ex = {ctx, JS_GetException(ctx)};
-		auto_js_str str = {ctx, JS_ToCString(ctx, ex.val)};
-		return make_result(ERR_JS_CALL_INVOKE, str.str);
-	}
+	check_exception_message(value, ERR_JS_CALL_INVOKE);
 
 	auto_js_str result = {ctx, JS_ToCString(ctx, value.val)};
-	if (!JS_IsString(value.val) || result.str == NULL) {
+	if (!is_string(value) || result.str == NULL) {
 		return make_result(ERR_JS_CALL_GET_RESULT);
 	}
 
@@ -408,13 +476,9 @@ eval_js_magic_one(JSContext *ctx, const char *magic, size_t len)
 {
 	auto_value value = {
 		ctx,
-		JS_Eval(ctx, magic, len, "m", JS_EVAL_TYPE_GLOBAL),
+		JS_Eval(ctx, magic, len, "MAGIC", JS_EVAL_TYPE_GLOBAL),
 	};
-	if (JS_IsException(value.val)) {
-		auto_value ex = {ctx, JS_GetException(ctx)};
-		auto_js_str str = {ctx, JS_ToCString(ctx, ex.val)};
-		return make_result(ERR_JS_CALL_EVAL_MAGIC, str.str);
-	}
+	check_exception_message(value, ERR_JS_CALL_EVAL_MAGIC);
 	return RESULT_OK;
 }
 
@@ -424,12 +488,10 @@ call_js_foreach(const struct deobfuscator *d,
                 const struct call_ops *ops,
                 void *userdata)
 {
-	JSRuntime *rt __attribute__((cleanup(qjs_runtime_cleanup))) =
-		JS_NewRuntime();
+	auto_runtime *rt = JS_NewRuntime();
 	check_if(rt == NULL, ERR_JS_CALL_ALLOC);
 
-	JSContext *ctx __attribute__((cleanup(qjs_context_cleanup))) =
-		JS_NewContext(rt);
+	auto_context *ctx = JS_NewContext(rt);
 	check_if(ctx == NULL, ERR_JS_CALL_ALLOC);
 
 	for (size_t i = 0; i < ARRAY_SIZE(d->magic); ++i) {
@@ -450,6 +512,8 @@ call_js_foreach(const struct deobfuscator *d,
 		ctx,
 		JS_NewAtomLen(ctx, d->funcname.data, d->funcname.sz),
 	};
+	check_if(fn.atom == JS_ATOM_NULL, ERR_JS_CALL_ALLOC);
+
 	for (size_t i = 0; args[i]; ++i) {
 		check(call_js_one(ctx, fn.atom, args[i], i, ops, userdata));
 	}
@@ -457,6 +521,9 @@ call_js_foreach(const struct deobfuscator *d,
 	return RESULT_OK;
 }
 
+#undef auto_runtime
+#undef auto_context
 #undef auto_value
+#undef check_exception_message
 #undef auto_atom
 #undef auto_js_str
