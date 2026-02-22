@@ -151,35 +151,36 @@ SUITE(invalid_json)
 TEST
 root_null(void)
 {
-	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("null"));
+	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA, parse("null"));
 	PASS();
 }
 
 TEST
 root_number(void)
 {
-	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("-123.456"));
+	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA, parse("-123.456"));
 	PASS();
 }
 
 TEST
 root_string_empty(void)
 {
-	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("\"\""));
+	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA, parse("\"\""));
 	PASS();
 }
 
 TEST
 root_string_nonempty(void)
 {
-	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("\"Hello, World!\""));
+	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA,
+	          parse("\"Hello, World!\""));
 	PASS();
 }
 
 TEST
 root_boolean(void)
 {
-	ASSERT_EQ(ERR_JS_PARSE_JSON_DECODE, parse("false"));
+	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA, parse("false"));
 	PASS();
 }
 
@@ -229,7 +230,7 @@ missing_streaming_data_key(void)
 TEST
 incorrect_streaming_data_value_type(void)
 {
-	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_ADAPTIVEFORMATS,
+	ASSERT_EQ(ERR_JS_PARSE_JSON_GET_STREAMINGDATA,
 	          parse("{\"streamingData\": 1}"));
 	PASS();
 }

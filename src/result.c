@@ -233,7 +233,7 @@ result_to_str(result_t r)
 		s = my_asprintf("Cannot find ref to %s in base.js", r.msg);
 		break;
 	case ERR_JS_CALL_ALLOC:
-		s = strdup("Cannot allocate JavaScript interpreter heap");
+		s = strdup("Cannot allocate JavaScript interpreter data");
 		break;
 	case ERR_JS_CALL_EVAL_MAGIC:
 		s = my_asprintf("Error in JS_Eval(): %s", r.msg);

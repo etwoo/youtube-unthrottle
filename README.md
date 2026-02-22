@@ -66,7 +66,6 @@ I've tested on Arch Linux, OpenBSD 7.6, and macOS 15.4.
 ada
 cmake
 curl
-jansson
 libseccomp
 pcre2
 protobuf-c

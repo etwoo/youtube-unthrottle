@@ -3,7 +3,7 @@
 set -euo pipefail
 
 # Install packages via Homebrew, quieting reinstall warnings if necessary
-brew install --quiet cmake pkgconf ada-url curl jansson pcre2 protobuf-c quickjs
+brew install --quiet cmake pkgconf ada-url curl pcre2 protobuf-c quickjs
 
 # Workaround lack of quickjs pkgconfig metadata
 QIN=./vendor/quickjs.pc.in
