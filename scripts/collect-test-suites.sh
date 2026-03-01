@@ -17,7 +17,7 @@ for filename ; do # iterate over remaining positional parameters
 	entrypoint=$(basename "$filename" .c)
 	cat <<- EOF
 	$(sed -n 's@^SUITE(\(.*\))@SUITE_EXTERN(\1);@p' "$filename")
-	int ${entrypoint}(int argc, char **argv);
+	extern int ${entrypoint}(int argc, char **argv);
 	int ${entrypoint}(int argc, char **argv)
 	{
 	    int fd __attribute__((cleanup(coverage_cleanup))) = coverage_open();

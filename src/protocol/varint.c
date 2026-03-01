@@ -96,11 +96,11 @@ ump_varint_read(const struct string_view *ump, size_t *pos, uint64_t *value)
 		break;
 	case VARINT_BYTES_FOUR:
 		parsed[3] = as_uchar(ump->data[*pos + 3])
-		            << (UMP_BITS * 3U - bytes_to_read);
+		            << ((UMP_BITS * 3U) - bytes_to_read);
 		__attribute__((fallthrough));
 	case VARINT_BYTES_THREE:
 		parsed[2] = as_uchar(ump->data[*pos + 2])
-		            << (UMP_BITS * 2U - bytes_to_read);
+		            << ((UMP_BITS * 2U) - bytes_to_read);
 		__attribute__((fallthrough));
 	case VARINT_BYTES_TWO:
 		parsed[1] = as_uchar(ump->data[*pos + 1])

@@ -69,7 +69,7 @@ jobs:
       with:
         style: 'file'   # use .clang-format
         tidy-checks: '' # use .clang-tidy
-        version: 21     # use clang-{format,tidy}-21
+        version: 22     # use clang-{format,tidy}-22
         database: ./build/
         ignore: ./build/
         files-changed-only: false

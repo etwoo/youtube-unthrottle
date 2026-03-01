@@ -10,7 +10,7 @@ got_result(const char *val MAYBE_UNUSED,
 	return RESULT_OK;
 }
 
-int LLVMFuzzerTestOneInput(const char *data, size_t sz);
+extern int LLVMFuzzerTestOneInput(const char *data, size_t sz);
 
 int
 LLVMFuzzerTestOneInput(const char *data, size_t sz)
