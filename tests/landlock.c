@@ -85,7 +85,7 @@ landlock_filesystem_network(void)
 	PASS();
 }
 
-SUITE(landlock_variants)
+extern SUITE(landlock_variants)
 {
 	RUN_TEST(landlock_none);
 	RUN_TEST(landlock_filesystem_except_tmpfile);

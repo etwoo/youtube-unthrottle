@@ -19,7 +19,7 @@ sandbox_ok(void)
 	PASS();
 }
 
-SUITE(sandbox_smoke_test)
+extern SUITE(sandbox_smoke_test)
 {
 	RUN_TEST(sandbox_ok);
 }

@@ -16,7 +16,7 @@ global_setup(void)
 	PASS();
 }
 
-SUITE(setup)
+extern SUITE(setup)
 {
 	RUN_TEST(global_setup);
 }
@@ -143,7 +143,7 @@ stream_with(const char *mock_json_body, const char *expected_url)
 	PASS();
 }
 
-SUITE(stream_n_param_positions)
+extern SUITE(stream_n_param_positions)
 {
 	T(stream_with, n_param_only, SABR("n=a_b_c_d_e"), SABR("n=A_B_C_D_E"));
 	T(stream_with, n_param_first, SABR("n=a&b=b&c=c"), SABR("n=A&b=b&c=c"));
@@ -175,7 +175,7 @@ err_with(const char *mock_json_body,
 	PASS();
 }
 
-SUITE(stream_edge_cases)
+extern SUITE(stream_edge_cases)
 {
 	T(err_with, missing_id, "", TEST_U_NOID, ERR_JS_MAKE_INNERTUBE_JSON_ID);
 	T(err_with, missing_N, SABR(""), TEST_U, ERR_YOUTUBE_N_PARAM_MISSING);
@@ -189,7 +189,7 @@ global_cleanup(void)
 	PASS();
 }
 
-SUITE(cleanup)
+extern SUITE(cleanup)
 {
 	RUN_TEST(global_cleanup);
 }

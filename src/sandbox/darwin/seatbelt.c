@@ -1,6 +1,7 @@
 #include "sandbox/darwin/seatbelt.h"
 
 #include "sandbox/darwin/seatbelt_os_api.h"
+#include "sandbox/darwin/seatbelt_policy.h"
 #include "sys/array.h"
 #include "sys/debug.h"
 
@@ -63,8 +64,6 @@ static const struct seatbelt_extension SEATBELT_EXTENSIONS[] = {
 	},
 };
 
-extern const char SEATBELT_POLICY[]; /* defined by generated code */
-
 result_t
 seatbelt_init(struct seatbelt_context *context)
 {
@@ -123,7 +122,7 @@ seatbelt_init(struct seatbelt_context *context)
 	return RESULT_OK;
 }
 
-const int64_t SEATBELT_EXTENSION_HANDLE_RELEASED = -1;
+static const int64_t SEATBELT_EXTENSION_HANDLE_RELEASED = -1;
 
 result_t
 seatbelt_revoke(struct seatbelt_context *context, unsigned flags)

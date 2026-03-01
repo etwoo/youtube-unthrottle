@@ -130,7 +130,7 @@ root_object_missing_opening_brace(void)
 /*
  * Test that invalid JSON does not crash.
  */
-SUITE(invalid_json)
+extern SUITE(invalid_json)
 {
 	RUN_TEST(root_empty);
 	RUN_TEST(root_number_nan);
@@ -201,7 +201,7 @@ root_array_nonempty(void)
 /*
  * Test that incorrect root JSON type does not crash.
  */
-SUITE(incorrect_root_type)
+extern SUITE(incorrect_root_type)
 {
 	RUN_TEST(root_null);
 	RUN_TEST(root_number);
@@ -404,7 +404,7 @@ incorrect_playback_config_value_type(void)
 /*
  * Test that incorrect JSON content shape does not crash.
  */
-SUITE(incorrect_shape)
+extern SUITE(incorrect_shape)
 {
 	RUN_TEST(root_object_empty);
 	RUN_TEST(missing_streaming_data_key);
@@ -553,7 +553,7 @@ choose_adaptive_formats_elements(void)
 	PASS();
 }
 
-SUITE(correct_shape)
+extern SUITE(correct_shape)
 {
 	RUN_TEST(minimum_json_with_correct_shape);
 	RUN_TEST(extra_adaptive_formats_elements);
@@ -761,7 +761,7 @@ find_js_deobfuscator_positive_with_escaping_and_newlines(void)
 	PASS();
 }
 
-SUITE(find_with_pcre)
+extern SUITE(find_with_pcre)
 {
 	RUN_TEST(find_base_js_url_negative);
 	RUN_TEST(find_base_js_url_positive);
@@ -910,7 +910,7 @@ js_minimum_valid_function(void)
 	PASS();
 }
 
-SUITE(js_engine)
+extern SUITE(js_engine)
 {
 	RUN_TEST(js_eval_fail);
 	RUN_TEST(js_function_lookup_fail);
