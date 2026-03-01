@@ -168,7 +168,7 @@ print_to_str_each_enum_value(void) // NOLINT(*-function-size)
 	PASS();
 }
 
-SUITE(print_to_str)
+extern SUITE(print_to_str)
 {
 	RUN_TEST(print_to_str_each_enum_value);
 }

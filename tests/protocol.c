@@ -188,7 +188,7 @@ protocol_ump_varint_read_postcondition(void)
 	PASS();
 }
 
-SUITE(protocol_ump_varint_read)
+extern SUITE(protocol_ump_varint_read)
 {
 	RUN_TEST(protocol_ump_varint_read_byte_length_1);
 	RUN_TEST(protocol_ump_varint_read_byte_length_2);
@@ -680,7 +680,7 @@ protocol_parse_response_sabr_context_update(void)
 	PASS();
 }
 
-SUITE(protocol_parse)
+extern SUITE(protocol_parse)
 {
 	RUN_TEST(protocol_init_base64_decode_negative);
 	RUN_TEST(protocol_init_base64_decode_positive);

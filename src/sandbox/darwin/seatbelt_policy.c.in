@@ -1,1 +1,3 @@
+#include "sandbox/darwin/seatbelt_policy.h"
+
 const char SEATBELT_POLICY[] = "@SEATBELT_POLICY_SCM@";

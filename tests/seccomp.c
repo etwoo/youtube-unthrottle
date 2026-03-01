@@ -203,7 +203,7 @@ seccomp_io_sealed_sandbox(void)
 	PASS();
 }
 
-SUITE(seccomp_variants)
+extern SUITE(seccomp_variants)
 {
 	RUN_TEST(seccomp_none);
 	RUN_TEST(seccomp_io_inet_tmpfile);

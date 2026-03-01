@@ -16,14 +16,14 @@ EOF
 for filename ; do # iterate over remaining positional parameters
 	entrypoint=$(basename "$filename" .c)
 	cat <<- EOF
-	$(sed -n 's@^SUITE(\(.*\))@SUITE_EXTERN(\1);@p' "$filename")
-	int ${entrypoint}(int argc, char **argv);
+	$(sed -n 's@^extern SUITE(\(.*\))@SUITE_EXTERN(\1);@p' "$filename")
+	extern int ${entrypoint}(int argc, char **argv);
 	int ${entrypoint}(int argc, char **argv)
 	{
 	    int fd __attribute__((cleanup(coverage_cleanup))) = coverage_open();
 	    info("Starting test \"%s\" with%s code coverage", argv[0], fd == -1 ? "out" : "");
 	    GREATEST_MAIN_BEGIN();
-	$(sed -n 's@^SUITE(\(.*\))@    RUN_SUITE(\1);@p' "$filename")
+	$(sed -n 's@^extern SUITE(\(.*\))@    RUN_SUITE(\1);@p' "$filename")
 	    GREATEST_MAIN_END();
 	}
 	EOF

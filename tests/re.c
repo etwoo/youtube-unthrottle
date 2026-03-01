@@ -90,7 +90,7 @@ capture_pattern_match_fail_on_null_haystack(void)
 	PASS();
 }
 
-SUITE(capture)
+extern SUITE(capture)
 {
 	RUN_TEST(capture_pattern_compile_fail);
 	RUN_TEST(capture_pattern_match_one);

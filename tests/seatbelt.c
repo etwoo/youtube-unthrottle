@@ -100,7 +100,7 @@ seatbelt_filesystem_blocks_tmpfile_blocks_network(struct seatbelt_context *c)
 	PASS();
 }
 
-SUITE(seatbelt_variants)
+extern SUITE(seatbelt_variants)
 {
 	struct seatbelt_context context = {0};
 	RUN_TEST(seatbelt_none);

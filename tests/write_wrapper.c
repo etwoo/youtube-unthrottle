@@ -26,7 +26,7 @@ write_negative(void)
 	PASS();
 }
 
-SUITE(write_simple)
+extern SUITE(write_simple)
 {
 	RUN_TEST(write_positive);
 	RUN_TEST(write_negative);
