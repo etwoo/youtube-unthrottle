@@ -142,7 +142,9 @@ seatbelt_revoke(struct seatbelt_context *context, unsigned flags)
 		}
 
 		context->extensions[i] = SEATBELT_EXTENSION_HANDLE_RELEASED;
-		debug("released handle %" PRIi64 "for %s", to_release, e->name);
+		debug("released handle %" PRIi64 " for %s",
+		      to_release,
+		      e->name);
 	}
 
 	return RESULT_OK;

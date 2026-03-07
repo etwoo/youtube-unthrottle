@@ -388,10 +388,10 @@ find_js_deobfuscator_magic_global(const struct string_view *js,
                                   struct deobfuscator *d)
 {
 	d->magic[0].data =
-		"var g = {}; document = this; navigator = this; window = this; "
+		"g = {}; document = this; navigator = this; window = this; "
 		/* Set fake values for variables accessed by base.js content */
 		"document.location = {'hostname': 'foobar'}; "
-		"XMLHttpRequest = {'prototype': {'fetch': 'fuzzbuzz'}}; "
+		"XMLHttpRequest = class {}; "
 		/* Workaround QuickJS's lack of Intl namespace */
 		"Intl = {'NumberFormat': {'supportedLocalesOf': "
 		"function(x) { return ['en']; }"
@@ -409,85 +409,76 @@ find_js_deobfuscator_magic_global(const struct string_view *js,
 	return RESULT_OK;
 }
 
-static void
-str_free(char **strp)
-{
-	free(*strp);
-}
-
-/*
- * Based on: youtube-dl, yt-dlp, rusty_ytdl
- *
- * find_js_deobfuscator() does the following:
- *
- * 1) find <foo> in base.js like: b=foo[0](b)
- * 2) find <bar> in base.js like: var foo=[bar]
- * 3) find <...> in base.js like: bar=function(a){...}
- *
- * Later code uses the resulting function body like:
- *
- * 4) eval JavaScript fragment like: function(a){...}([$n_param])
- * 5) use return value from step 4 as decoded n-parameter
- */
 result_t
 find_js_deobfuscator(const struct string_view *js, struct deobfuscator *d)
 {
-	int rc = 0;
-
-	struct string_view n1 = {0};
-	check(re_capture("[[:alpha:]]=([^\\]]+)\\[0\\]\\([[:alpha:]]\\)",
+	check(re_capture("\\(new ([^\\(]+)\\(.,!0\\)\\)\\.get\\(\"n\"\\);",
 	                 js,
-	                 &n1));
-	if (n1.data == NULL) {
+	                 &d->funcname));
+	if (d->funcname.data == NULL) {
 		return make_result(ERR_JS_DEOB_FIND_FUNC_ONE);
 	}
-	debug("Got function reference: %.*s", (int)n1.sz, n1.data);
-
-	char *p2 __attribute__((cleanup(str_free))) = NULL;
-	rc = asprintf(&p2, "\\Q%.*s\\E=\\[([^\\]]+)\\]", (int)n1.sz, n1.data);
-	check_if(rc < 0, ERR_JS_DEOBFUSCATOR_ALLOC);
-
-	check(re_capture(p2, js, &d->funcname));
-	if (d->funcname.data == NULL) {
-		return make_result(ERR_JS_DEOB_FIND_FUNC_TWO, n1.data, n1.sz);
-	}
 	debug("Got function name: %.*s", (int)d->funcname.sz, d->funcname.data);
-
 	return RESULT_OK;
 }
 
 static WARN_UNUSED result_t
-eval_js_magic_one(JSContext *ctx, const char *magic, size_t len)
+eval_js(const struct string_view *js, unsigned err_type, struct qjs_value *out)
 {
-	auto_value value = {
-		ctx,
-		JS_Eval(ctx, magic, len, "MAGIC", JS_EVAL_TYPE_GLOBAL),
-	};
-	check_exception_message(value, ERR_JS_CALL_EVAL_MAGIC);
+	/*
+	 * QuickJS's JS_Eval() API requires NUL-terminated input, even
+	 * when given an explicit size parameter. Make a temporary,
+	 * NUL-terminated copy of each JS fragment accordingly.
+	 */
+	char *s = strndup(js->data, js->sz);
+	check_if(s == NULL, ERR_JS_CALL_ALLOC);
+
+	out->val = JS_Eval(out->context, s, js->sz, "JS", JS_EVAL_TYPE_GLOBAL);
+	free(s);
+
+	check_exception_message(*out, err_type);
 	return RESULT_OK;
 }
 
 static WARN_UNUSED result_t
-call_js_one(JSContext *ctx,
-            JSAtom to_call,
+call_js_one(struct qjs_value proto,
             const char *js_arg,
             size_t js_pos,
             const struct call_ops *ops,
             void *userdata)
 {
-	auto_value global = {ctx, JS_GetGlobalObject(ctx)};
+	JSContext *ctx = proto.context;
 
-	auto_value arg = {ctx, JS_NewString(ctx, js_arg)};
-	check_if(is_exception(arg), ERR_JS_CALL_ALLOC);
+	auto_value obj = {ctx, JS_UNDEFINED};
+	{
+		auto_value arg0 = {ctx, JS_NewString(ctx, js_arg)};
+		check_if(is_exception(arg0), ERR_JS_CALL_ALLOC);
 
-	auto_value value = {
-		ctx,
-		JS_Invoke(ctx, global.val, to_call, 1, &arg.val),
-	};
-	check_exception_message(value, ERR_JS_CALL_INVOKE);
+		auto_value arg1 = {ctx, JS_NewBool(ctx, !0)};
+		check_if(is_exception(arg1), ERR_JS_CALL_ALLOC);
 
-	auto_js_str result = to_cstring(value);
-	if (!is_string(value) || result.str == NULL) {
+		JSValueConst a[2] = {
+			arg0.val,
+			arg1.val,
+		};
+		obj.val = JS_CallConstructor(ctx, proto.val, ARRAY_SIZE(a), a);
+		check_exception_message(obj, ERR_JS_CALL_CONSTRUCTOR);
+	}
+
+	auto_value val = {ctx, JS_UNDEFINED};
+	{
+		auto_atom method = {ctx, JS_NewAtom(ctx, "get")};
+		check_if(method.atom == JS_ATOM_NULL, ERR_JS_CALL_ALLOC);
+
+		auto_value arg_n = {ctx, JS_NewString(ctx, "n")};
+		check_if(is_exception(arg_n), ERR_JS_CALL_ALLOC);
+
+		val.val = JS_Invoke(ctx, obj.val, method.atom, 1, &arg_n.val);
+		check_exception_message(val, ERR_JS_CALL_INVOKE);
+	}
+
+	auto_js_str result = to_cstring(val);
+	if (!is_string(val) || result.str == NULL) {
 		return make_result(ERR_JS_CALL_GET_RESULT);
 	}
 
@@ -509,27 +500,23 @@ call_js_foreach(const struct deobfuscator *d,
 	check_if(ctx == NULL, ERR_JS_CALL_ALLOC);
 
 	for (size_t i = 0; i < ARRAY_SIZE(d->magic); ++i) {
-		/*
-		 * QuickJS's JS_Eval() API requires NUL-terminated input, even
-		 * when given an explicit size parameter. Make a temporary,
-		 * NUL-terminated copy of each magic buffer accordingly.
-		 */
-		char *deepcopy __attribute__((cleanup(str_free))) =
-			strndup(d->magic[i].data, d->magic[i].sz);
-		check_if(deepcopy == NULL, ERR_JS_CALL_ALLOC);
 		debug("eval()-ing magic %zu", i + 1);
-		check(eval_js_magic_one(ctx, deepcopy, d->magic[i].sz));
+		auto_value tmp = {ctx, JS_UNDEFINED};
+		check(eval_js(&d->magic[i], ERR_JS_CALL_EVAL_MAGIC, &tmp));
 	}
 	debug("eval()-ed %zu magic variables", ARRAY_SIZE(d->magic));
 
-	auto_atom fn = {
-		ctx,
-		JS_NewAtomLen(ctx, d->funcname.data, d->funcname.sz),
-	};
-	check_if(fn.atom == JS_ATOM_NULL, ERR_JS_CALL_ALLOC);
+	debug("eval()-ing expr: %.*s", (int)d->funcname.sz, d->funcname.data);
+	auto_value prototype = {ctx, JS_UNDEFINED};
+	check(eval_js(&d->funcname, ERR_JS_CALL_LOOKUP, &prototype));
+
+	if (!is_object(prototype)) {
+		return make_result(ERR_JS_CALL_LOOKUP, "did not find class");
+	}
 
 	for (size_t i = 0; args[i]; ++i) {
-		check(call_js_one(ctx, fn.atom, args[i], i, ops, userdata));
+		debug("Calling function with argument: %s", args[i]);
+		check(call_js_one(prototype, args[i], i, ops, userdata));
 	}
 
 	return RESULT_OK;
