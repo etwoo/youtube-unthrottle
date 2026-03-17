@@ -1,6 +1,7 @@
 #include "sandbox.h"
 
 #include "greatest.h"
+#include "test_macros.h"
 
 TEST
 sandbox_ok(void)

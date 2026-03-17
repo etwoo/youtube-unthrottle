@@ -29,7 +29,7 @@
 #include <sysexits.h>
 #include <unistd.h> /* for close() */
 
-const char *__asan_default_options(void) __attribute__((used));
+extern const char *__asan_default_options(void) __attribute__((used));
 const char *
 __asan_default_options(void)
 {

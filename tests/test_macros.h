@@ -28,4 +28,12 @@
  */
 #define ASSERT_VALID_DESCRIPTOR(fd) ASSERT_LTE(0, fd)
 
+/*
+ * Override SUITE() with a variant suited for use with collect-test-suites.sh
+ */
+#ifdef SUITE
+#undef SUITE
+#define SUITE extern GREATEST_SUITE
+#endif
+
 #endif

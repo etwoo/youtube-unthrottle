@@ -1,6 +1,6 @@
 #include "lib/js.h"
 
-int LLVMFuzzerTestOneInput(const char *data, size_t sz);
+extern int LLVMFuzzerTestOneInput(const char *data, size_t sz);
 
 int
 LLVMFuzzerTestOneInput(const char *data, size_t sz)

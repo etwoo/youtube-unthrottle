@@ -1,5 +1,6 @@
 #include "greatest.h"
 #include "sys/write.h"
+#include "test_macros.h"
 
 #include <errno.h>
 

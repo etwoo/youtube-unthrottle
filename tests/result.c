@@ -3,6 +3,7 @@
 #include "greatest.h"
 #include "sys/compiler_features.h"
 #include "sys/debug.h"
+#include "test_macros.h"
 
 #define ASSERT_IN(haystack, needle)                                            \
 	do {                                                                   \

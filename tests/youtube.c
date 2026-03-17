@@ -3,6 +3,7 @@
 #include "greatest.h"
 #include "sys/debug.h"
 #include "sys/write.h"
+#include "test_macros.h"
 
 #include <assert.h>
 #include <stdbool.h>
