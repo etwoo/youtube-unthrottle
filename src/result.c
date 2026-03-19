@@ -226,14 +226,17 @@ result_to_str(result_t r)
 	case ERR_JS_DEOB_FIND_FUNC_ONE:
 		s = strdup("Cannot find deobfuscation function in base.js");
 		break;
-	case ERR_JS_DEOB_FIND_FUNC_TWO:
-		s = my_asprintf("Cannot find ref to %s in base.js", r.msg);
-		break;
 	case ERR_JS_CALL_ALLOC:
 		s = strdup("Cannot allocate JavaScript interpreter data");
 		break;
 	case ERR_JS_CALL_EVAL_MAGIC:
 		s = my_asprintf("Error in JS_Eval(): %s", r.msg);
+		break;
+	case ERR_JS_CALL_LOOKUP:
+		s = my_asprintf("Error in JS_Eval() on class expr: %s", r.msg);
+		break;
+	case ERR_JS_CALL_CONSTRUCTOR:
+		s = my_asprintf("Error in JS_CallConstructor(): %s", r.msg);
 		break;
 	case ERR_JS_CALL_INVOKE:
 		s = my_asprintf("Error in JS_Invoke(): %s", r.msg);

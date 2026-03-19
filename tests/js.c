@@ -680,7 +680,7 @@ find_js_deobfuscator_magic_global_positive(void)
 	auto_result err = find_js_deobfuscator_magic_global(&js, &d);
 
 	ASSERT_EQ(OK, err.err);
-	ASSERT_STRN_EQ("var g = {}", d.magic[0].data, 10);
+	ASSERT_STRN_EQ("g = {}", d.magic[0].data, 6);
 	ASSERT_STRN_EQ("var m2='MAGIC'", d.magic[1].data, d.magic[1].sz);
 	PASS();
 }
@@ -697,7 +697,7 @@ find_js_deobfuscator_magic_global_positive_with_newlines(void)
 	auto_result err = find_js_deobfuscator_magic_global(&js, &d);
 
 	ASSERT_EQ(OK, err.err);
-	ASSERT_STRN_EQ("var g = {}", d.magic[0].data, 10);
+	ASSERT_STRN_EQ("g = {}", d.magic[0].data, 6);
 	ASSERT_STRN_EQ("var m2=['MA',\n'GIC']", d.magic[1].data, d.magic[1].sz);
 	PASS();
 }
@@ -718,46 +718,32 @@ find_js_deobfuscator_negative_first_match_fail(void)
 }
 
 TEST
-find_js_deobfuscator_negative_second_match_fail(void)
-{
-	struct deobfuscator d = {0};
-
-	const struct string_view js = MAKE_TEST_STRING("c=ODa[0](c),");
-	auto_result err = find_js_deobfuscator(&js, &d);
-
-	ASSERT_EQ(ERR_JS_DEOB_FIND_FUNC_TWO, err.err);
-	ASSERT_EQ(NULL, d.funcname.data);
-	ASSERT_EQ(0, d.funcname.sz);
-	PASS();
-}
-
-TEST
 find_js_deobfuscator_positive_simple(void)
 {
 	struct deobfuscator d = {0};
 
 	const struct string_view js =
-		MAKE_TEST_STRING("c=ODa[0](c);var ODa=[Pma];");
+		MAKE_TEST_STRING("(new g.f(Z,!0)).get(\"n\");");
 	auto_result err = find_js_deobfuscator(&js, &d);
 	ASSERT_EQ(OK, err.err);
 
 	ASSERT_EQ(3, d.funcname.sz);
-	ASSERT_STRN_EQ("Pma", d.funcname.data, d.funcname.sz);
+	ASSERT_STRN_EQ("g.f", d.funcname.data, d.funcname.sz);
 	PASS();
 }
 
 TEST
-find_js_deobfuscator_positive_with_escaping_and_newlines(void)
+find_js_deobfuscator_positive_with_escaping(void)
 {
 	struct deobfuscator d = {0};
 
 	const struct string_view js =
-		MAKE_TEST_STRING("c=$aa[0](c);\nvar $aa=[$bb];");
+		MAKE_TEST_STRING("(new g.$(Z,!0)).get(\"n\");");
 	auto_result err = find_js_deobfuscator(&js, &d);
 	ASSERT_EQ(OK, err.err);
 
 	ASSERT_EQ(3, d.funcname.sz);
-	ASSERT_STRN_EQ("$bb", d.funcname.data, d.funcname.sz);
+	ASSERT_STRN_EQ("g.$", d.funcname.data, d.funcname.sz);
 	PASS();
 }
 
@@ -773,9 +759,8 @@ SUITE(find_with_pcre)
 	RUN_TEST(find_js_deobfuscator_magic_global_positive);
 	RUN_TEST(find_js_deobfuscator_magic_global_positive_with_newlines);
 	RUN_TEST(find_js_deobfuscator_negative_first_match_fail);
-	RUN_TEST(find_js_deobfuscator_negative_second_match_fail);
 	RUN_TEST(find_js_deobfuscator_positive_simple);
-	RUN_TEST(find_js_deobfuscator_positive_with_escaping_and_newlines);
+	RUN_TEST(find_js_deobfuscator_positive_with_escaping);
 }
 
 static const char *const TEST_ARGS[] = {
@@ -800,7 +785,7 @@ js_eval_fail(void)
 {
 	const struct deobfuscator d = {
 		{
-			MAKE_TEST_STRING("var M1=function(){return 123}"),
+			MAKE_TEST_STRING("class M1={}"),
 			MAKE_TEST_STRING("var BAD_MAGIC=\"dangling"),
 		},
 		MAKE_TEST_STRING("M1"),
@@ -812,28 +797,60 @@ js_eval_fail(void)
 }
 
 TEST
-js_function_lookup_fail(void)
+js_class_lookup_fail(void)
 {
 	const struct deobfuscator d = {
 		{
-			MAKE_TEST_STRING("var M1=function(){return 123}"),
-			MAKE_TEST_STRING("var M2=function(){return 456}"),
+			MAKE_TEST_STRING("M1=class{}"),
+			MAKE_TEST_STRING("M2=class{}"),
 		},
-		MAKE_TEST_STRING("function_does_not_exist"),
+		MAKE_TEST_STRING("class_does_not_exist"),
 	};
 
 	auto_result err = call_js_foreach(&d, TEST_ARGS, &CALL_NOOP, NULL);
-	ASSERT_EQ(ERR_JS_CALL_INVOKE, err.err);
+	ASSERT_EQ(ERR_JS_CALL_LOOKUP, err.err);
 	PASS();
 }
 
 TEST
-js_call_fail(void)
+js_class_lookup_incorrect_type(void)
 {
 	const struct deobfuscator d = {
 		{
-			MAKE_TEST_STRING("var M1=function(){return nodef}"),
-			MAKE_TEST_STRING("var M2=function(){return 456}"),
+			MAKE_TEST_STRING("M1='incorrect_type'"),
+			MAKE_TEST_STRING("M2=class{}"),
+		},
+		MAKE_TEST_STRING("M1"),
+	};
+
+	auto_result err = call_js_foreach(&d, TEST_ARGS, &CALL_NOOP, NULL);
+	ASSERT_EQ(ERR_JS_CALL_LOOKUP, err.err);
+	PASS();
+}
+
+TEST
+js_class_constructor_fail(void)
+{
+	const struct deobfuscator d = {
+		{
+			MAKE_TEST_STRING("M1=class{constructor(){undef;}}"),
+			MAKE_TEST_STRING("M2=class{}"),
+		},
+		MAKE_TEST_STRING("M1"),
+	};
+
+	auto_result err = call_js_foreach(&d, TEST_ARGS, &CALL_NOOP, NULL);
+	ASSERT_EQ(ERR_JS_CALL_CONSTRUCTOR, err.err);
+	PASS();
+}
+
+TEST
+js_class_getter_fail(void)
+{
+	const struct deobfuscator d = {
+		{
+			MAKE_TEST_STRING("M1=class{get(x){undef;}}"),
+			MAKE_TEST_STRING("M2=class{}"),
 		},
 		MAKE_TEST_STRING("M1"),
 	};
@@ -848,8 +865,8 @@ js_call_incorrect_result_type(void)
 {
 	const struct deobfuscator d = {
 		{
-			MAKE_TEST_STRING("var M1=function(){return true}"),
-			MAKE_TEST_STRING("var M2=function(){return 456}"),
+			MAKE_TEST_STRING("M1=class{get(x){return 2468;}}"),
+			MAKE_TEST_STRING("M2=class{}"),
 		},
 		MAKE_TEST_STRING("M1"),
 	};
@@ -897,9 +914,16 @@ js_minimum_valid_function(void)
 
 	const struct deobfuscator d = {
 		{
-			MAKE_TEST_STRING("var M1='56'"),
-			MAKE_TEST_STRING("var M2=function(a){"
-	                                 "return a.split(',')[0]+M1+'78'}"),
+			MAKE_TEST_STRING("var M1 = '56'"),
+			MAKE_TEST_STRING(
+				"M2 = class {"
+				"  constructor(n, _) {"
+				"    this.n = n;"
+				"  }"
+				"  get(_) {"
+				"    return this.n.split(',')[0] + M1 + '78';"
+				"  }"
+				"}"),
 		},
 		MAKE_TEST_STRING("M2"),
 	};
@@ -913,8 +937,10 @@ js_minimum_valid_function(void)
 SUITE(js_engine)
 {
 	RUN_TEST(js_eval_fail);
-	RUN_TEST(js_function_lookup_fail);
-	RUN_TEST(js_call_fail);
+	RUN_TEST(js_class_lookup_fail);
+	RUN_TEST(js_class_lookup_incorrect_type);
+	RUN_TEST(js_class_constructor_fail);
+	RUN_TEST(js_class_getter_fail);
 	RUN_TEST(js_call_incorrect_result_type);
 	RUN_TEST(js_minimum_valid_function);
 }

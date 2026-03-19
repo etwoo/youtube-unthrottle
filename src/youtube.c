@@ -183,27 +183,24 @@ youtube_stream_set_url(struct youtube_stream *p, char *url_as_cstr)
 }
 
 /*
- * Copy n-parameter value from query string in <url>.
- *
  * Caller has responsibility to free() the pointer returned in <result>.
  */
 static WARN_UNUSED result_t
-youtube_stream_copy_n_param(struct youtube_stream *p, char **result)
+youtube_stream_deepcopy_url(struct youtube_stream *p, char **result)
 {
 	*result = NULL; /* NULL out early, just in case */
+	ada_string url_str = ada_get_href(p->url);
 
 	ada_string q_str = ada_get_search(p->url);
 	ada_url_search_params q __attribute__((cleanup(free_search_params))) =
 		ada_parse_search_params(q_str.data, q_str.length);
 	if (!ada_search_params_has(q, ARG_N, strlen(ARG_N))) {
-		ada_string url_str = ada_get_href(p->url);
 		return make_result(ERR_YOUTUBE_N_PARAM_MISSING,
 		                   url_str.data,
 		                   url_str.length);
 	}
 
-	ada_string n_param = ada_search_params_get(q, ARG_N, strlen(ARG_N));
-	*result = strndup(n_param.data, n_param.length);
+	*result = strndup(url_str.data, url_str.length);
 	check_if(*result == NULL, ERR_YOUTUBE_N_PARAM_QUERY_ALLOC);
 
 	debug("Got n-param ciphertext: %s", *result);
@@ -328,7 +325,7 @@ youtube_stream_open(struct youtube_stream *p,
 		NULL,
 		NULL,
 	};
-	check(youtube_stream_copy_n_param(p, &ciphertexts[0]));
+	check(youtube_stream_deepcopy_url(p, &ciphertexts[0]));
 
 	const char *ciphertexts_const[ARRAY_SIZE(ciphertexts)];
 	for (size_t i = 0; i < ARRAY_SIZE(ciphertexts_const); i++) {

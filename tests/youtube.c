@@ -24,12 +24,27 @@ SUITE(setup)
 
 static const char MOCK_HTML_RESPONSE[] = "\"/s/player/foobar/base.js\"";
 static const char MOCK_JS_RESPONSE[] =
-	"var _yt_player={};(function(g){"
-	"'use strict';"
-	"var tstr=\"signatureTimestamp:12345\";"
-	"Y=function(a){return String(a).toUpperCase()};"
-	"var X=[Y];"
-	"var c=X[0](c);"
+	"var _yt_player={};(function(g){'use strict';"
+	"S = {"
+	"  signatureTimestamp:12345"
+	"};"
+	"Z = function(x) {"
+	"  const start = x.indexOf('n=') + 2;"
+	"  const end = x.indexOf('&', start);"
+	"  const n = end < 0 ? x.substring(start) : x.substring(start, end);"
+	"  return n.toUpperCase();"
+	"};"
+	"Y = class {"
+	"  constructor(url, _) {"
+	"    this.url = url;"
+	"  }"
+	"  get(_) {"
+	"    return Z(this.url);"
+	"  }"
+	"};"
+	"X = function(x) {"
+	"  return (new Y(x,!0)).get(\"n\");"
+	"};"
 	"})(_yt_player);";
 
 #define SABR(get_args) "https://a.test/sabr?" get_args
