@@ -785,7 +785,7 @@ js_eval_fail(void)
 {
 	const struct deobfuscator d = {
 		{
-			MAKE_TEST_STRING("class M1={}"),
+			MAKE_TEST_STRING("M1=class{}"),
 			MAKE_TEST_STRING("var BAD_MAGIC=\"dangling"),
 		},
 		MAKE_TEST_STRING("M1"),
@@ -793,6 +793,8 @@ js_eval_fail(void)
 
 	auto_result err = call_js_foreach(&d, TEST_ARGS, &CALL_NOOP, NULL);
 	ASSERT_EQ(ERR_JS_CALL_EVAL_MAGIC, err.err);
+	auto_result_str str = result_to_str(err);
+	ASSERT_NEQ(NULL, strstr(str, "unexpected end of string"));
 	PASS();
 }
 
