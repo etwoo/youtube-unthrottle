@@ -103,7 +103,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Configure, build, and test
-      uses: vmactions/openbsd-vm@v1
+      uses: vmactions/openbsd-vm@v1.3.7
       with:
         prepare: >
           ./scripts/setup/openbsd.sh
