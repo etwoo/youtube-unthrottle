@@ -98,7 +98,7 @@ sandbox_with(
 	const size_t sz = ARRAY_SIZE(ALLOWED_PATHS);
 #if defined(__OpenBSD__)
 	for (size_t i = 0; i < sz; ++i) {
-		if (unveil(ALLOWED_PATHS[i], "r") < 0) {
+		if (unveil(ALLOWED_PATHS[i], "rwc") < 0) {
 			err(EX_OSERR, "Error in unveil()");
 		}
 	}
@@ -121,7 +121,7 @@ sandbox_only_io_inet_tmpfile(struct sandbox_context *context MAYBE_UNUSED)
 {
 	result_t tmp = sandbox_with(
 #if defined(__OpenBSD__)
-		"dns inet rpath stdio tmppath unveil"
+		"dns inet rpath wpath cpath stdio unveil"
 #elif defined(__linux__)
 		SECCOMP_STDIO | SECCOMP_INET | SECCOMP_SANDBOX | SECCOMP_TMPFILE
 #elif defined(__APPLE__)
