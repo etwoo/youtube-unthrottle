@@ -18,7 +18,7 @@ jobs:
         os: [ubuntu-latest, macos-latest]
         toolchain:
           - compiler: gcc
-            package: gcc
+            package: gcc-15
           - compiler: clang
             package: llvm
     runs-on: ${{ matrix.os }}
