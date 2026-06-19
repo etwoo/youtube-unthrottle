@@ -17,8 +17,8 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
         toolchain:
-          - compiler: gcc-14
-            package: gcc@14
+          - compiler: gcc-16
+            package: gcc@16
             # gcc-14 (currently) required to workaround failures on gcc-15:
             #
             #     {standard input}: Assembler messages:
