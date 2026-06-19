@@ -32,7 +32,9 @@ jobs:
         if [ "$(uname)" == Linux ] ; then
           echo "CC=${{ matrix.cc }}"
         else
-          BINDIR="$(/home/linuxbrew/.linuxbrew/bin/brew --prefix)/bin"
+          BINDIR="$(brew --prefix)/bin"
+          ls $BINDIR/gcc*
+          ls $BINDIR/clang*
           find $BINDIR -maxdepth 1 -type f -name '${{ matrix.cc }}-[0-9]*' \
             | sort -n \
             | tail -1 \
