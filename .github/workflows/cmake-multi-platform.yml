@@ -23,7 +23,7 @@ jobs:
     - name: Install dependencies
       run: |
         if [ "$(uname)" == Linux ] ; then
-          ./scripts/setup/apt.sh
+          sudo ./scripts/setup/apt.sh
         else
           ./scripts/setup/homebrew.sh
         fi
