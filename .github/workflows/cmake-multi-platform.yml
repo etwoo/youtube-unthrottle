@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-26.04, macos-latest ]
+        os: [ ubuntu-26.04, macos-26 ]
         cc: [ gcc, clang ]
     runs-on: ${{ matrix.os }}
     steps:
@@ -27,9 +27,16 @@ jobs:
         else
           ./scripts/setup/homebrew.sh
         fi
+    - name: Choose compiler
+      run: |
+        if [ "$(uname)" == Linux ] ; then
+          echo "CC=${{ matrix.cc }}"
+        else
+          echo "CC=$(brew --prefix)/${{ matrix.cc}}"
+        fi >> "$GITHUB_ENV"
     - name: Configure, build, and test
       run: >
-        CC=${{ matrix.cc }} cmake --preset default -DCMAKE_COMPILE_WARNING_AS_ERROR=ON &&
+        cmake --preset default -DCMAKE_COMPILE_WARNING_AS_ERROR=ON &&
         cmake --build --preset default --parallel &&
         ctest --preset default
     - uses: ./.github/actions/collect-ctest-logs
