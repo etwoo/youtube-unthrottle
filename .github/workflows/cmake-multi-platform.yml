@@ -32,7 +32,8 @@ jobs:
         if [ "$(uname)" == Linux ] ; then
           echo "CC=${{ matrix.cc }}"
         else
-          echo "CC=$(find $(brew --prefix)/bin -maxdepth 1 -type f -name '${{ matrix.cc}}-[0-9]*' | sort -n | tail -1)"
+          find $(brew --prefix)/bin -maxdepth 1 -type f -name '${{ matrix.cc }}-[0-9]*'
+          echo "CC=$(find $(brew --prefix)/bin -maxdepth 1 -type f -name '${{ matrix.cc }}-[0-9]*' | sort -n | tail -1)"
         fi >> "$GITHUB_ENV"
     - name: Configure, build, and test
       run: >
@@ -45,7 +46,7 @@ jobs:
         unique-suffix: ${{ matrix.os }}-${{ matrix.cc }}
 
   lint:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
     - uses: actions/checkout@v4
     - name: Install dependencies
@@ -72,7 +73,7 @@ jobs:
       run: exit 1
 
   coverage:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
     - uses: actions/checkout@v4
     - name: Install dependencies
