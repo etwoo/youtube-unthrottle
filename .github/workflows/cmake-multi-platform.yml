@@ -29,14 +29,14 @@ jobs:
         fi
     - name: Configure, build, and test
       run: >
-        export CC=${{ matrix.compiler }}
+        export CC=${{ matrix.cc }}
         cmake --preset default -DCMAKE_COMPILE_WARNING_AS_ERROR=ON &&
         cmake --build --preset default --parallel &&
         ctest --preset default
     - uses: ./.github/actions/collect-ctest-logs
       if: failure()
       with:
-        unique-suffix: ${{ matrix.os }}-${{ matrix.compiler }}
+        unique-suffix: ${{ matrix.os }}-${{ matrix.cc }}
 
   lint:
     runs-on: ubuntu-latest
