@@ -17,7 +17,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
         toolchain:
-          - compiler: gcc-15
+          - compiler: gcc-16
             package: gcc
           - compiler: clang
             package: llvm
