@@ -75,7 +75,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - uses: Install dependencies
+    - name: Install dependencies
       run: >
         sudo ./scripts/setup/apt.sh
     - name: Configure, build, and test
