@@ -29,8 +29,7 @@ jobs:
         fi
     - name: Configure, build, and test
       run: >
-        export CC=${{ matrix.cc }}
-        cmake --preset default -DCMAKE_COMPILE_WARNING_AS_ERROR=ON &&
+        CC=${{ matrix.cc }} cmake --preset default -DCMAKE_COMPILE_WARNING_AS_ERROR=ON &&
         cmake --build --preset default --parallel &&
         ctest --preset default
     - uses: ./.github/actions/collect-ctest-logs
