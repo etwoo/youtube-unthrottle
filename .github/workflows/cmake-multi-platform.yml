@@ -103,7 +103,8 @@ jobs:
         run: >
           cmake --preset default &&
           cmake --build --preset default &&
-          ctest --preset default
+          ctest --preset default &&
+          cmake --build --preset default --target clean
     - uses: ./.github/actions/collect-ctest-logs
       if: failure()
       with:
