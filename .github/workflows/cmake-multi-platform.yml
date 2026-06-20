@@ -109,7 +109,7 @@ jobs:
       shell: cpa.sh {0}
       run: >
         cmake --preset default -DCMAKE_COMPILE_WARNING_AS_ERROR=ON &&
-        cmake --build --preset default --parallel &&
+        cmake --build --preset default &&
         ctest --preset default
     - uses: ./.github/actions/collect-ctest-logs
       if: failure()
