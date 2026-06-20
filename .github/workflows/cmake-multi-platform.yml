@@ -50,10 +50,9 @@ jobs:
     - name: Install dependencies
       run: >
         sudo ./scripts/setup/apt.sh
-    - name: Configure and build
+    - name: Generate configure-time code and compile_commands.json
       run: >
-        cmake --preset default -DCMAKE_COMPILE_WARNING_AS_ERROR=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=1 &&
-        cmake --build --preset default --parallel
+        cmake --preset default -DCMAKE_COMPILE_WARNING_AS_ERROR=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=1
     - name: Run clang-format and clang-tidy, including clang-analyzer checks
       id: lint
       uses: cpp-linter/cpp-linter-action@v2
