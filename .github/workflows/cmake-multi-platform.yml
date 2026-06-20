@@ -95,15 +95,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - name: Configure, build, and test
-      uses: vmactions/openbsd-vm@v1.3.7
+    - name: Start OpenBSD VM
+      uses: cross-platform-actions/action@v1
       with:
-        prepare: >
-          ./scripts/setup/openbsd.sh
-        run: >
-          cmake --preset default &&
-          cmake --build --preset default &&
-          ctest --preset default
+        operating_system: openbsd
+        version: '7.9'
+    - name: Install dependencies
+      run: >
+        ./scripts/setup/openbsd.sh
+    - name: Configure, build, and test
+      run: >
+        cmake --preset default &&
+        cmake --build --preset default &&
+        ctest --preset default
     - uses: ./.github/actions/collect-ctest-logs
       if: failure()
       with:
