@@ -32,13 +32,7 @@ jobs:
         if [ "$(uname)" == Linux ] ; then
           echo -n
         else
-          BINDIR="$(brew --prefix)"
-          echo "test1"
-          find "$BINDIR" -maxdepth 1 -type f
-          echo "test2"
-          find "$BINDIR" -maxdepth 1 -type f -name '${{ matrix.cc }}-[0-9]*'
-          echo "test3"
-          find "$BINDIR" -type f -name '${{ matrix.cc }}-[0-9]*'
+          find "$(brew --prefix)" -type f -name '${{ matrix.cc }}-[1-9][0-9]'
         fi
     - name: Choose compiler
       run: |
@@ -46,7 +40,7 @@ jobs:
           echo "CC=${{ matrix.cc }}"
         else
           BINDIR="$(brew --prefix)"
-          find "$BINDIR" -maxdepth 1 -type f -name '${{ matrix.cc }}-[0-9]*' \
+          find "$(brew --prefix)" -type f -name '${{ matrix.cc }}-[1-9][0-9]' \
             | sort -n \
             | tail -1 \
             | while read line ; do echo "CC=$line" ; done
