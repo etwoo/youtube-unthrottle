@@ -20,31 +20,19 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v4
-    - name: Install dependencies
+    - name: Setup (Linux)
+      if: ${{ runner.os }} == 'Linux'
       run: |
-        if [ "$(uname)" == Linux ] ; then
-          sudo ./scripts/setup/apt.sh
-        else
-          ./scripts/setup/homebrew.sh
-        fi
-    - name: List bin content
+        sudo ./scripts/setup/apt.sh
+        echo "CC=${{ matrix.cc }}" >> "$GITHUB_ENV"
+    - name: Setup (macOS)
+      if: ${{ runner.os }} == 'macOS'
       run: |
-        if [ "$(uname)" == Linux ] ; then
-          echo -n
-        else
-          find "$(brew --prefix)" -type f -name '${{ matrix.cc }}-[1-9][0-9]'
-        fi
-    - name: Choose compiler
-      run: |
-        if [ "$(uname)" == Linux ] ; then
-          echo "CC=${{ matrix.cc }}"
-        else
-          BINDIR="$(brew --prefix)"
-          find "$(brew --prefix)" -type f -name '${{ matrix.cc }}-[1-9][0-9]' \
-            | sort -n \
-            | tail -1 \
-            | while read line ; do echo "CC=$line" ; done
-        fi >> "$GITHUB_ENV"
+        ./scripts/setup/homebrew.sh
+        find "$(brew --prefix)" -type f -name '${{ matrix.cc }}-[1-9][0-9]' \
+          | sort -n \
+          | tail -1 \
+          | while read line ; do echo "CC=$line" ; done >> "$GITHUB_ENV"
     - name: Configure, build, and test
       run: >
         cmake --preset default -DCMAKE_COMPILE_WARNING_AS_ERROR=ON &&
