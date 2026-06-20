@@ -98,7 +98,6 @@ jobs:
     - name: Configure, build, and test
       uses: vmactions/openbsd-vm@v1.3.7
       with:
-        copyback: false
         prepare: >
           ./scripts/setup/openbsd.sh
         run: >
