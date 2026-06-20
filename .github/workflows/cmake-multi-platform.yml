@@ -100,7 +100,7 @@ jobs:
       with:
         operating_system: openbsd
         version: '7.9'
-        shell: sh
+        shell: bash
     - name: Install dependencies
       run: >
         ./scripts/setup/openbsd.sh
