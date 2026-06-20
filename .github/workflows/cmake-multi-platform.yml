@@ -100,14 +100,11 @@ jobs:
       with:
         operating_system: openbsd
         version: '7.9'
-    - name: Install dependencies
-      run: >
-        sudo bash ./scripts/setup/openbsd.sh
-    - name: Configure, build, and test
-      run: >
-        cmake --preset default &&
-        cmake --build --preset default &&
-        ctest --preset default
+        run: |
+          sudo bash ./scripts/setup/openbsd.sh
+          cmake --preset default
+          cmake --build --preset default
+          ctest --preset default
     - uses: ./.github/actions/collect-ctest-logs
       if: failure()
       with:
