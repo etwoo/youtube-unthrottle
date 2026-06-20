@@ -98,13 +98,13 @@ jobs:
     - name: Configure, build, and test
       uses: vmactions/openbsd-vm@v1.3.7
       with:
+        copyback: false
         prepare: >
           ./scripts/setup/openbsd.sh
         run: >
           cmake --preset default &&
           cmake --build --preset default &&
-          ctest --preset default &&
-          cmake --build --preset default --target clean
+          ctest --preset default
     - uses: ./.github/actions/collect-ctest-logs
       if: failure()
       with:
