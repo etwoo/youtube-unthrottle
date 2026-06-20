@@ -102,7 +102,7 @@ jobs:
         version: '7.9'
     - name: Install dependencies
       run: >
-        bash ./scripts/setup/openbsd.sh
+        sudo bash ./scripts/setup/openbsd.sh
     - name: Configure, build, and test
       run: >
         cmake --preset default &&
