@@ -19,7 +19,7 @@ jobs:
         cc: [ gcc, clang ]
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - name: Setup (Linux)
       if: runner.os == 'Linux'
       run: |
@@ -46,7 +46,7 @@ jobs:
   lint:
     runs-on: ubuntu-26.04
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - name: Install dependencies
       run: >
         sudo ./scripts/setup/apt.sh
@@ -73,7 +73,7 @@ jobs:
   coverage:
     runs-on: ubuntu-26.04
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - name: Install dependencies
       run: |
         sudo ./scripts/setup/apt.sh
@@ -95,17 +95,22 @@ jobs:
   build-openbsd:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - name: Start OpenBSD VM
       uses: cross-platform-actions/action@v1
       with:
         operating_system: openbsd
         version: '7.9'
-        run: |
-          sudo ./scripts/setup/openbsd.sh
-          cmake --preset default
-          cmake --build --preset default
-          ctest --preset default
+    - name: Install dependencies
+      shell: cpa.sh {0}
+      run: >
+        sudo ./scripts/setup/openbsd.sh
+    - name: Configure, build, and test
+      shell: cpa.sh {0}
+      run: >
+        cmake --preset default -DCMAKE_COMPILE_WARNING_AS_ERROR=ON &&
+        cmake --build --preset default --parallel &&
+        ctest --preset default
     - uses: ./.github/actions/collect-ctest-logs
       if: failure()
       with:
