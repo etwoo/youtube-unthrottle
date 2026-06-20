@@ -15,29 +15,24 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
-        toolchain:
-          - compiler: gcc-14
-            package: gcc@14
-            # gcc-14 (currently) required to workaround failures on gcc-15:
-            #
-            #     {standard input}: Assembler messages:
-            #     {standard input}:1921: Error: unknown pseudo-op: `.base64'
-            #
-            # related upstream issues:
-            #
-            #     https://gcc.gnu.org/bugzilla/show_bug.cgi?id=117342
-            #     https://gcc.gnu.org/bugzilla/show_bug.cgi?id=119657
-          - compiler: clang
-            package: llvm
+        os: [ ubuntu-26.04, macos-26 ]
+        cc: [ gcc, clang ]
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v4
-    - uses: ./.github/actions/make-homebrew-devenv
-      with:
-        os: ${{ matrix.os }}
-        compiler: ${{ matrix.toolchain.compiler }}
-        package: ${{ matrix.toolchain.package }}
+    - uses: actions/checkout@v7
+    - name: Setup (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        sudo ./scripts/setup/apt.sh
+        echo "CC=${{ matrix.cc }}" >> "$GITHUB_ENV"
+    - name: Setup (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        ./scripts/setup/homebrew.sh
+        find "$(brew --prefix)" -type f -name '${{ matrix.cc }}-[1-9][0-9]' \
+          | sort -n \
+          | tail -1 \
+          | while read line ; do echo "CC=$line" ; done >> "$GITHUB_ENV"
     - name: Configure, build, and test
       run: >
         cmake --preset default -DCMAKE_COMPILE_WARNING_AS_ERROR=ON &&
@@ -46,23 +41,19 @@ jobs:
     - uses: ./.github/actions/collect-ctest-logs
       if: failure()
       with:
-        unique-suffix: ${{ matrix.os }}-${{ matrix.toolchain.compiler }}
+        unique-suffix: ${{ matrix.os }}-${{ matrix.cc }}
 
   lint:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
-    - uses: actions/checkout@v4
-    - uses: ./.github/actions/make-homebrew-devenv
-    - name: Configure and build
+    - uses: actions/checkout@v7
+    - name: Install dependencies
       run: >
-        cmake --preset default
-        -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
-        -DCMAKE_EXPORT_COMPILE_COMMANDS=1 &&
+        sudo ./scripts/setup/apt.sh
+    - name: Generate compile_commands.json and protobuf code
+      run: >
+        cmake --preset default -DCMAKE_COMPILE_WARNING_AS_ERROR=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=1 &&
         cmake --build --preset default --parallel
-    - name: Prevent homebrew CC and PATH from affecting cpp-linter-action
-      run: |
-        echo CC="$(which gcc)" >> "$GITHUB_ENV"
-        grep ^PATH /etc/environment | cut -d= -f2 >> "$GITHUB_PATH"
     - name: Run clang-format and clang-tidy, including clang-analyzer checks
       id: lint
       uses: cpp-linter/cpp-linter-action@v2
@@ -80,10 +71,13 @@ jobs:
       run: exit 1
 
   coverage:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
-    - uses: actions/checkout@v4
-    - uses: ./.github/actions/make-homebrew-devenv
+    - uses: actions/checkout@v7
+    - name: Install dependencies
+      run: |
+        sudo ./scripts/setup/apt.sh
+        sudo apt-get install -qqy llvm
     - name: Configure, build, and test
       run: >
         cmake --preset coverage -DCMAKE_COMPILE_WARNING_AS_ERROR=ON &&
@@ -101,16 +95,22 @@ jobs:
   build-openbsd:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - name: Configure, build, and test
-      uses: vmactions/openbsd-vm@v1.3.7
+    - uses: actions/checkout@v7
+    - name: Start OpenBSD VM
+      uses: cross-platform-actions/action@v1
       with:
-        prepare: >
-          ./scripts/setup/openbsd.sh
-        run: >
-          cmake --preset default &&
-          cmake --build --preset default &&
-          ctest --preset default
+        operating_system: openbsd
+        version: '7.9'
+    - name: Install dependencies
+      shell: cpa.sh {0}
+      run: >
+        sudo ./scripts/setup/openbsd.sh
+    - name: Configure, build, and test
+      shell: cpa.sh {0}
+      run: >
+        cmake --preset default -DCMAKE_COMPILE_WARNING_AS_ERROR=ON &&
+        cmake --build --preset default &&
+        ctest --preset default
     - uses: ./.github/actions/collect-ctest-logs
       if: failure()
       with:
