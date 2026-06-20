@@ -21,12 +21,12 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Setup (Linux)
-      if: ${{ runner.os }} == 'Linux'
+      if: runner.os == 'Linux'
       run: |
         sudo ./scripts/setup/apt.sh
         echo "CC=${{ matrix.cc }}" >> "$GITHUB_ENV"
     - name: Setup (macOS)
-      if: ${{ runner.os }} == 'macOS'
+      if: runner.os == 'macOS'
       run: |
         ./scripts/setup/homebrew.sh
         find "$(brew --prefix)" -type f -name '${{ matrix.cc }}-[1-9][0-9]' \
