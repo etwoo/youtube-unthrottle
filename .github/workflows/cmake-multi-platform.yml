@@ -101,7 +101,7 @@ jobs:
         operating_system: openbsd
         version: '7.9'
         run: |
-          sudo bash ./scripts/setup/openbsd.sh
+          sudo ./scripts/setup/openbsd.sh
           cmake --preset default
           cmake --build --preset default
           ctest --preset default
